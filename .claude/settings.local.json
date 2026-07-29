@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:ponytail.dev)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "WebFetch(domain:www.uupm.cc)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm -v)",
+      "Bash(npm install *)",
+      "Bash(uipro init *)",
+      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npx --yes create-next-app@latest cosmicconnect-tmp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npx --yes shadcn@latest init -d -b neutral)",
+      "Bash(npx --yes shadcn@latest init -d)",
+      "Bash(npx --yes shadcn@latest add button badge card input avatar dropdown-menu accordion tabs sheet separator)",
+      "Bash(npx --yes shadcn@latest add navigation-menu)",
+      "Bash(npx --yes shadcn@latest add label)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const m = require\\('./node_modules/lucide-react/dist/cjs/lucide-react.js'\\); console.log\\(Object.keys\\(m\\).filter\\(k => /facebook|instagram|youtube|twitter|linkedin/i.test\\(k\\)\\)\\)\")",
+      "Bash(node -e \"const m = require\\('./node_modules/lucide-react/dist/cjs/lucide-react.js'\\); console.log\\(Object.keys\\(m\\).length\\); console.log\\(Object.keys\\(m\\).filter\\(k=>/share|link|social/i.test\\(k\\)\\)\\)\")",
+      "Bash(xargs cat)",
+      "Bash(npx eslint *)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"luxury heritage spiritual temple ornate premium editorial\" --design-system -p \"CosmicConnect\")",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"luxury maroon saffron gold heritage\" --domain color -n 8)",
+      "Bash(git ls-remote *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "PowerShell(gh auth status 2>&1)",
+      "PowerShell(gh repo view optimaxin/Tredev-astro 2>&1)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
+    ]
+  }
+}
