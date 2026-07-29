@@ -1,26 +1,242 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+  --font-display: var(--font-display);
+  --font-devanagari: var(--font-devanagari);
+  --color-cosmic: #2b0b0e;
+  --color-cosmic-deep: #1a0607;
+  --color-cosmic-navy: #3d1210;
+  --color-gold: #d4af37;
+  --color-brass: #c9a962;
+  --color-cta: #a6321f;
+  --color-success: #276e42;
+  --color-warning: #c98a1c;
+  --color-error: #b3261e;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #fbf6ee;
+  --foreground: #2b1810;
+  --card: #ffffff;
+  --card-foreground: #2b1810;
+  --popover: #ffffff;
+  --popover-foreground: #2b1810;
+  --primary: #a6321f;
+  --primary-foreground: #ffffff;
+  --secondary: #f2ece1;
+  --secondary-foreground: #2b0b0e;
+  --muted: #f2ece1;
+  --muted-foreground: #756055;
+  --accent: #f2ece1;
+  --accent-foreground: #2b0b0e;
+  --destructive: #b3261e;
+  --border: #e5d9c8;
+  --input: #e5d9c8;
+  --ring: #a6321f;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: #1a0607;
+  --foreground: #f5ead9;
+  --card: #3d1c17;
+  --card-foreground: #f5ead9;
+  --popover: #3d1c17;
+  --popover-foreground: #f5ead9;
+  --primary: #c4462f;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(201, 169, 98, 0.12);
+  --secondary-foreground: #f5ead9;
+  --muted: rgba(201, 169, 98, 0.1);
+  --muted-foreground: #d9c7b6;
+  --accent: rgba(201, 169, 98, 0.12);
+  --accent-foreground: #f5ead9;
+  --destructive: #d4453a;
+  --border: rgba(201, 169, 98, 0.3);
+  --input: rgba(201, 169, 98, 0.3);
+  --ring: #c9a962;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility cosmic-bg {
+  background: linear-gradient(135deg, #1a0607 0%, #3d1210 55%, #2b0b0e 100%);
+}
+
+@utility temple-border {
+  border-image: repeating-linear-gradient(
+      90deg,
+      var(--color-brass) 0px,
+      var(--color-brass) 6px,
+      transparent 6px,
+      transparent 14px
+    )
+    1;
+}
+
+@utility glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@utility starfield {
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, #f0d9a8, transparent),
+    radial-gradient(1px 1px at 90px 80px, #f0d9a8, transparent),
+    radial-gradient(1.5px 1.5px at 150px 150px, #f0d9a8, transparent),
+    radial-gradient(1px 1px at 220px 60px, #f0d9a8, transparent),
+    radial-gradient(1.5px 1.5px at 280px 190px, #f0d9a8, transparent),
+    radial-gradient(1px 1px at 340px 40px, #f0d9a8, transparent),
+    radial-gradient(1px 1px at 45px 190px, #f0d9a8, transparent),
+    radial-gradient(1.5px 1.5px at 110px 20px, #f0d9a8, transparent);
+  background-repeat: repeat;
+  background-size: 380px 220px;
+  opacity: 0.45;
+  animation: starfield-drift 90s linear infinite;
+}
+
+@keyframes starfield-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -380px 220px;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(212, 175, 55, 0.3);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes breathing {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.6;
+  }
+}
+
+.animate-breathing {
+  animation: breathing 1.8s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
 }
