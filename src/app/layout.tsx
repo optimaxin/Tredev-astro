@@ -28,7 +28,7 @@ const notoDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "CosmicConnect - Where Ancient Wisdom Meets Modern Technology",
+  title: "AstroTredev - Where Ancient Wisdom Meets Modern Technology",
   description:
     "Connect with 5000+ verified astrologers for voice, chat & video consultation. First 3 minutes FREE. Free Kundli, Kundli Matching, Daily Horoscope & more.",
 };
