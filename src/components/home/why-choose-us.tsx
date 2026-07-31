@@ -14,7 +14,7 @@ const icons = {
 export function WhyChooseUs() {
   return (
     <SectionContainer>
-      <SectionHeading heading="Why CosmicConnect is India's #1 Choice" />
+      <SectionHeading heading="Why AstroTredev is India's #1 Choice" />
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {whyChooseUs.map((f) => {
           const Icon = icons[f.icon as keyof typeof icons];

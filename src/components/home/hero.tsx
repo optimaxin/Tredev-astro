@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Star, Users, Award, ShieldCheck } from "lucide-react";
+import { Star, Users, Award, ShieldCheck, Sparkles, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CosmicBackground } from "@/components/ui/cosmic-background";
 import { OmMark } from "@/components/ui/om-mark";
 import { astrologers } from "@/lib/mock-data";
 
-const rotatingWords = ["Astrologers", "Jyotishis", "Gurus", "Guides"];
+const rotatingWords = ["Destiny", "Karma", "Dharma", "Yoga"];
 
 const trustBadges = [
   { icon: Star, text: "4.8 Rating" },
@@ -29,14 +29,17 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden text-white">
       <CosmicBackground />
-      <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
+      <div className="relative mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+        <div className="mx-auto h-px w-full max-w-6xl temple-border" style={{ borderStyle: "solid" }} />
+      </div>
+      <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-sm font-medium">
-            <OmMark className="text-base" /> #1 Trusted Astrology Platform in India
+            <OmMark className="text-base" /> The Most Trusted Spiritual Platform of Bharat
           </span>
 
           <h1 className="mt-6 font-heading text-5xl font-semibold leading-tight sm:text-6xl lg:text-7xl">
-            Discover Your Destiny with India&apos;s Finest{" "}
+            Discover the Wisdom of the Stars, Your Cosmic{" "}
             <span key={wordIndex} className="text-[var(--color-gold)]">
               {rotatingWords[wordIndex]}
             </span>
@@ -58,7 +61,7 @@ export function Hero() {
               className="animate-glow-pulse gap-2 text-base"
               render={<Link href="/talk-to-astrologer" />}
             >
-              🔮 Talk to Astrologer Now
+              <Sparkles className="size-4" /> Talk to Astrologer Now
             </Button>
             <Button
               size="lg"
@@ -66,7 +69,7 @@ export function Hero() {
               className="gap-2 border-white/30 bg-white/5 text-base text-white hover:bg-white/10"
               render={<Link href="/chat-with-astrologer" />}
             >
-              💬 Chat with Astrologer
+              <MessageCircle className="size-4" /> Chat with Astrologer
             </Button>
           </div>
 
@@ -81,8 +84,9 @@ export function Hero() {
         </div>
 
         <div className="relative flex flex-col gap-4 lg:pt-8">
-          <span className="self-start rounded-full bg-[var(--color-success)]/20 px-3 py-1 text-sm text-[var(--color-success)]">
-            🟢 247 astrologers online now
+          <span className="inline-flex items-center gap-2 self-start rounded-full bg-[var(--color-success)]/20 px-3 py-1 text-sm text-[var(--color-success)]">
+            <span className="size-2 animate-breathing rounded-full bg-[var(--color-success)]" />
+            247 astrologers online now
           </span>
           {astrologers.slice(0, 3).map((a, i) => (
             <div
@@ -108,6 +112,9 @@ export function Hero() {
             </div>
           ))}
         </div>
+      </div>
+      <div className="relative mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
+        <div className="mx-auto h-px w-full max-w-6xl temple-border" style={{ borderStyle: "solid" }} />
       </div>
     </section>
   );

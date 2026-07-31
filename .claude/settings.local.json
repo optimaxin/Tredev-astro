@@ -32,7 +32,17 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Read(//c/Users/ashif/.claude/**)",
+      "Read(//c/Users/ashif/**)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"generic AI generated interface anti-pattern emoji icons\" --domain ux -n 6)",
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p \"D:/Downloads/Tredev-astro/src/app/astrologer/[slug]\")",
+      "Bash(mkdir -p \"D:/Downloads/Tredev-astro/src/app/shop\" \"D:/Downloads/Tredev-astro/src/app/product/[slug]\" \"D:/Downloads/Tredev-astro/src/app/blog/[slug]\")",
+      "Bash(curl -s http://localhost:3000/talk-to-astrologer)",
+      "Bash(curl -s http://localhost:3000/talk-to-astrologer -o /tmp/talk.html)",
+      "Read(//tmp/**)",
+      "Bash(grep -o \"Showing[^\\\\\"]\\\\{0,40\\\\}\" \"D:/Downloads/Tredev-astro/.scratch-talk.html\")"
     ]
   }
 }

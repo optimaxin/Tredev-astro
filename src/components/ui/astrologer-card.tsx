@@ -1,21 +1,21 @@
 "use client";
 
-import { Star, Phone, MessageCircle, Heart } from "lucide-react";
+import { Star, Phone, MessageCircle, Heart, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Astrologer } from "@/lib/mock-data";
 
 const tierColor: Record<Astrologer["tier"], string> = {
-  Platinum: "border-[var(--color-gold)]",
-  Gold: "border-[var(--color-brass)]",
-  Silver: "border-slate-400",
-  "Rising Star": "border-emerald-400",
+  Maharishi: "border-[var(--color-gold)]",
+  Acharya: "border-[var(--color-brass)]",
+  Pandit: "border-[var(--color-silver)]",
+  Vidyarthi: "border-emerald-400",
 };
 
 export function AstrologerCard({ astrologer }: { astrologer: Astrologer }) {
   return (
-    <div className="group flex flex-col rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--color-gold)] hover:shadow-lg">
+    <div className="group flex flex-col rounded-xl border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--color-gold)]">
       <div className="flex items-start gap-2">
         {astrologer.online && (
           <Badge className="gap-1 bg-[var(--color-success)]/15 text-[var(--color-success)] hover:bg-[var(--color-success)]/15">
@@ -24,7 +24,7 @@ export function AstrologerCard({ astrologer }: { astrologer: Astrologer }) {
           </Badge>
         )}
         <Badge variant="secondary" className="gap-1">
-          🎁 Free 3 Min
+          <Gift className="size-3" /> Free 3 Min
         </Badge>
       </div>
 

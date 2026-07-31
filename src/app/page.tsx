@@ -1,4 +1,5 @@
 import { Hero } from "@/components/home/hero";
+import { FourPillars } from "@/components/home/four-pillars";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { LiveTicker } from "@/components/home/live-ticker";
 import { Categories } from "@/components/home/categories";
@@ -18,14 +19,15 @@ export default function Home() {
     <>
       <Hero />
       <LiveTicker />
+      <StatsCounter />
+      <FourPillars />
       <HowItWorks />
       <Categories />
       <FeaturedAstrologers />
+      <Testimonials />
       <FreeKundliForm />
-      <StatsCounter />
       <PremiumKundliCampaign />
       <SectionDivider />
-      <Testimonials />
       <WhyChooseUs />
       <FreeToolsShowcase />
       <BlogPreview />

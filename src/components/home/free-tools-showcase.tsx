@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Heart, Sun, Moon, Calculator, Layers, CalendarDays, AlertTriangle } from "lucide-react";
+import { BarChart3, Heart, Sun, Moon, Calculator, Layers, CalendarDays, AlertTriangle, Wrench } from "lucide-react";
 import { SectionContainer, SectionHeading } from "@/components/ui/section-container";
 import { freeTools } from "@/lib/mock-data";
 
@@ -17,7 +17,14 @@ const icons = {
 export function FreeToolsShowcase() {
   return (
     <SectionContainer>
-      <SectionHeading heading="🛠️ Free Astrology Tools" subheading="Explore our suite of powerful, accurate, and completely free tools" />
+      <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full bg-[var(--color-cta)]/10 text-[var(--color-cta)]">
+        <Wrench className="size-5" />
+      </div>
+      <SectionHeading
+        eyebrow="Divine Tools"
+        heading="Free Astrology Tools"
+        subheading="Explore our suite of powerful, accurate, and completely free tools"
+      />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {freeTools.map((tool) => {
           const Icon = icons[tool.icon as keyof typeof icons];
@@ -25,7 +32,7 @@ export function FreeToolsShowcase() {
             <Link
               key={tool.name}
               href={tool.href}
-              className="group rounded-xl border bg-card p-5 transition-all hover:-translate-y-1 hover:border-[var(--color-gold)] hover:shadow-md"
+              className="group rounded-xl border bg-card p-5 transition-all hover:-translate-y-1 hover:border-[var(--color-gold)]"
             >
               <Icon className="size-7 text-[var(--color-cta)]" />
               <h3 className="mt-3 font-semibold">{tool.name}</h3>

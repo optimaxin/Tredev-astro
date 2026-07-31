@@ -19,7 +19,16 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { navLanguages, navSpecializations, freeToolsMenu, storeMenu } from "@/lib/mock-data";
+import {
+  navLanguages,
+  navSpecializations,
+  navTiers,
+  freeToolsMenu,
+  storeMenu,
+  premiumServices,
+  communityMenu,
+  knowledgeMenu,
+} from "@/lib/mock-data";
 
 export function Navbar() {
   return (
@@ -27,7 +36,7 @@ export function Navbar() {
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 font-display text-lg tracking-wide">
           <OmMark className="text-2xl" />
-          <span>Cosmic<span className="text-[var(--color-gold)]">Connect</span></span>
+          <span>Astro<span className="text-[var(--color-gold)]">Tredev</span></span>
         </Link>
 
         <NavigationMenu className="hidden lg:flex">
@@ -37,47 +46,67 @@ export function Navbar() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuTrigger>Talk to Astrologer</NavigationMenuTrigger>
+              <NavigationMenuTrigger>Consult Experts</NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid w-[520px] grid-cols-2 gap-6 p-4">
-                  <MenuColumn title="By Language" items={navLanguages.slice(0, 6)} />
-                  <MenuColumn title="By Specialization" items={navSpecializations.slice(0, 6)} />
+                <div className="w-[680px]">
+                  <div className="grid grid-cols-3 gap-6 p-5">
+                    <MenuColumn title="By Language" items={navLanguages.slice(0, 6)} />
+                    <MenuColumn title="By Specialization" items={navSpecializations.slice(0, 6)} />
+                    <MenuColumn title="By Guru Tier" items={navTiers} />
+                  </div>
+                  <MenuCta href="/talk-to-astrologer" label="View All Gurus — First 3 Min Free" />
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuLink render={<Link href="/chat-with-astrologer" />}>Chat</NavigationMenuLink>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Free Tools</NavigationMenuTrigger>
+              <NavigationMenuTrigger>Divine Tools</NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid w-[560px] grid-cols-2 gap-6 p-4">
-                  {Object.entries(freeToolsMenu).map(([title, items]) => (
-                    <MenuColumn key={title} title={title} items={items} />
-                  ))}
+                <div className="w-[600px]">
+                  <div className="grid grid-cols-2 gap-6 p-5">
+                    {Object.entries(freeToolsMenu).map(([title, items]) => (
+                      <MenuColumn key={title} title={title} items={items} />
+                    ))}
+                  </div>
+                  <MenuCta href="/free-kundli" label="Generate Your Free Kundli" />
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuLink render={<Link href="/horoscope/daily" />}>Horoscope</NavigationMenuLink>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Store</NavigationMenuTrigger>
+              <NavigationMenuTrigger>Premium</NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid w-[520px] grid-cols-2 gap-6 p-4">
-                  {Object.entries(storeMenu).slice(0, 2).map(([title, items]) => (
-                    <MenuColumn key={title} title={title} items={items} />
-                  ))}
+                <div className="w-[300px] p-5">
+                  <MenuColumn
+                    title="Premium Services"
+                    items={premiumServices.map((s) => s.label)}
+                  />
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuLink render={<Link href="/blog" />}>Blog</NavigationMenuLink>
+              <NavigationMenuTrigger>Shop</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[560px]">
+                  <div className="grid grid-cols-3 gap-6 p-5">
+                    {Object.entries(storeMenu).map(([title, items]) => (
+                      <MenuColumn key={title} title={title} items={items.slice(0, 5)} />
+                    ))}
+                  </div>
+                  <MenuCta href="/shop" label="Kundli-Based Recommendations" />
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>Community</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="grid w-[440px] grid-cols-2 gap-6 p-5">
+                  <MenuColumn title="Community" items={communityMenu.map((c) => c.label)} />
+                  <MenuColumn title="Knowledge" items={knowledgeMenu.map((k) => k.label)} />
+                </div>
+              </NavigationMenuContent>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
@@ -111,12 +140,14 @@ export function Navbar() {
               <nav className="flex flex-col gap-1 p-4">
                 {[
                   ["Home", "/"],
-                  ["Talk to Astrologer", "/talk-to-astrologer"],
-                  ["Chat with Astrologer", "/chat-with-astrologer"],
+                  ["Consult Experts", "/talk-to-astrologer"],
+                  ["Chat with a Guru", "/chat-with-astrologer"],
                   ["Free Kundli", "/free-kundli"],
                   ["Kundli Matching", "/kundli-matching"],
                   ["Daily Horoscope", "/horoscope/daily"],
-                  ["Store", "/shop"],
+                  ["Premium Services", "/premium-kundli/order"],
+                  ["Shop", "/shop"],
+                  ["Community", "/community"],
                   ["Blog", "/blog"],
                   ["Login", "/login"],
                 ].map(([label, href]) => (
@@ -134,6 +165,22 @@ export function Navbar() {
         </div>
       </div>
     </header>
+  );
+}
+
+function MenuCta({ href, label }: { href: string; label: string }) {
+  return (
+    <NavigationMenuLink
+      render={
+        <Link
+          href={href}
+          className="flex items-center justify-between rounded-b-lg bg-gradient-to-r from-[var(--color-cta)] to-[var(--color-gold)] px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
+        />
+      }
+    >
+      {label}
+      <span>→</span>
+    </NavigationMenuLink>
   );
 }
 

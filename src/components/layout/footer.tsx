@@ -8,24 +8,51 @@ const socialGlyphs = ["f", "@", "▶", "𝕏", "in"];
 
 const columns = [
   {
-    title: "About CosmicConnect",
-    links: ["About Us", "Our Story", "Careers", "Press & News", "Contact Us"],
+    title: "About AstroTredev",
+    links: [
+      { label: "About Us", href: "/about" },
+      { label: "Our Story", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Press & News", href: "/press" },
+      { label: "Contact Us", href: "/contact" },
+    ],
   },
   {
     title: "Consultation Services",
-    links: ["Talk to Astrologer", "Chat with Astrologer", "Video Consultation", "Premium Kundli Report", "Marriage Astrology"],
+    links: [
+      { label: "Talk to Astrologer", href: "/talk-to-astrologer" },
+      { label: "Chat with Astrologer", href: "/chat-with-astrologer" },
+      { label: "Premium Kundli Report", href: "/premium-kundli/order" },
+      { label: "Kundli Matching", href: "/kundli-matching" },
+    ],
   },
   {
     title: "Free Tools",
-    links: ["Free Kundli", "Kundli Matching", "Daily Horoscope", "Numerology Calculator", "Panchang Today"],
+    links: [
+      { label: "Free Kundli", href: "/free-kundli" },
+      { label: "Kundli Matching", href: "/kundli-matching" },
+      { label: "Daily Horoscope", href: "/horoscope/daily" },
+    ],
   },
   {
     title: "Shop",
-    links: ["Gemstones", "Rudraksha", "Yantras", "Pooja Items", "Books & Courses"],
+    links: [
+      { label: "Gemstones", href: "/shop" },
+      { label: "Rudraksha", href: "/shop" },
+      { label: "Yantras", href: "/shop" },
+      { label: "Pooja Items", href: "/shop" },
+      { label: "Books & Courses", href: "/shop" },
+    ],
   },
   {
     title: "Support",
-    links: ["Help Center / FAQ", "Privacy Policy", "Terms & Conditions", "Refund & Cancellation", "Sitemap"],
+    links: [
+      { label: "Help Center / FAQ", href: "/faq" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms & Conditions", href: "/terms" },
+      { label: "Refund & Cancellation", href: "/refund-policy" },
+      { label: "Sitemap", href: "/sitemap" },
+    ],
   },
 ];
 
@@ -39,9 +66,9 @@ export function Footer() {
               <h3 className="mb-3 text-sm font-semibold text-[var(--color-gold)]">{col.title}</h3>
               <ul className="space-y-2">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <Link href="#" className="text-sm text-white/70 transition-colors hover:text-white">
-                      {link}
+                  <li key={link.label}>
+                    <Link href={link.href} className="text-sm text-white/70 transition-colors hover:text-white">
+                      {link.label}
                     </Link>
                   </li>
                 ))}
@@ -64,7 +91,7 @@ export function Footer() {
         <div className="mt-10 flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-8 sm:flex-row">
           <Link href="/" className="flex items-center gap-2 font-display tracking-wide">
             <OmMark className="text-xl" />
-            CosmicConnect
+            AstroTredev
           </Link>
 
           <div className="flex gap-3">
@@ -79,7 +106,7 @@ export function Footer() {
           </div>
 
           <p className="text-sm text-white/50">
-            © {new Date().getFullYear()} CosmicConnect. All rights reserved.
+            © {new Date().getFullYear()} AstroTredev. All rights reserved.
           </p>
         </div>
       </div>

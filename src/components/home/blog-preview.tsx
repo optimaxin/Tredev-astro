@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { BookOpen } from "lucide-react";
 import { SectionContainer, SectionHeading } from "@/components/ui/section-container";
 import { blogPosts } from "@/lib/mock-data";
 
 export function BlogPreview() {
   return (
     <SectionContainer>
-      <SectionHeading heading="📚 Learn Astrology" subheading="Expert articles, guides & remedies" />
+      <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full bg-[var(--color-gold)]/10 text-[var(--color-gold)]">
+        <BookOpen className="size-5" />
+      </div>
+      <SectionHeading heading="Learn Astrology" subheading="Expert articles, guides & remedies" />
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {blogPosts.map((post) => (
-          <Link key={post.href} href={post.href} className="group rounded-xl border bg-card p-5 transition-shadow hover:shadow-md">
+          <Link key={post.href} href={post.href} className="group rounded-xl border p-5 transition-colors hover:border-[var(--color-gold)]">
             <div className="aspect-video rounded-lg bg-gradient-to-br from-[var(--color-cosmic)] to-[var(--color-cta)]" />
             <span className="mt-3 inline-block text-xs font-medium text-[var(--color-cta)]">{post.category}</span>
             <h3 className="mt-1 font-semibold leading-snug group-hover:text-[var(--color-gold)]">{post.title}</h3>

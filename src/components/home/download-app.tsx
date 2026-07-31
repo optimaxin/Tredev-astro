@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, Smartphone, Check } from "lucide-react";
 import { SectionContainer } from "@/components/ui/section-container";
 
 const features = [
@@ -14,12 +14,14 @@ export function DownloadApp() {
     <SectionContainer>
       <div className="cosmic-bg grid gap-8 overflow-hidden rounded-2xl px-6 py-12 text-white sm:px-12 lg:grid-cols-2 lg:items-center">
         <div>
-          <h2 className="text-3xl font-bold">📱 Get the CosmicConnect App</h2>
+          <h2 className="flex items-center gap-3 text-3xl font-bold">
+            <Smartphone className="size-7 text-[var(--color-gold)]" /> Get the AstroTredev App
+          </h2>
           <p className="mt-2 text-white/80">Consult astrologers on the go. Available on iOS &amp; Android.</p>
           <ul className="mt-6 space-y-2">
             {features.map((f) => (
               <li key={f} className="flex items-center gap-2 text-sm text-white/85">
-                <span className="text-[var(--color-success)]">✓</span> {f}
+                <Check className="size-4 text-[var(--color-success)]" /> {f}
               </li>
             ))}
           </ul>

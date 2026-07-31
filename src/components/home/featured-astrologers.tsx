@@ -6,7 +6,7 @@ export function FeaturedAstrologers() {
   return (
     <SectionContainer>
       <SectionHeading
-        eyebrow="⭐ Handpicked"
+        eyebrow="Handpicked"
         heading="Our Top-Rated Astrologers"
         subheading="Handpicked experts with 4.8+ rating and 10+ years experience"
       />
