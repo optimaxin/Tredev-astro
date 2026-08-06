@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AstroTredev
 
-## Getting Started
+Astrology consultation platform — Next.js 16 (App Router) frontend with a real backend: Prisma + SQLite (dev) / Postgres (production), phone-OTP auth, and a from-scratch Vedic astrology engine (Kundli, Panchang, Guna Milan matching, Numerology).
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install        # also runs `prisma generate` via postinstall
+cp .env.example .env
+npx prisma migrate dev   # creates the local dev.db SQLite file
+npx prisma db seed       # loads mock-data.ts astrologers into the DB
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Phone-OTP login codes are printed to the server console (no SMS provider is configured yet).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What's real vs. stubbed
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Real**: Kundli/Panchang/Guna-Milan/Numerology calculations (`src/lib/astro/`, `src/lib/numerology.ts`), phone-OTP auth + sessions, database-backed astrologers/bookings/wallet.
+- **Stubbed, ready to wire up**: SMS delivery for OTP, live voice/video calling (provider-agnostic token endpoint at `src/app/api/consultation/[id]/token`), payment capture (wallet top-up and bookings currently self-credit/self-mark-paid).
 
-## Learn More
+See `.env.example` for every secret needed to take a stub live, and the note at the top of `prisma/schema.prisma` for switching the dev SQLite database to production Postgres.
 
-To learn more about Next.js, take a look at the following resources:
+## Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 16, TypeScript, Tailwind CSS v4, shadcn/ui (Base UI), Prisma 7, Three.js, Framer Motion, Lenis.

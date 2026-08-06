@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/ui/page-hero";
-import { SectionContainer } from "@/components/ui/section-container";
+import { Section } from "@/components/ui/section";
 import { AstrologerListing } from "@/components/astrologers/astrologer-listing";
 
 export const metadata: Metadata = {
@@ -17,9 +17,7 @@ export default function TalkToAstrologerPage() {
         subtitle="Filter by language, specialty, and Guru tier. First 3 minutes are free with any astrologer."
         breadcrumb={[{ label: "Home", href: "/" }, { label: "Talk to Astrologer" }]}
       />
-      <SectionContainer>
-        <AstrologerListing />
-      </SectionContainer>
+      <Section><AstrologerListing /></Section>
     </>
   );
 }

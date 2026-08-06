@@ -8,21 +8,20 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-mono);
   --font-heading: var(--font-heading);
-  --font-display: var(--font-display);
   --font-devanagari: var(--font-devanagari);
-  --color-cosmic: #4a0e1b;
-  --color-cosmic-deep: #0a0618;
-  --color-cosmic-navy: #1a237e;
-  --color-gold: #d4a745;
-  --color-brass: #a8703a;
-  --color-cta: #8b1538;
-  --color-success: #2e7d32;
-  --color-warning: #f9a825;
-  --color-error: #d32f2f;
-  --color-silver: #b0bec5;
-  --color-royal-purple: #6a0dad;
+
+  /* Brand accent tokens: --color-ink/plum/marigold/sindoor/violet live in
+     :root and .dark below with different values per theme — dark mode is
+     the void-black alchemical marketplace look, light mode is a warm
+     maroon-and-temple-gold ancient-India look. Same variable names, so
+     every component that reads them adapts automatically. */
+  --color-success: #34c98f;
+  --color-warning: #d99a2b;
+  --color-error: #e0555c;
+  --color-mist: #9d99a8;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -58,34 +57,45 @@
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
-  --background: #fff8f0;
-  --foreground: #2a1608;
-  --card: #ffffff;
-  --card-foreground: #2a1608;
-  --popover: #ffffff;
-  --popover-foreground: #2a1608;
-  --primary: #8b1538;
-  --primary-foreground: #ffffff;
-  --secondary: #f5e6d3;
-  --secondary-foreground: #4a0e1b;
-  --muted: #f5e6d3;
-  --muted-foreground: #7a5f4a;
-  --accent: #f5e6d3;
-  --accent-foreground: #4a0e1b;
-  --destructive: #d32f2f;
-  --border: #ecd9bd;
-  --input: #ecd9bd;
-  --ring: #8b1538;
+  /* Ancient-India light mode: warm parchment, vermillion & temple gold. */
+  --background: #f6ecd9;
+  --foreground: #2b1810;
+  --card: #fdf6ea;
+  --card-foreground: #2b1810;
+  --popover: #fdf6ea;
+  --popover-foreground: #2b1810;
+  --primary: #9c2b2b;
+  --primary-foreground: #fdf6ea;
+  --secondary: #f0e0c0;
+  --secondary-foreground: #2b1810;
+  --muted: #f0e0c0;
+  --muted-foreground: #6b5745;
+  --accent: #f0e0c0;
+  --accent-foreground: #2b1810;
+  --destructive: #9c2b2b;
+  --border: #e0cca0;
+  --input: #e0cca0;
+  --ring: #9c2b2b;
+
+  --color-ink: #3a1220;
+  --color-ink-deep: #220a10;
+  --color-plum: #4a1f2e;
+  --color-marigold: #9c7a1f;
+  --color-marigold-soft: #c9a13a;
+  --color-sindoor: #9c2b2b;
+  --color-sindoor-deep: #6e1c1c;
+  --color-violet: #4a4a7f;
+  --color-violet-deep: #35355f;
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -97,24 +107,35 @@
 }
 
 .dark {
-  --background: #0a0618;
-  --foreground: #ffd8b0;
-  --card: #211530;
-  --card-foreground: #fff8f0;
-  --popover: #211530;
-  --popover-foreground: #fff8f0;
-  --primary: #a8215a;
-  --primary-foreground: #ffffff;
-  --secondary: rgba(212, 167, 69, 0.12);
-  --secondary-foreground: #fff8f0;
-  --muted: rgba(212, 167, 69, 0.1);
-  --muted-foreground: #d9c2a8;
-  --accent: rgba(212, 167, 69, 0.12);
-  --accent-foreground: #fff8f0;
-  --destructive: #e05a4f;
-  --border: rgba(212, 167, 69, 0.28);
-  --input: rgba(212, 167, 69, 0.3);
-  --ring: #a8215a;
+  --background: #050506;
+  --foreground: #ece9e2;
+  --card: #101012;
+  --card-foreground: #ece9e2;
+  --popover: #101012;
+  --popover-foreground: #ece9e2;
+  --primary: #34c98f;
+  --primary-foreground: #051912;
+  --secondary: rgba(52, 201, 143, 0.1);
+  --secondary-foreground: #ece9e2;
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: #9d99a8;
+  --accent: rgba(52, 201, 143, 0.1);
+  --accent-foreground: #ece9e2;
+  --destructive: #e0555c;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #34c98f;
+
+  --color-ink: #0d0d10;
+  --color-ink-deep: #050506;
+  --color-plum: #17171b;
+  --color-marigold: #e0b23e;
+  --color-marigold-soft: #f0cf7a;
+  --color-sindoor: #34c98f;
+  --color-sindoor-deep: #1f9169;
+  --color-violet: #9b7bf0;
+  --color-violet-deep: #6d4fc7;
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -136,18 +157,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image:
-      linear-gradient(45deg, color-mix(in srgb, var(--color-cosmic) 4%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--color-cosmic) 4%, transparent) 75%),
-      linear-gradient(45deg, color-mix(in srgb, var(--color-cosmic) 4%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--color-cosmic) 4%, transparent) 75%);
-    background-size: 28px 28px;
-    background-position: 0 0, 14px 14px;
-  }
-
-  .dark body {
-    background-image: none;
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
   h1,
   h2,
@@ -159,98 +172,68 @@
   }
 }
 
-@utility cosmic-bg {
+/* "Banner" treatment for Hero/Footer/CTA strips: dark void-black with
+   violet/emerald/gold smoke-blob glows in dark mode, deep maroon with
+   vermillion/gold embers in light mode — same formula, theme-driven vars. */
+@utility ink-bg {
   background:
-    radial-gradient(ellipse at 15% 20%, rgba(106, 13, 173, 0.35), transparent 55%),
-    radial-gradient(ellipse at 85% 75%, rgba(212, 167, 69, 0.12), transparent 50%),
-    linear-gradient(160deg, #0a0618 0%, #2b0a1c 45%, #4a0e1b 100%);
+    radial-gradient(ellipse 55% 45% at 8% 100%, color-mix(in srgb, var(--color-violet) 22%, transparent), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 96% 92%, color-mix(in srgb, var(--color-sindoor) 18%, transparent), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 55% 0%, color-mix(in srgb, var(--color-marigold) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--color-ink-deep) 0%, var(--color-ink) 55%, var(--color-ink-deep) 100%);
 }
 
-@utility temple-border {
+@utility marigold-border {
   border-image: repeating-linear-gradient(
       90deg,
-      var(--color-brass) 0px,
-      var(--color-brass) 6px,
-      transparent 6px,
-      transparent 14px
+      var(--color-marigold) 0px,
+      var(--color-marigold) 5px,
+      transparent 5px,
+      transparent 12px
     )
     1;
 }
 
 @utility glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @utility starfield {
   background-image:
-    radial-gradient(1.5px 1.5px at 20px 30px, #f0d9a8, transparent),
-    radial-gradient(1px 1px at 90px 80px, #f0d9a8, transparent),
-    radial-gradient(1.5px 1.5px at 150px 150px, #f0d9a8, transparent),
-    radial-gradient(1px 1px at 220px 60px, #f0d9a8, transparent),
-    radial-gradient(1.5px 1.5px at 280px 190px, #f0d9a8, transparent),
-    radial-gradient(1px 1px at 340px 40px, #f0d9a8, transparent),
-    radial-gradient(1px 1px at 45px 190px, #f0d9a8, transparent),
-    radial-gradient(1.5px 1.5px at 110px 20px, #f0d9a8, transparent);
+    radial-gradient(1.4px 1.4px at 20px 30px, #ece9e2, transparent),
+    radial-gradient(1px 1px at 90px 80px, #ece9e2, transparent),
+    radial-gradient(1.4px 1.4px at 150px 150px, #ece9e2, transparent),
+    radial-gradient(1px 1px at 220px 60px, #ece9e2, transparent),
+    radial-gradient(1.4px 1.4px at 280px 190px, #ece9e2, transparent),
+    radial-gradient(1px 1px at 340px 40px, #ece9e2, transparent);
   background-repeat: repeat;
-  background-size: 380px 220px;
-  opacity: 0.45;
-  animation: starfield-drift 90s linear infinite;
+  background-size: 360px 220px;
+  opacity: 0.2;
+  animation: starfield-drift 100s linear infinite;
 }
 
 @keyframes starfield-drift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: -380px 220px;
-  }
+  from { background-position: 0 0; }
+  to { background-position: -360px 220px; }
 }
 
 @keyframes glow-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 24px 6px rgba(212, 175, 55, 0.3);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 201, 143, 0.45); }
+  50% { box-shadow: 0 0 26px 6px rgba(52, 201, 143, 0.3); }
 }
-
-.animate-glow-pulse {
-  animation: glow-pulse 2.4s ease-in-out infinite;
-}
+.animate-glow-pulse { animation: glow-pulse 2.6s ease-in-out infinite; }
 
 @keyframes breathing {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.25);
-    opacity: 0.6;
-  }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.55; }
 }
-
-.animate-breathing {
-  animation: breathing 1.8s ease-in-out infinite;
-}
+.animate-breathing { animation: breathing 1.8s ease-in-out infinite; }
 
 @keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
-
-.animate-marquee {
-  animation: marquee 32s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
+.animate-marquee { animation: marquee 34s linear infinite; }
+.animate-marquee:hover { animation-play-state: paused; }

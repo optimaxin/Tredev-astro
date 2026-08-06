@@ -3,13 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useInView, useMotionValue, useSpring } from "framer-motion";
 
-export function AnimatedCounter({
-  value,
-  suffix = "",
-}: {
-  value: number;
-  suffix?: string;
-}) {
+export function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const motionValue = useMotionValue(0);
   const springValue = useSpring(motionValue, { duration: 2000, bounce: 0 });
@@ -21,9 +15,7 @@ export function AnimatedCounter({
 
   useEffect(() => {
     return springValue.on("change", (latest) => {
-      if (ref.current) {
-        ref.current.textContent = Math.floor(latest).toLocaleString("en-IN") + suffix;
-      }
+      if (ref.current) ref.current.textContent = Math.floor(latest).toLocaleString("en-IN") + suffix;
     });
   }, [springValue, suffix]);
 

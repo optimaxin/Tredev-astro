@@ -4,7 +4,7 @@ export function OmMark({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
-      className={cn("font-devanagari leading-none text-[var(--color-gold)]", className)}
+      className={cn("font-devanagari leading-none text-[var(--color-marigold)]", className)}
     >
       ॐ
     </span>

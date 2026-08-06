@@ -1,0 +1,149 @@
+// Dev datasource is local SQLite so the stack runs with zero external
+// credentials. The connection URL itself lives in prisma.config.ts
+// (Prisma 7 convention). Field types below deliberately avoid
+// SQLite/Postgres-only features (no native arrays, no DB-level enums)
+// so switching to "postgresql" + a real DATABASE_URL later needs no
+// schema rewrite — just the provider line and a migration.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  email     String?
+  role      String   @default("seeker") // seeker | astrologer | admin
+  createdAt DateTime @default(now())
+
+  astrologer     Astrologer?
+  wallet         Wallet?
+  bookings       Booking[]
+  reviews        Review[]
+  kundliCharts   KundliChart[]
+  chatMessages   ChatMessage[]
+  seekerSessions ConsultationSession[] @relation("SeekerSessions")
+}
+
+model Astrologer {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  slug               String   @unique
+  name               String
+  initials           String
+  tier               String // Maharishi | Acharya | Pandit | Vidyarthi
+  experience         Int
+  languages          String // comma-separated
+  specialties        String // comma-separated
+  rating             Float    @default(4.5)
+  reviewsCount       Int      @default(0)
+  pricePerMin        Int
+  online             Boolean  @default(false)
+  consultationsLabel String   @default("0")
+  city               String?
+  gender             String?
+  bio                String?
+  gurukul            String?
+  createdAt          DateTime @default(now())
+
+  reviews  Review[]
+  sessions ConsultationSession[]
+}
+
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  balancePaise Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  type        String // credit | debit
+  amountPaise Int
+  reason      String
+  createdAt   DateTime @default(now())
+}
+
+model ConsultationSession {
+  id             String     @id @default(cuid())
+  seekerId       String
+  seeker         User       @relation("SeekerSessions", fields: [seekerId], references: [id])
+  astrologerId   String
+  astrologer     Astrologer @relation(fields: [astrologerId], references: [id])
+  type           String // chat | voice | video
+  status         String     @default("pending") // pending | active | completed | cancelled
+  providerRoomId String?
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime   @default(now())
+
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String              @id @default(cuid())
+  sessionId String
+  session   ConsultationSession @relation(fields: [sessionId], references: [id])
+  senderId  String
+  sender    User                @relation(fields: [senderId], references: [id])
+  body      String
+  createdAt DateTime            @default(now())
+}
+
+model KundliChart {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  name        String
+  dob         DateTime
+  timeOfBirth String
+  placeName   String
+  lat         Float
+  lng         Float
+  ayanamsa    Float
+  chartJson   String // JSON-encoded computed chart
+  createdAt   DateTime @default(now())
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  kind          String // consultation | puja | course | report
+  refId         String?
+  amountPaise   Int
+  paymentStatus String   @default("stub_paid") // stub_paid | paid | pending | failed
+  createdAt     DateTime @default(now())
+}
+
+model Review {
+  id           String     @id @default(cuid())
+  astrologerId String
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  rating       Int
+  comment      String?
+  createdAt    DateTime   @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

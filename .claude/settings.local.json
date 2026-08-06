@@ -42,7 +42,8 @@
       "Bash(curl -s http://localhost:3000/talk-to-astrologer)",
       "Bash(curl -s http://localhost:3000/talk-to-astrologer -o /tmp/talk.html)",
       "Read(//tmp/**)",
-      "Bash(grep -o \"Showing[^\\\\\"]\\\\{0,40\\\\}\" \"D:/Downloads/Tredev-astro/.scratch-talk.html\")"
+      "Bash(grep -o \"Showing[^\\\\\"]\\\\{0,40\\\\}\" \"D:/Downloads/Tredev-astro/.scratch-talk.html\")",
+      "Bash(mkdir -p \"D:/Downloads/Tredev-astro/src/app/talk-to-astrologer\" \"D:/Downloads/Tredev-astro/src/app/astrologer/[slug]\" \"D:/Downloads/Tredev-astro/src/app/free-kundli\")"
     ]
   }
 }

@@ -196,42 +196,42 @@ export const categories = [
     icon: "heart",
     title: "Love & Relationships",
     description: "Find your soulmate, resolve conflicts, understand compatibility",
-    gradient: "from-[#7a1f2b] to-[#a6321f]",
+    gradient: "from-[#3a0f1f] to-[#7a1f45]",
     href: "/talk-to-astrologer/love-relationship",
   },
   {
     icon: "briefcase",
     title: "Career & Success",
     description: "Job change timing, business growth, promotion predictions",
-    gradient: "from-[#3d2b1a] to-[#c9a962]",
+    gradient: "from-[#3d3110] to-[#8a6d1f]",
     href: "/talk-to-astrologer/career",
   },
   {
     icon: "coins",
     title: "Finance & Wealth",
     description: "Investment timing, debt solutions, property decisions",
-    gradient: "from-[#1f3d2b] to-[#4a7c59]",
+    gradient: "from-[#0f2e22] to-[#1f9169]",
     href: "/talk-to-astrologer/finance",
   },
   {
     icon: "gem",
     title: "Marriage & Family",
     description: "Marriage timing, Kundli matching, family harmony",
-    gradient: "from-[#b3691c] to-[#d4af37]",
+    gradient: "from-[#2a1a45] to-[#6d4fc7]",
     href: "/talk-to-astrologer/marriage",
   },
   {
     icon: "heart-pulse",
     title: "Health & Wellness",
     description: "Health predictions, Ayurvedic remedies, mental peace",
-    gradient: "from-[#8a4a1f] to-[#c98a1c]",
+    gradient: "from-[#0f2e2e] to-[#1a5d5d]",
     href: "/talk-to-astrologer/health",
   },
   {
     icon: "plane",
     title: "Foreign Settlement",
     description: "Visa approval, abroad opportunities, settlement chances",
-    gradient: "from-[#1a3d3d] to-[#2f6b6b]",
+    gradient: "from-[#141428] to-[#38356e]",
     href: "/talk-to-astrologer/foreign-settlement",
   },
 ];
@@ -282,11 +282,11 @@ export const freeTools = [
   { icon: "chart", name: "Free Kundli", description: "Generate your birth chart instantly", href: "/free-kundli" },
   { icon: "heart", name: "Kundli Matching", description: "Check marriage compatibility", href: "/kundli-matching" },
   { icon: "sun", name: "Daily Horoscope", description: "Know what stars say today", href: "/horoscope/daily" },
-  { icon: "moon", name: "Nakshatra Finder", description: "Find your birth star", href: "/nakshatra-finder" },
-  { icon: "calculator", name: "Numerology", description: "Discover your life path number", href: "/numerology-calculator" },
-  { icon: "cards", name: "Tarot Reading", description: "Free 3-card spread reading", href: "/tarot-reading" },
-  { icon: "calendar", name: "Panchang Today", description: "Tithi, Nakshatra, Muhurat", href: "/panchang" },
-  { icon: "alert", name: "Mangal Dosha", description: "Check Mars affliction", href: "/mangal-dosha-calculator" },
+  { icon: "moon", name: "Nakshatra Finder", description: "Find your birth star", href: "/free-kundli" },
+  { icon: "calculator", name: "Numerology", description: "Discover your life path number", href: "/numerology" },
+  { icon: "cards", name: "Tarot Reading", description: "Live tarot with a verified astrologer", href: "/talk-to-astrologer" },
+  { icon: "calendar", name: "Panchang Today", description: "Tithi, Nakshatra, Muhurat", href: "/horoscope/daily" },
+  { icon: "alert", name: "Mangal Dosha", description: "Check Mars affliction in your chart", href: "/free-kundli" },
 ];
 
 export const testimonials = [
@@ -377,33 +377,6 @@ export const blogPosts = [
       "Earth signs (Taurus, Virgo, Capricorn) should pay attention to financial planning in Q1 and Q2, with a more stable outlook from August onward.",
       "For a personalized month-by-month breakdown based on your actual birth chart rather than sun sign alone, a full yearly prediction report is available through our Premium Kundli service.",
     ],
-  },
-];
-
-export const fourPillars = [
-  {
-    icon: "scroll-text",
-    title: "Vedic Wisdom",
-    description: "Rooted in ancient texts — Vedas, Upanishads, and the Brihat Parashara Hora Shastra.",
-    gradient: "from-[#b3691c] to-[#d4a745]",
-  },
-  {
-    icon: "cpu",
-    title: "Modern Technology",
-    description: "AI-assisted chart analysis and real-time consultation, built on Swiss Ephemeris precision.",
-    gradient: "from-[#4a148c] to-[#1a237e]",
-  },
-  {
-    icon: "heart-handshake",
-    title: "Divine Connectivity",
-    description: "Direct access to authenticated Gurus and temple priests, verified by lineage.",
-    gradient: "from-[#7a1f2b] to-[#c62828]",
-  },
-  {
-    icon: "globe-2",
-    title: "Global Family",
-    description: "Vasudhaiva Kutumbakam — serving seekers across 15+ languages and 5 continents.",
-    gradient: "from-[#0d47a1] to-[#2f6b6b]",
   },
 ];
 
