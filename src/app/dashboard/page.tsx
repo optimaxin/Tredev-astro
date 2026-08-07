@@ -21,11 +21,16 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const bookings = await db.booking.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+  let bookings: any[] = [];
+  try {
+    bookings = await db.booking.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+  } catch (e) {
+    console.warn("[dashboard] Could not fetch user bookings:", e);
+  }
 
   return (
     <>

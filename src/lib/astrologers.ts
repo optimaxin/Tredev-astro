@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import type { Astrologer } from "@/lib/mock-data";
+import { astrologers as MOCK_ASTROLOGERS, type Astrologer } from "@/lib/mock-data";
 
 function toAstrologer(a: {
   id: string; slug: string; name: string; tier: string; experience: number; languages: string;
@@ -29,11 +29,22 @@ function toAstrologer(a: {
 }
 
 export async function getAstrologers(): Promise<Astrologer[]> {
-  const rows = await db.astrologer.findMany({ orderBy: { rating: "desc" } });
-  return rows.map(toAstrologer);
+  try {
+    const rows = await db.astrologer.findMany({ orderBy: { rating: "desc" } });
+    if (rows && rows.length > 0) return rows.map(toAstrologer);
+  } catch (e) {
+    console.warn("DB astrologer query failed or DB offline, using fallback mock data.");
+  }
+  return MOCK_ASTROLOGERS;
 }
 
 export async function getAstrologerBySlug(slug: string): Promise<Astrologer | null> {
-  const row = await db.astrologer.findUnique({ where: { slug } });
-  return row ? toAstrologer(row) : null;
+  try {
+    const row = await db.astrologer.findUnique({ where: { slug } });
+    if (row) return toAstrologer(row);
+  } catch (e) {
+    console.warn("DB astrologer by slug query failed or DB offline, using fallback mock data.");
+  }
+  return MOCK_ASTROLOGERS.find((a) => a.slug === slug) ?? null;
 }
+
