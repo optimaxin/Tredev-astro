@@ -1,0 +1,1190 @@
+/* Page Renderer styling — Premium Dharmic Astrological Theme */
+
+.pageWrapper {
+  padding-top: calc(var(--nav-height) + var(--space-8));
+  min-height: 100vh;
+  color: var(--color-text-dark);
+}
+
+.darkPage {
+  background: var(--color-dark);
+  color: var(--color-text-light);
+}
+
+.ivoryPage {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.maroonPage {
+  background: var(--color-dark-maroon);
+  color: var(--color-text-light);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-8) var(--space-20);
+}
+
+/* Common Header */
+.pageHeader {
+  text-align: center;
+  margin-bottom: var(--space-12);
+}
+
+.pageTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 300;
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: inherit;
+  opacity: 0.8;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.divider {
+  color: var(--color-gold);
+  font-size: 1.25rem;
+  margin: var(--space-2) auto var(--space-4);
+  text-align: center;
+  letter-spacing: 0.15em;
+}
+
+/* ====================================================
+   1. HOROSCOPE PAGE
+   ==================================================== */
+.horoscopeLayout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.wheelColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.rashiWheelWrap {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-dark);
+  background: rgba(184, 138, 59, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-8);
+  box-shadow: inset 0 0 40px rgba(184, 138, 59, 0.05);
+}
+
+.wheelCenter {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-dark);
+  background: var(--color-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.centerGlyph {
+  color: var(--color-gold);
+  font-size: 1.8rem;
+  animation: rotateSlow 40s linear infinite;
+}
+
+.rashiNode {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dark);
+  color: var(--color-text-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  z-index: 5;
+}
+
+.rashiNode:hover,
+.rashiNodeActive {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: #080712;
+  box-shadow: 0 0 15px rgba(184, 138, 59, 0.4);
+  transform: scale(1.15);
+}
+
+.nodeIndex {
+  font-size: 8px;
+  opacity: 0.65;
+}
+
+.nodeSymbol {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.horoscopeDetailsCard {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.rashiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1.5px solid var(--color-border-dark);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.rashiTitle {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  color: var(--color-gold);
+  font-weight: 300;
+}
+
+.rashiMeta {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.rashiSpecs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.specBox {
+  border: 1px solid rgba(184, 138, 59, 0.15);
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.specLabel {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--color-gold-dark);
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.specVal {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-light);
+}
+
+.tabButtons {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  margin-bottom: var(--space-5);
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  position: relative;
+}
+
+.tabBtnActive {
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.tabBtnActive::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-gold);
+}
+
+.horoscopeText {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: rgba(245, 241, 232, 0.85);
+}
+
+/* ====================================================
+   2. KUNDLI MATCHING PAGE
+   ==================================================== */
+.matchingLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.matchingGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.partnerFormCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.partnerTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  color: var(--gold-primary);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.compatibilityResult {
+  background: rgba(17, 23, 44, 0.72);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  margin-top: var(--space-6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.compatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(184, 138, 59, 0.2);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.scoreCircle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 3px double var(--color-gold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(184, 138, 59, 0.02);
+}
+
+.scoreVal {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 300;
+  color: var(--color-gold-dark);
+}
+
+.scoreLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--color-text-dark-2);
+  letter-spacing: 0.08em;
+}
+
+.compatGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.compatBox {
+  border: 1px solid rgba(154, 107, 47, 0.15);
+  background: var(--color-ivory-2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.compatLabel {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--color-text-dark-2);
+  margin-bottom: var(--space-1);
+}
+
+.compatVal {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.compatVerdict {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--color-text-dark);
+  border-top: 1px dashed rgba(184, 138, 59, 0.2);
+  padding-top: var(--space-4);
+}
+
+/* ====================================================
+   3. ASTROLOGER PROFILE
+   ==================================================== */
+.profileGrid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.profileSidebar {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.profileAvatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 3px solid var(--color-gold);
+  background: linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-dark) 100%);
+  color: var(--color-gold);
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-5);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.sidebarName {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  color: var(--color-text-light);
+  margin-bottom: 2px;
+}
+
+.sidebarTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-gold);
+  margin-bottom: var(--space-4);
+}
+
+.profileRating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.starRating {
+  color: var(--color-gold);
+  font-size: var(--text-md);
+}
+
+.reviewCount {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sidebarStats {
+  border-top: 1px solid rgba(184, 138, 59, 0.15);
+  border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  padding: var(--space-4) 0;
+  margin-bottom: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.sidebarStatBox {
+  text-align: center;
+}
+
+.statVal {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--color-text-light);
+}
+
+.statLbl {
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+}
+
+.profileContentCard {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.contentSection {
+  margin-bottom: var(--space-8);
+}
+
+.contentSectionTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--color-gold);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  padding-bottom: var(--space-2);
+}
+
+.contentText {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: rgba(245, 241, 232, 0.85);
+}
+
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.reviewItem {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding-bottom: var(--space-4);
+}
+
+.reviewHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.reviewUser {
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+.reviewText {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ====================================================
+   4. CONSULTATION BOOKING
+   ==================================================== */
+.bookingLayout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.bookingOptionsCard {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.optionSelectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.optionSelector {
+  border: 1px solid var(--color-border-dark);
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.optionSelectorActive {
+  background: rgba(184, 138, 59, 0.08);
+  border-color: var(--color-gold);
+}
+
+.optionName {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  color: var(--color-text-light);
+  margin-bottom: 4px;
+}
+
+.optionPrice {
+  font-size: var(--text-sm);
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.slotsSection {
+  margin-bottom: var(--space-6);
+}
+
+.slotsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.slotBtn {
+  background: var(--color-dark);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--color-text-light);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.slotBtnActive {
+  border-color: var(--color-gold);
+  background: var(--color-surface-2);
+  color: var(--color-gold);
+}
+
+/* ====================================================
+   5. REPORT DETAIL
+   ==================================================== */
+.reportDetailLayout {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.bookDisplayColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.manuscriptViewer {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 3/4;
+  background: var(--surface-elevated);
+  border: 8px solid var(--border-strong);
+  border-radius: 4px 12px 12px 4px;
+  box-shadow: -15px 15px 40px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-8) var(--space-6);
+  position: relative;
+  transform: perspective(800px) rotateY(-18deg) rotateX(4deg);
+  transition: transform 0.4s ease;
+  transform-style: preserve-3d;
+}
+
+.manuscriptViewer:hover {
+  transform: perspective(800px) rotateY(-8deg) rotateX(1deg) translateY(-8px);
+}
+
+.manuscriptBorder {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.manuscriptSpine {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  bottom: -8px;
+  width: 12px;
+  background: var(--subtle-maroon);
+  border-radius: 4px 0 0 4px;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+}
+
+.manuscriptTitle {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  color: var(--text-primary);
+  text-align: center;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.manuscriptBottom {
+  text-align: center;
+}
+
+.manuscriptLogo {
+  font-size: 1.25rem;
+  color: var(--gold-primary);
+}
+
+.manuscriptSeal {
+  font-size: 10px;
+  color: var(--gold-secondary);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+/* ====================================================
+   6. SHOPPING CART
+   ==================================================== */
+.cartLayout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.cartList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cartItem {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.cartItemInfo {
+  flex: 1;
+}
+
+.cartItemName {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.cartItemCat {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  letter-spacing: 0.05em;
+}
+
+.cartQty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.qtyBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  transition: all var(--transition-base);
+}
+
+.qtyBtn:hover {
+  background: var(--surface-highlight);
+  border-color: var(--gold-primary);
+}
+
+.cartSumCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--gold-primary);
+}
+
+/* ====================================================
+   7. GURUKUL LEARNING ROOM
+   ==================================================== */
+.learningLayout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.videoSection {
+  background: #000;
+  aspect-ratio: 16/9;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border: 1px solid var(--color-border-dark);
+  overflow: hidden;
+}
+
+.videoPlaceholder {
+  color: var(--color-gold);
+  text-align: center;
+  z-index: 5;
+}
+
+.videoPlayIcon {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-3);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.videoPlayIcon:hover {
+  transform: scale(1.1);
+}
+
+.learningSidebar {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+.syllabusList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-4);
+}
+
+.lessonItem {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--transition-base);
+  display: flex;
+  justify-content: space-between;
+}
+
+.lessonItem:hover {
+  background: rgba(255,255,255,0.02);
+  color: var(--color-text-light);
+}
+
+.lessonActive {
+  background: rgba(184, 138, 59, 0.08) !important;
+  color: var(--color-gold) !important;
+  font-weight: 500;
+}
+
+/* ====================================================
+   8. DASHBOARD TIMELINE
+   ==================================================== */
+.timelineGrid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.timelineCard {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.timelineTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--color-gold);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  padding-bottom: var(--space-2);
+}
+
+.skyLine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  position: relative;
+  padding-left: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.skyLine::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: rgba(184, 138, 59, 0.25);
+}
+
+.timelineEvent {
+  position: relative;
+}
+
+.timelineEvent::before {
+  content: '✦';
+  position: absolute;
+  left: -24px;
+  top: -1px;
+  color: var(--color-gold);
+  font-size: 10px;
+}
+
+.eventTime {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-gold);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.eventName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-light);
+  margin-bottom: 1px;
+}
+
+.eventDesc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* ====================================================
+   9. ANCIENT CHART VIEW
+   ==================================================== */
+.chartPageGrid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.ancientCard {
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.chartVisualSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.chartGridTable {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 420px;
+}
+
+.chartGridTable td {
+  border: 2.5px solid var(--gold-secondary);
+  height: 90px;
+  width: 90px;
+  text-align: center;
+  vertical-align: middle;
+  padding: var(--space-2);
+  background: rgba(12, 17, 37, 0.5);
+}
+
+.houseNumber {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.houseSign {
+  font-size: var(--text-xs);
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+
+.housePlanets {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  margin-top: var(--space-1);
+}
+
+.interpretCard {
+  background: var(--surface-highlight);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.interpretTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  color: var(--gold-primary);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 4px;
+}
+
+.interpretBody {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ====================================================
+   10. ASTROLOGY TOOLS INDEX
+   ==================================================== */
+.toolsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.toolCategoryCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.toolCategoryTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--gold-primary);
+  border-bottom: 1.5px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toolItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.toolItemLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toolItemLink:hover {
+  background: var(--surface-highlight);
+  color: var(--gold-primary);
+}
+
+/* ====================================================
+   11. BLOG & DETAIL
+   ==================================================== */
+.blogGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.blogCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.blogCover {
+  aspect-ratio: 16/10;
+  background: linear-gradient(135deg, rgba(38,14,14,0.05) 0%, rgba(200,169,107,0.1) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--color-gold);
+}
+
+.blogBody {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.blogTag {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--color-gold-dark);
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.blogCardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  color: var(--color-text-dark);
+  margin-bottom: var(--space-3);
+  line-height: 1.3;
+}
+
+.blogExcerpt {
+  font-size: var(--text-xs);
+  color: var(--color-text-dark-2);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+  flex: 1;
+}
+
+.blogFooter {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(36,27,22,0.4);
+}
+
+/* ====================================================
+   ANIMATIONS
+   ==================================================== */
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .horoscopeLayout,
+  .matchingGrid,
+  .profileGrid,
+  .bookingLayout,
+  .reportDetailLayout,
+  .cartLayout,
+  .learningLayout,
+  .timelineGrid,
+  .chartPageGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  .toolsGrid,
+  .blogGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolsGrid,
+  .blogGrid {
+    grid-template-columns: 1fr;
+  }
+  .compatGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

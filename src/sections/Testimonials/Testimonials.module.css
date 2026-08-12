@@ -1,0 +1,195 @@
+.section { background: var(--bg-secondary); padding: var(--space-24) 0; }
+
+.container { max-width: 1000px; margin: 0 auto; padding: 0 var(--space-8); }
+
+.header { text-align: center; margin-bottom: var(--space-10); }
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.demoNote {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.featured {
+  position: relative;
+  background: rgba(17, 23, 44, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-10) var(--space-10) var(--space-8);
+  margin-bottom: var(--space-6);
+  min-height: 200px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.quoteIcon {
+  position: absolute;
+  top: var(--space-6);
+  left: var(--space-8);
+  font-family: var(--font-serif);
+  font-size: 5rem;
+  color: rgba(199, 161, 90, 0.1);
+  line-height: 1;
+  font-weight: 400;
+  pointer-events: none;
+  user-select: none;
+}
+
+.quote {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 300;
+  color: var(--color-text-dark);
+  line-height: 1.7;
+  margin-bottom: var(--space-6);
+  font-style: italic;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.authorAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(200, 169, 107, 0.15) 0%, rgba(115, 217, 212, 0.1) 100%);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-gold-dark);
+  flex-shrink: 0;
+}
+
+.authorName {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.authorLocation {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: rgba(16, 19, 33, 0.4);
+}
+
+.authorService {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-gold-dark);
+  background: rgba(200, 169, 107, 0.1);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.rating {
+  margin-left: auto;
+  color: var(--color-gold);
+  font-size: var(--text-base);
+  letter-spacing: 0.05em;
+}
+
+/* Dots */
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-10);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.dotActive {
+  background: var(--gold-primary);
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* Mini Cards */
+.minisGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.miniCard {
+  background: rgba(17, 23, 44, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.miniRating { color: var(--gold-primary); font-size: var(--text-sm); }
+
+.miniText {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.miniAuthor {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .minisGrid { grid-template-columns: 1fr; }
+  .featured { padding: var(--space-8) var(--space-6) var(--space-6); }
+  .quote { font-size: var(--text-lg); }
+  .container { padding: 0 var(--space-5); }
+}
+
+:global([data-theme='light']) .featured,
+:global([data-theme='light']) .miniCard {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+:global([data-theme='light']) .quote,
+:global([data-theme='light']) .authorName,
+:global([data-theme='light']) .miniText {
+  color: var(--text-primary) !important;
+}
+
+:global([data-theme='light']) .authorLocation,
+:global([data-theme='light']) .miniAuthor {
+  color: var(--text-secondary) !important;
+}
+

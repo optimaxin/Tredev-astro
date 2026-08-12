@@ -1,0 +1,396 @@
+.hero {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100vh;
+  min-height: 700px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: visible;
+  --chakra-x: 78%;
+  --chakra-y: 45%;
+  background: 
+    /* Bottom atmosphere saffron/maroon glow */
+    radial-gradient(ellipse at 50% 95%, rgba(154, 84, 40, 0.06) 0%, rgba(36, 21, 27, 0.35) 50%, rgba(5, 7, 20, 0) 100%),
+    /* Lower corners maroon/dark violet glow */
+    radial-gradient(circle at 10% 90%, rgba(26, 16, 29, 0.65) 0%, rgba(5, 7, 20, 0) 60%),
+    radial-gradient(circle at 90% 90%, rgba(26, 16, 29, 0.65) 0%, rgba(5, 7, 20, 0) 60%),
+    /* Behind Rashi Chakra: slightly brighter midnight blue/muted indigo glow */
+    radial-gradient(circle at var(--chakra-x) var(--chakra-y), rgba(17, 23, 55, 0.85) 0%, rgba(12, 18, 48, 0.4) 45%, rgba(5, 7, 20, 0) 80%),
+    /* Center: deep indigo */
+    radial-gradient(circle at 50% 50%, rgba(12, 18, 48, 0.5) 0%, rgba(5, 7, 20, 0) 75%),
+    /* Upper-left: almost black navy */
+    radial-gradient(circle at 20% 20%, rgba(8, 13, 33, 0.55) 0%, rgba(5, 7, 20, 0) 70%),
+    /* Base color */
+    #050714;
+}
+
+.canvasWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: 
+    /* Very subtle dark radial gradient behind text to ensure clean editorial zone */
+    radial-gradient(circle at 20% 50%, rgba(5, 7, 20, 0.82) 0%, rgba(5, 7, 20, 0.35) 50%, rgba(5, 7, 20, 0) 100%),
+    /* Subtle cinematic vignette darkening the edges */
+    radial-gradient(ellipse at 50% 50%, rgba(5, 7, 20, 0) 40%, rgba(5, 7, 20, 0.32) 75%, rgba(5, 7, 20, 0.85) 100%);
+  pointer-events: none;
+}
+
+.overlayBottom {
+  position: absolute;
+  bottom: -100px;
+  left: 0;
+  right: 0;
+  height: 280px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--color-dark));
+}
+
+/* ── Light Mode Hero: Saffron Sunrise ── */
+:global([data-theme='light']) .hero {
+  background:
+    /* Saffron glow behind the chakra */
+    radial-gradient(circle at 78% 45%, rgba(214, 109, 37, 0.18) 0%, rgba(255, 140, 30, 0.06) 40%, transparent 70%),
+    /* Warm amber-peach centre */
+    radial-gradient(ellipse at 50% 60%, rgba(240, 165, 80, 0.22) 0%, rgba(255, 210, 150, 0.12) 40%, transparent 75%),
+    /* Deep amber upper corners */
+    radial-gradient(circle at 10% 10%, rgba(180, 80, 20, 0.14) 0%, transparent 55%),
+    radial-gradient(circle at 90% 10%, rgba(180, 80, 20, 0.1) 0%, transparent 55%),
+    /* Bottom warm peachy bloom */
+    radial-gradient(ellipse at 50% 100%, rgba(255, 195, 120, 0.35) 0%, rgba(255, 230, 190, 0.2) 35%, transparent 65%),
+    /* Base warm dawn tone */
+    linear-gradient(170deg, #1a0f05 0%, #3b1c08 35%, #7a3a10 65%, #c26020 85%, #e8a050 100%);
+}
+
+:global([data-theme='light']) .overlay {
+  background:
+    /* Text area: warm dark amber readability scrim */
+    radial-gradient(circle at 20% 50%, rgba(15, 5, 0, 0.78) 0%, rgba(15, 5, 0, 0.3) 50%, transparent 100%),
+    /* Edge darkening vignette */
+    radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(10, 3, 0, 0.25) 70%, rgba(10, 3, 0, 0.7) 100%);
+}
+
+:global([data-theme='light']) .overlayBottom {
+  background: linear-gradient(to bottom, transparent 20%, rgba(255, 247, 237, 0.55) 55%, rgba(255, 253, 249, 0.88) 80%, #FFFDF9 100%);
+}
+
+:global([data-theme='light']) .headline {
+  color: #F5EDE0;
+}
+
+:global([data-theme='light']) .subhead {
+  color: rgba(245, 237, 220, 0.75);
+}
+
+:global([data-theme='light']) .trustLine {
+  color: rgba(245, 237, 220, 0.45);
+}
+
+:global([data-theme='light']) .scrollText {
+  color: rgba(245, 237, 220, 0.35);
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--nav-height) var(--space-8) var(--space-20);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.contentInner {
+  max-width: 680px;
+}
+
+.eyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: var(--space-6);
+}
+
+.headline {
+  font-family: var(--font-serif);
+  font-size: var(--text-hero);
+  font-weight: 300;
+  line-height: 1.0;
+  color: var(--color-text-light);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-6);
+}
+
+.headlineItalic {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--color-gold);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 50%, var(--color-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subhead {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(245, 241, 232, 0.65);
+  max-width: 520px;
+  margin-bottom: var(--space-10);
+}
+
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-10);
+}
+
+.ctaPrimary {
+  font-size: var(--text-base) !important;
+  padding: var(--space-4) var(--space-8) !important;
+  letter-spacing: 0.04em;
+}
+
+.ctaSecondary {
+  font-size: var(--text-base) !important;
+  padding: var(--space-4) var(--space-8) !important;
+}
+
+.trustLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: rgba(245, 241, 232, 0.4);
+  letter-spacing: 0.03em;
+}
+
+.trustSep {
+  color: rgba(200, 169, 107, 0.4);
+}
+
+/* Scroll Indicator */
+.scrollIndicator {
+  position: absolute;
+  bottom: var(--space-10);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  z-index: 10;
+}
+
+.scrollLine {
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(to bottom, var(--color-gold), transparent);
+  animation: fadeUp 2s ease infinite;
+}
+
+.scrollText {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.3);
+  writing-mode: horizontal-tb;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    --chakra-x: 50%;
+    --chakra-y: 60%;
+  }
+  .content {
+    padding: var(--nav-height) var(--space-5) var(--space-16);
+    align-items: flex-start;
+  }
+  .contentInner { max-width: 100%; }
+  .subhead { font-size: var(--text-base); }
+  .ctas { flex-direction: column; }
+  .ctaPrimary, .ctaSecondary {
+    text-align: center;
+    justify-content: center;
+  }
+  .scrollIndicator { display: none; }
+}
+
+/* Floating Cinematic Narrative HUD */
+.hudContainer {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  z-index: 100;
+  background: rgba(10, 5, 36, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.hudCircle {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hudSvg {
+  transform: rotate(-90deg);
+  width: 40px;
+  height: 40px;
+}
+
+.hudPointer {
+  position: absolute;
+  font-size: 10px;
+  color: var(--color-gold);
+  animation: pulse 2s ease infinite;
+}
+
+.hudTextWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hudLabel {
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(200, 169, 107, 0.65);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.hudValue {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--color-text-light);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .hudContainer {
+    bottom: 20px;
+    right: 20px;
+    padding: var(--space-2) var(--space-4);
+  }
+  .hudValue {
+    font-size: var(--text-sm);
+  }
+}
+
+/* Traditional Dharmic typography & Rashi Chakra Tooltips */
+.hindiEyebrow {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 300;
+  font-style: italic;
+  color: var(--color-gold);
+  margin-bottom: var(--space-4);
+  letter-spacing: 0.05em;
+}
+
+.tooltipBox {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  width: 320px;
+  z-index: 50;
+  background: #f4ebdd; /* warm ivory backdrop */
+  border: 1px solid var(--color-border-dark);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  padding: var(--space-5);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.tooltipType {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-gold-dark);
+  margin-bottom: 2px;
+}
+
+.tooltipName {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  color: var(--color-text-dark);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid rgba(36, 27, 22, 0.12);
+  padding-bottom: 4px;
+}
+
+.tooltipDetails {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-dark-2);
+}
+
+@media (max-width: 768px) {
+  .tooltipBox {
+    left: var(--space-5);
+    right: var(--space-5);
+    width: auto;
+    bottom: 80px;
+  }
+}

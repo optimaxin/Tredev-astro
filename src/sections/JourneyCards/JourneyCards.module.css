@@ -1,0 +1,163 @@
+.section {
+  background: linear-gradient(180deg, var(--color-dark) 0%, var(--color-surface) 100%);
+  padding: var(--space-20) 0;
+}
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-12);
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 300;
+  color: var(--color-text-light);
+  letter-spacing: -0.01em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+}
+
+.grid > div {
+  display: flex;
+}
+
+.card {
+  background: rgba(22, 26, 46, 0.7);
+  border: 1px solid rgba(200, 169, 107, 0.12);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8) var(--space-6);
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+:global([data-theme='light']) .card {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+:global([data-theme='light']) .cardTitle {
+  color: var(--text-primary);
+}
+
+:global([data-theme='light']) .cardDesc {
+  color: var(--text-secondary);
+}
+
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  background: radial-gradient(circle at 50% 0%, rgba(200, 169, 107, 0.06), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.card:hover::before { opacity: 1; }
+
+.card:hover {
+  border-color: rgba(200, 169, 107, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+
+.accent_cyan:hover { border-color: rgba(115, 217, 212, 0.35); }
+.accent_cyan::before {
+  background: radial-gradient(circle at 50% 0%, rgba(115, 217, 212, 0.06), transparent 70%);
+}
+
+.iconWrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: rgba(200, 169, 107, 0.08);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.accent_cyan .iconWrap {
+  background: rgba(115, 217, 212, 0.08);
+  border-color: rgba(115, 217, 212, 0.2);
+}
+
+.card:hover .iconWrap {
+  background: rgba(200, 169, 107, 0.14);
+  transform: scale(1.05);
+}
+
+.accent_cyan:hover .iconWrap {
+  background: rgba(115, 217, 212, 0.14);
+}
+
+.icon {
+  font-size: 1.5rem;
+  color: var(--color-gold);
+}
+
+.accent_cyan .icon { color: var(--color-cyan); }
+
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  color: var(--color-text-light);
+  letter-spacing: -0.01em;
+}
+
+.cardDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  flex: 1;
+}
+
+.cardCta {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-gold);
+  letter-spacing: 0.03em;
+  transition: gap 0.2s ease;
+  margin-top: auto;
+}
+
+.accent_cyan .cardCta { color: var(--color-cyan); }
+
+.card:hover .cardCta { gap: 6px; }
+
+@media (max-width: 1024px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; gap: var(--space-4); }
+  .container { padding: 0 var(--space-5); }
+}

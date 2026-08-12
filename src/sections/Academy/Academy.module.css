@@ -1,0 +1,275 @@
+.section { background: var(--bg-secondary); padding: var(--space-24) 0; border-bottom: 1px solid var(--border-subtle); }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-8); }
+
+.header { text-align: center; margin-bottom: var(--space-12); }
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 300;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-4);
+}
+
+.titleItalic { font-style: italic; color: var(--gold-primary); }
+
+.subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.coursesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-16);
+}
+
+.coursesGrid > div {
+  display: flex;
+}
+
+.courseCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.35s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+:global([data-theme='light']) .courseCard {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+:global([data-theme='light']) .courseName {
+  color: var(--text-primary);
+}
+
+:global([data-theme='light']) .courseSubtitle {
+  color: var(--text-secondary);
+}
+
+:global([data-theme='light']) .topic {
+  color: var(--text-secondary);
+}
+
+:global([data-theme='light']) .courseStats {
+  color: var(--text-muted);
+}
+
+.courseCard:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.courseTop {
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  background: linear-gradient(160deg, rgba(12, 17, 37, 0.72) 0%, rgba(199, 161, 90, 0.04) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+:global([data-theme='light']) .courseTop {
+  background: linear-gradient(160deg, rgba(214, 109, 37, 0.12) 0%, rgba(255, 230, 200, 0.35) 50%, rgba(255, 253, 249, 0.1) 100%);
+  border-bottom-color: var(--border-subtle);
+}
+
+.courseIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.courseBadges { display: flex; gap: var(--space-2); }
+
+.certBadge {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-gold);
+  background: rgba(200, 169, 107, 0.1);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  letter-spacing: 0.03em;
+}
+
+.courseBody { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+
+
+.courseCategory {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-gold-dark);
+}
+
+.courseName {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--color-text-dark);
+  line-height: 1.25;
+}
+
+.courseSubtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-dark-2);
+  font-style: italic;
+}
+
+.topics { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.topic {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: rgba(36, 27, 22, 0.7);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topic::before { content: '·'; color: var(--color-gold); }
+
+.courseStats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: rgba(36, 27, 22, 0.55);
+}
+
+.stars { color: var(--color-gold); }
+.statDot { width: 3px; height: 3px; border-radius: 50%; background: rgba(154, 107, 47, 0.28); }
+
+.courseLevel {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-cyan); /* mapped to Saffron */
+  background: rgba(197, 106, 39, 0.08);
+  border: 1px solid rgba(197, 106, 39, 0.15);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  display: inline-flex;
+  width: fit-content;
+}
+
+.courseBottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(200,169,107,0.08);
+}
+
+.coursePrice {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.courseOriginal {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+/* Roadmap */
+.roadmap {
+  background: rgba(184, 138, 59, 0.04);
+  border: 1px solid rgba(184, 138, 59, 0.22);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+}
+
+.roadmapTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  color: var(--color-text-dark);
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.roadmapSteps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+}
+
+.stepNum {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(200, 169, 107, 0.1);
+  border: 1px solid rgba(200, 169, 107, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+
+.stepLabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--color-text-dark-2);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.stepLine {
+  position: absolute;
+  top: 18px;
+  left: calc(100% - 4px);
+  width: 40px;
+  height: 1px;
+  background: rgba(184, 138, 59, 0.22);
+}
+
+@media (max-width: 1200px) {
+  .coursesGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .coursesGrid { grid-template-columns: 1fr; }
+  .container { padding: 0 var(--space-5); }
+  .roadmapSteps { gap: var(--space-4); flex-direction: column; }
+  .stepLine { display: none; }
+}
