@@ -2,22 +2,33 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon } from '../../components/Icons/Icons';
 import styles from './FreeTools.module.css';
 
-export default function FreeTools() {
-  const { setPage, kundliGenerated } = useAppContext();
+interface FreeToolsProps {
+  featured?: boolean;
+}
+
+export default function FreeTools({ featured = false }: FreeToolsProps) {
+  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
   const [activeCategory, setActiveCategory] = useState(FREE_TOOLS_CATEGORIES[0].id);
 
   const active = FREE_TOOLS_CATEGORIES.find(c => c.id === activeCategory)!;
 
   const handleToolClick = (toolName: string) => {
-    if (toolName === 'Free Kundli' || toolName === 'Lagna / Ascendant' || toolName === 'Moon Sign Calculator' || toolName === 'Nakshatra Finder') {
+    if (!isLoggedIn) {
+      setPendingAction('calculator');
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (toolName === 'Free Kundli' || toolName === 'Lagna / Ascendant' || toolName === 'Moon Sign Calculator' || toolName === 'Nakshatra Finder' || toolName === 'Nakshatra') {
       if (kundliGenerated) {
         setPage('kundli-result');
       } else {
         setPage('free-kundli');
       }
-    } else if (toolName === 'Kundli Matching' || toolName === 'Love Compatibility' || toolName === 'Numerology Match') {
+    } else if (toolName === 'Kundli Milan' || toolName === 'Kundli Matching' || toolName === 'Love Compatibility' || toolName === 'Numerology Match') {
       setPage('kundli-matching');
     } else if (toolName === 'Daily Horoscope') {
       setPage('horoscope');
@@ -26,25 +37,117 @@ export default function FreeTools() {
     } else {
       setPage('free-kundli');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (featured) {
+    return (
+      <section className={styles.section} id="tools">
+        <div className="section-container">
+          <div className="section-header-split">
+            <div className="header-left">
+              <span className="section-eyebrow-gold">Free Resources</span>
+              <h2 className="section-title-serif">Free Astrology Tools</h2>
+              <p className="section-desc-sans">
+                Trusted Vedic astrology tools — free, accurate, and always available.
+              </p>
+            </div>
+            <button 
+              className="section-explore-link" 
+              onClick={() => { setPage('astrology-tools'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Explore All Free Tools →
+            </button>
+          </div>
+
+          {/* Asymmetrical Curated Editorial Grid */}
+          <div className={styles.featuredGrid}>
+            {/* LARGE: Free Kundli */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardLarge}`}
+              onClick={() => handleToolClick('Free Kundli')}
+            >
+              <div className={styles.cardHeader}>
+                <RashiChakraIcon className={styles.cardIconLarge} />
+                <div>
+                  <h3 className={styles.cardTitle}>Free Kundli</h3>
+                  <p className={styles.cardDesc}>
+                    Generate your complete Vedic horoscope, planetary placements, and divisional charts.
+                  </p>
+                </div>
+              </div>
+              <span className={styles.arrowLink}>Generate Chart →</span>
+            </div>
+
+            {/* MEDIUM: Kundli Milan */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardMedium}`}
+              onClick={() => handleToolClick('Kundli Milan')}
+            >
+              <div className={styles.cardHeader}>
+                <MarriageIcon className={styles.cardIconMedium} />
+                <div>
+                  <h3 className={styles.cardTitle}>Kundli Milan</h3>
+                  <p className={styles.cardDesc}>Vedic relationship compatibility matching.</p>
+                </div>
+              </div>
+              <span className={styles.arrowLink}>Check Match →</span>
+            </div>
+
+            {/* MEDIUM: Nakshatra Finder */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardMedium}`}
+              onClick={() => handleToolClick('Nakshatra')}
+            >
+              <div className={styles.cardHeader}>
+                <ConstellationIcon className={styles.cardIconMedium} />
+                <div>
+                  <h3 className={styles.cardTitle}>Nakshatra Finder</h3>
+                  <p className={styles.cardDesc}>Identify your birth star and planetary lord.</p>
+                </div>
+              </div>
+              <span className={styles.arrowLink}>Find Star →</span>
+            </div>
+
+            {/* SMALL: Mangal Dosha */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardSmall}`}
+              onClick={() => handleToolClick('Mangal Dosha')}
+            >
+              <WealthIcon className={styles.cardIconSmall} />
+              <h3 className={styles.cardTitleSmall}>Mangal Dosha</h3>
+              <p className={styles.cardDescSmall}>Martian affliction calculator.</p>
+            </div>
+
+            {/* SMALL: Sade Sati */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardSmall}`}
+              onClick={() => handleToolClick('Sade Sati')}
+            >
+              <AcharyaIcon className={styles.cardIconSmall} />
+              <h3 className={styles.cardTitleSmall}>Sade Sati</h3>
+              <p className={styles.cardDescSmall}>Saturn transit calculator.</p>
+            </div>
+
+            {/* SMALL: Numerology */}
+            <div 
+              className={`${styles.featuredCard} ${styles.cardSmall}`}
+              onClick={() => handleToolClick('Numerology')}
+            >
+              <CareerIcon className={styles.cardIconSmall} />
+              <h3 className={styles.cardTitleSmall}>Numerology</h3>
+              <p className={styles.cardDescSmall}>Life path number forecast.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Normal, complete page view
   return (
     <section className={styles.section} id="tools">
-      <div className={styles.container}>
-        <motion.div
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-        >
-          <span className="section-eyebrow">Free Resources</span>
-          <h2 className={styles.title}>Free Astrology Tools</h2>
-          <p className={styles.subtitle}>
-            Trusted Vedic astrology tools — free, accurate, and always available.
-          </p>
-        </motion.div>
-
+      <div className="section-container">
         {/* Category Tabs */}
         <div className={styles.tabs}>
           {FREE_TOOLS_CATEGORIES.map(cat => (
@@ -84,13 +187,6 @@ export default function FreeTools() {
             ))}
           </motion.div>
         </AnimatePresence>
-
-        {/* CTA */}
-        <div className={styles.ctaRow}>
-          <button className="btn btn-outline-gold btn-lg" id="tools-explore-all" onClick={() => setPage('astrology-tools')}>
-            Explore All Free Tools
-          </button>
-        </div>
       </div>
     </section>
   );

@@ -8,7 +8,7 @@ const ZODIAC_SIGNS = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'S
 const ZODIAC_FULL = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
 
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, kundliGenerated, setKundliGenerated } = useAppContext();
+  const { birthProfile, setBirthProfile, kundliGenerated, setKundliGenerated, setPage } = useAppContext();
   const [formData, setFormData] = useState({
     name: '',
     dob: '',
@@ -33,8 +33,11 @@ export default function KundliSection() {
       });
       setLoading(false);
       setKundliGenerated(true);
+      setPage('kundli-result');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 1800);
   };
+
 
   const handlePlanetHover = (planet: typeof KUNDLI_PLANETS[0], e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();

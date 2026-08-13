@@ -982,6 +982,7 @@
   vertical-align: middle;
   padding: var(--space-2);
   background: rgba(12, 17, 37, 0.5);
+  transition: all var(--transition-base);
 }
 
 .houseNumber {
@@ -1004,6 +1005,53 @@
   color: var(--text-primary);
   margin-top: var(--space-1);
 }
+
+/* Light Theme High Contrast Chart overrides */
+:global([data-theme='light']) .ancientCard {
+  background: #E7DDCB !important;
+  border-color: #5D4730 !important;
+}
+
+:global([data-theme='light']) .chartGridTable td {
+  background: #F5EFE3 !important;
+  border: 2.5px solid #5D4730 !important;
+}
+
+:global([data-theme='light']) .houseNumber {
+  color: #9B7A4A !important;
+}
+
+:global([data-theme='light']) .houseSign {
+  color: #9C542D !important;
+}
+
+:global([data-theme='light']) .housePlanets {
+  color: #263143 !important;
+}
+
+/* Dark Theme Chart overrides */
+:global([data-theme='dark']) .ancientCard {
+  background: #0D1328 !important;
+  border-color: #D1B26C !important;
+}
+
+:global([data-theme='dark']) .chartGridTable td {
+  background: rgba(13, 19, 40, 0.6) !important;
+  border: 2.5px solid #D1B26C !important;
+}
+
+:global([data-theme='dark']) .houseNumber {
+  color: rgba(209, 178, 108, 0.45) !important;
+}
+
+:global([data-theme='dark']) .houseSign {
+  color: #B58A3B !important;
+}
+
+:global([data-theme='dark']) .housePlanets {
+  color: #F1E9DC !important;
+}
+
 
 .interpretCard {
   background: var(--surface-highlight);
@@ -1169,9 +1217,22 @@
   .cartLayout,
   .learningLayout,
   .timelineGrid,
-  .chartPageGrid {
+  .chartPageGrid,
+  .profileLayout {
     grid-template-columns: 1fr;
     gap: var(--space-6);
+  }
+  .profileSidebar {
+    position: static !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  .profileCard {
+    width: 100% !important;
+  }
+  .profileBtn {
+    width: auto !important;
   }
   .toolsGrid,
   .blogGrid {
@@ -1187,4 +1248,86 @@
   .compatGrid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .profileSidebar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .profileBtn {
+    width: 100% !important;
+  }
 }
+
+/* ── Profile Layout Styles ── */
+.profileLayout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.profileSidebar {
+  position: sticky;
+  top: calc(var(--nav-height) + var(--space-4));
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.profileCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.profileAvatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(181, 138, 59, 0.12);
+  border: 2px solid rgba(181, 138, 59, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-3);
+  font-size: 1.5rem;
+  color: var(--gold-primary);
+}
+
+.profileBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all var(--transition-base);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.profileBtn:hover {
+  background: rgba(181, 138, 59, 0.05);
+  color: var(--gold-primary);
+}
+
+.profileBtnActive {
+  background: rgba(181, 138, 59, 0.1) !important;
+  border-color: rgba(181, 138, 59, 0.3) !important;
+  color: var(--gold-primary) !important;
+  font-weight: 500;
+}
+
+.profileMain {
+  display: flex;
+  flex-direction: column;
+}
+

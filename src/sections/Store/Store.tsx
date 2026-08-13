@@ -26,7 +26,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   'Puja Essentials': 'Puja Essentials',
 };
 
-export default function Store() {
+export default function Store({ featured = false }: { featured?: boolean }) {
+  const { setPage } = useAppContext();
   const [activeCategory, setActiveCategory] = useState('All');
 
   const getCategoryIcon = (cat: string) => {
@@ -42,71 +43,109 @@ export default function Store() {
     }
   };
 
-  const filtered = PRODUCTS.filter(p => activeCategory === 'All' || p.category === activeCategory);
+  const filtered = featured
+    ? PRODUCTS.filter(p => p.recommended).slice(0, 4)
+    : PRODUCTS.filter(p => activeCategory === 'All' || p.category === activeCategory);
   const recommended = PRODUCTS.filter(p => p.recommended);
 
   return (
     <section className={styles.section} id="store">
       <div className={styles.container}>
         {/* Header */}
-        <motion.div
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-        >
-          <span className="section-eyebrow">Remedial Astrology</span>
-          <h2 className={styles.title}>Jyotish Upay &amp; Remedies</h2>
-          <p className={styles.subtitle}>
-            Authentic, energized gemstones, yantras and spiritual tools, carefully curated and responsibly sourced.
-          </p>
-        </motion.div>
+        <div className="section-header-split">
+          <div className="header-left">
+            <span className="section-eyebrow-gold">Remedial Astrology</span>
+            <h2 className="section-title-serif">TredevStore</h2>
+            <p className="section-desc-sans">
+              Authentic, energized gemstones, yantras and spiritual tools, carefully curated and responsibly sourced.
+            </p>
+          </div>
+          {featured && (
+            <button
+              className="section-explore-link"
+              onClick={() => { setPage('store'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Explore TredevStore →
+            </button>
+          )}
+        </div>
 
-        {/* Recommended */}
-        <div className={styles.recommendedSection}>
-          <h3 className={styles.recommendedTitle}>Chart-Recommended Upay</h3>
-          <p className={styles.recommendedDesc}>Remedies aligned with your Surya in Vrischika, Chandra in Vrishabha, and Simha Lagna</p>
-          <div className={styles.recommendedGrid}>
-            {recommended.map(p => (
-              <ProductCard key={p.id} product={p} featured />
+        {featured ? (
+          /* Featured mode: show 4 recommended products in grid */
+          <div className={`${styles.productsGrid} ${styles.productsGridFeatured}`}>
+
+            {filtered.map((product, i) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07, duration: 0.5 }}
+              >
+                <ProductCard product={product} featured />
+              </motion.div>
             ))}
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Recommended */}
+            <div className={styles.recommendedSection}>
+              <h3 className={styles.recommendedTitle}>Chart-Recommended Upay</h3>
+              <p className={styles.recommendedDesc}>Remedies aligned with your Surya in Vrischika, Chandra in Vrishabha, and Simha Lagna</p>
+              <div className={styles.recommendedGrid}>
+                {recommended.map(p => (
+                  <ProductCard key={p.id} product={p} featured />
+                ))}
+              </div>
+            </div>
 
-        {/* Category Tabs */}
-        <div className={styles.tabs}>
-          {CATEGORIES.map(cat => (
+            {/* Category Tabs */}
+            <div className={styles.tabs}>
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  className={`${styles.tab} ${activeCategory === cat ? styles.tabActive : ''}`}
+                  onClick={() => setActiveCategory(cat)}
+                  id={`store-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getCategoryIcon(cat)}</span>
+                  {CATEGORY_LABELS[cat] || cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Product Grid */}
+            <div className={styles.productsGrid}>
+              {filtered.map((product, i) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.07, duration: 0.5 }}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </div>
+
+            <p className={styles.disclaimer}>
+              * Traditional associations are based on cultural and spiritual traditions.
+            </p>
+          </>
+        )}
+
+        {/* Explore All — shown only in featured mode */}
+        {featured && (
+          <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
             <button
-              key={cat}
-              className={`${styles.tab} ${activeCategory === cat ? styles.tabActive : ''}`}
-              onClick={() => setActiveCategory(cat)}
-              id={`store-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
+              className="btn btn-outline-light"
+              onClick={() => { setPage('store'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getCategoryIcon(cat)}</span>
-              {CATEGORY_LABELS[cat] || cat}
+              Explore TredevStore →
             </button>
-          ))}
-        </div>
-
-        {/* Product Grid */}
-        <div className={styles.productsGrid}>
-          {filtered.map((product, i) => (
-            <motion.div
-              key={product.id}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07, duration: 0.5 }}
-            >
-              <ProductCard product={product} />
-            </motion.div>
-          ))}
-        </div>
-
-        <p className={styles.disclaimer}>
-          * Traditional associations are based on cultural and spiritual traditions. Products are not intended to diagnose, treat, cure or prevent any condition.
-        </p>
+          </div>
+        )}
       </div>
     </section>
   );

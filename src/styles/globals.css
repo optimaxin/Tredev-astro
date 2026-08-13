@@ -151,43 +151,46 @@ body {
 }
 
 :root[data-theme='light'] {
-  --bg-primary:         #FFFDF9; /* warm rich cream background */
-  --bg-secondary:       #FDF6ED; /* saffron/cream secondary */
-  --surface:            #FFFFFF; /* white cards */
-  --surface-elevated:   #FFF6EC; /* elevated saffron-cream */
-  --surface-highlight:  #FBEBD7;
+  /* Premium warm ivory/parchment/antique gold palette */
+  --bg-primary:         #F5F0E7;  /* warm ivory */
+  --bg-secondary:       #ECE4D6;  /* soft parchment */
+  --surface:            #FAF7F0;  /* antique paper surface */
+  --surface-elevated:   #F2EBD9;  /* slightly deeper surface */
+  --surface-highlight:  #E8DEC8;  /* muted parchment accent */
   
-  --text-primary:       #3C2618; /* deep warm saffron-charcoal */
-  --text-secondary:     #6D5545; /* warm terracotta/brown-grey */
-  --text-muted:         #9D806F;
-  --text-disabled:      #C8B6AC;
+  --text-primary:       #182333;  /* deep navy */
+  --text-secondary:     #68717A;  /* muted slate */
+  --text-muted:         #8C8A84;  /* warm grey */
+  --text-disabled:      #BCBAB4;
   
-  --gold-primary:       #D66D25; /* Saffron primary! */
-  --gold-secondary:     #A54D13; /* Darker saffron */
-  --gold-soft:          #E89D6C;
+  --gold-primary:       #B58A3B;  /* antique gold */
+  --gold-secondary:     #8F6A22;  /* darker antique gold */
+  --gold-soft:          #D0B06A;  /* soft gold */
   
-  --sacred-accent:      #E05315; /* Bright vermilion/saffron */
-  --subtle-maroon:      #F5E7DF;
-  --star-ivory:         #6D5545;
-  --star-gold:          #D66D25;
-  --star-cool:          #748EAB;
+  --sacred-accent:      #A85B2D;  /* saffron terracotta */
+  --subtle-maroon:      #4A2020;  /* deep maroon accent */
+  --star-ivory:         #68717A;
+  --star-gold:          #B58A3B;
+  --star-cool:          #17253A;
   
-  --border-subtle:      rgba(214, 109, 37, 0.15);
-  --border-strong:      rgba(214, 109, 37, 0.3);
+  --border-subtle:      rgba(181, 138, 59, 0.18);
+  --border-strong:      rgba(181, 138, 59, 0.35);
   
-  --color-overlay:      rgba(255, 253, 249, 0.85);
+  --color-overlay:      rgba(245, 240, 231, 0.90);
 
-  --saffron-cloud:      rgba(230, 103, 15, 0.55); /* warm saffron cloud */
-  --indigo-cloud:       rgba(240, 206, 172, 0.65); /* cream/apricot cloud */
-  --maroon-cloud:       rgba(235, 150, 120, 0.5); /* soft peach cloud */
+  /* Light mode cloud/atmosphere — very subtle warm wisps, NOT saffron blobs */
+  --saffron-cloud:      rgba(181, 138, 59, 0.06);  /* barely visible gold */
+  --indigo-cloud:       rgba(23, 37, 58, 0.04);    /* barely visible navy */
+  --maroon-cloud:       rgba(168, 91, 45, 0.04);   /* barely visible terracotta */
   --cloud-blend-mode:   multiply;
-  --cloud-opacity:      0.95;
-  --cloud-item-opacity: 0.45;
+  --cloud-opacity:      0.35;
+  --cloud-item-opacity: 0.25;
 
-  --shadow-card:        0 4px 30px rgba(214, 109, 37, 0.08);
-  --shadow-card-hover:  0 8px 40px rgba(214, 109, 37, 0.15);
-  --shadow-elevated:    0 20px 50px rgba(214, 109, 37, 0.12);
+  --shadow-card:        0 2px 20px rgba(23, 37, 58, 0.06);
+  --shadow-card-hover:  0 6px 30px rgba(23, 37, 58, 0.12);
+  --shadow-elevated:    0 12px 50px rgba(23, 37, 58, 0.10);
 }
+
 
 /* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar { width: 6px; }
@@ -458,6 +461,19 @@ body {
   transform: translateY(-2px);
 }
 
+/* Light mode card overrides */
+[data-theme='light'] .card-cosmos,
+[data-theme='light'] .card-human {
+  background: rgba(250, 247, 240, 0.85);
+  border-color: rgba(181, 138, 59, 0.18);
+}
+[data-theme='light'] .card-cosmos:hover,
+[data-theme='light'] .card-human:hover {
+  background: rgba(250, 247, 240, 0.95);
+  border-color: rgba(181, 138, 59, 0.35);
+  box-shadow: 0 6px 30px rgba(23, 37, 58, 0.10);
+}
+
 /* ---------- Form Elements ---------- */
 .input-field {
   width: 100%;
@@ -715,7 +731,7 @@ section:not(#hero), [class*="pageWrapper"] {
   background: transparent !important;
 }
 
-/* Force Hero section to always use high-contrast dark mode colors, since it remains dark in light theme */
+/* Force Hero section to always use dark/celestial colors — hero is always dark regardless of theme */
 [class*="hero_hero"], #hero {
   --color-text-light: #F1E9DC !important;
   --color-text-muted: #B9B3A8 !important;
@@ -729,5 +745,122 @@ section:not(#hero), [class*="pageWrapper"] {
   --gold-soft: #D2B978 !important;
   --sacred-accent: #A85A32 !important;
 }
+
+/* Light mode body background — sections below hero inherit warm ivory */
+[data-theme='light'] body {
+  background-color: #F5F0E7;
+  color: #182333;
+}
+
+/* Light mode section titles and subtitles */
+[data-theme='light'] .section-title-cosmos,
+[data-theme='light'] .section-title-human {
+  color: #182333;
+}
+
+[data-theme='light'] .section-subtitle {
+  color: #68717A;
+}
+
+/* Light mode: btn-outline-light should use navy border */
+[data-theme='light'] .btn-outline-light {
+  color: #182333;
+  border-color: rgba(23, 37, 58, 0.25);
+}
+[data-theme='light'] .btn-outline-light:hover {
+  background: rgba(23, 37, 58, 0.04);
+  border-color: rgba(23, 37, 58, 0.4);
+}
+
+/* ── Global Section Container & Split Header System ── */
+.section-container {
+  width: 92%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+}
+
+.section-header-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--space-10);
+  gap: var(--space-6);
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-4);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 720px;
+}
+
+.section-eyebrow-gold {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  margin-bottom: var(--space-2);
+}
+
+.section-title-serif {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem);
+  font-weight: 300;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.section-desc-sans {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.section-explore-link {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--gold-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  padding: var(--space-2) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.section-explore-link:hover {
+  color: var(--gold-soft);
+  transform: translateX(4px);
+}
+
+@media (max-width: 768px) {
+  .section-header-split {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  .section-explore-link {
+    align-self: flex-start;
+  }
+}
+
 
 

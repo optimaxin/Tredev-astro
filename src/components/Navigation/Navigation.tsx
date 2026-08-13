@@ -6,14 +6,16 @@ import styles from './Navigation.module.css';
 const NAV_LINKS = [
   { label: 'Astrology', page: 'astrology-tools' },
   { label: 'Kundli', page: 'free-kundli' },
-  { label: 'Astrologers', page: 'astrologers' },
+  { label: 'Calculators', page: 'astrology-tools' },
   { label: 'Reports', page: 'reports' },
-  { label: 'Jyotish Upay', page: 'store' },
+  { label: 'Panchang', page: 'panchang' },
   { label: 'Academy', page: 'academy' },
+  { label: 'Store', page: 'store' },
 ];
 
+
 export default function Navigation() {
-  const { page, setPage, kundliGenerated, cart, theme, toggleTheme } = useAppContext();
+  const { page, setPage, kundliGenerated, cart, theme, toggleTheme, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -34,12 +36,53 @@ export default function Navigation() {
 
   const handleNavClick = (targetPage: string) => {
     setMenuOpen(false);
-    if (targetPage === 'free-kundli' && kundliGenerated) {
-      setPage('kundli-result');
-    } else {
-      setPage(targetPage);
+    if (targetPage === 'free-kundli') {
+      handleFreeKundliClick();
+      return;
     }
+    if (targetPage === 'astrologers') {
+      handleConsultClick();
+      return;
+    }
+    setPage(targetPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleFreeKundliClick = () => {
+    setMenuOpen(false);
+    if (!isLoggedIn) {
+      setPendingAction('free-kundli');
+      setShowLoginModal(true);
+    } else {
+      if (kundliGenerated) {
+        setPage('kundli-result');
+      } else {
+        setPage('free-kundli');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleConsultClick = () => {
+    setMenuOpen(false);
+    if (!isLoggedIn) {
+      setPendingAction('astrologers');
+      setShowLoginModal(true);
+    } else {
+      setPage('astrologers');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleProfileClick = () => {
+    setMenuOpen(false);
+    if (!isLoggedIn) {
+      setPendingAction('profile');
+      setShowLoginModal(true);
+    } else {
+      setPage('profile');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -50,16 +93,16 @@ export default function Navigation() {
     >
       <div className={styles.inner}>
         {/* Logo */}
-        <button className={styles.logo} onClick={() => handleNavClick('home')} aria-label="TredevAstro home">
+        <button className={styles.logo} onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="TredevAstro home">
           <span className={styles.logoStar}>✦</span>
           <span className={styles.logoText}>TredevAstro</span>
         </button>
-
+ 
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
           {NAV_LINKS.map(link => (
             <button
-              key={link.page}
+              key={link.page + link.label}
               className={`${styles.link} ${page === link.page ? styles.active : ''}`}
               onClick={() => handleNavClick(link.page)}
             >
@@ -67,21 +110,22 @@ export default function Navigation() {
             </button>
           ))}
         </nav>
-
+ 
         {/* Right Actions */}
         <div className={styles.actions}>
           <button
             className={`${styles.ctaBtnSecondary} ${page === 'free-kundli' || page === 'kundli-result' ? styles.active : ''}`}
-            onClick={() => handleNavClick('free-kundli')}
+            onClick={handleFreeKundliClick}
           >
             Free Kundli
           </button>
           <button
             className={`${styles.ctaBtn} ${page === 'astrologers' ? styles.active : ''}`}
-            onClick={() => handleNavClick('astrologers')}
+            onClick={handleConsultClick}
           >
             Consult
           </button>
+
           
           {/* Cart Icon */}
           <button 
@@ -93,16 +137,17 @@ export default function Navigation() {
             {cart.length > 0 && <span className={styles.cartBadge}>{cart.reduce((acc, curr) => acc + curr.quantity, 0)}</span>}
           </button>
 
-          {/* Account/Dashboard Icon */}
+          {/* Profile Icon */}
           <button 
-            className={`${styles.accountBtn} ${page === 'my-jyotish' || page === 'profile' ? styles.active : ''}`} 
-            onClick={() => handleNavClick('my-jyotish')}
+            className={`${styles.accountBtn} ${page === 'profile' ? styles.active : ''}`} 
+            onClick={handleProfileClick}
             aria-label="My Account"
           >
             <ProfileIcon size={18} />
+            {isLoggedIn && <span className={styles.loggedInDot} />}
           </button>
 
-          {/* Theme Toggle Icon */}
+          {/* Theme Toggle */}
           <button 
             className={styles.themeToggleBtn} 
             onClick={toggleTheme}
@@ -128,7 +173,7 @@ export default function Navigation() {
         <div className={styles.mobileLinks}>
           {NAV_LINKS.map(link => (
             <button
-              key={link.page}
+              key={link.page + link.label}
               className={styles.mobileLink}
               onClick={() => handleNavClick(link.page)}
             >
@@ -150,9 +195,9 @@ export default function Navigation() {
           </button>
           <button
             className={styles.mobileLink}
-            onClick={() => handleNavClick('my-jyotish')}
+            onClick={handleProfileClick}
           >
-            My Jyotish
+            {isLoggedIn ? 'My Profile' : 'Sign In'}
           </button>
           <div className={styles.mobileDivider} />
           <button
@@ -168,4 +213,3 @@ export default function Navigation() {
     </header>
   );
 }
-

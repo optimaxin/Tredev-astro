@@ -1,0 +1,279 @@
+/* CampaignBanner — Cinematic Coverflow Carousel */
+
+.section {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+/* Light mode: add slight top separator */
+:global([data-theme='light']) .section {
+  background: transparent;
+}
+
+.carousel {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 420px;
+  cursor: default;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .carousel {
+    height: 560px;
+  }
+}
+
+/* Peek cards — left and right partial previews */
+.peekCard {
+  flex-shrink: 0;
+  width: 10%;
+  min-width: 60px;
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+  position: relative;
+}
+
+.peekLeft {
+  border-radius: 16px 0 0 16px;
+}
+
+.peekRight {
+  border-radius: 0 16px 16px 0;
+}
+
+.peekContent {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.5;
+}
+
+/* Main active slide */
+.mainCard {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+}
+
+.slideAtmosphere {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 80%, rgba(154, 84, 40, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 20%, rgba(12, 18, 48, 0.3) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Left: text content */
+.slideContent {
+  position: relative;
+  z-index: 2;
+  width: 45%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 2.5rem 3rem 3rem;
+  gap: 0;
+}
+
+.slideCategory {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.slideTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+  font-weight: 300;
+  color: #F1E9DC;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 1rem;
+}
+
+.slideDesc {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: rgba(241, 233, 220, 0.65);
+  line-height: 1.7;
+  max-width: 340px;
+  margin-bottom: 1.75rem;
+}
+
+.slideCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #FAF7F0;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  letter-spacing: 0.02em;
+  align-self: flex-start;
+}
+.slideCta:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.slideCounter {
+  display: flex;
+  gap: 6px;
+  margin-top: 2rem;
+}
+
+.counterDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(241, 233, 220, 0.25);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.counterDotActive {
+  width: 20px;
+  border-radius: 3px;
+}
+
+/* Right: Artwork */
+.slideArtwork {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.artwork {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artGlow {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.artSvg {
+  transition: transform 0.5s ease;
+  animation: slowSpin 80s linear infinite;
+  will-change: transform;
+}
+
+.artSvgActive {
+  animation-duration: 80s;
+}
+
+@keyframes slowSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Edge hover indicators */
+.edgeIndicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(241, 233, 220, 0.6);
+  z-index: 10;
+  pointer-events: none;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  background: rgba(6, 9, 20, 0.4);
+  backdrop-filter: blur(8px);
+  border-radius: 4px;
+}
+
+.edgeLeft {
+  left: 12%;
+}
+
+.edgeRight {
+  right: 12%;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .slideContent {
+    width: 50%;
+    padding: 2rem 1.5rem 2rem 2rem;
+  }
+  
+  .peekCard {
+    width: 6%;
+  }
+}
+
+@media (max-width: 768px) {
+  .carousel {
+    flex-direction: column;
+  }
+  
+  .peekCard {
+    display: none;
+  }
+  
+  .mainCard {
+    flex-direction: column;
+    border-radius: 0;
+  }
+  
+  .slideContent {
+    width: 100%;
+    padding: 2rem 1.5rem 1.5rem;
+    order: 1;
+  }
+  
+  .slideArtwork {
+    order: 0;
+    height: 240px;
+    flex: none;
+  }
+  
+  .slideTitle {
+    font-size: 1.6rem;
+  }
+}

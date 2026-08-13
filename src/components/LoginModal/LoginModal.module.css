@@ -1,0 +1,289 @@
+/* LoginModal — Premium Glass Auth Modal */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(5, 7, 14, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  width: min(440px, 94vw);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 2.5rem 2rem 2rem;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+}
+
+
+/* Light mode modal */
+:global([data-theme='light']) .modal {
+  background: rgba(250, 247, 240, 0.98);
+  border-color: rgba(181, 138, 59, 0.25);
+  box-shadow: 0 24px 80px rgba(23, 37, 58, 0.20), 0 0 0 1px rgba(181, 138, 59, 0.12);
+}
+
+.closeBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all var(--transition-base);
+}
+.closeBtn:hover {
+  border-color: var(--gold-primary);
+  color: var(--text-primary);
+}
+
+.ornament {
+  margin-bottom: 1rem;
+  opacity: 0.85;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.brandStar {
+  color: var(--gold-primary);
+  font-size: 0.9rem;
+  animation: orbitSlow 20s linear infinite;
+  display: inline-block;
+}
+
+.brandName {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.heading {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.headingItalic {
+  font-style: italic;
+  color: var(--gold-primary);
+  font-weight: 300;
+}
+
+.subheading {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  max-width: 280px;
+}
+
+.dividerLine {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  color: var(--gold-primary);
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+.dividerLine::before,
+.dividerLine::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.googleBtn,
+.emailBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  letter-spacing: 0.01em;
+}
+
+.googleBtn {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.googleBtn:hover {
+  border-color: var(--gold-primary);
+  background: var(--surface-elevated);
+}
+
+:global([data-theme='light']) .googleBtn {
+  background: #fff;
+  border-color: rgba(23, 37, 58, 0.15);
+}
+
+.emailBtn {
+  background: var(--gold-primary);
+  border: 1px solid var(--gold-primary);
+  color: #FAF7F0;
+}
+.emailBtn:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-soft);
+}
+
+.switchText {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.switchLink {
+  background: none;
+  border: none;
+  color: var(--gold-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition-base);
+}
+.switchLink:hover { color: var(--gold-soft); }
+
+/* Email step */
+.emailForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.emailInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color var(--transition-base);
+}
+.emailInput:focus {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(181, 138, 59, 0.1);
+}
+.emailInput::placeholder { color: var(--text-muted); }
+
+.continueBtn {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--gold-primary);
+  border: none;
+  color: #FAF7F0;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+.continueBtn:hover:not(:disabled) {
+  background: var(--gold-soft);
+}
+.continueBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  transition: color var(--transition-base);
+}
+.backBtn:hover { color: var(--text-primary); }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.privacy {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 1.25rem;
+  opacity: 0.7;
+}
+
+.privacyLink {
+  color: var(--gold-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}

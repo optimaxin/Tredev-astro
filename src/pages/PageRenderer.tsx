@@ -13,6 +13,7 @@ import styles from './PageRenderer.module.css';
 
 // Import landing sections
 import Hero from '../sections/Hero/Hero';
+import CampaignBanner from '../sections/CampaignBanner/CampaignBanner';
 import JourneyCards from '../sections/JourneyCards/JourneyCards';
 import KundliSection from '../sections/KundliSection/KundliSection';
 import MySky from '../sections/MySky/MySky';
@@ -42,20 +43,18 @@ export default function PageRenderer() {
       return (
         <>
           <Hero />
-          <JourneyCards />
-          <KundliSection />
-          <MySky />
+          <CampaignBanner />
           <ConcernSelector />
-          <FreeTools />
+          <ReportsSection featured />
+          <FreeTools featured />
           <PanchangSection />
-          <AstrologersSection />
+
+          <AstrologersSection featured />
           <AIAstrology />
-          <ReportsSection />
-          <StoreSection />
-          <AcademySection />
+          <StoreSection featured />
+          <AcademySection featured />
           <Testimonials />
           <WhyTredevAstro />
-          <BlogSection />
         </>
       );
 
@@ -72,21 +71,8 @@ export default function PageRenderer() {
       return <KundliResultPage />;
 
     case 'my-jyotish':
-      return (
-        <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
-          <div className={styles.container}>
-            <div className={styles.pageHeader}>
-              <span className="section-eyebrow">Meri Kundli Dashboard</span>
-              <h1 className={styles.pageTitle}>My Jyotish</h1>
-              <div className={styles.divider}>✦ ❖ ✦</div>
-              <p className={styles.pageSubtitle}>
-                Vedic timeline, placements and daily Gochar transits for {birthProfile.name}.
-              </p>
-            </div>
-            <MySky />
-          </div>
-        </div>
-      );
+    case 'profile':
+      return <ProfileDashboardPage />;
 
     case 'horoscope':
       return <HoroscopePage />;
@@ -1573,6 +1559,221 @@ function AboutPage() {
           <p style={{ marginTop: '16px' }}>All calculations follow the Lahiri Ayanamsa, matching planetary alignments to the exact degrees of the stars. We partner with respected Acharyas initiated into authentic lineages to ensure all consultations and Pujas follow precise shastric codes.</p>
           <p style={{ marginTop: '16px' }}>Explore your birth blueprint, balance energies through energized remedies, and walk your path with alignment, purpose and dharma.</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile Dashboard Page
+// ─────────────────────────────────────────────────────────────────────────────
+function ProfileDashboardPage() {
+  const { birthProfile, setPage, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated } = useAppContext();
+  const [activeTab, setActiveTab] = React.useState('my-jyotish');
+
+  React.useEffect(() => {
+    if (!isLoggedIn) {
+      setPendingAction('profile');
+      setShowLoginModal(true);
+    }
+  }, [isLoggedIn]);
+
+  const SIDEBAR_ITEMS = [
+    { key: 'my-jyotish', label: 'My Jyotish', icon: '✦' },
+    { key: 'my-kundli', label: 'My Kundli', icon: '☉' },
+    { key: 'my-reports', label: 'My Reports', icon: '☽' },
+    { key: 'my-consultations', label: 'My Consultations', icon: '◎' },
+    { key: 'my-orders', label: 'My Orders', icon: '◈' },
+    { key: 'saved-astrologers', label: 'Saved Astrologers', icon: '♃' },
+    { key: 'my-courses', label: 'My Courses', icon: '◉' },
+    { key: 'settings', label: 'Account Settings', icon: '⚙' },
+  ];
+
+  const PLANETARY_PLACEMENTS = [
+    { planet: 'Surya (Sun)', rashi: 'Vrischika', bhava: '4th Bhava', degrees: "22°14'", symbol: '☉' },
+    { planet: 'Chandra (Moon)', rashi: 'Vrishabha', bhava: '10th Bhava', degrees: "08°32'", symbol: '☽' },
+    { planet: 'Mangala (Mars)', rashi: 'Simha', bhava: '1st Bhava', degrees: "14°56'", symbol: '♂' },
+    { planet: 'Budha (Mercury)', rashi: 'Tula', bhava: '3rd Bhava', degrees: "05°18'", symbol: '☿' },
+    { planet: 'Guru (Jupiter)', rashi: 'Karka', bhava: '12th Bhava', degrees: "28°44'", symbol: '♃' },
+    { planet: 'Shukra (Venus)', rashi: 'Dhanu', bhava: '5th Bhava', degrees: "11°22'", symbol: '♀' },
+    { planet: 'Shani (Saturn)', rashi: 'Makara', bhava: '6th Bhava', degrees: "17°09'", symbol: '♄' },
+    { planet: 'Rahu', rashi: 'Mithuna', bhava: '11th Bhava', degrees: "03°41'", symbol: '☊' },
+    { planet: 'Ketu', rashi: 'Dhanu', bhava: '5th Bhava', degrees: "03°41'", symbol: '☋' },
+  ];
+
+  const KUNDLI_GRID = [
+    { num: 12, sign: 'Pis', planets: 'Guru' },
+    { num: 9, sign: 'Sag', planets: 'Ketu' },
+    { num: 2, sign: 'Taurus', planets: 'Chandra' },
+    { num: 11, sign: 'Aqu', planets: '' },
+    { num: 'Lagna', sign: 'Leo', planets: 'Lagna' },
+    { num: 3, sign: 'Gem', planets: '' },
+    { num: 10, sign: 'Cap', planets: 'Shani' },
+    { num: 4, sign: 'Can', planets: 'Surya' },
+    { num: 5, sign: 'Leo', planets: 'Mangala' },
+  ];
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
+      <div className={styles.profileLayout} style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
+        {/* Sidebar */}
+        <aside className={styles.profileSidebar}>
+          <div className={styles.profileCard}>
+            <div className={styles.profileAvatar}>✦</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{birthProfile.name}</div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>Simha Lagna · Vrishabha Chandra</div>
+          </div>
+          {SIDEBAR_ITEMS.map(item => (
+            <button 
+              key={item.key} 
+              onClick={() => setActiveTab(item.key)}
+              className={`${styles.profileBtn} ${activeTab === item.key ? styles.profileBtnActive : ''}`}
+            >
+              <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center' }}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </aside>
+
+        {/* Main content */}
+        <main className={styles.profileMain}>
+          {activeTab === 'my-jyotish' && (
+            <div>
+              <div style={{ marginBottom: 'var(--space-8)' }}>
+                <span className="section-eyebrow">Meri Kundli</span>
+                <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Jyotish</h1>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {birthProfile.name} · Born {birthProfile.dob}</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
+                {[{ label: 'Janma Rashi', value: 'Vrishabha (Taurus)', icon: '☽' }, { label: 'Lagna (Ascendant)', value: 'Simha (Leo)', icon: '↑' }, { label: 'Nakshatra', value: 'Rohini (4th Pada)', icon: '✦' }].map(item => (
+                  <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                    <span style={{ fontSize: '1.5rem', color: 'var(--gold-primary)', display: 'block', marginBottom: 'var(--space-2)' }}>{item.icon}</span>
+                    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.label}</div>
+                    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: 'var(--space-8)' }}>
+                <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)' }}>Graha Placements</h3>
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Lahiri Ayanamsa</span>
+                </div>
+                {PLANETARY_PLACEMENTS.map((p, i) => (
+                  <div key={p.planet} style={{ display: 'grid', gridTemplateColumns: '40px 180px 1fr 100px', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-6)', borderBottom: i < PLANETARY_PLACEMENTS.length - 1 ? '1px solid var(--border-subtle)' : 'none', alignItems: 'center' }}>
+                    <span style={{ fontSize: '1.1rem', color: 'var(--gold-primary)', textAlign: 'center' }}>{p.symbol}</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{p.planet}</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{p.rashi} · {p.bhava}</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'right' }}>{p.degrees}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)', marginBottom: 'var(--space-5)' }}>Vimshottari Dasha</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  {[{ label: 'Current Mahadasha', value: 'Venus (Shukra)', period: '2018 – 2038', active: true }, { label: 'Current Antardasha', value: 'Mercury (Budha)', period: '2024 – 2027', active: true }, { label: 'Next Mahadasha', value: 'Sun (Surya)', period: '2038 – 2044', active: false }, { label: 'Pratyantardasha', value: 'Jupiter (Guru)', period: 'Dec 2024 – Mar 2025', active: false }].map(d => (
+                    <div key={d.label} style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: `1px solid ${d.active ? 'rgba(181,138,59,0.3)' : 'var(--border-subtle)'}`, background: d.active ? 'rgba(181,138,59,0.05)' : 'transparent' }}>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: d.active ? 'var(--gold-primary)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>{d.label}</div>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{d.value}</div>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>{d.period}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'my-kundli' && (
+            <div>
+              <div style={{ marginBottom: 'var(--space-8)' }}>
+                <span className="section-eyebrow">Your Birth Blueprint</span>
+                <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Kundli Chart</h1>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
+                  Janam Kundli for {birthProfile.name} · Born {birthProfile.dob}
+                </p>
+              </div>
+
+              {!kundliGenerated ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
+                  <span style={{ fontSize: '3rem', opacity: 0.3 }}>☉</span>
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>Your Kundli has not been created yet.</h3>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>Generate your birth chart to unlock your Vedic blueprint.</p>
+                  <button className="btn btn-gold" onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Generate My Kundli</button>
+                </div>
+              ) : (
+                <div className={styles.chartPageGrid} style={{ gridTemplateColumns: '1fr' }}>
+                  <div className={styles.ancientCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div className={styles.chartVisualSection} style={{ width: '100%', maxWidth: '420px' }}>
+                      <table className={styles.chartGridTable}>
+                        <tbody>
+                          <tr>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[0].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[0].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[0].planets}</span>
+                            </td>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[1].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[1].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[1].planets}</span>
+                            </td>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[2].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[2].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[2].planets}</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[3].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[3].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[3].planets}</span>
+                            </td>
+                            <td style={{ background: 'rgba(184, 138, 59, 0.05)' }}>
+                              <span className={styles.houseSign} style={{ fontSize: '10px' }}>ASCENDANT</span>
+                              <span className={styles.housePlanets} style={{ color: 'var(--color-gold-dark)' }}>Simha</span>
+                            </td>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[5].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[5].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[5].planets}</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[6].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[6].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[6].planets}</span>
+                            </td>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[7].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[7].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[7].planets}</span>
+                            </td>
+                            <td>
+                              <span className={styles.houseNumber}>{KUNDLI_GRID[8].num}</span>
+                              <span className={styles.houseSign}>{KUNDLI_GRID[8].sign}</span>
+                              <span className={styles.housePlanets}>{KUNDLI_GRID[8].planets}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab !== 'my-jyotish' && activeTab !== 'my-kundli' && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
+              <span style={{ fontSize: '3rem', opacity: 0.3 }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.icon}</span>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.label}</h3>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>Generate your Kundli first to unlock this section.</p>
+              <button className="btn btn-gold" onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Generate Kundli</button>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

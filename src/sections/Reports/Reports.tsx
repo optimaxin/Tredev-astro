@@ -17,7 +17,7 @@ const BUNDLES = [
   { title: 'Report + Consultation', price: 1499, desc: 'Full report plus a 20-minute live consultation', features: ['Full report', '20-min video call', 'Recorded session'] },
 ];
 
-export default function Reports() {
+export default function Reports({ featured = false }: { featured?: boolean }) {
   const { setPage, setSelectedId } = useAppContext();
   const [hovered, setHovered] = useState<number | null>(null);
   const [hoveredReport, setHoveredReport] = useState<typeof REPORTS[0] | null>(null);
@@ -32,38 +32,34 @@ export default function Reports() {
   return (
     <section className={styles.section} id="reports">
       <div className={styles.container}>
-        {/* Header Grid */}
-        <div className={styles.headerGrid}>
-          <motion.div
-            className={styles.headerLeft}
-            initial={{ opacity: 0, x: -25 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-          >
-            <span className="section-eyebrow">Personalized Jyotish Reports</span>
-            <h2 className={styles.title}>Jyotish Reports</h2>
-            <p className={styles.subtitle}>
+        {/* Header */}
+        <div className="section-header-split">
+          <div className="header-left">
+            <span className="section-eyebrow-gold">Personalized Jyotish Reports</span>
+            <h2 className="section-title-serif">{featured ? 'Go Deeper with Jyotish' : 'Jyotish Reports'}</h2>
+            <p className="section-desc-sans">
               Detailed, manuscript-grade Kundli readings translating cosmic alignment into direct life direction.
             </p>
-          </motion.div>
-          <motion.div
-            className={styles.headerRight}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <div className={styles.sphereWrap}>
+          </div>
+          {featured ? (
+            <button
+              className="section-explore-link"
+              onClick={() => { setPage('reports'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Explore All Reports →
+            </button>
+          ) : (
+            <div className={styles.sphereWrap} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <Lightweight3DViewer type="report" color={activeColor} />
               <span className={styles.sphereLabel}>Vedic Chart Engine</span>
             </div>
-          </motion.div>
+          )}
         </div>
+
 
         {/* Report Cards */}
         <div className={styles.reportsGrid}>
-          {REPORTS.map((report, i) => (
+          {(featured ? REPORTS.slice(0, 4) : REPORTS).map((report, i) => (
             <motion.div
               key={report.id}
               className={`${styles.reportCard} ${hovered === report.id ? styles.cardHovered : ''} ${report.popular ? styles.cardPopular : ''}`}
@@ -130,47 +126,51 @@ export default function Reports() {
           ))}
         </div>
 
-        {/* Bundles */}
-        <motion.div
-          className={styles.bundlesSection}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-        >
-          <div className={styles.bundlesHeader}>
-            <h3 className={styles.bundlesTitle}>Choose Your Experience</h3>
-            <p className={styles.bundlesSubtitle}>Every report can be enhanced with expert access</p>
-          </div>
+        {/* Bundles — hidden in featured mode */}
+        {!featured && (
+          <motion.div
+            className={styles.bundlesSection}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
+            <div className={styles.bundlesHeader}>
+              <h3 className={styles.bundlesTitle}>Choose Your Experience</h3>
+              <p className={styles.bundlesSubtitle}>Every report can be enhanced with expert access</p>
+            </div>
 
-          <div className={styles.bundlesGrid}>
-            {BUNDLES.map((bundle, i) => (
-              <div
-                key={bundle.title}
-                className={`${styles.bundle} ${bundle.popular ? styles.bundlePopular : ''}`}
-              >
-                {bundle.popular && <div className={styles.bundlePopularLabel}>Recommended</div>}
-                <h4 className={styles.bundleName}>{bundle.title}</h4>
-                <p className={styles.bundlePrice}>₹{bundle.price}</p>
-                <p className={styles.bundleDesc}>{bundle.desc}</p>
-                <ul className={styles.bundleFeatures}>
-                  {bundle.features.map(f => (
-                    <li key={f}>
-                      <span className={styles.checkIcon}>✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  className={`btn btn-full ${bundle.popular ? 'btn-gold' : 'btn-outline-gold'}`}
-                  style={{ marginTop: 'auto' }}
-                  id={`bundle-${i}`}
+            <div className={styles.bundlesGrid}>
+              {BUNDLES.map((bundle, i) => (
+                <div
+                  key={bundle.title}
+                  className={`${styles.bundle} ${bundle.popular ? styles.bundlePopular : ''}`}
                 >
-                  Choose This
-                </button>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+                  {bundle.popular && <div className={styles.bundlePopularLabel}>Recommended</div>}
+                  <h4 className={styles.bundleName}>{bundle.title}</h4>
+                  <p className={styles.bundlePrice}>₹{bundle.price}</p>
+                  <p className={styles.bundleDesc}>{bundle.desc}</p>
+                  <ul className={styles.bundleFeatures}>
+                    {bundle.features.map(f => (
+                      <li key={f}>
+                        <span className={styles.checkIcon}>✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    className={`btn btn-full ${bundle.popular ? 'btn-gold' : 'btn-outline-gold'}`}
+                    style={{ marginTop: 'auto' }}
+                    id={`bundle-${i}`}
+                  >
+                    Choose This
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+
       </div>
     </section>
   );

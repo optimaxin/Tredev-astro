@@ -5,10 +5,13 @@
 }
 
 .container {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 0 var(--space-8);
+  box-sizing: border-box;
 }
+
 
 .header { text-align: center; margin-bottom: var(--space-10); }
 

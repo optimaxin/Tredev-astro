@@ -7,6 +7,7 @@ import Navigation from './components/Navigation/Navigation';
 import Footer from './components/Footer/Footer';
 import PageRenderer from './pages/PageRenderer';
 import CosmicClouds from './components/CosmicClouds/CosmicClouds';
+import LoginModal from './components/LoginModal/LoginModal';
 
 function AppContent() {
   const { theme } = useAppContext();
@@ -25,6 +26,7 @@ function AppContent() {
       </main>
 
       <Footer />
+      <LoginModal />
     </div>
   );
 }

@@ -16,12 +16,13 @@ const FILTER_LABELS: Record<string, string> = {
   Spirituality: 'Adhyatma',
 };
 
-export default function Astrologers() {
+export default function Astrologers({ featured = false }: { featured?: boolean }) {
+  const { setPage } = useAppContext();
   const [activeFilter, setActiveFilter] = useState('All');
 
-  const filtered = ASTROLOGERS.filter(a =>
-    activeFilter === 'All' || a.category.includes(activeFilter)
-  );
+  const filtered = featured
+    ? ASTROLOGERS.filter(a => a.online).slice(0, 3)
+    : ASTROLOGERS.filter(a => activeFilter === 'All' || a.category.includes(activeFilter));
 
   const recommended = ASTROLOGERS.filter(a =>
     a.category.includes('Career') || a.category.includes('Finance')
@@ -31,57 +32,27 @@ export default function Astrologers() {
     <section className={styles.section} id="astrologers">
       <div className={styles.container}>
         {/* Header */}
-        <motion.div
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-        >
-          <span className="section-eyebrow">Acharya Margdarshan</span>
-          <h2 className={styles.title}>Consult an Acharya</h2>
-          <p className={styles.subtitle}>
-            Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.
-          </p>
-        </motion.div>
-
-        {/* Recommended Block */}
-        <div className={styles.recommendedBlock}>
-          <div className={styles.recommendedHeader}>
-            <span className={styles.recommendedLabel}>✦ Guided For You</span>
-            <span className={styles.recommendedDesc}>Recommended based on your Kundli positions</span>
+        <div className="section-header-split">
+          <div className="header-left">
+            <span className="section-eyebrow-gold">Acharya Margdarshan</span>
+            <h2 className="section-title-serif">Consult an Acharya</h2>
+            <p className="section-desc-sans">
+              Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.
+            </p>
           </div>
-          <div className={styles.recommendedCards}>
-            {recommended.map(a => (
-              <AstrologerCard key={a.id} astrologer={a} compact />
-            ))}
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className={styles.filters}>
-          {FILTERS.map(f => (
+          {featured && (
             <button
-              key={f}
-              className={`${styles.filter} ${activeFilter === f ? styles.filterActive : ''}`}
-              onClick={() => setActiveFilter(f)}
-              id={`astrologer-filter-${f.toLowerCase()}`}
+              className="section-explore-link"
+              onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              {FILTER_LABELS[f] || f}
+              Explore All Acharyas →
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Astrologer Grid */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeFilter}
-            className={styles.grid}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+        {featured ? (
+          /* Featured mode: show 3 Acharyas in grid */
+          <div className={styles.grid}>
             {filtered.map((a, i) => (
               <motion.div
                 key={a.id}
@@ -92,12 +63,65 @@ export default function Astrologers() {
                 <AstrologerCard astrologer={a} />
               </motion.div>
             ))}
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        ) : (
+          <>
+            {/* Recommended Block */}
+            <div className={styles.recommendedBlock}>
+              <div className={styles.recommendedHeader}>
+                <span className={styles.recommendedLabel}>✦ Guided For You</span>
+                <span className={styles.recommendedDesc}>Recommended based on your Kundli positions</span>
+              </div>
+              <div className={styles.recommendedCards}>
+                {recommended.map(a => (
+                  <AstrologerCard key={a.id} astrologer={a} compact />
+                ))}
+              </div>
+            </div>
 
-        <p className={styles.demoNote}>* Demo data for illustration. All names and statistics are placeholder content.</p>
+            {/* Filters */}
+            <div className={styles.filters}>
+              {FILTERS.map(f => (
+                <button
+                  key={f}
+                  className={`${styles.filter} ${activeFilter === f ? styles.filterActive : ''}`}
+                  onClick={() => setActiveFilter(f)}
+                  id={`astrologer-filter-${f.toLowerCase()}`}
+                >
+                  {FILTER_LABELS[f] || f}
+                </button>
+              ))}
+            </div>
+
+            {/* Astrologer Grid */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFilter}
+                className={styles.grid}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {filtered.map((a, i) => (
+                  <motion.div
+                    key={a.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08, duration: 0.5 }}
+                  >
+                    <AstrologerCard astrologer={a} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            <p className={styles.demoNote}>* Demo data for illustration. All names and statistics are placeholder content.</p>
+          </>
+        )}
       </div>
     </section>
+
   );
 }
 

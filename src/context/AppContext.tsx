@@ -54,6 +54,13 @@ interface AppContextValue {
   // Theme state
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+  // Auth state (mock prototype)
+  isLoggedIn: boolean;
+  setLoggedIn: (v: boolean) => void;
+  pendingAction: string | null;
+  setPendingAction: (a: string | null) => void;
+  showLoginModal: boolean;
+  setShowLoginModal: (v: boolean) => void;
 }
 
 const defaultProfile: BirthProfile = {
@@ -70,9 +77,14 @@ const defaultProfile: BirthProfile = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [birthProfile, setBirthProfile] = useState<BirthProfile>(defaultProfile);
+  const [birthProfile, setBirthProfileState] = useState<BirthProfile>(() => {
+    const saved = localStorage.getItem('birthProfile');
+    return saved ? JSON.parse(saved) : defaultProfile;
+  });
   const [concern, setConcern] = useState<Concern>(null);
-  const [kundliGenerated, setKundliGenerated] = useState(false);
+  const [kundliGenerated, setKundliGeneratedState] = useState<boolean>(() => {
+    return localStorage.getItem('kundliGenerated') === 'true';
+  });
   const [astrologerFilter, setAstrologerFilter] = useState('All');
   
   // Navigation & Cart States
@@ -80,11 +92,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<number | string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   
-  // Theme State
+  // Theme State — DEFAULT IS LIGHT
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('theme');
-    return saved === 'light' ? 'light' : 'dark';
+    return saved === 'dark' ? 'dark' : 'light';
   });
+
+  // Auth State (mock prototype)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('isLoggedIn') === 'true';
+  });
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  const setBirthProfile = (p: BirthProfile) => {
+    setBirthProfileState(p);
+    localStorage.setItem('birthProfile', JSON.stringify(p));
+  };
+
+  const setKundliGenerated = (v: boolean) => {
+    setKundliGeneratedState(v);
+    localStorage.setItem('kundliGenerated', v ? 'true' : 'false');
+  };
 
   const toggleTheme = () => {
     setTheme(prev => {
@@ -93,6 +122,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   };
+
+  const setLoggedIn = (v: boolean) => {
+    setIsLoggedIn(v);
+    localStorage.setItem('isLoggedIn', v ? 'true' : 'false');
+  };
+
 
   const addToCart = (item: CartItem) => {
     setCart(prev => {
@@ -119,7 +154,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       page, setPage,
       selectedId, setSelectedId,
       cart, addToCart, removeFromCart, clearCart,
-      theme, toggleTheme
+      theme, toggleTheme,
+      isLoggedIn, setLoggedIn,
+      pendingAction, setPendingAction,
+      showLoginModal, setShowLoginModal,
     }}>
       {children}
     </AppContext.Provider>

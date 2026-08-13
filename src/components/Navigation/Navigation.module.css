@@ -5,29 +5,30 @@
   transform: translateX(-50%);
   z-index: var(--z-sticky);
   width: 92%;
-  max-width: 1200px;
-  height: 60px;
+  max-width: 1240px;
+  height: 68px;
   display: flex;
   align-items: center;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  background: rgba(8, 12, 28, 0.52);
+  background: rgba(8, 12, 28, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(199, 161, 90, 0.18);
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.02);
-  padding: 0 var(--space-6);
+  padding: 12px 24px;
 }
 
 .nav.scrolled {
-  background: rgba(8, 12, 28, 0.78);
+  background: rgba(8, 12, 28, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-color: rgba(199, 161, 90, 0.22);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.04);
-  height: 56px;
+  height: 60px;
   top: var(--space-2);
 }
+
 
 .inner {
   width: 100%;
@@ -336,21 +337,87 @@
   box-shadow: 0 0 10px rgba(199, 161, 90, 0.15);
 }
 
-/* Light Mode Overrides for Navigation Module scoped classes */
+/* Light Mode Overrides for Navigation */
 :global([data-theme='light']) .nav {
-  background: rgba(255, 253, 249, 0.52);
-  border-color: rgba(214, 109, 37, 0.18);
-  box-shadow: 0 4px 30px rgba(214, 109, 37, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  background: rgba(250, 247, 240, 0.78);
+  border-color: rgba(181, 138, 59, 0.22);
+  box-shadow: 0 4px 20px rgba(181, 138, 59, 0.08);
 }
 
 :global([data-theme='light']) .nav.scrolled {
-  background: rgba(255, 253, 249, 0.82);
-  border-color: rgba(214, 109, 37, 0.22);
+  background: rgba(250, 247, 240, 0.90);
+  border-color: rgba(181, 138, 59, 0.28);
+  box-shadow: 0 8px 30px rgba(181, 138, 59, 0.12);
+}
+
+:global([data-theme='light']) .logoText {
+  color: #243044;
+}
+
+:global([data-theme='light']) .link {
+  color: #243044;
+}
+
+:global([data-theme='light']) .link:hover {
+  color: #B58A3B;
+}
+
+:global([data-theme='light']) .link.active {
+  color: #B58A3B;
+}
+
+
+:global([data-theme='light']) .ctaBtnSecondary {
+  color: #243044;
+}
+
+:global([data-theme='light']) .ctaBtnSecondary:hover {
+  color: #B58A3B;
+}
+
+:global([data-theme='light']) .ctaBtn {
+  background: #B58A3B;
+  border-color: #B58A3B;
+  color: #FAF7F0 !important;
+}
+
+:global([data-theme='light']) .ctaBtn:hover {
+  background: #D0B06A;
+  border-color: #D0B06A;
+}
+
+:global([data-theme='light']) .cartBtn,
+:global([data-theme='light']) .accountBtn,
+:global([data-theme='light']) .themeToggleBtn {
+  border-color: rgba(181, 138, 59, 0.22);
+  color: #243044;
+}
+
+:global([data-theme='light']) .cartBtn:hover,
+:global([data-theme='light']) .accountBtn:hover,
+:global([data-theme='light']) .themeToggleBtn:hover {
+  border-color: #B58A3B;
+  color: #B58A3B;
+  background: rgba(181, 138, 59, 0.06);
 }
 
 :global([data-theme='light']) .mobileMenu {
-  background: rgba(255, 253, 249, 0.98);
+  background: rgba(250, 247, 240, 0.98);
+}
+
+:global([data-theme='light']) .mobileLink {
+  color: #243044;
 }
 
 
-
+/* Logged-in dot indicator */
+.loggedInDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #50C878;
+  border: 1.5px solid var(--bg-primary);
+}

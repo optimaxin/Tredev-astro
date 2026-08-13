@@ -4,7 +4,7 @@ import { COURSES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
 import styles from './Academy.module.css';
 
-export default function Academy() {
+export default function Academy({ featured = false }: { featured?: boolean }) {
   const { setPage, setSelectedId } = useAppContext();
 
   const handleCourseClick = (id: number) => {
@@ -15,23 +15,28 @@ export default function Academy() {
   return (
     <section className={styles.section} id="academy">
       <div className={styles.container}>
-        <motion.div
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-        >
-          <span className="section-eyebrow">Vedic Academy</span>
-          <h2 className={styles.title}>TredevAstro Gurukul</h2>
-          <p className={styles.subtitle}>
-            Structured, in-depth courses in Vedic astrology and Jyotish, guided by lineage Acharyas.
-          </p>
-        </motion.div>
+        <div className="section-header-split">
+          <div className="header-left">
+            <span className="section-eyebrow-gold">Vedic Academy</span>
+            <h2 className="section-title-serif">TredevAstro Gurukul</h2>
+            <p className="section-desc-sans">
+              Structured, in-depth courses in Vedic astrology and Jyotish, guided by lineage Acharyas.
+            </p>
+          </div>
+          {featured && (
+            <button
+              className="section-explore-link"
+              onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Explore All Courses →
+            </button>
+          )}
+        </div>
 
         {/* Courses Grid */}
-        <div className={styles.coursesGrid}>
-          {COURSES.map((course, i) => (
+        <div className={`${styles.coursesGrid} ${featured ? styles.coursesGridFeatured : ''}`}>
+
+          {(featured ? COURSES.slice(0, 3) : COURSES).map((course, i) => (
             <motion.div
               key={course.id}
               className={styles.courseCard}
@@ -103,19 +108,33 @@ export default function Academy() {
           ))}
         </div>
 
-        {/* Learning Roadmap */}
-        <div className={styles.roadmap}>
-          <h3 className={styles.roadmapTitle}>Gurukul Learning Path</h3>
-          <div className={styles.roadmapSteps}>
-            {['Shastri Basics', 'Kundli Analysis', 'Grahas & Rashis', 'Bhavas & Lords', 'Vimshottari Dasha', 'Gochara Transits', 'Phaladeepika'].map((step, i) => (
-              <div key={step} className={styles.step}>
-                <div className={styles.stepNum}>{i + 1}</div>
-                <span className={styles.stepLabel}>{step}</span>
-                {i < 6 && <div className={styles.stepLine} />}
-              </div>
-            ))}
+        {/* Learning Roadmap — shown only on full Academy page */}
+        {!featured && (
+          <div className={styles.roadmap}>
+            <h3 className={styles.roadmapTitle}>Gurukul Learning Path</h3>
+            <div className={styles.roadmapSteps}>
+              {['Shastri Basics', 'Kundli Analysis', 'Grahas & Rashis', 'Bhavas & Lords', 'Vimshottari Dasha', 'Gochara Transits', 'Phaladeepika'].map((step, i) => (
+                <div key={step} className={styles.step}>
+                  <div className={styles.stepNum}>{i + 1}</div>
+                  <span className={styles.stepLabel}>{step}</span>
+                  {i < 6 && <div className={styles.stepLine} />}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Explore All — shown in featured mode */}
+        {featured && (
+          <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
+            <button
+              className="btn btn-outline-light"
+              onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Explore Gurukul →
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

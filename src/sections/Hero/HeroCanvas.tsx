@@ -956,10 +956,11 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
 
       camera.position.z = 16.0 - currentScroll * 48.0;
 
-      const steeringPower = 1.6 * (1.0 - Math.min(currentScroll * 1.5, 0.85));
-      camera.position.x += (mouse2D.x * steeringPower - camera.position.x) * 0.045;
-      camera.position.y += (mouse2D.y * (steeringPower * 0.7) - camera.position.y) * 0.045;
-      camera.rotation.z = mouse2D.x * 0.08 + currentScroll * 0.5;
+      const steeringPower = 0.18 * (1.0 - Math.min(currentScroll * 1.5, 0.85));
+      camera.position.x += (mouse2D.x * steeringPower - camera.position.x) * 0.025;
+      camera.position.y += (mouse2D.y * (steeringPower * 0.6) - camera.position.y) * 0.025;
+      // No cursor-roll on camera — keep horizon stable
+      camera.rotation.z = currentScroll * 0.5;
 
       camera.lookAt(0, 0, camera.position.z - 8.0);
 
