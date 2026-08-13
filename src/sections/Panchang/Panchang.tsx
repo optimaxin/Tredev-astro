@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Panchang.module.css';
 
 // Mock Panchang data for different cities
@@ -179,7 +180,21 @@ export default function Panchang() {
 
   return (
     <section className={styles.section} id="panchang" aria-label="Today's Panchang">
-      <div className="section-container">
+      <CelestialOrnament
+        type="surya_chandra"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          right: '-100px',
+          bottom: '-100px',
+          width: '380px',
+          height: '380px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
+      <div className="section-container" style={{ position: 'relative', zIndex: 1 }}>
         {/* Section Header */}
         <div className="section-header-split">
           <div className="header-left">

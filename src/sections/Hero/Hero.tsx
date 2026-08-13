@@ -20,7 +20,7 @@ export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [hoveredItem, setHoveredItem] = useState<{ name: string; type: 'graha' | 'rashi'; details: string } | null>(null);
-  const { theme } = useAppContext();
+  const { theme, t } = useAppContext();
   const isLightTheme = theme === 'light';
 
   useEffect(() => {
@@ -89,11 +89,11 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            Your Stars. Your Dharma.<br />
-            <em className={styles.headlineItalic}>Your Journey.</em>
+            {t('hero_headline')}<br />
+            <em className={styles.headlineItalic}>{t('hero_headline_italic')}</em>
           </motion.h1>
 
-          <span className={styles.hindiEyebrow}>"Apne Aakash Ko Samjhiye"</span>
+          <span className={styles.hindiEyebrow}>{t('hero_hindi_eyebrow')}</span>
 
           {/* Subheadline */}
           <motion.p
@@ -102,8 +102,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.8 }}
           >
-            Personalized Vedic astrology, expert guidance,
-            intelligent insights and timeless Jyotish wisdom.
+            {t('hero_subhead')}
           </motion.p>
 
           {/* CTAs */}
@@ -118,14 +117,14 @@ export default function Hero() {
               onClick={scrollToKundli}
               id="hero-create-kundli"
             >
-              Generate Free Kundli
+              {t('hero_cta_kundli')}
             </button>
             <button
               className={`${styles.ctaSecondary} btn btn-outline-light btn-lg`}
               onClick={scrollToAstrologers}
               id="hero-talk-astrologer"
             >
-              Consult an Acharya
+              {t('hero_cta_consult')}
             </button>
           </motion.div>
 
@@ -137,11 +136,11 @@ export default function Hero() {
             transition={{ delay: 1.4, duration: 1 }}
           >
             <TrustDot />
-            Verified Acharyas
+            {t('hero_trust_acharyas')}
             <span className={styles.trustSep}>·</span>
-            Personalized Jyotish
+            {t('hero_trust_jyotish')}
             <span className={styles.trustSep}>·</span>
-            Private &amp; Secure
+            {t('hero_trust_secure')}
           </motion.div>
         </motion.div>
 
@@ -153,7 +152,7 @@ export default function Hero() {
           transition={{ delay: 2, duration: 1 }}
         >
           <div className={styles.scrollLine} />
-          <span className={styles.scrollText}>Scroll to explore</span>
+          <span className={styles.scrollText}>{t('hero_scroll_text')}</span>
         </motion.div>
       </div>
 

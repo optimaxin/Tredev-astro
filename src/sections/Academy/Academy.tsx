@@ -2,10 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { COURSES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Academy.module.css';
 
 export default function Academy({ featured = false }: { featured?: boolean }) {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, t } = useAppContext();
 
   const handleCourseClick = (id: number) => {
     setSelectedId(id);
@@ -14,13 +15,27 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="academy">
-      <div className={styles.container}>
+      <CelestialOrnament
+        type="mandala"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          left: '-120px',
+          top: '8%',
+          width: '420px',
+          height: '420px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
+      <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Vedic Academy</span>
-            <h2 className="section-title-serif">TredevAstro Gurukul</h2>
+            <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+            <h2 className="section-title-serif">{t('section_academy_title')}</h2>
             <p className="section-desc-sans">
-              Structured, in-depth courses in Vedic astrology and Jyotish, guided by lineage Acharyas.
+              {t('section_academy_desc')}
             </p>
           </div>
           {featured && (
@@ -28,7 +43,7 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore All Courses →
+              {t('cta_explore')} Courses →
             </button>
           )}
         </div>
@@ -61,9 +76,11 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
 
               {/* Course Info */}
               <div className={styles.courseBody}>
-                <div className={styles.courseCategory}>{course.category}</div>
-                <h3 className={styles.courseName}>{course.title}</h3>
-                <p className={styles.courseSubtitle}>{course.subtitle}</p>
+                <div className={styles.courseCategory}>
+                  {t('cat_' + course.category.toLowerCase().replace(' ', '_')) || course.category}
+                </div>
+                <h3 className={styles.courseName}>{t('course_' + course.id + '_title') || course.title}</h3>
+                <p className={styles.courseSubtitle}>{t('course_' + course.id + '_sub') || course.subtitle}</p>
 
                 {/* Topics */}
                 <div className={styles.topics}>
@@ -100,7 +117,7 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
                       handleCourseClick(course.id);
                     }}
                   >
-                    Enroll Now
+                    {t('btn_enroll') || 'Enroll Now'}
                   </button>
                 </div>
               </div>

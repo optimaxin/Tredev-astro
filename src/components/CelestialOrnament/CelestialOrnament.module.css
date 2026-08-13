@@ -1,0 +1,50 @@
+.ornament {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--gold-primary); /* Default to theme gold primary */
+  pointer-events: none;
+  opacity: 0.15; /* Default background ornament opacity */
+  transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.4s ease;
+}
+
+/* Light mode specific antique gold coloring */
+:global([data-theme='light']) .ornament {
+  color: #B58A3B;
+}
+
+/* Specific opacity variations based on context classes */
+:global(.ornament-bg) {
+  opacity: 0.06;
+}
+:global([data-theme='light']) :global(.ornament-bg) {
+  opacity: 0.08;
+}
+
+:global(.ornament-decor) {
+  opacity: 0.14;
+}
+
+:global(.ornament-interactive) {
+  opacity: 0.28;
+}
+:global(.ornament-interactive:hover) {
+  opacity: 0.55;
+  color: var(--gold-secondary) !important;
+}
+
+/* Very slow rotating animation for orbits/wheels */
+.slowRotate {
+  animation: rotateSlow 80s linear infinite;
+}
+
+@keyframes rotateSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

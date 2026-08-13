@@ -9,6 +9,7 @@ import {
   PanchangIcon, 
   VastuIcon 
 } from '../../components/Icons/Icons';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Reports.module.css';
 
 const BUNDLES = [
@@ -18,7 +19,7 @@ const BUNDLES = [
 ];
 
 export default function Reports({ featured = false }: { featured?: boolean }) {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, t } = useAppContext();
   const [hovered, setHovered] = useState<number | null>(null);
   const [hoveredReport, setHoveredReport] = useState<typeof REPORTS[0] | null>(null);
 
@@ -31,14 +32,28 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="reports">
+      <CelestialOrnament
+        type="rashi"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          right: '-120px',
+          top: '12%',
+          width: '460px',
+          height: '460px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
       <div className={styles.container}>
         {/* Header */}
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Personalized Jyotish Reports</span>
-            <h2 className="section-title-serif">{featured ? 'Go Deeper with Jyotish' : 'Jyotish Reports'}</h2>
+            <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+            <h2 className="section-title-serif">{t('section_reports_title')}</h2>
             <p className="section-desc-sans">
-              Detailed, manuscript-grade Kundli readings translating cosmic alignment into direct life direction.
+              {t('section_reports_desc')}
             </p>
           </div>
           {featured ? (
@@ -46,7 +61,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('reports'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore All Reports →
+              {t('cta_explore')} Reports →
             </button>
           ) : (
             <div className={styles.sphereWrap} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -91,12 +106,14 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               </div>
 
               <div className={styles.reportMeta}>
-                <div className={styles.reportCategory}>{report.category}</div>
+                <div className={styles.reportCategory}>
+                  {t('cat_' + report.category.toLowerCase().replace(' ', '_')) || report.category}
+                </div>
               </div>
 
-              <h3 className={styles.reportTitle}>{report.title}</h3>
-              <p className={styles.reportSubtitle}>{report.subtitle}</p>
-              <p className={styles.reportDesc}>{report.description}</p>
+              <h3 className={styles.reportTitle}>{t('report_' + report.id + '_title') || report.title}</h3>
+              <p className={styles.reportSubtitle}>{t('report_' + report.id + '_sub') || report.subtitle}</p>
+              <p className={styles.reportDesc}>{t('report_' + report.id + '_desc') || report.description}</p>
 
               <div className={styles.reportStats}>
                 <span>{report.pages} pages</span>
@@ -119,7 +136,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
                     handleReportClick(report.id);
                   }}
                 >
-                  Get Report
+                  {t('btn_view_details')}
                 </button>
               </div>
             </motion.div>

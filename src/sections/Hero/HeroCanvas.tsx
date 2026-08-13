@@ -389,10 +389,12 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
       // Draw track
       rashiChakraGroup.add(drawOrbitTrack(graha.orbitR));
 
-      // Graha Sphere Mesh with procedural texturing
+      // Graha Sphere Mesh with procedural texturing & emissive lighting
       const sphereGeo = new THREE.SphereGeometry(graha.size, 24, 24);
       const sphereMat = new THREE.MeshPhongMaterial({
         map: createPlanetTexture(graha.name, graha.color),
+        emissive: new THREE.Color(graha.color),
+        emissiveIntensity: 0.85,
         shininess: 30,
         bumpScale: 0.05,
       });

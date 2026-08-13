@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ASTROLOGERS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Astrologers.module.css';
 
 const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Vastu', 'Spirituality'];
@@ -30,7 +31,21 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
 
   return (
     <section className={styles.section} id="astrologers">
-      <div className={styles.container}>
+      <CelestialOrnament
+        type="mandala"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          left: '-100px',
+          bottom: '-100px',
+          width: '420px',
+          height: '420px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
+      <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <div className="section-header-split">
           <div className="header-left">

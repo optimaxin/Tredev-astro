@@ -2,6 +2,8 @@
   background: var(--color-dark); /* Dark cosmic section */
   padding: var(--space-24) 0;
   border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  position: relative;
+  overflow: hidden;
 }
 
 .container {

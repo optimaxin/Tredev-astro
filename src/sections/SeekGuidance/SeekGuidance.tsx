@@ -1,22 +1,23 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useAppContext } from '../../context/AppContext';
+import { useAppContext, type Concern } from '../../context/AppContext';
 import styles from './SeekGuidance.module.css';
 
 interface CategoryCard {
   id: string;
-  title: string;
+  titleKey: string;
   sanskrit: string;
-  desc: string;
-  size: 'large' | 'medium' | 'small';
+  descKey: string;
+  size: 'large' | 'small';
   iconSvg: React.ReactNode;
+  concern: Concern;
 }
 
 export default function SeekGuidance() {
-  const { setPage, setConcern } = useAppContext();
+  const { setPage, setConcern, t } = useAppContext();
 
-  const handleCardClick = (title: any) => {
-    setConcern(title);
+  const handleCardClick = (concern: Concern) => {
+    setConcern(concern);
     setPage('free-kundli');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -24,14 +25,14 @@ export default function SeekGuidance() {
   const CARDS: CategoryCard[] = [
     {
       id: 'marriage',
-      title: 'Love & Marriage',
+      titleKey: 'seek_card_marriage_title',
       sanskrit: 'विवाह',
-      desc: 'Understand relationship compatibility, Mars dosha, and marriage timing.',
-      size: 'medium',
+      descKey: 'seek_card_marriage_desc',
+      size: 'small',
+      concern: 'Marriage',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-          {/* Animated intersecting orbits */}
           <motion.ellipse 
             cx="42" cy="50" rx="20" ry="10" 
             stroke="var(--gold-primary)" strokeWidth="1.5" 
@@ -51,14 +52,14 @@ export default function SeekGuidance() {
     },
     {
       id: 'career',
-      title: 'Career & Business',
+      titleKey: 'seek_card_career_title',
       sanskrit: 'जीविका',
-      desc: 'Auspicious professions, leadership prospects, and timing of success.',
-      size: 'medium',
+      descKey: 'seek_card_career_desc',
+      size: 'small',
+      concern: 'Career & Business',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="34" stroke="currentColor" strokeWidth="0.75" />
-          {/* Surya glowing sun rays */}
           <motion.circle 
             cx="50" cy="50" r="16" 
             stroke="var(--gold-primary)" strokeWidth="2" 
@@ -78,13 +79,13 @@ export default function SeekGuidance() {
     },
     {
       id: 'money',
-      title: 'Money & Prosperity',
+      titleKey: 'seek_card_money_title',
       sanskrit: 'लक्ष्मी',
-      desc: 'Financial yogas, wealth accumulation periods, and remedial path.',
+      descKey: 'seek_card_money_desc',
       size: 'small',
+      concern: 'Money & Finance',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
-          {/* Lotus geometry */}
           <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="0.75" strokeDasharray="2 2" />
           <g stroke="var(--gold-primary)" strokeWidth="1.25">
             {Array.from({ length: 8 }, (_, i) => {
@@ -104,15 +105,15 @@ export default function SeekGuidance() {
     },
     {
       id: 'family',
-      title: 'Family & Heritage',
+      titleKey: 'seek_card_family_title',
       sanskrit: 'कुटुंब',
-      desc: 'Ancestral karma, domestic harmony, and lineage progeny charts.',
+      descKey: 'seek_card_family_desc',
       size: 'small',
+      concern: 'Family',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="0.75" />
           <circle cx="50" cy="50" r="18" stroke="currentColor" strokeWidth="0.75" strokeDasharray="3 3" />
-          {/* Nested constellation dots */}
           <circle cx="50" cy="50" r="5" fill="var(--gold-primary)" />
           <circle cx="50" cy="22" r="3.5" fill="var(--gold-primary)" />
           <circle cx="50" cy="78" r="3.5" fill="var(--gold-primary)" />
@@ -123,13 +124,13 @@ export default function SeekGuidance() {
     },
     {
       id: 'growth',
-      title: 'Personal Growth',
+      titleKey: 'seek_card_growth_title',
       sanskrit: 'विकास',
-      desc: 'Identify character strengths, obstacles, and spiritual path.',
-      size: 'medium',
+      descKey: 'seek_card_growth_desc',
+      size: 'small',
+      concern: 'Personal Growth',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
-          {/* Moon phases */}
           <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="0.75" strokeDasharray="4 2" />
           <motion.path 
             d="M50 25 A 25 25 0 0 1 50 75 A 15 25 0 0 1 50 25 Z" 
@@ -143,13 +144,13 @@ export default function SeekGuidance() {
     },
     {
       id: 'spirituality',
-      title: 'Spirituality',
+      titleKey: 'seek_card_spirituality_title',
       sanskrit: 'मोक्ष',
-      desc: 'Moksha timings, meditation affinity, and spiritual alignments.',
+      descKey: 'seek_card_spirituality_desc',
       size: 'small',
+      concern: 'Spirituality',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
-          {/* Sri Yantra-inspired central triangles */}
           <polygon points="50,24 68,60 32,60" stroke="var(--gold-primary)" strokeWidth="1.25" />
           <polygon points="50,76 32,40 68,40" stroke="var(--gold-primary)" strokeWidth="1.25" />
           <circle cx="50" cy="50" r="32" stroke="currentColor" strokeWidth="0.75" />
@@ -159,13 +160,13 @@ export default function SeekGuidance() {
     },
     {
       id: 'vastu',
-      title: 'Vastu Shastra',
+      titleKey: 'seek_card_vastu_title',
       sanskrit: 'वास्तु',
-      desc: 'Directional energies, element placement, and home architecture harmony.',
+      descKey: 'seek_card_vastu_desc',
       size: 'large',
+      concern: 'Vastu',
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
-          {/* Square Vastu mandala grid */}
           <rect x="20" y="20" width="60" height="60" stroke="var(--gold-primary)" strokeWidth="1.5" />
           <line x1="20" y1="20" x2="80" y2="80" stroke="currentColor" strokeWidth="0.75" />
           <line x1="80" y1="20" x2="20" y2="80" stroke="currentColor" strokeWidth="0.75" />
@@ -189,21 +190,21 @@ export default function SeekGuidance() {
         {/* Section Header */}
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Jyotish Margdarshan</span>
-            <h2 className="section-title-serif">Where does your question begin?</h2>
+            <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+            <h2 className="section-title-serif">{t('seek_title')}</h2>
             <p className="section-desc-sans">
-              Select a life area to generate your Janma Kundli and explore planetary alignments.
+              {t('seek_desc')}
             </p>
           </div>
         </div>
 
-        {/* Asymmetrical grid layout */}
+        {/* Asymmetrical grid layout - 3 balanced columns */}
         <div className={styles.cardsGrid}>
           {CARDS.map(card => (
             <div 
               key={card.id} 
               className={`${styles.card} ${styles[card.size]}`}
-              onClick={() => handleCardClick(card.title)}
+              onClick={() => handleCardClick(card.concern)}
             >
               {/* Background Sacred Geometry Mandala */}
               <div className={styles.cardBgPattern}>
@@ -219,12 +220,12 @@ export default function SeekGuidance() {
                 {card.iconSvg}
                 <div>
                   <span className={styles.sanskritLabel}>{card.sanskrit}</span>
-                  <h3 className={styles.cardTitle}>{card.title}</h3>
+                  <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
                 </div>
               </div>
-              <p className={styles.cardDesc}>{card.desc}</p>
+              <p className={styles.cardDesc}>{t(card.descKey)}</p>
               
-              <span className={styles.cardCta}>Analyze Placement →</span>
+              <span className={styles.cardCta}>{t('seek_card_cta')}</span>
             </div>
           ))}
         </div>

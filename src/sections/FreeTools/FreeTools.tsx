@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
 import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon } from '../../components/Icons/Icons';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './FreeTools.module.css';
 
 interface FreeToolsProps {
@@ -10,7 +11,7 @@ interface FreeToolsProps {
 }
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {
-  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
+  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction, t } = useAppContext();
   const [activeCategory, setActiveCategory] = useState(FREE_TOOLS_CATEGORIES[0].id);
 
   const active = FREE_TOOLS_CATEGORIES.find(c => c.id === activeCategory)!;
@@ -32,7 +33,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
       setPage('kundli-matching');
     } else if (toolName === 'Daily Horoscope') {
       setPage('horoscope');
-    } else if (toolName === 'Today\'s Panchang' || toolName === 'Muhurat Finder' || toolName === 'Choghadiya' || toolName === 'Abhijit Muhurat') {
+    } else if (toolName === "Today's Panchang" || toolName === 'Muhurat Finder' || toolName === 'Choghadiya' || toolName === 'Abhijit Muhurat') {
       setPage('panchang');
     } else {
       setPage('free-kundli');
@@ -43,20 +44,34 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
   if (featured) {
     return (
       <section className={styles.section} id="tools">
+        <CelestialOrnament
+          type="orbit"
+          className="ornament-bg"
+          style={{
+            position: 'absolute',
+            left: '-100px',
+            bottom: '-100px',
+            width: '400px',
+            height: '400px',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+          animate
+        />
         <div className="section-container">
           <div className="section-header-split">
             <div className="header-left">
-              <span className="section-eyebrow-gold">Free Resources</span>
-              <h2 className="section-title-serif">Free Astrology Tools</h2>
+              <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+              <h2 className="section-title-serif">{t('section_tools_title')}</h2>
               <p className="section-desc-sans">
-                Trusted Vedic astrology tools — free, accurate, and always available.
+                {t('section_tools_desc')}
               </p>
             </div>
             <button 
               className="section-explore-link" 
               onClick={() => { setPage('astrology-tools'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore All Free Tools →
+              {t('cta_explore')} Tools →
             </button>
           </div>
 
@@ -67,16 +82,17 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardLarge}`}
               onClick={() => handleToolClick('Free Kundli')}
             >
+              <CelestialOrnament type="rashi" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
                 <RashiChakraIcon className={styles.cardIconLarge} />
                 <div>
-                  <h3 className={styles.cardTitle}>Free Kundli</h3>
+                  <h3 className={styles.cardTitle}>{t('nav_free_kundli')}</h3>
                   <p className={styles.cardDesc}>
-                    Generate your complete Vedic horoscope, planetary placements, and divisional charts.
+                    {t('hero_subhead')}
                   </p>
                 </div>
               </div>
-              <span className={styles.arrowLink}>Generate Chart →</span>
+              <span className={styles.arrowLink}>{t('cta_generate')} →</span>
             </div>
 
             {/* MEDIUM: Kundli Milan */}
@@ -84,14 +100,15 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardMedium}`}
               onClick={() => handleToolClick('Kundli Milan')}
             >
+              <CelestialOrnament type="kundli" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
                 <MarriageIcon className={styles.cardIconMedium} />
                 <div>
-                  <h3 className={styles.cardTitle}>Kundli Milan</h3>
-                  <p className={styles.cardDesc}>Vedic relationship compatibility matching.</p>
+                  <h3 className={styles.cardTitle}>{t('seek_card_marriage_title')}</h3>
+                  <p className={styles.cardDesc}>{t('seek_card_marriage_desc')}</p>
                 </div>
               </div>
-              <span className={styles.arrowLink}>Check Match →</span>
+              <span className={styles.arrowLink}>{t('seek_card_cta')}</span>
             </div>
 
             {/* MEDIUM: Nakshatra Finder */}
@@ -99,14 +116,15 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardMedium}`}
               onClick={() => handleToolClick('Nakshatra')}
             >
+              <CelestialOrnament type="nakshatra" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
                 <ConstellationIcon className={styles.cardIconMedium} />
                 <div>
-                  <h3 className={styles.cardTitle}>Nakshatra Finder</h3>
-                  <p className={styles.cardDesc}>Identify your birth star and planetary lord.</p>
+                  <h3 className={styles.cardTitle}>{t('seek_card_growth_title')}</h3>
+                  <p className={styles.cardDesc}>{t('seek_card_growth_desc')}</p>
                 </div>
               </div>
-              <span className={styles.arrowLink}>Find Star →</span>
+              <span className={styles.arrowLink}>{t('seek_card_cta')}</span>
             </div>
 
             {/* SMALL: Mangal Dosha */}
@@ -114,9 +132,10 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardSmall}`}
               onClick={() => handleToolClick('Mangal Dosha')}
             >
+              <CelestialOrnament type="yantra" className={styles.cardOrnamentSmall} />
               <WealthIcon className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Mangal Dosha</h3>
-              <p className={styles.cardDescSmall}>Martian affliction calculator.</p>
+              <p className={styles.cardDescSmall}>{t('seek_card_marriage_desc')}</p>
             </div>
 
             {/* SMALL: Sade Sati */}
@@ -124,9 +143,10 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardSmall}`}
               onClick={() => handleToolClick('Sade Sati')}
             >
+              <CelestialOrnament type="chandra" className={styles.cardOrnamentSmall} />
               <AcharyaIcon className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Sade Sati</h3>
-              <p className={styles.cardDescSmall}>Saturn transit calculator.</p>
+              <p className={styles.cardDescSmall}>{t('seek_card_spirituality_desc')}</p>
             </div>
 
             {/* SMALL: Numerology */}
@@ -134,6 +154,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className={`${styles.featuredCard} ${styles.cardSmall}`}
               onClick={() => handleToolClick('Numerology')}
             >
+              <CelestialOrnament type="mandala" className={styles.cardOrnamentSmall} />
               <CareerIcon className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Numerology</h3>
               <p className={styles.cardDescSmall}>Life path number forecast.</p>
@@ -144,49 +165,70 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
     );
   }
 
-  // Normal, complete page view
   return (
     <section className={styles.section} id="tools">
-      <div className="section-container">
-        {/* Category Tabs */}
-        <div className={styles.tabs}>
-          {FREE_TOOLS_CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              className={`${styles.tab} ${activeCategory === cat.id ? styles.tabActive : ''}`}
-              onClick={() => setActiveCategory(cat.id)}
-              id={`tool-cat-${cat.id}`}
-            >
-              <span className={styles.tabIcon} style={{ color: cat.color }}>{cat.icon}</span>
-              {cat.label}
-            </button>
-          ))}
+      <CelestialOrnament
+        type="yantra"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          right: '-80px',
+          top: '40px',
+          width: '320px',
+          height: '320px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
+      <div className="section-container" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="section-header">
+          <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+          <h2 className="section-title-serif">{t('section_tools_title')}</h2>
+          <p className="section-desc-sans">
+            {t('section_tools_desc')}
+          </p>
         </div>
 
-        {/* Tools Grid */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeCategory}
-            className={styles.toolsGrid}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            {active.tools.map((tool, i) => (
+        {/* Full Tabbed Layout for Main Tools Page */}
+        <div className={styles.tabsContainer}>
+          <div className={styles.tabList}>
+            {FREE_TOOLS_CATEGORIES.map(category => (
               <button
-                key={tool}
-                className={styles.toolCard}
-                onClick={() => handleToolClick(tool)}
-                id={`tool-${tool.replace(/\s+/g, '-').toLowerCase()}`}
+                key={category.id}
+                className={`${styles.tabBtn} ${activeCategory === category.id ? styles.tabActive : ''}`}
+                onClick={() => setActiveCategory(category.id)}
               >
-                <span className={styles.toolIcon} style={{ color: active.color }}>{active.icon}</span>
-                <span className={styles.toolName}>{tool}</span>
-                <span className={styles.toolArrow}>→</span>
+                {category.label}
               </button>
             ))}
-          </motion.div>
-        </AnimatePresence>
+          </div>
+
+          <div className={styles.tabContent}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeCategory}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className={styles.toolsGrid}
+              >
+                {active.tools.map(tool => (
+                  <div
+                    key={tool}
+                    className={styles.toolCard}
+                    onClick={() => handleToolClick(tool)}
+                  >
+                    <div className={styles.toolIcon}>✦</div>
+                    <span className={styles.toolName}>{tool}</span>
+                    <span className={styles.toolArrow}>→</span>
+                  </div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-.section { background: var(--color-dark-maroon); padding: var(--space-24) 0; border-bottom: 1px solid rgba(184, 138, 59, 0.15); }
+.section { background: var(--color-dark-maroon); padding: var(--space-24) 0; border-bottom: 1px solid rgba(184, 138, 59, 0.15); position: relative; overflow: hidden; }
 
 .container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--space-8); box-sizing: border-box; }
 

@@ -76,17 +76,14 @@ export default function LoginModal() {
   return (
     <AnimatePresence>
       {showLoginModal && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            className={styles.backdrop}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={handleClose}
-          />
-
+        <motion.div
+          className={styles.backdrop}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          onClick={handleClose}
+        >
           {/* Modal */}
           <motion.div
             className={styles.modal}
@@ -97,6 +94,7 @@ export default function LoginModal() {
             role="dialog"
             aria-modal="true"
             aria-label="Sign in to TredevAstro"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
@@ -118,8 +116,11 @@ export default function LoginModal() {
 
             {/* Heading */}
             <h2 className={styles.heading}>
-              {mode === 'login' ? 'Sign in to continue' : 'Begin your journey'}
-              <em className={styles.headingItalic}> your journey.</em>
+              {mode === 'login' ? (
+                <>Sign in to continue <em className={styles.headingItalic}>your journey</em>.</>
+              ) : (
+                <>Begin <em className={styles.headingItalic}>your journey</em>.</>
+              )}
             </h2>
             <p className={styles.subheading}>
               {pendingAction
@@ -198,7 +199,7 @@ export default function LoginModal() {
               <span className={styles.privacyLink}>Privacy Policy</span>
             </p>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );

@@ -3,6 +3,7 @@
 .section {
   padding: var(--space-20) 0;
   position: relative;
+  overflow: hidden;
 }
 
 .container {

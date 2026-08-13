@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { useAppContext } from '../../context/AppContext';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './GuidanceBanner.module.css';
 
 export default function GuidanceBanner() {
@@ -21,7 +21,7 @@ export default function GuidanceBanner() {
   }, []);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !containerRef.current) return;
 
     const canvas = canvasRef.current;
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -41,7 +41,8 @@ export default function GuidanceBanner() {
       video.muted = true;
       video.playsInline = true;
       video.autoplay = true;
-      // Load fallback image first, swap when video is ready
+      
+      // Load fallback image first
       texture = new THREE.TextureLoader().load('/sea-storm.jpg');
       
       video.addEventListener('canplaythrough', () => {
@@ -58,42 +59,55 @@ export default function GuidanceBanner() {
       texture = new THREE.TextureLoader().load('/sea-storm.jpg');
     }
 
-    // Sacred geometry texture canvas (procedural wire yantra overlay)
+    // Sacred geometry texture canvas (extremely subtle orbit circles and constellation lines)
     const drawYantraCanvas = () => {
       const c = document.createElement('canvas');
-      c.width = 256;
-      c.height = 256;
+      c.width = 512;
+      c.height = 512;
       const ctx = c.getContext('2d')!;
-      ctx.strokeStyle = 'rgba(199, 161, 90, 0.09)'; // Barely visible gold lines
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(181, 138, 59, 0.05)'; // Muted gold (opacity 0.05)
+      ctx.lineWidth = 0.75;
 
-      // Draw concentric yantra geometry
-      ctx.translate(128, 128);
+      ctx.translate(256, 256);
+      
+      // concentric orbits
       ctx.beginPath();
-      ctx.arc(0, 0, 110, 0, Math.PI * 2);
+      ctx.arc(0, 0, 220, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Interlocking triangles
-      for (let i = 0; i < 4; i++) {
-        ctx.rotate(Math.PI / 4);
+      ctx.beginPath();
+      ctx.arc(0, 0, 150, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 80, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // 12 points with connecting constellation lines
+      ctx.fillStyle = 'rgba(208, 176, 106, 0.12)';
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const x = Math.cos(angle) * 150;
+        const y = Math.sin(angle) * 150;
+        
         ctx.beginPath();
-        ctx.moveTo(0, -90);
-        ctx.lineTo(78, 45);
-        ctx.lineTo(-78, 45);
-        ctx.closePath();
-        ctx.stroke();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (i % 3 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          const nextAngle = ((i + 3) / 12) * Math.PI * 2;
+          ctx.lineTo(Math.cos(nextAngle) * 150, Math.sin(nextAngle) * 150);
+          ctx.stroke();
+        }
       }
-
-      ctx.beginPath();
-      ctx.arc(0, 0, 50, 0, Math.PI * 2);
-      ctx.stroke();
 
       return new THREE.CanvasTexture(c);
     };
 
     const yantraTexture = drawYantraCanvas();
 
-    // Custom fragment shader transforming aquatic storm to celestial guidance light
     const vertexShader = `
       varying vec2 vUv;
       void main() {
@@ -125,47 +139,59 @@ export default function GuidanceBanner() {
       void main() {
         vec2 uv = vUv;
 
+        // CROP OUT the bottom 38% of the video to completely hide the boat, waves and ocean waves
+        vec2 croppedUv = vec2(uv.x, 0.38 + uv.y * 0.62);
+
         // Apply extremely slow, celestial coordinate warp representing cosmic dust drift
         if (uReducedMotion == 0.0) {
-          float warpVal = noise(uv * 3.5 + uTime * 0.05);
-          uv.x += sin(uv.y * 5.0 + uTime * 0.02) * 0.015 * warpVal;
-          uv.y += cos(uv.x * 5.0 + uTime * 0.01) * 0.015 * warpVal;
+          float warpVal = noise(croppedUv * 3.5 + uTime * 0.03);
+          croppedUv.x += sin(croppedUv.y * 5.0 + uTime * 0.015) * 0.012 * warpVal;
+          croppedUv.y += cos(croppedUv.x * 5.0 + uTime * 0.008) * 0.012 * warpVal;
         }
 
         // Add subtle parallax offset from user cursor
-        uv += uMouse * 0.006;
+        croppedUv += uMouse * 0.005;
 
-        vec4 texColor = texture2D(uTexture, uv);
+        vec4 texColor = texture2D(uTexture, croppedUv);
 
-        // Get relative luminance/brightness of the storm wave textures
+        // Get relative luminance/brightness of the storm texture
         float luma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
 
         // Remap to celestial indigo, plum, maroon and golden tones
-        vec3 darkIndigo = vec3(0.03, 0.04, 0.11); // #050714
-        vec3 darkPlum = vec3(0.09, 0.06, 0.12);   // #17101F
-        vec3 goldPrimary = vec3(0.78, 0.63, 0.35); // #C7A15A
-        vec3 saffronSoft = vec3(0.60, 0.33, 0.16); // #9A5428
+        vec3 darkIndigo = vec3(0.02, 0.03, 0.08); // #050714
+        vec3 midnightNavy = vec3(0.01, 0.02, 0.05);
+        vec3 darkPlum = vec3(0.06, 0.03, 0.08);   // #100814
+        vec3 antiqueGold = vec3(0.71, 0.54, 0.23); // #b58a3b
+        vec3 saffronSoft = vec3(0.60, 0.33, 0.16); // #9a5428
 
         // Slowly breathing intensity for the golden guidance light breaking through clouds
         float breathe = 1.0;
         if (uReducedMotion == 0.0) {
-          breathe = 0.85 + 0.25 * sin(uTime * 0.22);
+          breathe = 0.85 + 0.20 * sin(uTime * 0.18);
         }
 
-        // Remapping formula:
-        // Shadows are mapped to midnight indigo / plum
-        // High-lights are mapped to glowing gold / saffron
-        vec3 celestialBg = mix(darkIndigo, darkPlum, uv.y);
-        vec3 goldenGlow = mix(saffronSoft, goldPrimary, breathe);
+        vec3 celestialBg = mix(midnightNavy, darkPlum, uv.y);
+        celestialBg = mix(celestialBg, darkIndigo, noise(uv * 2.0 + uTime * 0.02) * 0.4);
+
+        // Concentrated vertical beam on the right side
+        float beam = smoothstep(0.4, 0.0, abs(uv.x - 0.75 - sin(uTime * 0.03) * 0.03));
+        beam *= smoothstep(0.0, 0.8, uv.y); 
+
+        // Small glowing celestial focal point at the bottom right
+        float focalPoint = 1.0 - length(uv - vec2(0.75, 0.18 + sin(uTime * 0.08) * 0.015));
+        focalPoint = pow(max(focalPoint, 0.0), 36.0) * 0.7;
+
+        vec3 goldenGlow = mix(saffronSoft, antiqueGold, breathe);
 
         // Blend the colors based on luma
-        vec3 finalColor = mix(celestialBg, goldenGlow, smoothstep(0.35, 0.88, luma));
+        vec3 finalColor = mix(celestialBg, goldenGlow, smoothstep(0.28, 0.85, luma));
+        finalColor += goldenGlow * (beam * 0.25 + focalPoint);
 
         // Blend in yantra line texture overlay
         vec4 yantraColor = texture2D(uYantra, vUv);
-        finalColor += yantraColor.rgb * 0.5;
+        finalColor += yantraColor.rgb * 0.8;
 
-        // Soft vignette
+        // Soft vignette to fade boundaries
         float dist = length(vUv - vec2(0.5));
         finalColor *= smoothstep(0.9, 0.45, dist);
 
@@ -194,7 +220,7 @@ export default function GuidanceBanner() {
     scene.add(mesh);
 
     // Sparse gold/saffron points for Nakshatra particles
-    const particleCount = reducedMotion ? 15 : 45;
+    const particleCount = reducedMotion ? 12 : 36;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
     const particleSpeeds: number[] = [];
@@ -203,15 +229,15 @@ export default function GuidanceBanner() {
       particlePos[i * 3] = (Math.random() - 0.5) * 2;
       particlePos[i * 3 + 1] = (Math.random() - 0.5) * 2;
       particlePos[i * 3 + 2] = 0;
-      particleSpeeds.push(0.0003 + Math.random() * 0.0006);
+      particleSpeeds.push(0.0002 + Math.random() * 0.0004);
     }
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
 
     const particleMat = new THREE.PointsMaterial({
       color: 0xd0b06a, // gold
-      size: 0.02,
+      size: 0.015,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.5,
       blending: THREE.AdditiveBlending
     });
 
@@ -220,12 +246,13 @@ export default function GuidanceBanner() {
 
     // Mouse listener inside container limits for parallax
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      mouse2D.set(x * 0.5, y * 0.5);
+      mouse2D.set(x * 0.4, y * 0.4);
     };
-    window.addEventListener('mousemove', handleMouseMove);
+    containerRef.current.addEventListener('mousemove', handleMouseMove);
 
     // Resize handler
     const handleResize = () => {
@@ -251,7 +278,6 @@ export default function GuidanceBanner() {
         const posArr = particles.geometry.attributes.position.array as Float32Array;
         for (let i = 0; i < particleCount; i++) {
           posArr[i * 3 + 1] += particleSpeeds[i];
-          // Reset if drifting out of bounds
           if (posArr[i * 3 + 1] > 1) {
             posArr[i * 3 + 1] = -1;
             posArr[i * 3] = (Math.random() - 0.5) * 2;
@@ -267,7 +293,9 @@ export default function GuidanceBanner() {
 
     return () => {
       cancelAnimationFrame(animFrame);
-      window.removeEventListener('mousemove', handleMouseMove);
+      if (containerRef.current) {
+        containerRef.current.removeEventListener('mousemove', handleMouseMove);
+      }
       window.removeEventListener('resize', handleResize);
       geometry.dispose();
       shaderMaterial.dispose();
@@ -286,39 +314,46 @@ export default function GuidanceBanner() {
 
   return (
     <section className={styles.section}>
-      <div className="section-container">
-        <div className={styles.bannerGrid}>
-          {/* Content Block */}
+      <div className={styles.splitGrid}>
+        
+        {/* Left Side: Clean Editorial Content */}
+        <div className={styles.leftSide}>
+          {/* Faint Rashi Chakra behind the text */}
+          <CelestialOrnament type="rashi" className={styles.leftOrnament} />
+          
           <div className={styles.contentArea}>
-            <span className={styles.eyebrow}>✦ JYOTISH GUIDANCE</span>
+            <span className={styles.eyebrow}>{t('guidance_eyebrow')}</span>
             <h2 className={styles.headline}>
-              When the path feels unclear,<br />
-              <span className={styles.italicText}>look to the stars.</span>
+              {t('guidance_headline')}<br />
+              <span className={styles.goldText}>{t('guidance_headline_italic')}</span>
             </h2>
             <p className={styles.description}>
-              Explore your Kundli, understand the movement of the Grahas, and discover the guidance written in your celestial map.
+              {t('guidance_desc')}
             </p>
             <div className={styles.actions}>
               <button 
-                className="btn btn-gold btn-lg" 
+                className={styles.btnGoldBanner}
                 onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               >
-                Explore Your Kundli
+                {t('guidance_cta_kundli')}
               </button>
               <button 
-                className="btn btn-outline-light btn-lg" 
+                className={styles.btnWhiteBanner}
                 onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               >
-                Consult an Acharya
+                {t('guidance_cta_consult')}
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Visual Render Canvas */}
-          <div className={styles.visualArea} ref={containerRef}>
-            <canvas ref={canvasRef} className={styles.canvas} />
+        {/* Right Side: Large Cinematic Visual */}
+        <div className={styles.rightSide} ref={containerRef}>
+          <div className={styles.canvasContainer}>
+            <canvas ref={canvasRef} className={styles.canvasBackdrop} />
           </div>
         </div>
+
       </div>
     </section>
   );

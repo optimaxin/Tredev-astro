@@ -12,6 +12,7 @@ import {
   VastuIcon, 
   ManuscriptIcon 
 } from '../../components/Icons/Icons';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Store.module.css';
 
 const CATEGORIES = ['All', 'Gemstones', 'Rudraksha', 'Crystals', 'Bracelets', 'Yantras', 'Puja Essentials'];
@@ -27,7 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function Store({ featured = false }: { featured?: boolean }) {
-  const { setPage } = useAppContext();
+  const { setPage, t } = useAppContext();
   const [activeCategory, setActiveCategory] = useState('All');
 
   const getCategoryIcon = (cat: string) => {
@@ -50,14 +51,28 @@ export default function Store({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="store">
-      <div className={styles.container}>
+      <CelestialOrnament
+        type="yantra"
+        className="ornament-bg"
+        style={{
+          position: 'absolute',
+          right: '-100px',
+          top: '15%',
+          width: '450px',
+          height: '450px',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+        animate
+      />
+      <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Remedial Astrology</span>
-            <h2 className="section-title-serif">TredevStore</h2>
+            <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+            <h2 className="section-title-serif">{t('section_store_title')}</h2>
             <p className="section-desc-sans">
-              Authentic, energized gemstones, yantras and spiritual tools, carefully curated and responsibly sourced.
+              {t('section_store_desc')}
             </p>
           </div>
           {featured && (
@@ -65,7 +80,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('store'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore TredevStore →
+              {t('cta_explore')} TredevStore →
             </button>
           )}
         </div>
@@ -109,7 +124,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
                   id={`store-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getCategoryIcon(cat)}</span>
-                  {CATEGORY_LABELS[cat] || cat}
+                  {t('cat_' + cat.toLowerCase().replace(' ', '_')) || cat}
                 </button>
               ))}
             </div>
@@ -152,7 +167,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
 }
 
 function ProductCard({ product: p, featured = false }: { product: typeof PRODUCTS[0]; featured?: boolean }) {
-  const { setPage, setSelectedId, addToCart } = useAppContext();
+  const { setPage, setSelectedId, addToCart, t } = useAppContext();
   const [hovered, setHovered] = useState(false);
   const [show3D, setShow3D] = useState(featured && (p.category === 'Gemstones' || p.category === 'Crystals' || p.category === 'Yantras'));
   const stars = '★'.repeat(Math.floor(p.rating)) + (p.rating % 1 ? '½' : '');
@@ -182,12 +197,12 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
     e.stopPropagation();
     addToCart({
       id: p.id,
-      name: p.name,
+      name: t('prod_' + p.id + '_name') || p.name,
       price: p.price,
       quantity: 1,
       category: p.category
     });
-    alert(`${p.name} added to cart.`);
+    alert(`${t('prod_' + p.id + '_name') || p.name} added to cart.`);
   };
 
   return (
@@ -249,9 +264,11 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
 
       {/* Info */}
       <div className={styles.productInfo}>
-        <div className={styles.productCategory}>{p.category}</div>
-        <h4 className={styles.productName}>{p.name}</h4>
-        <p className={styles.productAssoc}>{p.association}</p>
+        <div className={styles.productCategory}>
+          {t('cat_' + p.category.toLowerCase().replace(' ', '_')) || p.category}
+        </div>
+        <h4 className={styles.productName}>{t('prod_' + p.id + '_name') || p.name}</h4>
+        <p className={styles.productAssoc}>{t('prod_' + p.id + '_assoc') || p.association}</p>
 
         <div className={styles.productRating}>
           <span className={styles.stars}>{stars}</span>
@@ -266,7 +283,7 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
             )}
           </div>
           <button className="btn btn-gold btn-sm" id={`product-${p.id}`} onClick={handleAddToCart}>
-            Add to Cart
+            {t('btn_add_to_cart') || 'Add to Cart'}
           </button>
         </div>
       </div>

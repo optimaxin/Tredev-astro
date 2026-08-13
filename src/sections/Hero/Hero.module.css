@@ -180,6 +180,15 @@
 .ctaSecondary {
   font-size: var(--text-base) !important;
   padding: var(--space-4) var(--space-8) !important;
+  color: #F1E9DC !important;
+  border-color: rgba(241, 233, 220, 0.35) !important;
+  background: transparent !important;
+}
+
+.ctaSecondary:hover {
+  background: rgba(241, 233, 220, 0.08) !important;
+  color: var(--color-gold) !important;
+  border-color: var(--color-gold) !important;
 }
 
 .trustLine {
@@ -267,8 +276,17 @@
 }
 
 :global([data-theme='light']) .hudContainer {
-  background: rgba(250, 247, 240, 0.78);
-  border-color: rgba(181, 138, 59, 0.22);
+  background: rgba(250, 247, 240, 0.92);
+  border-color: rgba(181, 138, 59, 0.35);
+  box-shadow: 0 4px 20px rgba(93, 71, 48, 0.12);
+}
+
+:global([data-theme='light']) .hudContainer .hudValue {
+  color: #182333 !important;
+}
+
+:global([data-theme='light']) .hudContainer .hudLabel {
+  color: #9A5428 !important;
 }
 
 
