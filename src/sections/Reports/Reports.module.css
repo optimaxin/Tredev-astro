@@ -134,6 +134,14 @@
   line-height: 1;
 }
 
+.reportPngIcon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(199, 161, 90, 0.25));
+  border-radius: 8px;
+}
+
 .reportMeta {
   display: flex;
   align-items: center;

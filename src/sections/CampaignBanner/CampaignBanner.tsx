@@ -17,6 +17,7 @@ const SLIDES = [
     symbol: '☉',
     symbolLabel: 'Surya',
     decorSvg: 'kundli',
+    image: '/acharya/A1.png',
   },
   {
     id: 1,
@@ -31,6 +32,7 @@ const SLIDES = [
     symbol: '☽',
     symbolLabel: 'Chandra',
     decorSvg: 'acharya',
+    image: '/acharya/A2.png',
   },
   {
     id: 2,
@@ -45,6 +47,7 @@ const SLIDES = [
     symbol: '♃',
     symbolLabel: 'Guru',
     decorSvg: 'report',
+    image: '/acharya/A3.png',
   },
   {
     id: 3,
@@ -59,6 +62,7 @@ const SLIDES = [
     symbol: '◉',
     symbolLabel: 'Yantra',
     decorSvg: 'store',
+    image: '/acharya/A4.png',
   },
   {
     id: 4,
@@ -73,6 +77,7 @@ const SLIDES = [
     symbol: '✦',
     symbolLabel: 'Nakshatra',
     decorSvg: 'academy',
+    image: '/acharya/A1.png',
   },
 ];
 
@@ -310,9 +315,18 @@ export default function CampaignBanner() {
               </div>
             </div>
 
-            {/* Right: Artwork */}
+            {/* Right: Artwork — chakra SVG behind, Acharya image on top */}
             <div className={styles.slideArtwork}>
               <SlideArtwork slide={slide} isActive={true} />
+              {/* Acharya image layer — absolutely over the chakra region */}
+              <img
+                key={slide.id}
+                src={slide.image}
+                alt=""
+                aria-hidden="true"
+                className={styles.slideAcharyaImg}
+                draggable={false}
+              />
             </div>
           </motion.div>
         </AnimatePresence>

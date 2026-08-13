@@ -28,6 +28,7 @@ import AcademySection from '../sections/Academy/Academy';
 import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
+import AuthPage from './AuthPage/AuthPage';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -39,6 +40,10 @@ export default function PageRenderer() {
 
   // Render sub-page layout
   switch (page) {
+    case 'auth':
+    case 'login':
+      return <AuthPage />;
+
     case 'home':
       return (
         <>

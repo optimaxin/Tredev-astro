@@ -255,8 +255,8 @@ export default function Navigation() {
             <button 
               className={styles.loginBtn}
               onClick={() => {
-                setPendingAction('profile');
-                setShowLoginModal(true);
+                setPage('auth');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               aria-label="Sign In"
             >

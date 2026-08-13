@@ -1,6 +1,30 @@
-.section { background: var(--color-surface); padding: var(--space-20) 0; }
+.section { 
+  position: relative;
+  background: var(--color-surface); 
+  padding: var(--space-20) 0; 
+  overflow: hidden;
+}
 
-.container { max-width: 1100px; margin: 0 auto; padding: 0 var(--space-8); }
+.container { 
+  position: relative;
+  z-index: 2;
+  max-width: 1100px; 
+  margin: 0 auto; 
+  padding: 0 var(--space-8); 
+}
+
+.bgOrnament {
+  position: absolute;
+  top: 50%;
+  left: -150px;
+  width: 460px;
+  height: 460px;
+  color: var(--gold-primary);
+  opacity: 0.05;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(15deg);
+  z-index: 1;
+}
 
 .header { text-align: center; margin-bottom: var(--space-12); }
 
@@ -36,15 +60,23 @@
 .accent_cyan:hover { border-color: rgba(115, 217, 212, 0.25); }
 
 .iconWrap {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius-md);
   background: rgba(200, 169, 107, 0.08);
   border: 1px solid rgba(200, 169, 107, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.pillarIconImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(199, 161, 90, 0.3));
 }
 
 .accent_cyan .iconWrap {

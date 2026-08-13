@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './WhyTredevAstro.module.css';
 
 const PILLARS = [
@@ -32,6 +33,7 @@ const PILLARS = [
 export default function WhyTredevAstro() {
   return (
     <section className={styles.section} id="why">
+      <CelestialOrnament type="orbit" className={styles.bgOrnament} />
       <div className={styles.container}>
         <motion.div
           className={styles.header}

@@ -966,7 +966,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
   }
 };
 const defaultProfile: BirthProfile = {
-  name: 'Arjun Sharma',
+  name: 'Sparsh',
   dob: '1990-11-08',
   tob: '06:45',
   place: 'New Delhi, India',
@@ -1002,7 +1002,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Auth State (mock prototype)
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('isLoggedIn') === 'true';
+    const saved = localStorage.getItem('isLoggedIn');
+    return saved === null ? true : saved === 'true';
   });
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);

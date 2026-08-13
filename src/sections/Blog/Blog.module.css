@@ -1,6 +1,30 @@
-.section { background: var(--bg-secondary); padding: var(--space-24) 0; }
+.section { 
+  position: relative;
+  background: var(--bg-secondary); 
+  padding: var(--space-24) 0; 
+  overflow: hidden;
+}
 
-.container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-8); }
+.container { 
+  position: relative;
+  z-index: 2;
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 0 var(--space-8); 
+}
+
+.bgOrnament {
+  position: absolute;
+  top: 50%;
+  right: -150px;
+  width: 480px;
+  height: 480px;
+  color: var(--gold-primary);
+  opacity: 0.04;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(-10deg);
+  z-index: 1;
+}
 
 .header { margin-bottom: var(--space-10); }
 

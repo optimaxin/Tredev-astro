@@ -1,27 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import HeroCanvas from './HeroCanvas';
-import CornerFlames from './CornerFlames';
 import { useAppContext } from '../../context/AppContext';
 import styles from './Hero.module.css';
-
-function getNarrativePrompt(progress: number): string {
-  if (progress < 0.05) return 'ENTER TREDEVASTRO';
-  if (progress < 0.18) return 'DISCOVER YOUR SKY';
-  if (progress < 0.35) return 'UNDERSTAND YOUR CHART';
-  if (progress < 0.52) return 'ASK';
-  if (progress < 0.68) return 'CONNECT';
-  if (progress < 0.82) return 'GO DEEPER';
-  if (progress < 0.95) return 'EXPLORE';
-  return 'YOUR JOURNEY CONTINUES';
-}
 
 export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [hoveredItem, setHoveredItem] = useState<{ name: string; type: 'graha' | 'rashi'; details: string } | null>(null);
-  const { theme, t } = useAppContext();
-  const isLightTheme = theme === 'light';
+  const { t } = useAppContext();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,185 +27,158 @@ export default function Hero() {
   const scrollToKundli = () => {
     document.querySelector('#kundli')?.scrollIntoView({ behavior: 'smooth' });
   };
+  
   const scrollToAstrologers = () => {
     document.querySelector('#astrologers')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <section ref={heroRef} className={styles.hero} id="hero" aria-label="Hero">
-      {/* 3D Canvas with Scroll Progress and Hover States */}
-      <div className={styles.canvasWrap}>
-        <HeroCanvas 
-          className={styles.canvas} 
-          scrollProgress={scrollProgress} 
-          onHoverItem={setHoveredItem}
-          isLightTheme={isLightTheme}
-        />
-        {/* Procedural diya corner flames */}
-        <CornerFlames />
-      </div>
+      {/* Background pre-rendered Video Loop */}
+      <video
+        src="/Hero.mp4"
+        className={styles.bgVideo}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
 
-      {/* Gradient overlay */}
+      {/* Atmospheric dark vignette overlay */}
       <div className={styles.overlay} />
-      <div className={styles.overlayBottom} />
 
-      {/* Content */}
+      {/* Main Content Layout */}
       <div className={styles.content}>
+        {/* Left Column: Hero Text & CTAs */}
         <motion.div
-          className={styles.contentInner}
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className={styles.leftColumn}
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1.1, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          {/* Eyebrow */}
+          {/* Eyebrow Category */}
           <motion.span
             className={styles.eyebrow}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
+            transition={{ delay: 0.2, duration: 0.7 }}
           >
-            ✦ Jyotish · Dharma · Grahas · Nakshatras
+            ✦ JYOTISH · DHARMA · GRAHAS · NAKSHATRAS
           </motion.span>
 
           {/* Main Headline */}
           <motion.h1
             className={styles.headline}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ delay: 0.4, duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            {t('hero_headline')}<br />
-            <em className={styles.headlineItalic}>{t('hero_headline_italic')}</em>
+            Your Stars. Your<br />
+            Dharma.<br />
+            <em className={styles.goldItalic}>Your Journey.</em>
           </motion.h1>
 
-          <span className={styles.hindiEyebrow}>{t('hero_hindi_eyebrow')}</span>
+          {/* Hindi Tagline */}
+          <motion.div
+            className={styles.tagline}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.7 }}
+          >
+            "Apne Aakash Ko Samjhiye"
+          </motion.div>
 
-          {/* Subheadline */}
+          {/* Subheadline Description */}
           <motion.p
             className={styles.subhead}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.8 }}
+            transition={{ delay: 0.75, duration: 0.8 }}
           >
-            {t('hero_subhead')}
+            Personalized Vedic astrology, expert guidance, intelligent insights and timeless Jyotish wisdom.
           </motion.p>
 
-          {/* CTAs */}
+          {/* Action CTAs */}
           <motion.div
             className={styles.ctas}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.8 }}
+            transition={{ delay: 0.95, duration: 0.8 }}
           >
             <button
-              className={`${styles.ctaPrimary} btn btn-gold btn-lg`}
+              className={styles.btnPrimary}
               onClick={scrollToKundli}
               id="hero-create-kundli"
             >
-              {t('hero_cta_kundli')}
+              Generate Free Kundli
             </button>
             <button
-              className={`${styles.ctaSecondary} btn btn-outline-light btn-lg`}
+              className={styles.btnSecondary}
               onClick={scrollToAstrologers}
               id="hero-talk-astrologer"
             >
-              {t('hero_cta_consult')}
+              Consult an Acharya
             </button>
           </motion.div>
 
-          {/* Trust Line */}
+          {/* Trust Indicators */}
           <motion.div
             className={styles.trustLine}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 1 }}
+            transition={{ delay: 1.2, duration: 0.9 }}
           >
-            <TrustDot />
-            {t('hero_trust_acharyas')}
-            <span className={styles.trustSep}>·</span>
-            {t('hero_trust_jyotish')}
-            <span className={styles.trustSep}>·</span>
-            {t('hero_trust_secure')}
+            <span className={styles.greenDot} />
+            Verified Acharyas <span className={styles.trustSep}>·</span> Personalized Jyotish <span className={styles.trustSep}>·</span> Private &amp; Secure
           </motion.div>
         </motion.div>
+      </div>
+
+      {/* Translucent Glass Wave Layer at Hero Bottom */}
+      <div className={styles.bottomWaveContainer}>
+        <svg
+          className={styles.waveSvg}
+          viewBox="0 0 1440 240"
+          preserveAspectRatio="none"
+        >
+          {/* Back Wave */}
+          <path
+            d="M0,130 C320,190 640,70 1000,150 C1200,190 1360,110 1440,130 L1440,240 L0,240 Z"
+            fill="rgba(58, 23, 8, 0.15)"
+            stroke="rgba(231, 165, 26, 0.15)"
+            strokeWidth="1.2"
+          />
+          {/* Middle Wave */}
+          <path
+            d="M0,160 C240,110 520,200 860,120 C1140,60 1320,170 1440,150 L1440,240 L0,240 Z"
+            fill="rgba(74, 30, 9, 0.22)"
+            stroke="rgba(245, 183, 42, 0.25)"
+            strokeWidth="1.2"
+          />
+          {/* Foreground Wave */}
+          <path
+            d="M0,190 C360,140 720,210 1080,160 C1280,130 1380,185 1440,180 L1440,240 L0,240 Z"
+            fill="#120704"
+            stroke="rgba(231, 165, 26, 0.35)"
+            strokeWidth="1.5"
+          />
+        </svg>
 
         {/* Scroll Indicator */}
         <motion.div
           className={styles.scrollIndicator}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 1 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.4, duration: 0.8 }}
         >
           <div className={styles.scrollLine} />
-          <span className={styles.scrollText}>{t('hero_scroll_text')}</span>
+          <div className={styles.scrollMouse}>
+            <div className={styles.scrollDot} />
+          </div>
+          <span className={styles.scrollText}>SCROLL TO EXPLORE</span>
+          <span className={styles.scrollChevron}>⌄</span>
         </motion.div>
-      </div>
-
-      {/* Floating Interactive Tooltip Box for Rashi Chakra hover */}
-      <AnimatePresence>
-        {hoveredItem && scrollProgress < 0.12 && (
-          <motion.div
-            className={styles.tooltipBox}
-            initial={{ opacity: 0, x: -20, y: -20 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            <span className={styles.tooltipType}>
-              {hoveredItem.type === 'graha' ? 'Graha · planetary deity' : 'Rashi · zodiac sign'}
-            </span>
-            <h3 className={styles.tooltipName}>{hoveredItem.name}</h3>
-            <p className={styles.tooltipDetails}>{hoveredItem.details}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Cinematic Narrative HUD */}
-      <div 
-        className={styles.hudContainer}
-        style={{
-          opacity: scrollProgress > 0.01 ? 1 : 0,
-        }}
-      >
-        <div className={styles.hudCircle}>
-          <svg width="40" height="40" viewBox="0 0 40 40" className={styles.hudSvg}>
-            <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(184, 138, 59, 0.15)" strokeWidth="1" />
-            <circle 
-              cx="20" 
-              cy="20" 
-              r="18" 
-              fill="none" 
-              stroke="var(--color-gold)" 
-              strokeWidth="1.5"
-              strokeDasharray={2 * Math.PI * 18}
-              strokeDashoffset={2 * Math.PI * 18 * (1 - scrollProgress)}
-              style={{ transition: 'stroke-dashoffset 0.1s ease-out' }}
-            />
-          </svg>
-          <span className={styles.hudPointer}>✦</span>
-        </div>
-        <div className={styles.hudTextWrapper}>
-          <span className={styles.hudLabel}>Celestial Phase</span>
-          <span className={styles.hudValue}>{getNarrativePrompt(scrollProgress)}</span>
-        </div>
       </div>
     </section>
   );
 }
-
-function TrustDot() {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: 6,
-        height: 6,
-        borderRadius: '50%',
-        background: '#50C878',
-        marginRight: 6,
-        flexShrink: 0,
-      }}
-    />
-  );
-}
-

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { BLOG_POSTS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Blog.module.css';
 
 const TAG_COLORS: Record<string, string> = {
@@ -24,6 +25,7 @@ export default function Blog() {
 
   return (
     <section className={styles.section} id="blog">
+      <CelestialOrnament type="mandala" className={styles.bgOrnament} />
       <div className={styles.container}>
         <motion.div
           className={styles.header}

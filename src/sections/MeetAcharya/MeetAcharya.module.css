@@ -1,0 +1,357 @@
+/* =============================================
+   MEET YOUR ACHARYA — Section
+   ============================================= */
+
+.section {
+  position: relative;
+  overflow: hidden;
+  padding: 100px 0;
+  background: var(--bg-primary);
+}
+
+:global([data-theme='light']) .section {
+  background: #FAF7F0;
+}
+
+/* Background ornament — top right corner, only partial circle visible */
+.bgOrnament {
+  position: absolute !important;
+  right: -160px;
+  top: -120px;
+  width: 500px;
+  height: 500px;
+  pointer-events: none;
+  z-index: 0;
+  color: #9B7A2F;
+  opacity: 0.04;
+}
+
+:global([data-theme='light']) .bgOrnament {
+  opacity: 0.06;
+}
+
+/* ── Layout ── */
+.inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+/* ── Portrait Column ── */
+.portraitCol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.portraitFrame {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+/* Faint rashi ornament peeking behind the shoulder */
+.portraitOrnament {
+  position: absolute !important;
+  right: -80px;
+  top: -40px;
+  width: 320px;
+  height: 320px;
+  pointer-events: none;
+  z-index: 0;
+  color: #B58A3B;
+  opacity: 0.08;
+}
+
+.portraitGlow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 50%;
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(210, 155, 50, 0.14) 0%,
+    rgba(180, 100, 30, 0.06) 50%,
+    transparent 80%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+.portraitImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  position: relative;
+  z-index: 1;
+  /*
+    Dark theme: mix-blend-mode screen makes black pixels transparent.
+    The dark bg of the section shows through cleanly.
+  */
+  mix-blend-mode: screen;
+  filter: drop-shadow(-6px 0 24px rgba(210, 155, 50, 0.12));
+  transition: filter 0.5s ease;
+}
+
+:global([data-theme='light']) .portraitImg {
+  /*
+    Light theme: we use lighten — slightly different but still removes dark pixels
+    when the container background is set to dark via the portraitFrame pseudo.
+  */
+  mix-blend-mode: screen;
+}
+
+.portraitFrame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /*
+    Dark background layer behind the portrait so screen blend works
+    even on light-theme sections — the image blends against this dark area,
+    making the black background disappear.
+  */
+  background: linear-gradient(180deg, #0A0C18 0%, #0A0C18 100%);
+  z-index: 0;
+  border-radius: 4px;
+}
+
+.portraitFrame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Bottom fade so portrait dissolves into the section background */
+  background: linear-gradient(
+    to bottom,
+    transparent 60%,
+    var(--bg-primary) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+:global([data-theme='light']) .portraitFrame::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 60%,
+    #FAF7F0 100%
+  );
+}
+
+.credentialPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  border: 1px solid rgba(184, 138, 59, 0.25);
+  border-radius: 100px;
+  padding: 7px 16px;
+}
+
+:global([data-theme='light']) .credentialPill {
+  color: #7A5520;
+  border-color: rgba(122, 85, 32, 0.22);
+}
+
+.credDot {
+  opacity: 0.7;
+}
+
+/* ── Content Column ── */
+.contentCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  margin-bottom: 16px;
+  display: block;
+}
+
+:global([data-theme='light']) .eyebrow {
+  color: #7A4B25;
+}
+
+.name {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3.5vw, 3.2rem);
+  font-weight: 300;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+:global([data-theme='light']) .name {
+  color: #1A2333;
+}
+
+.tradition {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--gold-primary);
+  opacity: 0.8;
+  margin: 0 0 24px 0;
+  letter-spacing: 0.06em;
+}
+
+:global([data-theme='light']) .tradition {
+  color: #7A5520;
+}
+
+.divider {
+  width: 48px;
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-primary), transparent);
+  margin-bottom: 28px;
+  opacity: 0.5;
+}
+
+.bio {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin: 0 0 18px 0;
+}
+
+:global([data-theme='light']) .bio {
+  color: #3D4A5C;
+}
+
+/* Expertise pills */
+.pillGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 36px 0;
+}
+
+.pill {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--gold-primary);
+  border: 1px solid rgba(184, 138, 59, 0.22);
+  border-radius: 100px;
+  padding: 5px 14px;
+  background: rgba(184, 138, 59, 0.04);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.pill:hover {
+  background: rgba(184, 138, 59, 0.1);
+  border-color: rgba(184, 138, 59, 0.4);
+}
+
+:global([data-theme='light']) .pill {
+  color: #7A5520;
+  border-color: rgba(122, 85, 32, 0.2);
+  background: rgba(122, 85, 32, 0.04);
+}
+
+:global([data-theme='light']) .pill:hover {
+  background: rgba(122, 85, 32, 0.08);
+}
+
+/* CTAs */
+.actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btnGold {
+  background: #C8941A;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+  box-shadow: 0 2px 12px rgba(200, 148, 26, 0.25);
+}
+
+.btnGold:hover {
+  background: #B07A10;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px rgba(200, 148, 26, 0.35);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(184, 138, 59, 0.35);
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.2s ease;
+}
+
+.btnOutline:hover {
+  border-color: rgba(184, 138, 59, 0.65);
+  background: rgba(184, 138, 59, 0.06);
+  transform: translateY(-2px);
+}
+
+:global([data-theme='light']) .btnOutline {
+  color: #1A2333;
+  border-color: rgba(122, 85, 32, 0.3);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 0 28px;
+  }
+  .portraitCol {
+    order: 2;
+    align-items: flex-start;
+  }
+  .portraitFrame {
+    max-width: 300px;
+    aspect-ratio: 3 / 4;
+  }
+  .contentCol {
+    order: 1;
+  }
+  .section {
+    padding: 64px 0;
+  }
+}

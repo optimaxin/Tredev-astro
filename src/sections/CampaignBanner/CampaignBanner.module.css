@@ -176,6 +176,33 @@
   padding: 2rem;
 }
 
+/* Acharya image overlay — sits on top of chakra SVG, black bg removed via screen blend */
+.slideAcharyaImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  mix-blend-mode: normal;
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
+  /* Fade edges so the portrait dissolves naturally into the banner */
+  mask-image:
+    linear-gradient(to top,    rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0) 100%),
+    linear-gradient(to left,   rgba(0,0,0,1) 0%, rgba(0,0,0,0.9)  80%, rgba(0,0,0,0) 100%),
+    linear-gradient(to right,  rgba(0,0,0,1) 0%, rgba(0,0,0,1)   100%);
+  -webkit-mask-image:
+    linear-gradient(to top,    rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0) 100%),
+    linear-gradient(to left,   rgba(0,0,0,1) 0%, rgba(0,0,0,0.9)  80%, rgba(0,0,0,0) 100%),
+    linear-gradient(to right,  rgba(0,0,0,1) 0%, rgba(0,0,0,1)   100%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+  filter: drop-shadow(-6px 0 24px rgba(180, 140, 50, 0.12));
+}
+
+
 .artwork {
   position: relative;
   display: flex;
