@@ -4,21 +4,49 @@ import { CartIcon, ProfileIcon, SunIcon, MoonIcon } from '../Icons/Icons';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
-  { label: 'Astrology', page: 'astrology-tools' },
-  { label: 'Kundli', page: 'free-kundli' },
-  { label: 'Calculators', page: 'astrology-tools' },
-  { label: 'Reports', page: 'reports' },
-  { label: 'Panchang', page: 'panchang' },
-  { label: 'Academy', page: 'academy' },
-  { label: 'Store', page: 'store' },
+  { translationKey: 'nav_astrology', page: 'astrology-tools' },
+  { translationKey: 'nav_kundli', page: 'free-kundli' },
+  { translationKey: 'nav_calculators', page: 'astrology-tools' },
+  { translationKey: 'nav_reports', page: 'reports' },
+  { translationKey: 'nav_panchang', page: 'panchang' },
+  { translationKey: 'nav_academy', page: 'academy' },
+  { translationKey: 'nav_store', page: 'store' },
 ];
 
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिन्दी' },
+  { code: 'mr', name: 'मराठी' },
+  { code: 'bn', name: 'বাংলা' },
+  { code: 'ta', name: 'தமிழ்' },
+  { code: 'te', name: 'తెలుగు' },
+] as const;
 
 export default function Navigation() {
-  const { page, setPage, kundliGenerated, cart, theme, toggleTheme, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
+  const { 
+    page, 
+    setPage, 
+    kundliGenerated, 
+    cart, 
+    theme, 
+    toggleTheme, 
+    isLoggedIn, 
+    setShowLoginModal, 
+    setPendingAction,
+    language,
+    setLanguage,
+    t,
+    birthProfile
+  } = useAppContext();
+
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  
   const navRef = useRef<HTMLElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +61,20 @@ export default function Navigation() {
     else document.body.style.overflow = '';
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
+
+  // Click outside handlers
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (langDropdownOpen && langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangDropdownOpen(false);
+      }
+      if (profileDropdownOpen && profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [langDropdownOpen, profileDropdownOpen]);
 
   const handleNavClick = (targetPage: string) => {
     setMenuOpen(false);
@@ -85,6 +127,8 @@ export default function Navigation() {
     }
   };
 
+  const currentLangLabel = LANGUAGES.find(l => l.code === language)?.name || 'English';
+
   return (
     <header
       ref={navRef}
@@ -93,22 +137,31 @@ export default function Navigation() {
     >
       <div className={styles.inner}>
         {/* Logo */}
-        <button className={styles.logo} onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="TredevAstro home">
+        <button 
+          className={styles.logo} 
+          onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+          aria-label="TredevAstro home"
+        >
           <span className={styles.logoStar}>✦</span>
           <span className={styles.logoText}>TredevAstro</span>
         </button>
  
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
-          {NAV_LINKS.map(link => (
-            <button
-              key={link.page + link.label}
-              className={`${styles.link} ${page === link.page ? styles.active : ''}`}
-              onClick={() => handleNavClick(link.page)}
-            >
-              {link.label}
-            </button>
-          ))}
+          {NAV_LINKS.map(link => {
+            const label = t(link.translationKey);
+            const isLinkActive = page === link.page;
+            return (
+              <button
+                key={link.page + link.translationKey}
+                className={`${styles.link} ${isLinkActive ? styles.active : ''}`}
+                onClick={() => handleNavClick(link.page)}
+              >
+                {label}
+                {isLinkActive && <span className={styles.activeIndicator} />}
+              </button>
+            );
+          })}
         </nav>
  
         {/* Right Actions */}
@@ -117,16 +170,16 @@ export default function Navigation() {
             className={`${styles.ctaBtnSecondary} ${page === 'free-kundli' || page === 'kundli-result' ? styles.active : ''}`}
             onClick={handleFreeKundliClick}
           >
-            Free Kundli
+            {t('nav_free_kundli')}
           </button>
+          
           <button
             className={`${styles.ctaBtn} ${page === 'astrologers' ? styles.active : ''}`}
             onClick={handleConsultClick}
           >
-            Consult
+            {t('nav_consult')}
           </button>
 
-          
           {/* Cart Icon */}
           <button 
             className={`${styles.cartBtn} ${page === 'cart' ? styles.active : ''}`} 
@@ -137,15 +190,80 @@ export default function Navigation() {
             {cart.length > 0 && <span className={styles.cartBadge}>{cart.reduce((acc, curr) => acc + curr.quantity, 0)}</span>}
           </button>
 
-          {/* Profile Icon */}
-          <button 
-            className={`${styles.accountBtn} ${page === 'profile' ? styles.active : ''}`} 
-            onClick={handleProfileClick}
-            aria-label="My Account"
-          >
-            <ProfileIcon size={18} />
-            {isLoggedIn && <span className={styles.loggedInDot} />}
-          </button>
+          {/* Language Selector Dropdown */}
+          <div className={styles.langWrapper} ref={langRef}>
+            <button
+              className={styles.langBtn}
+              onClick={() => setLangDropdownOpen(v => !v)}
+              aria-label="Select Language"
+            >
+              <span className={styles.langGlobe}>🌐</span>
+              <span className={styles.langText}>{currentLangLabel}</span>
+            </button>
+            {langDropdownOpen && (
+              <div className={styles.langDropdown}>
+                {LANGUAGES.map(lang => (
+                  <button
+                    key={lang.code}
+                    className={`${styles.langDropdownItem} ${language === lang.code ? styles.langDropdownItemActive : ''}`}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setLangDropdownOpen(false);
+                    }}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Login / Profile Actions */}
+          {isLoggedIn ? (
+            <div className={styles.profileDropdownWrapper} ref={profileRef}>
+              <button 
+                className={`${styles.profileSelectorBtn} ${page === 'profile' ? styles.active : ''}`}
+                onClick={() => setProfileDropdownOpen(v => !v)}
+              >
+                <div className={styles.avatarCircle}>
+                  {birthProfile.name.substring(0, 1).toUpperCase()}
+                </div>
+                <span className={styles.profileNameText}>{birthProfile.name.split(' ')[0]}</span>
+                <span className={styles.profileArrow}>▼</span>
+              </button>
+              {profileDropdownOpen && (
+                <div className={styles.profileDropdown}>
+                  <button onClick={() => { handleNavClick('profile'); setProfileDropdownOpen(false); }}>
+                    My Workspace
+                  </button>
+                  <button onClick={() => { handleNavClick('free-kundli'); setProfileDropdownOpen(false); }}>
+                    New Kundli
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.setItem('isLoggedIn', 'false');
+                      window.location.reload();
+                    }}
+                    style={{ color: '#c55' }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button 
+              className={styles.loginBtn}
+              onClick={() => {
+                setPendingAction('profile');
+                setShowLoginModal(true);
+              }}
+              aria-label="Sign In"
+            >
+              <ProfileIcon size={18} />
+              <span className={styles.loginTextLabel}>{t('nav_login')}</span>
+            </button>
+          )}
 
           {/* Theme Toggle */}
           <button 
@@ -171,33 +289,55 @@ export default function Navigation() {
       {/* Mobile Menu */}
       <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ''}`} aria-hidden={!menuOpen}>
         <div className={styles.mobileLinks}>
-          {NAV_LINKS.map(link => (
-            <button
-              key={link.page + link.label}
-              className={styles.mobileLink}
-              onClick={() => handleNavClick(link.page)}
-            >
-              {link.label}
-            </button>
-          ))}
+          {NAV_LINKS.map(link => {
+            const label = t(link.translationKey);
+            return (
+              <button
+                key={link.page + link.translationKey}
+                className={styles.mobileLink}
+                onClick={() => handleNavClick(link.page)}
+              >
+                {label}
+              </button>
+            );
+          })}
           <div className={styles.mobileDivider} />
+          
+          {/* Language selector in Mobile Menu */}
+          <div className={styles.mobileLangList}>
+            {LANGUAGES.map(lang => (
+              <button
+                key={lang.code}
+                className={`${styles.mobileLangBtn} ${language === lang.code ? styles.mobileLangBtnActive : ''}`}
+                onClick={() => {
+                  setLanguage(lang.code);
+                  setMenuOpen(false);
+                }}
+              >
+                {lang.name}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.mobileDivider} />
+
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}
             onClick={() => handleNavClick('free-kundli')}
           >
-            Free Kundli
+            {t('nav_free_kundli')}
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}
             onClick={() => handleNavClick('astrologers')}
           >
-            Consult an Acharya
+            {t('nav_consult')}
           </button>
           <button
             className={styles.mobileLink}
             onClick={handleProfileClick}
           >
-            {isLoggedIn ? 'My Profile' : 'Sign In'}
+            {isLoggedIn ? 'My Profile' : t('nav_login')}
           </button>
           <div className={styles.mobileDivider} />
           <button

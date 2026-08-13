@@ -248,16 +248,118 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
     // Orbit Paths & spheres for the Navagrahas (9 Grahas)
     // ----------------------------------------------------
     const GRAHAS_DATA = [
-      { name: 'Surya', eng: 'Sun', color: 0xb88a3b, size: 0.22, orbitR: 0.9, speed: 0.12, details: 'Atmakaraka · Vitality · Soul · Authority' },
-      { name: 'Chandra', eng: 'Moon', color: 0xf4ebdd, size: 0.16, orbitR: 1.2, speed: 0.28, details: 'Manas · Mind · Emotions · Nurturing' },
-      { name: 'Mangala', eng: 'Mars', color: 0x9f3328, size: 0.14, orbitR: 1.45, speed: 0.16, details: 'Energy · Drive · Courage · Action' },
-      { name: 'Budha', eng: 'Mercury', color: 0x5a8a5f, size: 0.13, orbitR: 1.65, speed: 0.24, details: 'Speech · Intellect · Commerce · Adaptability' },
-      { name: 'Guru', eng: 'Jupiter', color: 0xc56a27, size: 0.20, orbitR: 1.9, speed: 0.08, details: 'Wisdom · Expansion · Dharma · Grace' },
-      { name: 'Shukra', eng: 'Venus', color: 0xdfc08a, size: 0.15, orbitR: 2.1, speed: 0.18, details: 'Love · Arts · Pleasures · Concord' },
-      { name: 'Shani', eng: 'Saturn', color: 0x223554, size: 0.18, orbitR: 2.35, speed: 0.04, details: 'Karma · Discipline · Structure · Time' },
-      { name: 'Rahu', eng: 'North Node', color: 0x3d3028, size: 0.14, orbitR: 2.65, speed: 0.06, details: 'Desires · Ambition · Illusion · Future Karma' },
-      { name: 'Ketu', eng: 'South Node', color: 0x5e544d, size: 0.14, orbitR: 2.9, speed: 0.06, details: 'Past Karma · Liberation · Moksha · Spirituality' },
+      { name: 'Surya', sanskrit: 'सूर्य', eng: 'Sun', color: 0xb88a3b, size: 0.22, orbitR: 0.9, speed: 0.12, details: 'Ruling: Simha (Leo) · Represents: Atma (Soul), Tejas, Authority' },
+      { name: 'Chandra', sanskrit: 'चन्द्र', eng: 'Moon', color: 0xf4ebdd, size: 0.16, orbitR: 1.2, speed: 0.28, details: 'Ruling: Karka (Cancer) · Represents: Manas (Mind), Nurturing, Emotions' },
+      { name: 'Mangala', sanskrit: 'मङ्गल', eng: 'Mars', color: 0x9f3328, size: 0.14, orbitR: 1.45, speed: 0.16, details: 'Ruling: Mesha & Vrischika · Represents: Energy, Courage, Action' },
+      { name: 'Budha', sanskrit: 'बुध', eng: 'Mercury', color: 0x5a8a5f, size: 0.13, orbitR: 1.65, speed: 0.24, details: 'Ruling: Mithuna & Kanya · Represents: Intellect, Speech, Commerce' },
+      { name: 'Guru', sanskrit: 'गुरु', eng: 'Jupiter', color: 0xc56a27, size: 0.20, orbitR: 1.9, speed: 0.08, details: 'Ruling: Dhanu & Meena · Represents: Wisdom, Dharma, Grace' },
+      { name: 'Shukra', sanskrit: 'शुक्र', eng: 'Venus', color: 0xdfc08a, size: 0.15, orbitR: 2.1, speed: 0.18, details: 'Ruling: Vrishabha & Tula · Represents: Love, Arts, Pleasures' },
+      { name: 'Shani', sanskrit: 'शनि', eng: 'Saturn', color: 0x223554, size: 0.18, orbitR: 2.35, speed: 0.04, details: 'Ruling: Makara & Kumbha · Represents: Karma, Discipline, Time' },
+      { name: 'Rahu', sanskrit: 'राहू', eng: 'North Node', color: 0x3d3028, size: 0.14, orbitR: 2.65, speed: 0.06, details: 'Co-ruling: Kumbha · Represents: Ambition, Illusion, Desire' },
+      { name: 'Ketu', sanskrit: 'केतु', eng: 'South Node', color: 0x5e544d, size: 0.14, orbitR: 2.9, speed: 0.06, details: 'Co-ruling: Vrischika · Represents: Past Karma, Moksha, Liberation' },
     ];
+
+    const createPlanetTexture = (name: string, colorHex: number) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d')!;
+      const baseColor = '#' + colorHex.toString(16).padStart(6, '0');
+
+      // Default fill
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(0, 0, 128, 128);
+
+      if (name === 'Surya') {
+        // Solar texture
+        const grad = ctx.createRadialGradient(64, 64, 5, 64, 64, 64);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.2, '#fff1a8');
+        grad.addColorStop(0.5, '#ffaa00');
+        grad.addColorStop(1, '#9b1e00');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(255, 235, 120, 0.4)';
+        for (let i = 0; i < 12; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = 25 + Math.random() * 30;
+          ctx.beginPath();
+          ctx.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r, 3 + Math.random() * 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (name === 'Chandra') {
+        // Moon texture - gray ivory craters
+        ctx.fillStyle = '#f4ebdd';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(180, 170, 155, 0.45)';
+        for (let i = 0; i < 20; i++) {
+          const x = Math.random() * 128;
+          const y = Math.random() * 128;
+          const r = 4 + Math.random() * 10;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (name === 'Mangala') {
+        // Mars - reddish rocky
+        ctx.fillStyle = '#9f3328';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(80, 20, 10, 0.55)';
+        for (let i = 0; i < 15; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.random() * 128, Math.random() * 128, 10 + Math.random() * 20, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (name === 'Budha') {
+        // Mercury - gray-green
+        ctx.fillStyle = '#5a8a5f';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(50, 70, 50, 0.5)';
+        for (let i = 0; i < 25; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.random() * 128, Math.random() * 128, 4 + Math.random() * 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (name === 'Guru') {
+        // Jupiter - ochre bands
+        ctx.fillStyle = '#dfc08a';
+        ctx.fillRect(0, 0, 128, 128);
+        const bandColors = ['rgba(197, 106, 39, 0.6)', 'rgba(223, 192, 138, 0.3)', 'rgba(155, 80, 30, 0.65)'];
+        for (let y = 10; y < 120; y += 12) {
+          ctx.fillStyle = bandColors[Math.floor(Math.random() * bandColors.length)];
+          ctx.fillRect(0, y, 128, 4 + Math.random() * 12);
+        }
+      } else if (name === 'Shukra') {
+        // Venus - pale cream
+        ctx.fillStyle = '#f4ebdd';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(223, 192, 138, 0.35)';
+        for (let i = 0; i < 8; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.random() * 128, Math.random() * 128, 15 + Math.random() * 25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (name === 'Shani') {
+        // Saturn - blue-gray bands
+        ctx.fillStyle = '#2d3d5a';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = 'rgba(199, 161, 90, 0.25)';
+        for (let y = 15; y < 115; y += 14) {
+          ctx.fillRect(0, y, 128, 4 + Math.random() * 8);
+        }
+      } else {
+        // Rahu / Ketu - dark smoky
+        const grad = ctx.createLinearGradient(0, 0, 128, 128);
+        grad.addColorStop(0, '#0c081c');
+        grad.addColorStop(0.5, baseColor);
+        grad.addColorStop(1, '#1b1b1b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      return tex;
+    };
 
     const grahaSpheres: THREE.Mesh[] = [];
     const grahaInteractiveColliders: THREE.Mesh[] = [];
@@ -279,7 +381,7 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
         opacity: 0.22,
       });
       const line = new THREE.Line(ringGeo, ringMat);
-      line.computeLineDistances(); // required for dotted dashes
+      line.computeLineDistances();
       return line;
     };
 
@@ -287,20 +389,34 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
       // Draw track
       rashiChakraGroup.add(drawOrbitTrack(graha.orbitR));
 
-      // Graha Sphere Mesh
-      const sphereGeo = new THREE.SphereGeometry(graha.size, 16, 16);
+      // Graha Sphere Mesh with procedural texturing
+      const sphereGeo = new THREE.SphereGeometry(graha.size, 24, 24);
       const sphereMat = new THREE.MeshPhongMaterial({
-        color: graha.color,
-        emissive: graha.color,
-        emissiveIntensity: 0.45,
-        shininess: 40,
+        map: createPlanetTexture(graha.name, graha.color),
+        shininess: 30,
+        bumpScale: 0.05,
       });
       const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
       
+      // If Saturn (Shani), add flat horizontal rings
+      if (graha.name === 'Shani') {
+        const ringGeo = new THREE.RingGeometry(graha.size * 1.3, graha.size * 2.2, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xcca35a,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.65,
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 2.5; // Tilt ring
+        sphereMesh.add(ringMesh);
+      }
+
       // Store dynamic variables
       sphereMesh.userData = {
         type: 'graha',
         name: graha.name,
+        sanskrit: graha.sanskrit,
         english: graha.eng,
         orbitR: graha.orbitR,
         speed: graha.speed,
@@ -324,6 +440,7 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
       rashiChakraGroup.add(colliderMesh);
       grahaInteractiveColliders.push(colliderMesh);
     });
+
 
     // ----------------------------------------------------
     // Build Celestial Passage (Starry Nakshatra Tunnel in background)
@@ -956,7 +1073,7 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
 
       camera.position.z = 16.0 - currentScroll * 48.0;
 
-      const steeringPower = 0.18 * (1.0 - Math.min(currentScroll * 1.5, 0.85));
+      const steeringPower = 0.02 * (1.0 - Math.min(currentScroll * 1.5, 0.85)); // extremely damped, virtually static
       camera.position.x += (mouse2D.x * steeringPower - camera.position.x) * 0.025;
       camera.position.y += (mouse2D.y * (steeringPower * 0.6) - camera.position.y) * 0.025;
       // No cursor-roll on camera — keep horizon stable
@@ -1009,10 +1126,11 @@ export default function HeroCanvas({ className, scrollProgress, onHoverItem, isL
             
             const data = grahaMesh.userData;
             currentHovered = {
-              name: `${data.name} (${data.english})`,
+              name: `${data.name} (${data.sanskrit} · ${data.english})`,
               type: 'graha',
               details: data.details,
             };
+
           } else if (hitObj.userData.type === 'rashi') {
             ((hitObj as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.15; // Golden glow highlight
             

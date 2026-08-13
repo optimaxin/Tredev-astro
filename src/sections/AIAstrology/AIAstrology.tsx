@@ -53,7 +53,7 @@ function TimerDisplay({ secondsLeft }: { secondsLeft: number }) {
 }
 
 export default function AIAstrology() {
-  const { birthProfile, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
+  const { birthProfile, isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
   const [phase, setPhase] = useState<AIPhase>('intro');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -72,6 +72,14 @@ export default function AIAstrology() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-resume after login
+  useEffect(() => {
+    if (isLoggedIn && pendingAction === 'ai-chat') {
+      setPhase('active');
+      setPendingAction(null);
+    }
+  }, [isLoggedIn, pendingAction]);
 
   // Timer countdown
   useEffect(() => {
@@ -132,10 +140,10 @@ export default function AIAstrology() {
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
           >
-            <span className="section-eyebrow">Margdarshan AI</span>
-            <h2 className={styles.title}>Ask TredevAstro</h2>
+            <span className="section-eyebrow">{t('nav_astrology')} AI</span>
+            <h2 className={styles.title}>{t('section_ai_title')}</h2>
             <p className={styles.subtitle}>
-              Have a question about your chart? Get insights grounded in classical Vedic astrology.
+              {t('section_ai_desc')}
             </p>
 
             <div className={styles.chartContext}>
@@ -199,9 +207,9 @@ export default function AIAstrology() {
                       })}
                     </svg>
                   </div>
-                  <h3 className={styles.introTitle}>Your first 5 minutes are free.</h3>
+                  <h3 className={styles.introTitle}>{t('ai_intro_title')}</h3>
                   <p className={styles.introDesc}>
-                    Ask questions about your birth chart, current transits, or seek clarity on life matters — all through the lens of classical Vedic Jyotish.
+                    {t('ai_intro_desc')}
                   </p>
                   <div className={styles.introExamples}>
                     <span className={styles.introExamplesLabel}>Example questions:</span>
@@ -215,7 +223,6 @@ export default function AIAstrology() {
                         className={styles.introExample}
                         onClick={() => {
                           handleStartSession();
-                          // Will auto-send after session starts in next tick
                         }}
                       >
                         "{q}"
@@ -227,7 +234,7 @@ export default function AIAstrology() {
                     onClick={handleStartSession}
                     id="ai-start-session"
                   >
-                    Start 5-Minute Session
+                    {t('ai_start_btn')}
                     {!isLoggedIn && <span className={styles.startBtnLock}>🔒</span>}
                   </button>
                 </motion.div>

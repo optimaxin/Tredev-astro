@@ -16,8 +16,8 @@ import Hero from '../sections/Hero/Hero';
 import CampaignBanner from '../sections/CampaignBanner/CampaignBanner';
 import JourneyCards from '../sections/JourneyCards/JourneyCards';
 import KundliSection from '../sections/KundliSection/KundliSection';
-import MySky from '../sections/MySky/MySky';
-import ConcernSelector from '../sections/ConcernSelector/ConcernSelector';
+import SeekGuidance from '../sections/SeekGuidance/SeekGuidance';
+import GuidanceBanner from '../sections/Guidance/GuidanceBanner';
 import FreeTools from '../sections/FreeTools/FreeTools';
 import PanchangSection from '../sections/Panchang/Panchang';
 import AstrologersSection from '../sections/Astrologers/Astrologers';
@@ -43,16 +43,36 @@ export default function PageRenderer() {
       return (
         <>
           <Hero />
+          <GuidanceBanner />
           <CampaignBanner />
-          <ConcernSelector />
-          <ReportsSection featured />
-          <FreeTools featured />
-          <PanchangSection />
+          <SeekGuidance />
+          
+          <div className="yantra-watermark-right">
+            <ReportsSection featured />
+          </div>
+          
+          <div className="yantra-watermark-left">
+            <FreeTools featured />
+          </div>
+          
+          <div className="yantra-watermark-right">
+            <PanchangSection />
+          </div>
 
-          <AstrologersSection featured />
+          <div className="yantra-watermark-left">
+            <AstrologersSection featured />
+          </div>
+          
           <AIAstrology />
-          <StoreSection featured />
-          <AcademySection featured />
+          
+          <div className="yantra-watermark-right">
+            <StoreSection featured />
+          </div>
+          
+          <div className="yantra-watermark-left">
+            <AcademySection featured />
+          </div>
+          
           <Testimonials />
           <WhyTredevAstro />
         </>

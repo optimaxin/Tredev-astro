@@ -133,12 +133,19 @@ const FIELDS = [
 ] as const;
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
   const [location, setLocation] = useState('New Delhi');
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
   const [data, setData] = useState(DELHI_DATA);
   const [changing, setChanging] = useState(false);
+
+  React.useEffect(() => {
+    if (isLoggedIn && pendingAction === 'panchang-location') {
+      setShowInput(true);
+      setPendingAction(null);
+    }
+  }, [isLoggedIn, pendingAction]);
 
   const applyLocation = useCallback(() => {
     if (!isLoggedIn) {
@@ -172,7 +179,16 @@ export default function Panchang() {
 
   return (
     <section className={styles.section} id="panchang" aria-label="Today's Panchang">
-      <div className={styles.container}>
+      <div className="section-container">
+        {/* Section Header */}
+        <div className="section-header-split">
+          <div className="header-left">
+            <span className="section-eyebrow-gold">Panchangam</span>
+            <h2 className="section-title-serif">{t('section_panchang_title')}</h2>
+            <p className="section-desc-sans">{t('section_panchang_desc')}</p>
+          </div>
+        </div>
+
         <motion.div
           className={styles.card}
           initial={{ opacity: 0, y: 24 }}
@@ -186,14 +202,8 @@ export default function Panchang() {
               <SunArc sunrise={data.sunrise} sunset={data.sunset} moonPhase={data.moonPhase} />
             </div>
 
-            <span className="section-eyebrow" style={{ textAlign: 'center', display: 'block' }}>
-              Aaj Ka Panchang
-            </span>
-            <h2 className={styles.title}>
-              Today's<br /><em className={styles.titleItalic}>Panchang</em>
-            </h2>
-
             <p className={styles.date}>{data.date}</p>
+
 
             {/* Location */}
             <div className={styles.locationWrap}>
