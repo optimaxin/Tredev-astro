@@ -12,9 +12,6 @@ interface FreeToolsProps {
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {
   const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction, t } = useAppContext();
-  const [activeCategory, setActiveCategory] = useState(FREE_TOOLS_CATEGORIES[0].id);
-
-  const active = FREE_TOOLS_CATEGORIES.find(c => c.id === activeCategory)!;
 
   const handleToolClick = (toolName: string) => {
     if (!isLoggedIn) {
@@ -190,31 +187,18 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
           </p>
         </div>
 
-        {/* Full Tabbed Layout for Main Tools Page */}
-        <div className={styles.tabsContainer}>
-          <div className={styles.tabList}>
-            {FREE_TOOLS_CATEGORIES.map(category => (
-              <button
-                key={category.id}
-                className={`${styles.tabBtn} ${activeCategory === category.id ? styles.tabActive : ''}`}
-                onClick={() => setActiveCategory(category.id)}
-              >
-                {category.label}
-              </button>
-            ))}
-          </div>
-
-          <div className={styles.tabContent}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeCategory}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
-                className={styles.toolsGrid}
-              >
-                {active.tools.map(tool => (
+        {/* Grouped Layout Showing All Calculators and Tools without tabs */}
+        <div className={styles.allToolsContainer}>
+          {FREE_TOOLS_CATEGORIES.map(category => (
+            <div key={category.id} className={styles.categorySection}>
+              <h3 className={styles.categoryHeader}>
+                <span className={styles.categoryHeaderIcon} style={{ color: category.color }}>
+                  {category.icon}
+                </span>
+                <span className={styles.categoryHeaderLabel}>{category.label}</span>
+              </h3>
+              <div className={styles.toolsGrid}>
+                {category.tools.map(tool => (
                   <div
                     key={tool}
                     className={styles.toolCard}
@@ -225,9 +209,9 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                     <span className={styles.toolArrow}>→</span>
                   </div>
                 ))}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
