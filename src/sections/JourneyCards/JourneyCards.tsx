@@ -61,10 +61,10 @@ export default function JourneyCards() {
 
   const getIcon = (id: string) => {
     switch (id) {
-      case 'kundli': return <RashiChakraIcon size={22} />;
-      case 'astrologer': return <AcharyaIcon size={22} />;
-      case 'reports': return <ManuscriptIcon size={22} />;
-      case 'ai': return <ConstellationIcon size={22} />;
+      case 'kundli': return <RashiChakraIcon size={36} />;
+      case 'astrologer': return <AcharyaIcon size={36} />;
+      case 'reports': return <ManuscriptIcon size={36} />;
+      case 'ai': return <ConstellationIcon size={36} />;
       default: return null;
     }
   };
@@ -109,7 +109,7 @@ export default function JourneyCards() {
                 <p className={styles.cardDesc}>{card.desc}</p>
                 <span className={styles.cardCta}>
                   {card.cta}
-                  <ArrowIcon size={12} style={{ marginLeft: 6 }} />
+                  <ArrowIcon size={18} style={{ marginLeft: 6 }} />
                 </span>
               </div>
             </motion.div>

@@ -109,8 +109,8 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
                       <div className={styles.courseOriginal}>₹{course.originalPrice.toLocaleString()}</div>
                     )}
                   </div>
-                  <button 
-                    className="btn btn-gold btn-sm" 
+                  <button
+                    className="btn btn-gold btn-sm"
                     id={`course-enroll-${course.id}`}
                     onClick={(e) => {
                       e.stopPropagation();

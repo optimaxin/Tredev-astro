@@ -186,7 +186,7 @@ export default function Navigation() {
             onClick={() => handleNavClick('cart')}
             aria-label="View Cart"
           >
-            <CartIcon size={18} />
+            <CartIcon size={28} />
             {cart.length > 0 && <span className={styles.cartBadge}>{cart.reduce((acc, curr) => acc + curr.quantity, 0)}</span>}
           </button>
 
@@ -260,7 +260,7 @@ export default function Navigation() {
               }}
               aria-label="Sign In"
             >
-              <ProfileIcon size={18} />
+              <ProfileIcon size={28} />
               <span className={styles.loginTextLabel}>{t('nav_login')}</span>
             </button>
           )}
@@ -271,7 +271,7 @@ export default function Navigation() {
             onClick={toggleTheme}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           >
-            {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+            {theme === 'dark' ? <SunIcon size={28} /> : <MoonIcon size={28} />}
           </button>
         </div>
 
@@ -345,7 +345,7 @@ export default function Navigation() {
             onClick={toggleTheme}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+            {theme === 'dark' ? <SunIcon size={28} /> : <MoonIcon size={28} />}
             {theme === 'dark' ? 'Light Theme' : 'Dark Theme'}
           </button>
         </div>

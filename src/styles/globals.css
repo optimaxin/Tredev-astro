@@ -179,12 +179,12 @@ body {
   --color-overlay:      rgba(245, 240, 231, 0.90);
 
   /* Light mode cloud/atmosphere — very subtle warm wisps, NOT saffron blobs */
-  --saffron-cloud:      rgba(181, 138, 59, 0.06);  /* barely visible gold */
-  --indigo-cloud:       rgba(23, 37, 58, 0.04);    /* barely visible navy */
-  --maroon-cloud:       rgba(168, 91, 45, 0.04);   /* barely visible terracotta */
+  --saffron-cloud:      rgba(244, 150, 80, 0.14);  /* warm saffron aura */
+  --indigo-cloud:       rgba(235, 120, 40, 0.10);  /* glowing orange aura */
+  --maroon-cloud:       rgba(215, 100, 50, 0.08);  /* terracotta aura */
   --cloud-blend-mode:   multiply;
-  --cloud-opacity:      0.35;
-  --cloud-item-opacity: 0.25;
+  --cloud-opacity:      0.65;
+  --cloud-item-opacity: 0.5;
 
   --shadow-card:        0 2px 20px rgba(23, 37, 58, 0.06);
   --shadow-card-hover:  0 6px 30px rgba(23, 37, 58, 0.12);
@@ -748,7 +748,7 @@ section:not(#hero), [class*="pageWrapper"] {
 
 /* Light mode body background — sections below hero inherit warm ivory */
 [data-theme='light'] body {
-  background-color: #F5F0E7;
+  background: linear-gradient(135deg, #FFFDF9 0%, #FFF3E5 50%, #F6EAD8 100%) fixed;
   color: #182333;
 }
 

@@ -99,10 +99,10 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               {report.popular && <div className={styles.popularBadge}>Most Popular</div>}
 
               <div className={styles.reportIcon} style={{ color: report.color, display: 'inline-flex', alignItems: 'center' }}>
-                {report.id === 1 && <CareerIcon size={24} />}
-                {report.id === 2 && <MarriageIcon size={24} />}
-                {report.id === 3 && <PanchangIcon size={24} />}
-                {report.id === 4 && <VastuIcon size={24} />}
+                {report.id === 1 && <CareerIcon size={42} />}
+                {report.id === 2 && <MarriageIcon size={42} />}
+                {report.id === 3 && <PanchangIcon size={42} />}
+                {report.id === 4 && <VastuIcon size={42} />}
               </div>
 
               <div className={styles.reportMeta}>

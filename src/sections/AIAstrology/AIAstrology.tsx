@@ -402,7 +402,7 @@ export default function AIAstrology() {
 
 function SendIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
       <path d="M2 9l14-7-7 14V9H2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
     </svg>
   );

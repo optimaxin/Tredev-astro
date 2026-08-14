@@ -538,7 +538,11 @@ function AstrologerProfilePage({ id }: { id: any }) {
           {/* Sidebar */}
           <div className={styles.profileSidebar}>
             <div className={styles.profileAvatar}>
-              {astrologer.name.charAt(0)}
+              {astrologer.avatar ? (
+                <img src={astrologer.avatar} alt={astrologer.name} className={styles.profileAvatarImg} />
+              ) : (
+                astrologer.name.charAt(0)
+              )}
             </div>
             <h1 className={styles.sidebarName}>{astrologer.name}</h1>
             <p className={styles.sidebarTitle}>{astrologer.title}</p>

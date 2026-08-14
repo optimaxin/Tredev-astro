@@ -8,6 +8,7 @@ import Footer from './components/Footer/Footer';
 import PageRenderer from './pages/PageRenderer';
 import CosmicClouds from './components/CosmicClouds/CosmicClouds';
 import LoginModal from './components/LoginModal/LoginModal';
+import MonkWidget from './components/MonkWidget/MonkWidget';
 
 function AppContent() {
   const { theme } = useAppContext();
@@ -27,6 +28,7 @@ function AppContent() {
 
       <Footer />
       <LoginModal />
+      <MonkWidget />
     </div>
   );
 }

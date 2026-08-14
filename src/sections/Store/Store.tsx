@@ -33,13 +33,13 @@ export default function Store({ featured = false }: { featured?: boolean }) {
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
-      case 'All': return <ConstellationIcon size={14} />;
-      case 'Gemstones': return <RashiChakraIcon size={14} />;
-      case 'Rudraksha': return <AcharyaIcon size={14} />;
-      case 'Crystals': return <WealthIcon size={14} />;
-      case 'Bracelets': return <ProfileIcon size={14} />;
-      case 'Yantras': return <VastuIcon size={14} />;
-      case 'Puja Essentials': return <ManuscriptIcon size={14} />;
+      case 'All': return <ConstellationIcon size={24} />;
+      case 'Gemstones': return <RashiChakraIcon size={24} />;
+      case 'Rudraksha': return <AcharyaIcon size={24} />;
+      case 'Crystals': return <WealthIcon size={24} />;
+      case 'Bracelets': return <ProfileIcon size={24} />;
+      case 'Yantras': return <VastuIcon size={24} />;
+      case 'Puja Essentials': return <ManuscriptIcon size={24} />;
       default: return null;
     }
   };
@@ -234,7 +234,22 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
           </div>
         ) : (
           <div className={styles.productImageBg}>
-            <span className={styles.productEmoji}>
+            {p.image && (
+              <img
+                src={p.image}
+                alt={p.name}
+                className={styles.productImg}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  const placeholder = (e.currentTarget as HTMLImageElement).nextElementSibling;
+                  if (placeholder) (placeholder as HTMLElement).style.display = 'block';
+                }}
+              />
+            )}
+            <span 
+              className={styles.productEmoji}
+              style={p.image ? { display: 'none' } : undefined}
+            >
               {p.category === 'Gemstones' ? '💎' :
                p.category === 'Rudraksha' ? '🔮' :
                p.category === 'Crystals' ? '🌸' :

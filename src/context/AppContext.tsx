@@ -983,16 +983,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem('birthProfile');
     return saved ? JSON.parse(saved) : defaultProfile;
   });
-  const [concern, setConcern] = useState<Concern>(null);
+  const [concern, setConcernState] = useState<Concern>(() => {
+    return (window.history.state && window.history.state.concern) || null;
+  });
   const [kundliGenerated, setKundliGeneratedState] = useState<boolean>(() => {
     return localStorage.getItem('kundliGenerated') === 'true';
   });
   const [astrologerFilter, setAstrologerFilter] = useState('All');
 
   // Navigation & Cart States
-  const [page, setPage] = useState('home');
-  const [selectedId, setSelectedId] = useState<number | string | null>(null);
+  const [page, setPageState] = useState(() => {
+    return (window.history.state && window.history.state.page) || 'home';
+  });
+  const [selectedId, setSelectedIdState] = useState<number | string | null>(() => {
+    return (window.history.state && window.history.state.selectedId) || null;
+  });
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  const setPage = (p: string) => {
+    setPageState(p);
+  };
+  const setSelectedId = (id: number | string | null) => {
+    setSelectedIdState(id);
+  };
+  const setConcern = (c: Concern) => {
+    setConcernState(c);
+  };
+
+  const isPopStateRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state;
+      isPopStateRef.current = true;
+      if (state && typeof state.page === 'string') {
+        setPageState(state.page);
+        setSelectedIdState(state.selectedId ?? null);
+        setConcernState(state.concern ?? null);
+      } else {
+        setPageState('home');
+        setSelectedIdState(null);
+        setConcernState(null);
+      }
+      setTimeout(() => {
+        isPopStateRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (!window.history.state) {
+      window.history.replaceState({ page, selectedId, concern }, '', '');
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (isPopStateRef.current) return;
+
+    const currentHistoryState = window.history.state;
+    if (
+      currentHistoryState &&
+      currentHistoryState.page === page &&
+      currentHistoryState.selectedId === selectedId &&
+      currentHistoryState.concern === concern
+    ) {
+      return;
+    }
+
+    window.history.pushState({ page, selectedId, concern }, '', '');
+  }, [page, selectedId, concern]);
 
   // Theme State — DEFAULT IS LIGHT
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {

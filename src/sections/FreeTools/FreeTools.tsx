@@ -84,7 +84,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="rashi" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
-                <RashiChakraIcon className={styles.cardIconLarge} />
+                <RashiChakraIcon size={60} className={styles.cardIconLarge} />
                 <div>
                   <h3 className={styles.cardTitle}>{t('nav_free_kundli')}</h3>
                   <p className={styles.cardDesc}>
@@ -102,7 +102,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="kundli" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
-                <MarriageIcon className={styles.cardIconMedium} />
+                <MarriageIcon size={48} className={styles.cardIconMedium} />
                 <div>
                   <h3 className={styles.cardTitle}>{t('seek_card_marriage_title')}</h3>
                   <p className={styles.cardDesc}>{t('seek_card_marriage_desc')}</p>
@@ -118,7 +118,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="nakshatra" className={styles.cardOrnament} />
               <div className={styles.cardHeader}>
-                <ConstellationIcon className={styles.cardIconMedium} />
+                <ConstellationIcon size={48} className={styles.cardIconMedium} />
                 <div>
                   <h3 className={styles.cardTitle}>{t('seek_card_growth_title')}</h3>
                   <p className={styles.cardDesc}>{t('seek_card_growth_desc')}</p>
@@ -133,7 +133,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               onClick={() => handleToolClick('Mangal Dosha')}
             >
               <CelestialOrnament type="yantra" className={styles.cardOrnamentSmall} />
-              <WealthIcon className={styles.cardIconSmall} />
+              <WealthIcon size={38} className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Mangal Dosha</h3>
               <p className={styles.cardDescSmall}>{t('seek_card_marriage_desc')}</p>
             </div>
@@ -144,7 +144,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               onClick={() => handleToolClick('Sade Sati')}
             >
               <CelestialOrnament type="chandra" className={styles.cardOrnamentSmall} />
-              <AcharyaIcon className={styles.cardIconSmall} />
+              <AcharyaIcon size={38} className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Sade Sati</h3>
               <p className={styles.cardDescSmall}>{t('seek_card_spirituality_desc')}</p>
             </div>
@@ -155,7 +155,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               onClick={() => handleToolClick('Numerology')}
             >
               <CelestialOrnament type="mandala" className={styles.cardOrnamentSmall} />
-              <CareerIcon className={styles.cardIconSmall} />
+              <CareerIcon size={38} className={styles.cardIconSmall} />
               <h3 className={styles.cardTitleSmall}>Numerology</h3>
               <p className={styles.cardDescSmall}>Life path number forecast.</p>
             </div>

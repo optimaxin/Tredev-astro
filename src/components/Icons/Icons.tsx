@@ -1,10 +1,10 @@
 import React from 'react';
-
+ 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
 }
-
-export function RashiChakraIcon({ size = 20, ...props }: IconProps) {
+ 
+export function RashiChakraIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -17,8 +17,8 @@ export function RashiChakraIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function AcharyaIcon({ size = 20, ...props }: IconProps) {
+ 
+export function AcharyaIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="7" r="3" />
@@ -27,8 +27,8 @@ export function AcharyaIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function ManuscriptIcon({ size = 20, ...props }: IconProps) {
+ 
+export function ManuscriptIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -38,8 +38,8 @@ export function ManuscriptIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function PanchangIcon({ size = 20, ...props }: IconProps) {
+ 
+export function PanchangIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -51,8 +51,8 @@ export function PanchangIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function ConstellationIcon({ size = 20, ...props }: IconProps) {
+ 
+export function ConstellationIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="6" cy="6" r="1.5" fill="currentColor" />
@@ -66,8 +66,8 @@ export function ConstellationIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function CareerIcon({ size = 20, ...props }: IconProps) {
+ 
+export function CareerIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M12 17a5 5 0 0 0 5-5H7a5 5 0 0 0 5 5Z" />
@@ -75,8 +75,8 @@ export function CareerIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function MarriageIcon({ size = 20, ...props }: IconProps) {
+ 
+export function MarriageIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <ellipse cx="9" cy="12" rx="6" ry="3" transform="rotate(-30 9 12)" />
@@ -84,8 +84,8 @@ export function MarriageIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function WealthIcon({ size = 20, ...props }: IconProps) {
+ 
+export function WealthIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M12 22C12 22 5 16 5 11C5 7.1 8.1 4 12 4C15.9 4 19 7.1 19 11C19 16 12 22 12 22Z" />
@@ -95,8 +95,8 @@ export function WealthIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function VastuIcon({ size = 20, ...props }: IconProps) {
+ 
+export function VastuIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -106,8 +106,8 @@ export function VastuIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function AcademyIcon({ size = 20, ...props }: IconProps) {
+ 
+export function AcademyIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M12 2L2 9h20L12 2Z" />
@@ -117,8 +117,8 @@ export function AcademyIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function CartIcon({ size = 20, ...props }: IconProps) {
+ 
+export function CartIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M4 8h16l-1.5 10A3 3 0 0 1 15.5 21h-7a3 3 0 0 1-3-3L4 8Z" />
@@ -127,8 +127,8 @@ export function CartIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function ProfileIcon({ size = 20, ...props }: IconProps) {
+ 
+export function ProfileIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="8" r="3.5" />
@@ -137,16 +137,16 @@ export function ProfileIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function ArrowIcon({ size = 14, ...props }: IconProps) {
+ 
+export function ArrowIcon({ size = 18, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M1 7h12M8 3l5 4-5 4" />
     </svg>
   );
 }
-
-export function SunIcon({ size = 20, ...props }: IconProps) {
+ 
+export function SunIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="12" r="5" />
@@ -161,11 +161,20 @@ export function SunIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
-
-export function MoonIcon({ size = 20, ...props }: IconProps) {
+ 
+export function MoonIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+    </svg>
+  );
+}
+ 
+export function LockIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

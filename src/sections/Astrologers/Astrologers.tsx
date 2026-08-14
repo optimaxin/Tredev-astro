@@ -153,7 +153,11 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof
       {/* Avatar */}
       <div className={styles.avatarWrap}>
         <div className={styles.avatar}>
-          <span className={styles.avatarInitial}>{a.name.charAt(0)}</span>
+          {a.avatar ? (
+            <img src={a.avatar} alt={a.name} className={styles.avatarImg} />
+          ) : (
+            <span className={styles.avatarInitial}>{a.name.charAt(0)}</span>
+          )}
         </div>
         {a.online && (
           <span className={styles.onlineDot} aria-label="Online" />
