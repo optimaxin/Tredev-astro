@@ -317,26 +317,25 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
       className={styles.kundliSvg}
     >
       {/* Background */}
-      <rect width={BOX} height={BOX} fill="rgba(16,19,33,0.5)" rx="12" />
+      <rect width={BOX} height={BOX} className={styles.svgBg} rx="12" />
 
       {/* Outer border */}
-      <rect x="2" y="2" width={BOX-4} height={BOX-4} fill="none" stroke="rgba(200,169,107,0.3)" strokeWidth="1" rx="10" />
+      <rect x="2" y="2" width={BOX-4} height={BOX-4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
 
       {/* Diagonal lines forming the North Indian diamond */}
-      <line x1="0" y1="0" x2={MID} y2={MID} stroke="rgba(200,169,107,0.25)" strokeWidth="0.8" />
-      <line x1={BOX} y1="0" x2={MID} y2={MID} stroke="rgba(200,169,107,0.25)" strokeWidth="0.8" />
-      <line x1="0" y1={BOX} x2={MID} y2={MID} stroke="rgba(200,169,107,0.25)" strokeWidth="0.8" />
-      <line x1={BOX} y1={BOX} x2={MID} y2={MID} stroke="rgba(200,169,107,0.25)" strokeWidth="0.8" />
+      <line x1="0" y1="0" x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
+      <line x1={BOX} y1="0" x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
+      <line x1="0" y1={BOX} x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
+      <line x1={BOX} y1={BOX} x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
 
       {/* Mid lines */}
-      <line x1={MID} y1="0" x2={MID} y2={BOX} stroke="rgba(200,169,107,0.15)" strokeWidth="0.6" />
-      <line x1="0" y1={MID} x2={BOX} y2={MID} stroke="rgba(200,169,107,0.15)" strokeWidth="0.6" />
+      <line x1={MID} y1="0" x2={MID} y2={BOX} className={styles.chartMidLine} strokeWidth="0.6" />
+      <line x1="0" y1={MID} x2={BOX} y2={MID} className={styles.chartMidLine} strokeWidth="0.6" />
 
       {/* Inner diamond */}
       <polygon
         points={`${MID},${MID*0.4} ${MID*1.6},${MID} ${MID},${MID*1.6} ${MID*0.4},${MID}`}
-        fill="rgba(200,169,107,0.04)"
-        stroke="rgba(200,169,107,0.3)"
+        className={styles.chartPolygon}
         strokeWidth="0.8"
       />
 
@@ -367,7 +366,7 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
             y={cy + 4}
             textAnchor="middle"
             fontSize="10"
-            fill="rgba(200,169,107,0.3)"
+            className={styles.houseNumberText}
             fontFamily="DM Sans, sans-serif"
             letterSpacing="0.05em"
           >
@@ -389,7 +388,7 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
           y={y as number}
           textAnchor="middle"
           fontSize="9"
-          fill="rgba(115,217,212,0.5)"
+          className={styles.zodiacText}
           fontFamily="DM Sans, sans-serif"
           letterSpacing="0.05em"
         >
@@ -414,13 +413,13 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
             onMouseEnter={e => onPlanetHover(planet, e)}
             onMouseLeave={onPlanetLeave}
           >
-            <circle cx={px + 10} cy={py + 10} r="12" fill="rgba(200,169,107,0.08)" stroke="rgba(200,169,107,0.2)" strokeWidth="0.8" />
+            <circle cx={px + 10} cy={py + 10} r="12" className={styles.planetCircle} />
             <text
               x={px + 10}
               y={py + 7}
               textAnchor="middle"
               fontSize="10"
-              fill="var(--color-gold)"
+              className={styles.planetSymbolText}
               fontFamily="DM Sans, sans-serif"
             >
               {planet.symbol}
@@ -430,7 +429,7 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
               y={py + 17}
               textAnchor="middle"
               fontSize="7"
-              fill="rgba(245,241,232,0.55)"
+              className={styles.planetNameText}
               fontFamily="DM Sans, sans-serif"
             >
               {planet.name.substring(0, 3)}

@@ -305,7 +305,7 @@ function HoroscopePage() {
                     onClick={() => setActiveRashi(i)}
                   >
                     <span className={styles.nodeIndex}>{r.index}</span>
-                    <span className={styles.nodeSymbol}>{r.symbol}</span>
+                    <span className={styles.nodeSymbol}>{r.eng.substring(0, 3).toUpperCase()}</span>
                   </button>
                 );
               })}

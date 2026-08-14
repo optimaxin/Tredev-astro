@@ -299,3 +299,120 @@
   .chartHeader { flex-direction: column; }
   .container { padding: 0 var(--space-5); }
 }
+
+/* Light Theme High Contrast overrides for Planetary placements */
+:global([data-theme='light']) .planetList {
+  background: rgba(250, 247, 240, 0.85) !important;
+  border-color: rgba(181, 138, 59, 0.18) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+:global([data-theme='light']) .planetListTitle {
+  color: var(--text-primary) !important;
+}
+
+:global([data-theme='light']) .planetRow {
+  border-bottom-color: rgba(181, 138, 59, 0.08) !important;
+}
+
+:global([data-theme='light']) .planetName {
+  color: var(--text-primary) !important;
+}
+
+:global([data-theme='light']) .planetSign {
+  color: var(--text-secondary) !important;
+}
+
+:global([data-theme='light']) .planetHouse {
+  color: var(--sacred-accent) !important;
+  background: rgba(168, 91, 45, 0.08) !important;
+}
+
+:global([data-theme='light']) .chartNote {
+  color: var(--text-muted) !important;
+}
+
+/* SVG Chart Element Colors */
+.svgBg {
+  fill: rgba(16, 19, 33, 0.5);
+  stroke: rgba(200, 169, 107, 0.25);
+  transition: fill var(--transition-base);
+}
+
+:global([data-theme='light']) .svgBg {
+  fill: rgba(250, 247, 240, 0.8) !important;
+  stroke: rgba(181, 138, 59, 0.18) !important;
+}
+
+.chartBorder {
+  stroke: rgba(200, 169, 107, 0.3);
+}
+
+:global([data-theme='light']) .chartBorder {
+  stroke: rgba(181, 138, 59, 0.4) !important;
+}
+
+.chartLine {
+  stroke: rgba(200, 169, 107, 0.25);
+}
+
+:global([data-theme='light']) .chartLine {
+  stroke: rgba(181, 138, 59, 0.3) !important;
+}
+
+.chartMidLine {
+  stroke: rgba(200, 169, 107, 0.15);
+}
+
+:global([data-theme='light']) .chartMidLine {
+  stroke: rgba(181, 138, 59, 0.2) !important;
+}
+
+.chartPolygon {
+  fill: rgba(200, 169, 107, 0.04);
+  stroke: rgba(200, 169, 107, 0.3);
+}
+
+:global([data-theme='light']) .chartPolygon {
+  fill: rgba(181, 138, 59, 0.05) !important;
+  stroke: rgba(181, 138, 59, 0.35) !important;
+}
+
+.zodiacText {
+  fill: rgba(115, 217, 212, 0.65);
+}
+
+:global([data-theme='light']) .zodiacText {
+  fill: var(--sacred-accent) !important;
+}
+
+.planetCircle {
+  fill: rgba(200, 169, 107, 0.08);
+  stroke: rgba(200, 169, 107, 0.2);
+  stroke-width: 0.8px;
+}
+
+:global([data-theme='light']) .planetCircle {
+  fill: rgba(181, 138, 59, 0.08) !important;
+  stroke: rgba(181, 138, 59, 0.25) !important;
+}
+
+.planetSymbolText {
+  fill: var(--gold-primary);
+}
+
+.planetNameText {
+  fill: rgba(245, 241, 232, 0.65);
+}
+
+:global([data-theme='light']) .planetNameText {
+  fill: var(--text-secondary) !important;
+}
+
+.houseNumberText {
+  fill: rgba(200, 169, 107, 0.35);
+}
+
+:global([data-theme='light']) .houseNumberText {
+  fill: rgba(181, 138, 59, 0.5) !important;
+}

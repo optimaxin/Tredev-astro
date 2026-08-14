@@ -82,43 +82,61 @@
   max-width: 440px;
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 1.5px solid var(--color-border-dark);
-  background: rgba(184, 138, 59, 0.03);
+  border: 1.5px solid var(--border-subtle);
+  background: radial-gradient(circle, rgba(181, 138, 59, 0.05) 0%, rgba(181, 138, 59, 0.01) 70%);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-8);
-  box-shadow: inset 0 0 40px rgba(184, 138, 59, 0.05);
+  box-shadow: inset 0 0 50px rgba(181, 138, 59, 0.08);
+}
+
+.rashiWheelWrap::before {
+  content: '';
+  position: absolute;
+  inset: 40px;
+  border-radius: 50%;
+  border: 1px dashed rgba(181, 138, 59, 0.15);
+  pointer-events: none;
+}
+
+.rashiWheelWrap::after {
+  content: '';
+  position: absolute;
+  inset: 90px;
+  border-radius: 50%;
+  border: 1px solid rgba(181, 138, 59, 0.08);
+  pointer-events: none;
 }
 
 .wheelCenter {
   position: absolute;
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 1.5px solid var(--color-border-dark);
-  background: var(--color-dark);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-card);
 }
 
 .centerGlyph {
-  color: var(--color-gold);
+  color: var(--gold-primary);
   font-size: 1.8rem;
   animation: rotateSlow 40s linear infinite;
 }
 
 .rashiNode {
   position: absolute;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-dark);
-  color: var(--color-text-light);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -126,32 +144,49 @@
   cursor: pointer;
   transition: all var(--transition-base);
   z-index: 5;
+  box-shadow: 0 4px 12px rgba(181, 138, 59, 0.08);
 }
 
 .rashiNode:hover,
 .rashiNodeActive {
-  background: var(--color-gold);
-  border-color: var(--color-gold);
-  color: #080712;
-  box-shadow: 0 0 15px rgba(184, 138, 59, 0.4);
-  transform: scale(1.15);
+  background: var(--gold-primary);
+  border-color: var(--gold-primary);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(181, 138, 59, 0.4);
+  transform: scale(1.18);
+}
+
+:global([data-theme='light']) .rashiNodeActive {
+  color: #fff;
 }
 
 .nodeIndex {
   font-size: 8px;
-  opacity: 0.65;
+  opacity: 0.6;
+  margin-bottom: -1px;
 }
 
 .nodeSymbol {
-  font-size: 14px;
-  font-weight: bold;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .horoscopeDetailsCard {
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border-dark);
-  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--gold-primary); /* Gold top highlight */
+  border-radius: var(--radius-lg);
   padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+:global([data-theme='light']) .horoscopeDetailsCard {
+  background: rgba(250, 247, 240, 0.85);
+  border-color: rgba(181, 138, 59, 0.18);
   box-shadow: var(--shadow-card);
 }
 
@@ -159,7 +194,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-bottom: 1.5px solid var(--color-border-dark);
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-4);
   margin-bottom: var(--space-5);
 }
@@ -167,14 +202,16 @@
 .rashiTitle {
   font-family: var(--font-serif);
   font-size: 2.25rem;
-  color: var(--color-gold);
-  font-weight: 300;
+  color: var(--gold-primary);
+  font-weight: 400;
+  margin: 0;
 }
 
 .rashiMeta {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .rashiSpecs {
@@ -185,49 +222,62 @@
 }
 
 .specBox {
-  border: 1px solid rgba(184, 138, 59, 0.15);
-  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated);
   border-radius: var(--radius-sm);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   text-align: center;
+  transition: border-color var(--transition-base);
+}
+
+.specBox:hover {
+  border-color: var(--gold-primary);
 }
 
 .specLabel {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
-  color: var(--color-gold-dark);
+  color: var(--gold-primary);
   letter-spacing: 0.08em;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  font-weight: 600;
 }
 
 .specVal {
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-light);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .tabButtons {
   display: flex;
   gap: var(--space-2);
-  border-bottom: 1px solid rgba(184, 138, 59, 0.15);
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: var(--space-5);
 }
 
 .tabBtn {
   background: none;
   border: none;
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
   padding: var(--space-2) var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
+  font-weight: 500;
   cursor: pointer;
   position: relative;
+  transition: color var(--transition-fast);
+}
+
+.tabBtn:hover {
+  color: var(--gold-primary);
 }
 
 .tabBtnActive {
-  color: var(--color-gold);
-  font-weight: 500;
+  color: var(--gold-primary);
+  font-weight: 600;
 }
 
 .tabBtnActive::after {
@@ -237,14 +287,15 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--color-gold);
+  background: var(--gold-primary);
 }
 
 .horoscopeText {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: 1.7;
-  color: rgba(245, 241, 232, 0.85);
+  color: var(--text-primary);
+  opacity: 0.85;
 }
 
 /* ====================================================
@@ -492,7 +543,8 @@
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: 1.7;
-  color: rgba(245, 241, 232, 0.85);
+  color: var(--text-primary);
+  opacity: 0.85;
 }
 
 .reviewList {
