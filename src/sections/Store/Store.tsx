@@ -195,14 +195,7 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart({
-      id: p.id,
-      name: t('prod_' + p.id + '_name') || p.name,
-      price: p.price,
-      quantity: 1,
-      category: p.category
-    });
-    alert(`${t('prod_' + p.id + '_name') || p.name} added to cart.`);
+    window.location.href = 'https://tredevastore.com/';
   };
 
   return (

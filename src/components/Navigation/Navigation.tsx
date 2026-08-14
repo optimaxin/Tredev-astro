@@ -182,8 +182,8 @@ export default function Navigation() {
 
           {/* Cart Icon */}
           <button 
-            className={`${styles.cartBtn} ${page === 'cart' ? styles.active : ''}`} 
-            onClick={() => handleNavClick('cart')}
+            className={styles.cartBtn} 
+            onClick={() => { window.location.href = 'https://tredevastore.com/'; }}
             aria-label="View Cart"
           >
             <CartIcon size={28} />

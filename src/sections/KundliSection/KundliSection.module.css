@@ -162,6 +162,18 @@
   grid-template-columns: 1fr 280px;
   gap: var(--space-8);
   align-items: start;
+  background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
+  border: 12px double #8D4F28; /* Beautiful ornate double border */
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  position: relative;
+  box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
+}
+
+:global([data-theme='dark']) .chartLayout {
+  background: radial-gradient(circle, #251B17 0%, #150E0C 100%) !important;
+  border-color: var(--gold-primary) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(181, 138, 59, 0.08) !important;
 }
 
 .svgWrap {
@@ -227,9 +239,9 @@
 
 /* Planet List */
 .planetList {
-  background: rgba(22, 26, 46, 0.6);
-  border: 1px solid var(--color-border-dark);
-  border-radius: var(--radius-lg);
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px dashed rgba(141, 79, 40, 0.25);
+  border-radius: var(--radius-md);
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -302,34 +314,34 @@
 
 /* Light Theme High Contrast overrides for Planetary placements */
 :global([data-theme='light']) .planetList {
-  background: rgba(250, 247, 240, 0.85) !important;
-  border-color: rgba(181, 138, 59, 0.18) !important;
-  box-shadow: var(--shadow-card) !important;
+  background: rgba(141, 79, 40, 0.05) !important;
+  border-color: rgba(141, 79, 40, 0.25) !important;
+  box-shadow: none !important;
 }
 
 :global([data-theme='light']) .planetListTitle {
-  color: var(--text-primary) !important;
+  color: #5C3A21 !important;
 }
 
 :global([data-theme='light']) .planetRow {
-  border-bottom-color: rgba(181, 138, 59, 0.08) !important;
+  border-bottom-color: rgba(141, 79, 40, 0.08) !important;
 }
 
 :global([data-theme='light']) .planetName {
-  color: var(--text-primary) !important;
+  color: #5C3A21 !important;
 }
 
 :global([data-theme='light']) .planetSign {
-  color: var(--text-secondary) !important;
+  color: #8D4F28 !important;
 }
 
 :global([data-theme='light']) .planetHouse {
-  color: var(--sacred-accent) !important;
-  background: rgba(168, 91, 45, 0.08) !important;
+  color: #8D4F28 !important;
+  background: rgba(141, 79, 40, 0.08) !important;
 }
 
 :global([data-theme='light']) .chartNote {
-  color: var(--text-muted) !important;
+  color: rgba(141, 79, 40, 0.5) !important;
 }
 
 /* SVG Chart Element Colors */
@@ -340,8 +352,8 @@
 }
 
 :global([data-theme='light']) .svgBg {
-  fill: rgba(250, 247, 240, 0.8) !important;
-  stroke: rgba(181, 138, 59, 0.18) !important;
+  fill: transparent !important;
+  stroke: rgba(141, 79, 40, 0.18) !important;
 }
 
 .chartBorder {
@@ -349,7 +361,7 @@
 }
 
 :global([data-theme='light']) .chartBorder {
-  stroke: rgba(181, 138, 59, 0.4) !important;
+  stroke: #8D4F28 !important;
 }
 
 .chartLine {
@@ -357,7 +369,7 @@
 }
 
 :global([data-theme='light']) .chartLine {
-  stroke: rgba(181, 138, 59, 0.3) !important;
+  stroke: rgba(141, 79, 40, 0.4) !important;
 }
 
 .chartMidLine {
@@ -365,7 +377,7 @@
 }
 
 :global([data-theme='light']) .chartMidLine {
-  stroke: rgba(181, 138, 59, 0.2) !important;
+  stroke: rgba(141, 79, 40, 0.25) !important;
 }
 
 .chartPolygon {
@@ -374,8 +386,8 @@
 }
 
 :global([data-theme='light']) .chartPolygon {
-  fill: rgba(181, 138, 59, 0.05) !important;
-  stroke: rgba(181, 138, 59, 0.35) !important;
+  fill: rgba(141, 79, 40, 0.03) !important;
+  stroke: rgba(141, 79, 40, 0.45) !important;
 }
 
 .zodiacText {
@@ -383,7 +395,7 @@
 }
 
 :global([data-theme='light']) .zodiacText {
-  fill: var(--sacred-accent) !important;
+  fill: #8D4F28 !important;
 }
 
 .planetCircle {
@@ -393,12 +405,16 @@
 }
 
 :global([data-theme='light']) .planetCircle {
-  fill: rgba(181, 138, 59, 0.08) !important;
-  stroke: rgba(181, 138, 59, 0.25) !important;
+  fill: rgba(141, 79, 40, 0.06) !important;
+  stroke: rgba(141, 79, 40, 0.3) !important;
 }
 
 .planetSymbolText {
   fill: var(--gold-primary);
+}
+
+:global([data-theme='light']) .planetSymbolText {
+  fill: #8D4F28 !important;
 }
 
 .planetNameText {
@@ -406,7 +422,7 @@
 }
 
 :global([data-theme='light']) .planetNameText {
-  fill: var(--text-secondary) !important;
+  fill: #5C3A21 !important;
 }
 
 .houseNumberText {
@@ -414,5 +430,5 @@
 }
 
 :global([data-theme='light']) .houseNumberText {
-  fill: rgba(181, 138, 59, 0.5) !important;
+  fill: rgba(141, 79, 40, 0.5) !important;
 }

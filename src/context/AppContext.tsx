@@ -147,7 +147,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_cta: 'Analyze Placement →',
 
     // Card details & buttons translations
-    btn_add_to_cart: 'Add to Cart',
+    btn_add_to_cart: 'Buy Now',
     btn_enroll: 'Enroll Now',
     btn_view_details: 'View Details',
 
@@ -299,7 +299,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_desc: 'दिशात्मक ऊर्जा, पंचतत्व प्लेसमेंट और गृह वास्तुकला सद्भाव।',
     seek_card_cta: 'प्लेसमेंट विश्लेषण →',
 
-    btn_add_to_cart: 'कार्ट में जोड़ें',
+    btn_add_to_cart: 'अभी खरीदें',
     btn_enroll: 'प्रवेश लें',
     btn_view_details: 'विवरण देखें',
 
@@ -447,7 +447,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_desc: 'दिशात्मक ऊर्जा, पंचतत्व मांडणी आणि वास्तुकला सुसंवाद.',
     seek_card_cta: 'विश्लेषण करा →',
 
-    btn_add_to_cart: 'कार्टमध्ये जोडा',
+    btn_add_to_cart: 'आता खरेदी करा',
     btn_enroll: 'प्रवेश घ्या',
     btn_view_details: 'तपशील पहा',
 
@@ -595,7 +595,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_desc: 'দিকনির্দেশক শক্তি, পঞ্চভূত উপাদানের অবস্থান এবং গৃহের স্থাপত্য সামঞ্জস্য।',
     seek_card_cta: 'অবস্থান বিশ্লেষণ →',
 
-    btn_add_to_cart: 'কার্টে যুক্ত করুন',
+    btn_add_to_cart: 'এখনই কিনুন',
     btn_enroll: 'ভর্তি হন',
     btn_view_details: 'বিস্তারিত দেখুন',
 
@@ -743,7 +743,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_desc: 'திசை ஆற்றல்கள், ஐம்பூதங்களின் அமைவிடம் மற்றும் இல்ல கட்டிட இணக்கம்.',
     seek_card_cta: 'அமைப்பை ஆராய்க →',
 
-    btn_add_to_cart: 'வண்டியில் சேர்',
+    btn_add_to_cart: 'இப்போது வாங்குங்கள்',
     btn_enroll: 'இப்போதே சேருங்கள்',
     btn_view_details: 'விவரங்களை காண்க',
 
@@ -891,7 +891,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_desc: 'దిశల శక్తులు, పంచభూతాల అమరిక మరియు గృహ నిర్మాణ సామరస్యం.',
     seek_card_cta: 'స్థాన విశ్లేషణ →',
 
-    btn_add_to_cart: 'కార్ట్ లో చేర్చండి',
+    btn_add_to_cart: 'ఇప్పుడే కొనండి',
     btn_enroll: 'ఇప్పుడే చేరండి',
     btn_view_details: 'వివరాలు చూడండి',
 

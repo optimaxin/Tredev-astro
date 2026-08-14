@@ -824,19 +824,11 @@ function ReportDetailPage({ id }: { id: any }) {
 
 // 6. Product Detail Page
 function ProductDetailPage({ id }: { id: any }) {
-  const { addToCart, setPage } = useAppContext();
+  const { addToCart, setPage, t } = useAppContext();
   const product = PRODUCTS.find(p => p.id === Number(id)) || PRODUCTS[0];
 
   const handleAdd = () => {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      category: product.category
-    });
-    alert(`${product.name} added to cart.`);
-    setPage('cart');
+    window.location.href = 'https://tredevastore.com/';
   };
 
   return (
@@ -884,7 +876,7 @@ function ProductDetailPage({ id }: { id: any }) {
                 ₹{product.price}
               </div>
               <button className="btn btn-gold" onClick={handleAdd}>
-                Add to Cart
+                {t('btn_add_to_cart') || 'Buy Now'}
               </button>
             </div>
           </div>
