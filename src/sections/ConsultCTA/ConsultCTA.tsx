@@ -18,7 +18,7 @@ export default function ConsultCTA() {
 
       <div className={styles.inner}>
 
-        {/* Welcoming Acharya Portrait */}
+        {/* Welcoming Astrologist Portrait */}
         <motion.div
           className={styles.portraitWrap}
           initial={{ opacity: 0, x: -40 }}
@@ -28,8 +28,8 @@ export default function ConsultCTA() {
         >
           <div className={styles.portraitGlow} />
           <img
-            src="/acharya/acharya-welcome.jpeg"
-            alt="Acharya welcoming you to TredevAstro"
+            src="/Astrologist/Astrologist-welcome.jpeg"
+            alt="Astrologist welcoming you to TredevAstro"
             className={styles.portraitImg}
             draggable={false}
           />
@@ -51,7 +51,7 @@ export default function ConsultCTA() {
           </h2>
 
           <p className={styles.desc}>
-            Personal Jyotish guidance from an Acharya rooted in the classical Vedic tradition.
+            Personal Jyotish guidance from an Astrologist rooted in the classical Vedic tradition.
             Your natal chart holds answers — let them be read with precision and reverence.
           </p>
 
@@ -60,7 +60,7 @@ export default function ConsultCTA() {
               className={styles.btnGold}
               onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Consult an Acharya
+              Consult an Astrologist
             </button>
             <button
               className={styles.btnOutline}

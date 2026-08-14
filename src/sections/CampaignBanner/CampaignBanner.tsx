@@ -17,22 +17,22 @@ const SLIDES = [
     symbol: '☉',
     symbolLabel: 'Surya',
     decorSvg: 'kundli',
-    image: '/acharya/A1.png',
+    image: '/Astrologist/A1.png',
   },
   {
     id: 1,
-    category: 'ACHARYA CONSULTATION',
-    title: 'Speak to an Acharya\nWho Understands.',
+    category: 'Astrologist CONSULTATION',
+    title: 'Speak to an Astrologist\nWho Understands.',
     description: 'Connect with verified Vedic astrologers for personalized guidance on your life\'s most important questions.',
-    cta: 'Consult an Acharya',
+    cta: 'Consult an Astrologist',
     ctaAction: 'astrologers',
     accentColor: '#A85B2D',
     bgColor: 'linear-gradient(135deg, #17101F 0%, #24131A 40%, #1C0F22 100%)',
     artColor: '#A85B2D',
     symbol: '☽',
     symbolLabel: 'Chandra',
-    decorSvg: 'acharya',
-    image: '/acharya/A2.png',
+    decorSvg: 'Astrologist',
+    image: '/Astrologist/A2.png',
   },
   {
     id: 2,
@@ -47,7 +47,7 @@ const SLIDES = [
     symbol: '♃',
     symbolLabel: 'Guru',
     decorSvg: 'report',
-    image: '/acharya/A3.png',
+    image: '/Astrologist/A3.png',
   },
   {
     id: 3,
@@ -62,7 +62,7 @@ const SLIDES = [
     symbol: '◉',
     symbolLabel: 'Yantra',
     decorSvg: 'store',
-    image: '/acharya/A4.png',
+    image: '/Astrologist/A4.png',
   },
   {
     id: 4,
@@ -77,7 +77,7 @@ const SLIDES = [
     symbol: '✦',
     symbolLabel: 'Nakshatra',
     decorSvg: 'academy',
-    image: '/acharya/A1.png',
+    image: '/Astrologist/A1.png',
   },
 ];
 
@@ -87,7 +87,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
     <div className={styles.artwork} style={{ '--art-color': slide.artColor } as React.CSSProperties}>
       {/* Outer glow ring */}
       <div className={styles.artGlow} style={{ background: `radial-gradient(circle, ${slide.artColor}22 0%, transparent 70%)` }} />
-      
+
       {/* Main SVG artwork */}
       <svg
         width={size}
@@ -96,9 +96,9 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
         className={`${styles.artSvg} ${isActive ? styles.artSvgActive : ''}`}
       >
         {/* Outer decorative ring */}
-        <circle cx="160" cy="160" r="148" fill="none" stroke={`${slide.artColor}30`} strokeWidth="1"/>
-        <circle cx="160" cy="160" r="130" fill="none" stroke={`${slide.artColor}25`} strokeWidth="0.75"/>
-        
+        <circle cx="160" cy="160" r="148" fill="none" stroke={`${slide.artColor}30`} strokeWidth="1" />
+        <circle cx="160" cy="160" r="130" fill="none" stroke={`${slide.artColor}25`} strokeWidth="0.75" />
+
         {/* 12-spoke Rashi wheel */}
         {Array.from({ length: 12 }, (_, i) => {
           const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
@@ -106,14 +106,14 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
           const y1 = 160 + Math.sin(angle) * 80;
           const x2 = 160 + Math.cos(angle) * 130;
           const y2 = 160 + Math.sin(angle) * 130;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`${slide.artColor}20`} strokeWidth="0.75"/>;
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`${slide.artColor}20`} strokeWidth="0.75" />;
         })}
-        
+
         {/* Inner concentric circles */}
-        <circle cx="160" cy="160" r="80" fill="none" stroke={`${slide.artColor}35`} strokeWidth="1"/>
-        <circle cx="160" cy="160" r="50" fill="none" stroke={`${slide.artColor}40`} strokeWidth="0.75"/>
-        <circle cx="160" cy="160" r="24" fill="none" stroke={`${slide.artColor}50`} strokeWidth="1"/>
-        
+        <circle cx="160" cy="160" r="80" fill="none" stroke={`${slide.artColor}35`} strokeWidth="1" />
+        <circle cx="160" cy="160" r="50" fill="none" stroke={`${slide.artColor}40`} strokeWidth="0.75" />
+        <circle cx="160" cy="160" r="24" fill="none" stroke={`${slide.artColor}50`} strokeWidth="1" />
+
         {/* Orbital dots — Navagrahas */}
         {[
           { r: 100, angle: 0.5, size: 4 },
@@ -131,7 +131,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
             opacity="0.65"
           />
         ))}
-        
+
         {/* Center symbol */}
         <text
           x="160"
@@ -144,7 +144,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
         >
           {slide.symbol}
         </text>
-        
+
         {/* Symbol label */}
         <text
           x="160"
@@ -158,7 +158,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
         >
           {slide.symbolLabel.toUpperCase()}
         </text>
-        
+
         {/* 12 rashi segment tick marks */}
         {Array.from({ length: 12 }, (_, i) => {
           const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
@@ -166,7 +166,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
           const y1 = 160 + Math.sin(angle) * 128;
           const x2 = 160 + Math.cos(angle) * 148;
           const y2 = 160 + Math.sin(angle) * 148;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`${slide.artColor}60`} strokeWidth="2"/>;
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`${slide.artColor}60`} strokeWidth="2" />;
         })}
       </svg>
     </div>
@@ -297,7 +297,7 @@ export default function CampaignBanner() {
               >
                 {slide.cta}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </motion.button>
 
@@ -315,16 +315,16 @@ export default function CampaignBanner() {
               </div>
             </div>
 
-            {/* Right: Artwork — chakra SVG behind, Acharya image on top */}
+            {/* Right: Artwork — chakra SVG behind, Astrologist image on top */}
             <div className={styles.slideArtwork}>
               <SlideArtwork slide={slide} isActive={true} />
-              {/* Acharya image layer — absolutely over the chakra region */}
+              {/* Astrologist image layer — absolutely over the chakra region */}
               <img
                 key={slide.id}
                 src={slide.image}
                 alt=""
                 aria-hidden="true"
-                className={styles.slideAcharyaImg}
+                className={styles.slideAstrologistImg}
                 draggable={false}
               />
             </div>
@@ -355,7 +355,7 @@ export default function CampaignBanner() {
               transition={{ duration: 0.2 }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               PREVIOUS
             </motion.div>
@@ -370,7 +370,7 @@ export default function CampaignBanner() {
             >
               NEXT
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M8 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </motion.div>
           )}

@@ -8,7 +8,7 @@ export default function MeetAcharya() {
   const { setPage } = useAppContext();
 
   return (
-    <section className={styles.section} id="meet-acharya">
+    <section className={styles.section} id="meet-Astrologist">
       {/* Background ornament — partial mandala, top-right */}
       <CelestialOrnament
         type="mandala"
@@ -31,8 +31,8 @@ export default function MeetAcharya() {
             <CelestialOrnament type="rashi" className={styles.portraitOrnament} />
             <div className={styles.portraitGlow} />
             <img
-              src="/acharya/acharya-composed.jpeg"
-              alt="Acharya TredevAstro — Jyotish Pandit"
+              src="/Astrologist/Astrologist-composed.jpeg"
+              alt="Astrologist TredevAstro — Jyotish Pandit"
               className={styles.portraitImg}
               draggable={false}
             />
@@ -52,16 +52,16 @@ export default function MeetAcharya() {
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.9, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <span className={styles.eyebrow}>Meet Your Acharya</span>
+          <span className={styles.eyebrow}>Meet Your Astrologist</span>
 
           <h2 className={styles.name}>Pandit TredevAstro</h2>
-          <p className={styles.tradition}>Jyotish Acharya · Kerala Tradition</p>
+          <p className={styles.tradition}>Jyotish Astrologist · Kerala Tradition</p>
 
           <div className={styles.divider} />
 
           <p className={styles.bio}>
             Rooted in the classical Parashari tradition and initiated in the ancient
-            Jyotish lineages of Kerala, our Acharya brings together the precision of
+            Jyotish lineages of Kerala, our Astrologist brings together the precision of
             Vedic mathematics and the depth of dharmic understanding into every
             consultation.
           </p>
@@ -86,13 +86,13 @@ export default function MeetAcharya() {
               className={styles.btnGold}
               onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Consult the Acharya
+              Consult the Astrologist
             </button>
             <button
               className={styles.btnOutline}
               onClick={() => { setPage('about'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Know the Acharya
+              Know the Astrologist
             </button>
           </div>
         </motion.div>

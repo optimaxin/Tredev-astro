@@ -4,7 +4,7 @@
 export const ASTROLOGERS = [
   {
     id: 1,
-    name: 'Acharya Rahul Shastri',
+    name: 'Astrologist Rahul Shastri',
     title: 'Vedic Astrology & Kundli Expert',
     specialization: ['Vedic Astrology', 'Career', 'Finance'],
     rating: 4.9,
@@ -72,7 +72,7 @@ export const ASTROLOGERS = [
   },
   {
     id: 5,
-    name: 'Acharya Suresh Kumar',
+    name: 'Astrologist Suresh Kumar',
     title: 'Marriage & Family Harmony Expert',
     specialization: ['Marriage', 'Family', 'Kundli Matching'],
     rating: 4.8,
@@ -431,7 +431,7 @@ export const TESTIMONIALS = [
     id: 2,
     name: 'Rohit Mehta',
     location: 'Mumbai',
-    service: 'Consultation with Acharya Rahul',
+    service: 'Consultation with Astrologist Rahul',
     rating: 5,
     text: 'I came in with questions about my business direction. The guidance was thoughtful, grounded in my chart details and not generic at all. It gave me a new way to think about my timing. This is placeholder demo content.',
     avatar: 'RM',
@@ -563,28 +563,28 @@ export const CONCERN_CONTENT: Record<string, { free: string[]; paid: string[] }>
 };
 
 export const KUNDLI_PLANETS = [
-  { id: 'sun',     symbol: '☉', name: 'Sun',     sign: 'Scorpio',    house: 4,  degree: '14°32\'', quality: 'Identity · vitality · self-expression' },
-  { id: 'moon',    symbol: '☽', name: 'Moon',    sign: 'Taurus',     house: 10, degree: '23°11\'', quality: 'Mind · emotions · inner world' },
-  { id: 'mercury', symbol: '☿', name: 'Mercury', sign: 'Scorpio',    house: 4,  degree: '2°47\'',  quality: 'Communication · intellect · adaptability' },
-  { id: 'venus',   symbol: '♀', name: 'Venus',   sign: 'Sagittarius', house: 5, degree: '8°19\'',  quality: 'Love · beauty · pleasures · art' },
-  { id: 'mars',    symbol: '♂', name: 'Mars',    sign: 'Virgo',      house: 2,  degree: '19°55\'', quality: 'Energy · drive · courage · action' },
-  { id: 'jupiter', symbol: '♃', name: 'Jupiter', sign: 'Cancer',     house: 12, degree: '7°33\'',  quality: 'Wisdom · expansion · abundance · grace' },
-  { id: 'saturn',  symbol: '♄', name: 'Saturn',  sign: 'Capricorn',  house: 6,  degree: '26°04\'', quality: 'Discipline · karma · structure · time' },
-  { id: 'rahu',    symbol: '☊', name: 'Rahu',    sign: 'Gemini',     house: 11, degree: '12°18\'', quality: 'Desire · ambition · future karma' },
-  { id: 'ketu',    symbol: '☋', name: 'Ketu',    sign: 'Sagittarius', house: 5, degree: '12°18\'', quality: 'Liberation · past karma · spirituality' },
-  { id: 'asc',     symbol: '↑', name: 'Ascendant', sign: 'Leo',      house: 1,  degree: '4°22\'',  quality: 'Self · physical body · first impression · vitality' },
+  { id: 'sun', symbol: '☉', name: 'Sun', sign: 'Scorpio', house: 4, degree: '14°32\'', quality: 'Identity · vitality · self-expression' },
+  { id: 'moon', symbol: '☽', name: 'Moon', sign: 'Taurus', house: 10, degree: '23°11\'', quality: 'Mind · emotions · inner world' },
+  { id: 'mercury', symbol: '☿', name: 'Mercury', sign: 'Scorpio', house: 4, degree: '2°47\'', quality: 'Communication · intellect · adaptability' },
+  { id: 'venus', symbol: '♀', name: 'Venus', sign: 'Sagittarius', house: 5, degree: '8°19\'', quality: 'Love · beauty · pleasures · art' },
+  { id: 'mars', symbol: '♂', name: 'Mars', sign: 'Virgo', house: 2, degree: '19°55\'', quality: 'Energy · drive · courage · action' },
+  { id: 'jupiter', symbol: '♃', name: 'Jupiter', sign: 'Cancer', house: 12, degree: '7°33\'', quality: 'Wisdom · expansion · abundance · grace' },
+  { id: 'saturn', symbol: '♄', name: 'Saturn', sign: 'Capricorn', house: 6, degree: '26°04\'', quality: 'Discipline · karma · structure · time' },
+  { id: 'rahu', symbol: '☊', name: 'Rahu', sign: 'Gemini', house: 11, degree: '12°18\'', quality: 'Desire · ambition · future karma' },
+  { id: 'ketu', symbol: '☋', name: 'Ketu', sign: 'Sagittarius', house: 5, degree: '12°18\'', quality: 'Liberation · past karma · spirituality' },
+  { id: 'asc', symbol: '↑', name: 'Ascendant', sign: 'Leo', house: 1, degree: '4°22\'', quality: 'Self · physical body · first impression · vitality' },
 ];
 
 export const HOUSE_MEANINGS: Record<number, string> = {
-  1:  '1st House — Self, body, personality, early life',
-  2:  '2nd House — Wealth, family, speech, values',
-  3:  '3rd House — Courage, siblings, communication, short journeys',
-  4:  '4th House — Home, mother, comforts, inner peace',
-  5:  '5th House — Creativity, children, intelligence, romance',
-  6:  '6th House — Health, debts, service, obstacles',
-  7:  '7th House — Partnerships, marriage, business, public dealings',
-  8:  '8th House — Longevity, transformation, secrets, inheritance',
-  9:  '9th House — Dharma, fortune, higher learning, spiritual wisdom',
+  1: '1st House — Self, body, personality, early life',
+  2: '2nd House — Wealth, family, speech, values',
+  3: '3rd House — Courage, siblings, communication, short journeys',
+  4: '4th House — Home, mother, comforts, inner peace',
+  5: '5th House — Creativity, children, intelligence, romance',
+  6: '6th House — Health, debts, service, obstacles',
+  7: '7th House — Partnerships, marriage, business, public dealings',
+  8: '8th House — Longevity, transformation, secrets, inheritance',
+  9: '9th House — Dharma, fortune, higher learning, spiritual wisdom',
   10: '10th House — Career, status, authority, life purpose',
   11: '11th House — Gains, friendships, aspirations, income',
   12: '12th House — Liberation, losses, foreign lands, spiritual moksha',
@@ -610,7 +610,7 @@ export const AI_DEMO_RESPONSES: Record<string, string> = {
 **Traditional interpretation suggests:** this is a year of significant inner reassessment of your professional direction. The months of October–February carry the strongest indications for meaningful career shifts.
 
 *This is chart-based guidance. Astrological interpretation does not guarantee specific outcomes. For a deeper reading, consider a Career Intelligence Report or consultation with one of our astrologers.*`,
-  
+
   'When is a good time for marriage?': `Looking at your chart with Ascendant in Leo and Moon in Taurus (10th house)...
 
 **Key indicators:**

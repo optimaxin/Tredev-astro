@@ -49,8 +49,8 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
         {/* Header */}
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Acharya Margdarshan</span>
-            <h2 className="section-title-serif">Consult an Acharya</h2>
+            <span className="section-eyebrow-gold">Astrologist Margdarshan</span>
+            <h2 className="section-title-serif">Consult an Astrologist</h2>
             <p className="section-desc-sans">
               Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.
             </p>

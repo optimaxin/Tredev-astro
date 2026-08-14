@@ -80,7 +80,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'Free Kundli',
     nav_consult: 'Consult',
     nav_login: 'LOGIN',
-    
+
     // Core headings
     section_reports_title: 'Go Deeper with Jyotish',
     section_reports_desc: 'Detailed, manuscript-grade Kundli readings translating cosmic alignment into direct life direction.',
@@ -88,7 +88,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_tools_desc: 'Trusted Vedic astrology tools — free, accurate, and always available.',
     section_panchang_title: "Today's Panchang",
     section_panchang_desc: 'Vedic daily almanac for auspicious timings, planetary transits, and daily energy grid.',
-    section_astrologers_title: 'Consult an Acharya',
+    section_astrologers_title: 'Consult an Astrologist',
     section_astrologers_desc: 'Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.',
     section_store_title: 'TredevStore',
     section_store_desc: 'Authentic, energized gemstones, yantras and spiritual tools, carefully curated.',
@@ -96,15 +96,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'Structured, in-depth courses in Vedic astrology and Jyotish, guided by lineage Acharyas.',
     section_ai_title: 'Ask TredevAstro',
     section_ai_desc: 'Have a question about your chart? Get insights grounded in classical Vedic astrology.',
-    
+
     // CTA & button actions
     cta_explore: 'Explore All',
-    cta_consult: 'Consult an Acharya',
+    cta_consult: 'Consult an Astrologist',
     cta_generate: 'Generate Free Kundli',
     cta_chat: 'START 5-MINUTE FREE SESSION',
     ai_intro_title: 'Your first 5 minutes are free.',
     ai_intro_desc: 'Ask questions about your birth chart, current transits, or seek clarity on life matters — all through the lens of classical Vedic Jyotish.',
-    ai_start_btn: 'Start 5-Minute Session',
+    ai_start_btn: 'Start',
 
     // Hero Section
     hero_headline: 'Your Stars. Your Dharma.',
@@ -112,7 +112,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_hindi_eyebrow: '"Apne Aakash Ko Samjhiye"',
     hero_subhead: 'Personalized Vedic astrology, expert guidance, intelligent insights and timeless Jyotish wisdom.',
     hero_cta_kundli: 'Generate Free Kundli',
-    hero_cta_consult: 'Consult an Acharya',
+    hero_cta_consult: 'Consult an Astrologist',
     hero_trust_acharyas: 'Verified Acharyas',
     hero_trust_jyotish: 'Personalized Jyotish',
     hero_trust_secure: 'Private & Secure',
@@ -150,7 +150,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'Add to Cart',
     btn_enroll: 'Enroll Now',
     btn_view_details: 'View Details',
-    
+
     // Categories
     cat_gemstones: 'Ratna (Gemstones)',
     cat_rudraksha: 'Rudraksha',
@@ -164,15 +164,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'Career Intelligence',
     report_1_sub: 'Your professional path, decoded',
     report_1_desc: 'Deep analysis of your 10th house, career planets, Mahadasha influence and the optimal timing for career transitions.',
-    
+
     report_2_title: 'Love & Relationships',
     report_2_sub: "Understand your heart's map",
     report_2_desc: 'Explore your Venus placement, 7th house dynamics, and compatibility factors that shape your relationships.',
-    
+
     report_3_title: 'Marriage Report',
     report_3_sub: 'Timing and compatibility',
     report_3_desc: 'Comprehensive marriage analysis including Navamsha chart, Mangal Dosha assessment, and marriage timing.',
-    
+
     report_4_title: 'Premium Kundli',
     report_4_sub: 'Your complete cosmic blueprint',
     report_4_desc: 'The most comprehensive birth chart analysis including all 16 divisional charts, detailed planetary interpretations and life predictions.',
@@ -235,7 +235,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'मुफ़्त कुंडली',
     nav_consult: 'परामर्श',
     nav_login: 'लॉगिन',
-    
+
     section_reports_title: 'ज्योतिष के साथ गहराई में जाएं',
     section_reports_desc: 'विस्तृत, हस्तलिखित स्तर की कुंडली पठन जो ब्रह्मांडीय संरेखण को जीवन की दिशा में बदलता है।',
     section_tools_title: 'मुफ़्त ज्योतिष उपकरण',
@@ -250,7 +250,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'वैदिक ज्योतिष और ज्योतिष शास्त्र में संरचित, गहन पाठ्यक्रम, आचार्यों के मार्गदर्शन में।',
     section_ai_title: 'त्रिदेव ज्योतिष एआई से पूछें',
     section_ai_desc: 'अपनी कुंडली के बारे में प्रश्न है? शास्त्रीय वैदिक ज्योतिष पर आधारित अंतर्दृष्टि प्राप्त करें।',
-    
+
     cta_explore: 'सभी देखें',
     cta_consult: 'आचार्य से बात करें',
     cta_generate: 'मुफ़्त कुंडली बनाएं',
@@ -302,7 +302,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'कार्ट में जोड़ें',
     btn_enroll: 'प्रवेश लें',
     btn_view_details: 'विवरण देखें',
-    
+
     cat_gemstones: 'रत्न',
     cat_rudraksha: 'रुद्राक्ष',
     cat_crystals: 'स्फटिक',
@@ -314,15 +314,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'करियर इंटेलिजेंस',
     report_1_sub: 'आपका व्यावसायिक मार्ग, डिकोड किया गया',
     report_1_desc: 'आपके १०वें भाव, करियर के ग्रहों, महादशा के प्रभाव और करियर परिवर्तन के लिए अनुकूल समय का गहरा विश्लेषण।',
-    
+
     report_2_title: 'प्रेम और रिश्ते',
     report_2_sub: 'अपने दिल का नक्शा समझें',
     report_2_desc: 'अपने शुक्र की स्थिति, ७वें भाव के समीकरण और आपके रिश्तों को आकार देने वाले अनुकूलता कारकों का पता लगाएं।',
-    
+
     report_3_title: 'विवाह रिपोर्ट',
     report_3_sub: 'समय और अनुकूलता',
     report_3_desc: 'नवांश कुंडली, मंगल दोष मूल्यांकन और विवाह समय सहित व्यापक विवाह विश्लेषण।',
-    
+
     report_4_title: 'प्रीमियम कुंडली',
     report_4_sub: 'आपका संपूर्ण आकाशीय खाका',
     report_4_desc: 'सभी १६ वर्ग कुंडलियों, विस्तृत ग्रहों की व्याख्या और जीवन भविष्यवाणियों सहित सबसे व्यापक जन्म कुंडली विश्लेषण।',
@@ -383,7 +383,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'मोफत कुंडली',
     nav_consult: 'सल्ला',
     nav_login: 'लॉगिन',
-    
+
     section_reports_title: 'ज्योतिषशास्त्रासह सखोल जा',
     section_reports_desc: 'अचूक आणि सखोल कुंडली वाचन जे ग्रहस्थितीला योग्य दिशा दाखवते.',
     section_tools_title: 'मोफत ज्योतिष साधने',
@@ -398,7 +398,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'वैदिक ज्योतिषशास्त्रातील पद्धतशीर आणि सखोल अभ्यासक्रम.',
     section_ai_title: 'त्रिदेव ज्योतिष एआयला विचारा',
     section_ai_desc: 'तुमच्या कुंडलीबद्दल प्रश्न आहे? शास्त्रीय वैदिक ज्योतिषावर आधारित उत्तरे मिळवा.',
-    
+
     cta_explore: 'सर्व पहा',
     cta_consult: 'आचार्यांशी चर्चा करा',
     cta_generate: 'मोफत कुंडली बनवा',
@@ -450,7 +450,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'कार्टमध्ये जोडा',
     btn_enroll: 'प्रवेश घ्या',
     btn_view_details: 'तपशील पहा',
-    
+
     cat_gemstones: 'रत्ने',
     cat_rudraksha: 'रुद्राक्ष',
     cat_crystals: 'स्फटिक',
@@ -462,15 +462,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'करिअर इंटेलिजन्स',
     report_1_sub: 'तुमचा व्यावसायिक मार्ग, डिकोड केला',
     report_1_desc: 'तुमच्या १० व्या स्थानाचा, करिअर ग्रहांचा, महादशाचा प्रभाव आणि नोकरी बदलण्यासाठी योग्य वेळेचे सखोल विश्लेषण.',
-    
+
     report_2_title: 'प्रेम आणि नातेसंबंध',
     report_2_sub: 'तुमच्या हृदयाचा नकाशा समजून घ्या',
     report_2_desc: 'तुमची शुक्र स्थिती, ७ वे स्थान आणि नात्याला आकार देणारे अनुकूलता घटक तपासा.',
-    
+
     report_3_title: 'विवाह अहवाल',
     report_3_sub: 'वेळ आणि अनुकूलता',
     report_3_desc: 'नवांश कुंडली, मंगळ दोष आणि विवाहाच्या वेळेसह सविस्तर विवाह अहवाल.',
-    
+
     report_4_title: 'प्रीमियम कुंडली',
     report_4_sub: 'तुमचा संपूर्ण आकाशीय आराखडा',
     report_4_desc: 'सर्व १६ वर्ग कुंडल्या, ग्रहांचे सविस्तर विश्लेषण आणि जीवन भविष्यासह सर्वात सखोल कुंडली वाचन.',
@@ -531,7 +531,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'ফ্রি কোষ্ঠী',
     nav_consult: 'পরামর্শ',
     nav_login: 'লগইন',
-    
+
     section_reports_title: 'জ্যোতিষের সাথে গভীরে যান',
     section_reports_desc: 'বিস্তারিত কোষ্ঠী বিচার যা আপনার গ্রহের অবস্থানকে জীবনের সঠিক দিশায় রূপান্তর করে।',
     section_tools_title: 'ফ্রি জ্যোতিষ সরঞ্জাম',
@@ -546,7 +546,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'বৈদিক জ্যোতিষশাস্ত্রের উপর বিস্তারিত ও সহজ পাঠ্যক্রম।',
     section_ai_title: 'ত্রিদেব জ্যোতিষ এআই-কে জিজ্ঞাসা করুন',
     section_ai_desc: 'আপনার কোষ্ঠী সম্পর্কে প্রশ্ন আছে? বৈদিক জ্যোতিষ ভিত্তিক সঠিক সিদ্ধান্ত পান।',
-    
+
     cta_explore: 'সব দেখুন',
     cta_consult: 'আচার্যের সাথে কথা বলুন',
     cta_generate: 'ফ্রি কোষ্ঠী তৈরি করুন',
@@ -598,7 +598,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'কার্টে যুক্ত করুন',
     btn_enroll: 'ভর্তি হন',
     btn_view_details: 'বিস্তারিত দেখুন',
-    
+
     cat_gemstones: 'রত্ন পাথর',
     cat_rudraksha: 'রুদ্রাক্ষ',
     cat_crystals: 'স্ফটিক',
@@ -610,15 +610,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'ক্যারিয়ার ইন্টেলিজেন্স',
     report_1_sub: 'আপনার পেশাদার পথ, ডিকোড করা হলো',
     report_1_desc: 'আপনার ১০ম ভাব, ক্যারিয়ারের গ্রহ, মহাদশার প্রভাব এবং চাকরি পরিবর্তনের সঠিক সময়ের বিস্তারিত বিশ্লেষণ।',
-    
+
     report_2_title: 'প্রেম ও সম্পর্ক',
     report_2_sub: 'আপনার হৃদয়ের মানচিত্র বুঝুন',
     report_2_desc: 'আপনার শুক্রের অবস্থান, ৭ম ভাবের গতিশীলতা এবং সম্পর্কের সামঞ্জস্যের কারণগুলি অন্বেষণ করুন।',
-    
+
     report_3_title: 'বিবাহ রিপোর্ট',
     report_3_sub: 'সময় এবং সামঞ্জস্য',
     report_3_desc: 'নবমাংশ চার্ট, মঙ্গল দোষ এবং বিবাহের সময় সহ সম্পূর্ণ বিবাহ বিশ্লেষণ রিপোর্ট।',
-    
+
     report_4_title: 'প্রিমিয়াম কোষ্ঠী',
     report_4_sub: 'আপনার সম্পূর্ণ মহাজাগতিক নীলনকশা',
     report_4_desc: '১৬টি বিভাগীয় চার্ট, গ্রহের বিস্তারিত ব্যাখ্যা এবং জীবন ভবিষ্যদ্বাণী সহ সবচেয়ে সম্পূর্ণ কোষ্ঠী বিশ্লেষণ।',
@@ -679,7 +679,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'இலவச ஜாதகம்',
     nav_consult: 'ஆலோசனை',
     nav_login: 'உள்நுழை',
-    
+
     section_reports_title: 'ஜோதிடத்தின் ஆழம் அறியுங்கள்',
     section_reports_desc: 'உங்கள் கிரக அமைப்புகளை வாழ்வின் நேரடி வழிகாட்டியாக மாற்றும் விரிவான ஜாதக வாசிப்பு.',
     section_tools_title: 'இலவச ஜோதிட கருவிகள்',
@@ -694,7 +694,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'முறையான வேத ஜோதிடப் பயிற்சி வகுப்புகள்.',
     section_ai_title: 'திரிதேவ் ஜோதிட ஐ-யிடம் கேட்கவும்',
     section_ai_desc: 'உங்கள் ஜாதகம் பற்றி கேள்விகள் உள்ளதா? வேத ஜோதிட வழியில் துல்லியமான பதில்களைப் பெறுங்கள்.',
-    
+
     cta_explore: 'அனைத்தும் காண்க',
     cta_consult: 'ஆச்சார்யாவிடம் பேசுக',
     cta_generate: 'இலவச ஜாதகம் பெறுக',
@@ -746,7 +746,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'வண்டியில் சேர்',
     btn_enroll: 'இப்போதே சேருங்கள்',
     btn_view_details: 'விவரங்களை காண்க',
-    
+
     cat_gemstones: 'நவரத்தினங்கள்',
     cat_rudraksha: 'ருத்ராட்சம்',
     cat_crystals: 'படிகங்கள்',
@@ -758,15 +758,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'தொழில் நுண்ணறிவு',
     report_1_sub: 'உங்கள் தொழில் முறை பாதை, கணிக்கப்பட்டது',
     report_1_desc: 'உங்கள் 10 ஆம் வீடு, தொழில் கிரகங்கள் மற்றும் தகுந்த வேலை மாற்றங்களை அறியும் விரிவான அறிக்கை.',
-    
+
     report_2_title: 'காதல் & உறவுகள்',
     report_2_sub: 'உங்கள் இதயத்தின் வரைபடத்தை அறியுங்கள்',
     report_2_desc: 'சுக்கிரன் அமைவிடம், 7 ஆம் வீடு மற்றும் உறவு இணக்கம் பற்றிய வாசிப்பு.',
-    
+
     report_3_title: 'திருமண அறிக்கை',
     report_3_sub: 'காலம் மற்றும் பொருத்தம்',
     report_3_desc: 'நவாம்ச ஜாதகம், செவ்வாய் தோஷம் மற்றும் திருமண கால கணிப்புகள் அடங்கிய திருமண அறிக்கை.',
-    
+
     report_4_title: 'பிரீமியம் ஜாதகம்',
     report_4_sub: 'உங்கள் முழு கிரக வரைபடம்',
     report_4_desc: '16 வர்க்க சக்கரங்கள் மற்றும் விரிவான கிரக விளக்கங்கள் கொண்ட முழு ஜாதக அறிக்கை.',
@@ -827,7 +827,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_free_kundli: 'ఉచిత జాతకం',
     nav_consult: 'సలహా',
     nav_login: 'లాగిన్',
-    
+
     section_reports_title: 'జ్యోతిష్యం తో లోతుగా తెలుసుకోండి',
     section_reports_desc: 'గ్రహాల గమనాన్ని జీవిత మార్గదర్శకంగా మార్చే వివరణాత్మక జాతక నివేదిక.',
     section_tools_title: 'ఉచిత జ్యోతిష్య సాధనాలు',
@@ -842,7 +842,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_academy_desc: 'వైదిక జ్యోతిష్యం లో ప్రాథమిక స్థాయి నుండి ఉన్నత స్థాయి కోర్సులు.',
     section_ai_title: 'త్రిదేవ్ జ్యోతిష్య ఏఐ ని అడగండి',
     section_ai_desc: 'మీ జాతకం గురించి ప్రశ్నలు ఉన్నాయా? వైదిక జ్యోతిష్యం ఆధారంగా సలహాలు పొందండి.',
-    
+
     cta_explore: 'అన్నీ చూడండి',
     cta_consult: 'ఆచార్యుడితో మాట్లాడండి',
     cta_generate: 'ఉచిత జాతకాన్ని పొందండి',
@@ -894,7 +894,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     btn_add_to_cart: 'కార్ట్ లో చేర్చండి',
     btn_enroll: 'ఇప్పుడే చేరండి',
     btn_view_details: 'వివరాలు చూడండి',
-    
+
     cat_gemstones: 'రత్నాలు',
     cat_rudraksha: 'రుద్రాక్షలు',
     cat_crystals: 'స్ఫటికాలు',
@@ -906,15 +906,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     report_1_title: 'కెరీర్ ఇంటెలిజెన్స్',
     report_1_sub: 'మీ వృత్తిపరమైన మార్గం',
     report_1_desc: 'మీ 10వ స్థానం, కెరీర్ గ్రహాలు మరియు అనుకూలమైన ఉద్యోగ మార్పుల విశ్లేషణ.',
-    
+
     report_2_title: 'ప్రేమ & సంబంధాలు',
     report_2_sub: 'మీ హృదయ పటం',
     report_2_desc: 'శుక్రుడి స్థానం, 7వ స్థానం మరియు సంబంధాల అనుకూలత గురించిన జాతక నివేదిక.',
-    
+
     report_3_title: 'వివాహ నివేదిక',
     report_3_sub: 'సమయం మరియు అనుకూలత',
     report_3_desc: 'నవాంశ చక్రం, కుజ దోషం మరియు వివాహ సమయం గురించిన విశ్లేషణ.',
-    
+
     report_4_title: 'ప్రీమియం జాతకం',
     report_4_sub: 'సంపూర్ణ ఖగోళ చిత్రం',
     report_4_desc: '16 వర్గ చక్రాలు మరియు గ్రహాల సంపూర్ణ వివరణలతో కూడిన సమగ్ర జాతక నివేదిక.',
@@ -988,12 +988,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('kundliGenerated') === 'true';
   });
   const [astrologerFilter, setAstrologerFilter] = useState('All');
-  
+
   // Navigation & Cart States
   const [page, setPage] = useState('home');
   const [selectedId, setSelectedId] = useState<number | string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  
+
   // Theme State — DEFAULT IS LIGHT
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('theme');

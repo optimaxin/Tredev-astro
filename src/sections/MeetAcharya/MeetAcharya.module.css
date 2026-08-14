@@ -1,5 +1,5 @@
 /* =============================================
-   MEET YOUR ACHARYA — Section
+   MEET YOUR Astrologist — Section
    ============================================= */
 
 .section {
@@ -80,12 +80,10 @@
   transform: translateX(-50%);
   width: 70%;
   height: 50%;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(210, 155, 50, 0.14) 0%,
-    rgba(180, 100, 30, 0.06) 50%,
-    transparent 80%
-  );
+  background: radial-gradient(ellipse at 50% 100%,
+      rgba(210, 155, 50, 0.14) 0%,
+      rgba(180, 100, 30, 0.06) 50%,
+      transparent 80%);
   z-index: 0;
   pointer-events: none;
 }
@@ -134,21 +132,17 @@
   position: absolute;
   inset: 0;
   /* Bottom fade so portrait dissolves into the section background */
-  background: linear-gradient(
-    to bottom,
-    transparent 60%,
-    var(--bg-primary) 100%
-  );
+  background: linear-gradient(to bottom,
+      transparent 60%,
+      var(--bg-primary) 100%);
   z-index: 2;
   pointer-events: none;
 }
 
 :global([data-theme='light']) .portraitFrame::after {
-  background: linear-gradient(
-    to bottom,
-    transparent 60%,
-    #FAF7F0 100%
-  );
+  background: linear-gradient(to bottom,
+      transparent 60%,
+      #FAF7F0 100%);
 }
 
 .credentialPill {
@@ -340,17 +334,21 @@
     gap: 48px;
     padding: 0 28px;
   }
+
   .portraitCol {
     order: 2;
     align-items: flex-start;
   }
+
   .portraitFrame {
     max-width: 300px;
     aspect-ratio: 3 / 4;
   }
+
   .contentCol {
     order: 1;
   }
+
   .section {
     padding: 64px 0;
   }

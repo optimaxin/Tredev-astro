@@ -166,7 +166,7 @@ export default function AIAstrology() {
 
             <div className={styles.freeBadge}>
               <span className={styles.freeBadgeIcon}>✦</span>
-              First 5 minutes free
+              First free chat
             </div>
 
             <div className={styles.disclaimer}>
@@ -196,14 +196,14 @@ export default function AIAstrology() {
                 >
                   <div className={styles.introCelestial}>
                     <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-                      <circle cx="36" cy="36" r="34" stroke="rgba(181,138,59,0.25)" strokeWidth="1"/>
-                      <circle cx="36" cy="36" r="24" stroke="rgba(181,138,59,0.35)" strokeWidth="0.75"/>
-                      <circle cx="36" cy="36" r="3" fill="rgba(181,138,59,0.7)"/>
+                      <circle cx="36" cy="36" r="34" stroke="rgba(181,138,59,0.25)" strokeWidth="1" />
+                      <circle cx="36" cy="36" r="24" stroke="rgba(181,138,59,0.35)" strokeWidth="0.75" />
+                      <circle cx="36" cy="36" r="3" fill="rgba(181,138,59,0.7)" />
                       {Array.from({ length: 8 }, (_, i) => {
                         const angle = (i / 8) * Math.PI * 2;
                         const x = 36 + Math.cos(angle) * 34;
                         const y = 36 + Math.sin(angle) * 34;
-                        return <circle key={i} cx={x} cy={y} r="2" fill="rgba(181,138,59,0.5)"/>;
+                        return <circle key={i} cx={x} cy={y} r="2" fill="rgba(181,138,59,0.5)" />;
                       })}
                     </svg>
                   </div>

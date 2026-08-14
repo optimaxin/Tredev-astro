@@ -51,15 +51,15 @@ export default function PageRenderer() {
           <GuidanceBanner />
           <CampaignBanner />
           <SeekGuidance />
-          
+
           <div className="yantra-watermark-right">
             <ReportsSection featured />
           </div>
-          
+
           <div className="yantra-watermark-left">
             <FreeTools featured />
           </div>
-          
+
           <div className="yantra-watermark-right">
             <PanchangSection />
           </div>
@@ -67,17 +67,17 @@ export default function PageRenderer() {
           <div className="yantra-watermark-left">
             <AstrologersSection featured />
           </div>
-          
+
           <AIAstrology />
-          
+
           <div className="yantra-watermark-right">
             <StoreSection featured />
           </div>
-          
+
           <div className="yantra-watermark-left">
             <AcademySection featured />
           </div>
-          
+
           <Testimonials />
           <WhyTredevAstro />
         </>
@@ -580,7 +580,7 @@ function AstrologerProfilePage({ id }: { id: any }) {
           {/* Content Card */}
           <div className={styles.profileContentCard}>
             <div className={styles.contentSection}>
-              <h3 className={styles.contentSectionTitle}>About Acharya</h3>
+              <h3 className={styles.contentSectionTitle}>About Astrologist</h3>
               <p className={styles.contentText}>{astrologer.about} Specialized in deep Vedic techniques including transit analysis, Ashtakavarga matrices, and divisional chart readings. Renders direct predictions and practical remedies to help navigate career transitions, marriages, and financial timings.</p>
             </div>
 
@@ -602,7 +602,7 @@ function AstrologerProfilePage({ id }: { id: any }) {
                     <span className={styles.reviewUser}>Kiran K.</span>
                     <span className={styles.starRating}>★ 5</span>
                   </div>
-                  <p className={styles.reviewText}>"Incredibly insightful. The Acharya detailed my Saturn transit blockages so clearly and suggested simple mantra corrections. Felt very supported."</p>
+                  <p className={styles.reviewText}>"Incredibly insightful. The Astrologist detailed my Saturn transit blockages so clearly and suggested simple mantra corrections. Felt very supported."</p>
                 </div>
                 <div className={styles.reviewItem}>
                   <div className={styles.reviewHeader}>
@@ -701,7 +701,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
           <div className={styles.profileSidebar} style={{ textAlign: 'left' }}>
             <h3 className={styles.sidebarName} style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Summary</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-              <span>Acharya</span>
+              <span>Astrologist</span>
               <span style={{ color: 'var(--color-text-light)' }}>{astrologer.name}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
@@ -735,7 +735,7 @@ function ReportDetailPage({ id }: { id: any }) {
 
   const BUNDLES = [
     { title: 'Digital Manuscript Only', price: report.price, desc: 'Vedic report delivered as dynamic dashboard + PDF' },
-    { title: 'Manuscript + 2 Acharya Qs', price: report.price + 300, desc: 'Add 2 direct questions to our Acharyas' },
+    { title: 'Manuscript + 2 Astrologist Qs', price: report.price + 300, desc: 'Add 2 direct questions to our Acharyas' },
     { title: 'Manuscript + 15-min Consult', price: report.price + 900, desc: 'Includes direct video consultation regarding transits' },
   ];
 
@@ -1473,8 +1473,8 @@ function MyReportsPage() {
 // 14. My Consultations Page
 function MyConsultationsPage() {
   const CONSULTATIONS = [
-    { acharya: 'Acharya Rahul Shastri', date: '12 August 2026 - 06:30 PM', format: 'Live Video Consultation', status: 'Scheduled' },
-    { acharya: 'Pandit Meera Devi', date: '04 July 2026 - 10:00 AM', format: 'Live Chat Guidance', status: 'Completed' },
+    { Astrologist: 'Astrologist Rahul Shastri', date: '12 August 2026 - 06:30 PM', format: 'Live Video Consultation', status: 'Scheduled' },
+    { Astrologist: 'Pandit Meera Devi', date: '04 July 2026 - 10:00 AM', format: 'Live Chat Guidance', status: 'Completed' },
   ];
 
   return (
@@ -1488,9 +1488,9 @@ function MyConsultationsPage() {
 
         <div className={styles.cartList}>
           {CONSULTATIONS.map(c => (
-            <div key={c.acharya} className={styles.cartItem}>
+            <div key={c.Astrologist} className={styles.cartItem}>
               <div className={styles.cartItemInfo}>
-                <h3 className={styles.cartItemName}>{c.acharya}</h3>
+                <h3 className={styles.cartItemName}>{c.Astrologist}</h3>
                 <span className={styles.cartItemCat}>{c.format} · {c.date}</span>
               </div>
               <span className="badge" style={{ background: c.status === 'Scheduled' ? 'rgba(80,200,120,0.1)' : 'rgba(0,0,0,0.05)', color: c.status === 'Scheduled' ? '#50C878' : 'var(--color-text-dark-2)', border: '1px solid' }}>
@@ -1550,7 +1550,7 @@ function BlogDetailPage({ id }: { id: any }) {
           <span className="section-eyebrow">{post.tag}</span>
           <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)', fontSize: '2.75rem', lineHeight: 1.2 }}>{post.title}</h1>
           <div className={styles.blogFooter} style={{ marginTop: '12px' }}>
-            <span>By Acharya Writers · {post.date}</span>
+            <span>By Astrologist Writers · {post.date}</span>
             <span>{post.readTime}</span>
           </div>
         </div>
@@ -1650,8 +1650,8 @@ function ProfileDashboardPage() {
             <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>Simha Lagna · Vrishabha Chandra</div>
           </div>
           {SIDEBAR_ITEMS.map(item => (
-            <button 
-              key={item.key} 
+            <button
+              key={item.key}
               onClick={() => setActiveTab(item.key)}
               className={`${styles.profileBtn} ${activeTab === item.key ? styles.profileBtnActive : ''}`}
             >

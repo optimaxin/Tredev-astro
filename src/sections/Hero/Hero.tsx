@@ -27,7 +27,7 @@ export default function Hero() {
   const scrollToKundli = () => {
     document.querySelector('#kundli')?.scrollIntoView({ behavior: 'smooth' });
   };
-  
+
   const scrollToAstrologers = () => {
     document.querySelector('#astrologers')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -117,7 +117,7 @@ export default function Hero() {
               onClick={scrollToAstrologers}
               id="hero-talk-astrologer"
             >
-              Consult an Acharya
+              Consult an Astrologist
             </button>
           </motion.div>
 

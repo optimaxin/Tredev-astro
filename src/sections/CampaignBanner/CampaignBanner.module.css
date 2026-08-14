@@ -136,6 +136,7 @@
   letter-spacing: 0.02em;
   align-self: flex-start;
 }
+
 .slideCta:hover {
   filter: brightness(1.12);
   transform: translateY(-1px);
@@ -176,8 +177,8 @@
   padding: 2rem;
 }
 
-/* Acharya image overlay — sits on top of chakra SVG, black bg removed via screen blend */
-.slideAcharyaImg {
+/* Astrologist image overlay — sits on top of chakra SVG, black bg removed via screen blend */
+.slideAstrologistImg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -190,13 +191,13 @@
   z-index: 3;
   /* Fade edges so the portrait dissolves naturally into the banner */
   mask-image:
-    linear-gradient(to top,    rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0) 100%),
-    linear-gradient(to left,   rgba(0,0,0,1) 0%, rgba(0,0,0,0.9)  80%, rgba(0,0,0,0) 100%),
-    linear-gradient(to right,  rgba(0,0,0,1) 0%, rgba(0,0,0,1)   100%);
+    linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 100%);
   -webkit-mask-image:
-    linear-gradient(to top,    rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0) 100%),
-    linear-gradient(to left,   rgba(0,0,0,1) 0%, rgba(0,0,0,0.9)  80%, rgba(0,0,0,0) 100%),
-    linear-gradient(to right,  rgba(0,0,0,1) 0%, rgba(0,0,0,1)   100%);
+    linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 100%);
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
   filter: drop-shadow(-6px 0 24px rgba(180, 140, 50, 0.12));
@@ -228,8 +229,13 @@
 }
 
 @keyframes slowSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Edge hover indicators */
@@ -268,7 +274,7 @@
     width: 50%;
     padding: 2rem 1.5rem 2rem 2rem;
   }
-  
+
   .peekCard {
     width: 6%;
   }
@@ -278,28 +284,28 @@
   .carousel {
     flex-direction: column;
   }
-  
+
   .peekCard {
     display: none;
   }
-  
+
   .mainCard {
     flex-direction: column;
     border-radius: 0;
   }
-  
+
   .slideContent {
     width: 100%;
     padding: 2rem 1.5rem 1.5rem;
     order: 1;
   }
-  
+
   .slideArtwork {
     order: 0;
     height: 240px;
     flex: none;
   }
-  
+
   .slideTitle {
     font-size: 1.6rem;
   }
