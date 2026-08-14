@@ -1,29 +1,30 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import { AcharyaIcon, LockIcon, RashiChakraIcon, ManuscriptIcon } from '../../components/Icons/Icons';
 import styles from './WhyTredevAstro.module.css';
 
 const PILLARS = [
   {
-    icon: '✓',
+    icon: <AcharyaIcon size={26} />,
     title: 'Verified Experts',
     desc: 'Every astrologer on TredevAstro is manually reviewed, assessed and verified for their knowledge, accuracy and approach.',
     accent: 'gold',
   },
   {
-    icon: '🔒',
+    icon: <LockIcon size={26} />,
     title: 'Private & Secure',
     desc: 'Your birth data, consultations and reports are private. We never share, sell or expose your personal information.',
     accent: 'cyan',
   },
   {
-    icon: '✦',
+    icon: <RashiChakraIcon size={26} />,
     title: 'Personalized Astrology',
     desc: 'One birth profile powers your entire experience — Kundli, horoscope, AI insights, recommendations and more.',
     accent: 'gold',
   },
   {
-    icon: '◎',
+    icon: <ManuscriptIcon size={26} />,
     title: 'Traditional Wisdom, Modern Experience',
     desc: 'Rooted in classical Vedic astrology, delivered through a thoughtfully designed modern platform.',
     accent: 'cyan',
