@@ -40,6 +40,30 @@
   animation: rotateSlow 80s linear infinite;
 }
 
+/* Restrained "ambient hover response" — when the cursor is anywhere over the
+   section the ornament decorates, it drifts very slightly and its rotation
+   eases faster, and its presence intensifies a touch. No glow, no scale-pop —
+   just enough to read as alive rather than a static background print. */
+@media (hover: hover) {
+  section:hover > .ornament,
+  section:hover .ornament {
+    opacity: 0.3;
+    transform: translate(3px, -3px);
+  }
+  section:hover .slowRotate {
+    animation-duration: 26s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  section:hover .ornament {
+    transform: none;
+  }
+  section:hover .slowRotate {
+    animation-duration: 80s;
+  }
+}
+
 @keyframes rotateSlow {
   from {
     transform: rotate(0deg);
