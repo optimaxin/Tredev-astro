@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import styles from './AuthPage.module.css';
 
 type TabType = 'login' | 'register';
@@ -268,12 +269,12 @@ export default function AuthPage() {
                     <label className={styles.inkLabel}>
                       <span className={styles.devanagariTag}>जन्म तिथि</span> Date of Birth *
                     </label>
-                    <input
-                      type="date"
+                    <AncientDatePicker
                       className={styles.inkInput}
                       value={form.dob}
-                      onChange={e => setForm({ ...form, dob: e.target.value })}
+                      onChange={val => setForm({ ...form, dob: val })}
                       required
+                      placeholder="Select Date of Birth"
                     />
                   </div>
                   <div className={styles.inkField}>

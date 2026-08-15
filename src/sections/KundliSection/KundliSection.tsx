@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import { KUNDLI_PLANETS, HOUSE_MEANINGS } from '../../data/mockData';
+import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import styles from './KundliSection.module.css';
 
 const ZODIAC_SIGNS = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'];
@@ -90,13 +91,12 @@ export default function KundliSection() {
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor="kundli-dob">Date of Birth</label>
-                    <input
-                      id="kundli-dob"
-                      type="date"
+                    <AncientDatePicker
                       className={`${styles.input} input-field input-cosmos`}
                       value={formData.dob}
-                      onChange={e => setFormData(p => ({ ...p, dob: e.target.value }))}
+                      onChange={val => setFormData(p => ({ ...p, dob: val }))}
                       required
+                      placeholder="Select Date of Birth"
                     />
                   </div>
                   <div className={styles.field}>

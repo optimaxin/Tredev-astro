@@ -1,0 +1,153 @@
+.datePickerContainer {
+  position: relative;
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.inputWrapper input {
+  cursor: pointer !important;
+  width: 100%;
+}
+
+.calendarIcon {
+  position: absolute;
+  right: 12px;
+  font-size: 1.1rem;
+  color: #8c4c20;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.calendarDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  width: 290px;
+  margin-top: 8px;
+  background: #FAF6EE;
+  border: 3px double #8c4c20;
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(42, 21, 11, 0.25);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.calendarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.navBtn {
+  background: none;
+  border: none;
+  font-size: 10px;
+  color: #8c4c20;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navBtn:hover {
+  background: rgba(140, 76, 26, 0.08);
+}
+
+.selectors {
+  display: flex;
+  gap: 6px;
+}
+
+.select {
+  background: #FAF6EE;
+  border: 1px solid rgba(140, 76, 26, 0.3);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: #3e2723;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.select:focus {
+  border-color: #8c4c20;
+}
+
+.daysOfWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(140, 76, 26, 0.15);
+  padding-bottom: 4px;
+}
+
+.dayOfWeekHeader {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: #8c4c20;
+  text-transform: uppercase;
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.dayButton {
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: #3e2723;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  transition: all 0.2s;
+}
+
+.dayButton:hover {
+  background: #eed8b0;
+  color: #2e1608;
+}
+
+.selectedDay {
+  background: #7c3e16 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.emptyDay {
+  width: 28px;
+  height: 28px;
+}

@@ -29,6 +29,7 @@ import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
 import AuthPage from './AuthPage/AuthPage';
+import AncientDatePicker from '../components/AncientDatePicker/AncientDatePicker';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -84,7 +85,7 @@ export default function PageRenderer() {
 
     case 'free-kundli':
       return (
-        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+        <div className={`${styles.pageWrapper} ${styles.palmLeafPage}`}>
           <div className={styles.container}>
             <KundliSection />
           </div>
@@ -400,11 +401,11 @@ function KundliMatchingPage() {
               </div>
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">Date of Birth</label>
-                <input
-                  type="date"
+                <AncientDatePicker
                   className="input-field input-cosmos"
                   value={boy.dob}
-                  onChange={e => setBoy({ ...boy, dob: e.target.value })}
+                  onChange={val => setBoy({ ...boy, dob: val })}
+                  placeholder="Select Date of Birth"
                 />
               </div>
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -441,11 +442,11 @@ function KundliMatchingPage() {
               </div>
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">Date of Birth</label>
-                <input
-                  type="date"
+                <AncientDatePicker
                   className="input-field input-cosmos"
                   value={girl.dob}
-                  onChange={e => setGirl({ ...girl, dob: e.target.value })}
+                  onChange={val => setGirl({ ...girl, dob: val })}
+                  placeholder="Select Date of Birth"
                 />
               </div>
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -1242,11 +1243,11 @@ function ProfilePage() {
               <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div className="form-group">
                   <label className="form-label">Date of Birth</label>
-                  <input
-                    type="date"
+                  <AncientDatePicker
                     className="input-field input-cosmos"
                     value={formData.dob}
-                    onChange={e => setFormData({ ...formData, dob: e.target.value })}
+                    onChange={val => setFormData({ ...formData, dob: val })}
+                    placeholder="Select Date of Birth"
                   />
                 </div>
                 <div className="form-group">
@@ -1297,7 +1298,7 @@ function KundliResultPage() {
   ];
 
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+    <div className={`${styles.pageWrapper} ${styles.palmLeafPage}`}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Your Birth Blueprint</span>
