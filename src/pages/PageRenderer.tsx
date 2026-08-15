@@ -48,7 +48,6 @@ export default function PageRenderer() {
       return (
         <>
           <Hero />
-          <GuidanceBanner />
           <CampaignBanner />
           <SeekGuidance />
 

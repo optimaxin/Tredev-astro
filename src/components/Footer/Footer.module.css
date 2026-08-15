@@ -149,14 +149,18 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 300;
-  color: rgba(245, 241, 232, 0.5);
+  color: var(--color-text-dark);
+  opacity: 0.65;
   cursor: pointer;
   text-align: left;
   padding: 0;
-  transition: color var(--transition-base);
+  transition: all var(--transition-base);
 }
 
-.link:hover { color: var(--color-text-light); }
+.link:hover {
+  color: var(--color-gold);
+  opacity: 1;
+}
 
 /* Bottom Bar */
 .bottomBar {
@@ -178,7 +182,7 @@
 .copyright {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: rgba(245, 241, 232, 0.3);
+  color: var(--color-text-dark-2);
 }
 
 .bottomLinks { display: flex; gap: var(--space-4); }
@@ -188,18 +192,19 @@
   border: none;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: rgba(245, 241, 232, 0.3);
+  color: var(--color-text-dark-2);
   cursor: pointer;
   transition: color var(--transition-base);
   padding: 0;
 }
 
-.bottomLink:hover { color: var(--color-text-light); }
+.bottomLink:hover { color: var(--color-gold); }
 
 .legalNote {
   font-family: var(--font-sans);
   font-size: 10px;
-  color: rgba(245, 241, 232, 0.2);
+  color: var(--color-text-dark-2);
+  opacity: 0.8;
   max-width: 400px;
   text-align: right;
 }

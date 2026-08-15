@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styles from './Footer.module.css';
+import GuidanceBanner from '../../sections/Guidance/GuidanceBanner';
 
 const FOOTER_LINKS = {
   Astrology: ['Free Kundli', 'Kundli Matching', 'Daily Horoscope', 'Panchang', 'Muhurat'],
@@ -21,31 +22,7 @@ export default function Footer() {
 
   return (
     <footer className={styles.footer} id="footer">
-      {/* Top CTA */}
-      <div className={styles.topCta}>
-        <div className={styles.topCtaInner}>
-          <div className={styles.topCtaText}>
-            <h2 className={styles.topCtaTitle}>Begin Your Cosmic Journey</h2>
-            <p className={styles.topCtaSubtitle}>Create your free Kundli and discover the celestial patterns that shape your story.</p>
-          </div>
-          <div className={styles.topCtaBtns}>
-            <button
-              className="btn btn-gold btn-lg"
-              onClick={() => document.querySelector('#kundli')?.scrollIntoView({ behavior: 'smooth' })}
-              id="footer-create-kundli"
-            >
-              Create Free Kundli
-            </button>
-            <button
-              className="btn btn-outline-light btn-lg"
-              onClick={() => document.querySelector('#astrologers')?.scrollIntoView({ behavior: 'smooth' })}
-              id="footer-talk-astrologer"
-            >
-              Talk to an Astrologer
-            </button>
-          </div>
-        </div>
-      </div>
+      <GuidanceBanner />
 
       {/* Main Footer */}
       <div className={styles.main}>
