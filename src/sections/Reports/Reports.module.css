@@ -1,8 +1,16 @@
 .section {
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, rgba(8, 12, 28, 0.93) 0%, rgba(12, 17, 37, 0.97) 100%), url('/images/P1.jpg');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
   padding: var(--space-24) 0;
   position: relative;
   overflow: hidden;
+}
+
+:global([data-theme='light']) .section {
+  background: linear-gradient(135deg, rgba(250, 247, 240, 0.92) 0%, rgba(245, 238, 224, 0.96) 100%), url('/images/P1.jpg') !important;
+  background-blend-mode: overlay !important;
 }
 
 .container {
@@ -88,8 +96,9 @@
 }
 
 .reportCard {
-  background: rgba(17, 23, 44, 0.72);
-  border: 1px solid var(--border-subtle);
+  background: rgba(17, 23, 44, 0.6);
+  backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(199, 161, 90, 0.15);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   display: flex;
@@ -103,10 +112,10 @@
 }
 
 .reportCard:hover {
-  box-shadow: 0 16px 50px rgba(0,0,0,0.4);
-  transform: translateY(-6px) rotateX(2deg);
-  border-color: var(--card-color, rgba(199, 161, 90, 0.28));
-  background: rgba(21, 27, 50, 0.8);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4), 0 0 25px rgba(199, 161, 90, 0.25);
+  transform: translateY(-6px) scale(1.02);
+  border-color: var(--card-color, var(--gold-primary));
+  background: rgba(21, 27, 50, 0.75);
 }
 
 .cardPopular {
@@ -343,15 +352,16 @@
 }
 
 :global([data-theme='light']) .reportCard {
-  background: var(--surface);
-  border-color: var(--border-subtle);
-  box-shadow: var(--shadow-card);
+  background: rgba(250, 247, 240, 0.7) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  border-color: rgba(199, 161, 90, 0.15) !important;
+  box-shadow: 0 8px 30px rgba(181, 138, 59, 0.05) !important;
 }
 
 :global([data-theme='light']) .reportCard:hover {
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-card-hover);
-  border-color: var(--card-color, var(--gold-primary));
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 16px 40px rgba(181, 138, 59, 0.15), 0 0 20px rgba(181, 138, 59, 0.12) !important;
+  border-color: var(--card-color, var(--gold-primary)) !important;
 }
 
 :global([data-theme='light']) .cardPopular {

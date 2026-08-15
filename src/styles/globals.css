@@ -359,6 +359,7 @@ body {
 
 /* ---------- Buttons ---------- */
 .btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -374,27 +375,74 @@ body {
   white-space: nowrap;
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-6);
+  overflow: hidden;
+}
+
+/* Restrained shimmer sweep on hover — a single soft light pass, not a glow */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  transition: background-position 0.6s ease;
+  pointer-events: none;
+}
+.btn:hover::before {
+  background-position: -50% 0;
+}
+
+/* Tactile press feedback */
+.btn:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn::before { transition: none; }
+  .btn:active { transform: none; }
 }
 
 .btn-gold {
-  background: var(--gold-primary);
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-soft) 50%, var(--gold-secondary) 100%);
   color: var(--bg-primary);
+  background-size: 200% auto;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(199, 161, 90, 0.15);
 }
 .btn-gold:hover {
-  background: var(--gold-soft);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(199, 161, 90, 0.2);
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(199, 161, 90, 0.45), 0 6px 20px rgba(199, 161, 90, 0.25);
+}
+.btn-gold:active {
+  transform: scale(0.96);
 }
 
 .btn-outline-gold {
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
+  transition: all 0.4s ease;
 }
 .btn-outline-gold:hover {
-  background: rgba(199, 161, 90, 0.08);
+  background: linear-gradient(135deg, rgba(199, 161, 90, 0.08) 0%, rgba(138, 35, 135, 0.04) 100%);
   border-color: var(--gold-primary);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(199, 161, 90, 0.2);
+}
+
+.btn-cosmic {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, #8A2387 50%, #E94057 100%);
+  color: #FFFFFF;
+  background-size: 200% auto;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(138, 35, 135, 0.2);
+}
+.btn-cosmic:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(233, 64, 87, 0.4), 0 4px 20px rgba(138, 35, 135, 0.3);
 }
 
 .btn-outline-light {

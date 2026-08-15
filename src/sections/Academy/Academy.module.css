@@ -1,4 +1,18 @@
-.section { background: var(--bg-secondary); padding: var(--space-24) 0; border-bottom: 1px solid var(--border-subtle); position: relative; overflow: hidden; }
+.section {
+  background: linear-gradient(135deg, rgba(8, 12, 28, 0.93) 0%, rgba(12, 17, 37, 0.97) 100%), url('/images/P2.jpg');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
+  padding: var(--space-24) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+:global([data-theme='light']) .section {
+  background: linear-gradient(135deg, rgba(250, 247, 240, 0.92) 0%, rgba(245, 238, 224, 0.96) 100%), url('/images/P2.jpg') !important;
+  background-blend-mode: overlay !important;
+}
 
 .container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--space-8); box-sizing: border-box; }
 
@@ -54,9 +68,10 @@
 }
 
 .courseCard {
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  background: rgba(12, 17, 37, 0.6);
+  backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(199, 161, 90, 0.15);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all 0.35s ease;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -66,9 +81,10 @@
 }
 
 :global([data-theme='light']) .courseCard {
-  background: var(--surface);
-  border-color: var(--border-subtle);
-  box-shadow: var(--shadow-card);
+  background: rgba(250, 247, 240, 0.7) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  border-color: rgba(199, 161, 90, 0.15) !important;
+  box-shadow: 0 8px 30px rgba(181, 138, 59, 0.05) !important;
 }
 
 :global([data-theme='light']) .courseName {
@@ -89,8 +105,14 @@
 
 .courseCard:hover {
   border-color: var(--gold-primary);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(199, 161, 90, 0.25);
+}
+
+:global([data-theme='light']) .courseCard:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 16px 40px rgba(181, 138, 59, 0.15), 0 0 20px rgba(181, 138, 59, 0.12) !important;
+  border-color: var(--gold-primary) !important;
 }
 
 .courseTop {

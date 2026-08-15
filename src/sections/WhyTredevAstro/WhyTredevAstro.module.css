@@ -44,16 +44,15 @@
 
 .pillar {
   padding: var(--space-6);
-  background: rgba(22, 26, 46, 0.65);
-  border: 1px solid rgba(199, 161, 90, 0.12);
+  background: rgba(12, 17, 37, 0.6);
+  backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(199, 161, 90, 0.15);
   border-top: 3px solid var(--gold-primary); /* gold accent top border */
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   transition: all var(--transition-slow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   position: relative;
   overflow: hidden;
   height: 100%;
@@ -66,15 +65,16 @@
 .pillar:hover {
   border-color: var(--gold-primary);
   border-top-color: var(--gold-soft);
-  transform: translateY(-6px);
-  box-shadow: 0 12px 30px rgba(199, 161, 90, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(199, 161, 90, 0.25);
   background: rgba(26, 32, 58, 0.85);
 }
 
 .accent_cyan:hover {
   border-color: var(--sacred-accent);
   border-top-color: #c06535;
-  box-shadow: 0 12px 30px rgba(168, 91, 45, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(168, 91, 45, 0.25);
 }
 
 .iconWrap {
@@ -122,16 +122,16 @@
 @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
 
 :global([data-theme='light']) .pillar {
-  background: rgba(250, 247, 240, 0.85);
-  border-color: rgba(181, 138, 59, 0.18);
-  border-top-width: 3px;
-  box-shadow: var(--shadow-card);
+  background: rgba(250, 247, 240, 0.7) !important;
+  border-color: rgba(199, 161, 90, 0.15) !important;
+  box-shadow: 0 8px 30px rgba(181, 138, 59, 0.05) !important;
+  border-top-width: 3px !important;
 }
 
 :global([data-theme='light']) .pillar:hover {
-  background: rgba(250, 247, 240, 0.98);
-  border-color: var(--gold-primary);
-  box-shadow: var(--shadow-card-hover);
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: var(--gold-primary) !important;
+  box-shadow: 0 16px 32px rgba(181, 138, 59, 0.15), 0 0 20px rgba(181, 138, 59, 0.12) !important;
 }
 
 :global([data-theme='light']) .pillarTitle {
