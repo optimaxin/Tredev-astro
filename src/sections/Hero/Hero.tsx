@@ -36,7 +36,7 @@ export default function Hero() {
     <section ref={heroRef} className={styles.hero} id="hero" aria-label="Hero">
       {/* Background pre-rendered Video Loop */}
       <video
-        src="/Hero.mp4"
+        src="/Hero2.mp4"
         className={styles.bgVideo}
         autoPlay
         loop
