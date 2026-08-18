@@ -764,6 +764,7 @@ function ReportDetailPage({ id }: { id: any }) {
               <div className={styles.manuscriptSpine} />
               <div className={styles.manuscriptBorder} />
               <h2 className={styles.manuscriptTitle}>{report.title}</h2>
+              <img src="/logo.png" alt="" className={styles.manuscriptLogoImg} />
               <div className={styles.manuscriptBottom}>
                 <span className={styles.manuscriptLogo}>✦</span>
                 <div className={styles.manuscriptSeal}>TREDEVASTRO GRANTH</div>
@@ -1081,6 +1082,7 @@ function CourseDetailPage({ id }: { id: any }) {
               <div className={styles.manuscriptBorder} style={{ borderColor: 'rgba(36,27,22,0.15)' }} />
               <span style={{ fontSize: '3rem', textAlign: 'center', display: 'block', marginTop: '16px' }}>{course.icon}</span>
               <h2 className={styles.manuscriptTitle} style={{ color: 'var(--color-text-dark)', fontSize: '1.5rem' }}>{course.title}</h2>
+              <img src="/logo.png" alt="" className={styles.manuscriptLogoImg} />
               <div className={styles.manuscriptBottom}>
                 <div className={styles.manuscriptSeal} style={{ color: 'var(--color-text-dark)' }}>VED GURUKUL</div>
               </div>

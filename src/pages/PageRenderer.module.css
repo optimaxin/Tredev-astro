@@ -708,6 +708,14 @@
   transform-style: preserve-3d;
 }
 
+.manuscriptLogoImg {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  margin: auto;
+  opacity: 0.9;
+}
+
 .manuscriptViewer:hover {
   transform: perspective(800px) rotateY(-8deg) rotateX(1deg) translateY(-8px);
 }
