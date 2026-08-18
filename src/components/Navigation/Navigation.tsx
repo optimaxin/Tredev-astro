@@ -340,6 +340,15 @@ export default function Navigation() {
           >
             {isLoggedIn ? 'My Profile' : t('nav_login')}
           </button>
+          {isLoggedIn && (
+            <button
+              className={styles.mobileLink}
+              onClick={() => { logout(); setMenuOpen(false); setPage('home'); }}
+              style={{ color: '#c55' }}
+            >
+              Sign Out
+            </button>
+          )}
           <div className={styles.mobileDivider} />
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}
