@@ -11,6 +11,10 @@
   align-items: flex-start; /* Fix flex vertical scroll scrollbar clipping */
   justify-content: center;
   overflow-y: auto;
+  overflow-x: hidden; /* decorative ornaments intentionally bleed past the
+    edges (see their negative left/right offsets below) — without this,
+    leaving overflow-x unset computes to 'auto' whenever overflow-y isn't
+    'visible', so that bleed became a horizontal scrollbar. */
   padding: 40px 24px; /* More padding on left/right so knobs never clip */
   box-sizing: border-box;
 }

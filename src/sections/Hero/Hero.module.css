@@ -37,10 +37,20 @@
 
 /* Person cutout (transparent PNG) — contain + bottom-anchored instead of
    cover, so it sits naturally on the hero's own background instead of being
-   cropped like the full-bleed video. */
+   cropped like the full-bleed video. On desktop this doubles as the
+   low-connection video fallback, so it's anchored right — matching where
+   the video's subject sits — instead of dead-center. On mobile (where this
+   same image is always used as the poster) it stays centered, since there's
+   no side-by-side text column to share the frame with. */
 .bgPersonImg {
   object-fit: contain;
-  object-position: bottom center;
+  object-position: bottom right;
+}
+
+@media (max-width: 768px) {
+  .bgPersonImg {
+    object-position: bottom center;
+  }
 }
 
 .overlay {
