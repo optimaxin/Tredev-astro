@@ -60,9 +60,9 @@
 }
 
 .logoStar {
-  color: #E7A51A;
-  font-size: 1.3rem;
-  animation: rotateSlow 20s linear infinite;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .logoText {

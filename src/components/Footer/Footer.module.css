@@ -55,7 +55,7 @@
 
 .logo { display: flex; align-items: center; gap: var(--space-2); }
 
-.logoStar { color: var(--color-gold); font-size: 0.9rem; }
+.logoStar { width: 22px; height: 22px; object-fit: contain; }
 
 .logoText {
   font-family: var(--font-serif);

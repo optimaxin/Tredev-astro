@@ -144,7 +144,7 @@ export default function Navigation() {
           onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           aria-label="TredevAstro home"
         >
-          <span className={styles.logoStar}>✦</span>
+          <img src="/logo.png" alt="" className={styles.logoStar} />
           <span className={styles.logoText}>TredevAstro</span>
         </button>
 

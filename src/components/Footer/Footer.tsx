@@ -84,7 +84,7 @@ export default function Footer() {
               aria-label="TredevAstro home"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              <span className={styles.logoStar}>✦</span>
+              <img src="/logo.png" alt="" className={styles.logoStar} />
               <span className={styles.logoText}>TredevAstro</span>
             </button>
             <p className={styles.brandTagline}>
