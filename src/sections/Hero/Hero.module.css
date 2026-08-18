@@ -35,6 +35,14 @@
   pointer-events: none;
 }
 
+/* Person cutout (transparent PNG) — contain + bottom-anchored instead of
+   cover, so it sits naturally on the hero's own background instead of being
+   cropped like the full-bleed video. */
+.bgPersonImg {
+  object-fit: contain;
+  object-position: bottom center;
+}
+
 /* CelestialBackdrop defaults to z-index:0 (behind page content); Hero needs
    it above the video/vignette (both z-index:1) but below the text (z-index:10).
    Compound selector wins on specificity so this holds regardless of CSS load order. */

@@ -9,6 +9,10 @@ export default function Hero() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
   );
+  // Hero3.mp4 is ~15MB with no adaptive bitrate — great on a fast connection,
+  // unusable on a slow/metered one. Network Information API lets us skip it
+  // entirely for those visitors instead of forcing the full download.
+  const [useVideo, setUseVideo] = useState(true);
   const { t } = useAppContext();
 
   useEffect(() => {
@@ -16,6 +20,13 @@ export default function Hero() {
     const handleChange = () => setIsMobile(mq.matches);
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    const conn = (navigator as any).connection;
+    if (conn && (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType))) {
+      setUseVideo(false);
+    }
   }, []);
 
   const scrollToKundli = () => {
@@ -31,11 +42,11 @@ export default function Hero() {
       {/* Background: video loop on desktop, a static poster on mobile — no
           point paying video decode/bandwidth cost on a phone screen where the
           motion barely reads anyway. */}
-      {isMobile ? (
+      {isMobile || !useVideo ? (
         <img
-          src="/hero-mobile-poster.jpg"
+          src="/Astrologist/A2.png"
           alt=""
-          className={styles.bgVideo}
+          className={`${styles.bgVideo} ${styles.bgPersonImg}`}
         />
       ) : (
         <video
@@ -170,7 +181,7 @@ export default function Hero() {
           {/* Foreground Wave */}
           <path
             d="M0,190 C360,140 720,210 1080,160 C1280,130 1380,185 1440,180 L1440,240 L0,240 Z"
-            fill="#120704"
+            fill="rgba(18, 7, 4, 0.35)"
             stroke="rgba(231, 165, 26, 0.35)"
             strokeWidth="1.5"
           />
