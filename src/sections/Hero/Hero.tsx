@@ -10,9 +10,14 @@ export default function Hero() {
     typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
   );
   // Hero3.mp4 is ~15MB with no adaptive bitrate — great on a fast connection,
-  // unusable on a slow/metered one. Network Information API lets us skip it
-  // entirely for those visitors instead of forcing the full download.
+  // unusable on a slow/metered one. Network Information API skips it for
+  // visitors on an obviously bad connection, but that API is Chromium-only
+  // (no Safari/Firefox support) and says nothing about decode-bound low-end
+  // devices on a fine connection. The canplaythrough timeout below is the
+  // real safety net: whatever the reason, if the video isn't actually ready
+  // to play smoothly within a few seconds, drop to the static image.
   const [useVideo, setUseVideo] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { t } = useAppContext();
 
   useEffect(() => {
@@ -28,6 +33,19 @@ export default function Hero() {
       setUseVideo(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (isMobile || !useVideo) return;
+    const el = videoRef.current;
+    if (!el) return;
+    const timer = window.setTimeout(() => setUseVideo(false), 4000);
+    const markReady = () => clearTimeout(timer);
+    el.addEventListener('canplaythrough', markReady, { once: true });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('canplaythrough', markReady);
+    };
+  }, [isMobile, useVideo]);
 
   const scrollToKundli = () => {
     document.querySelector('#kundli')?.scrollIntoView({ behavior: 'smooth' });
@@ -50,6 +68,7 @@ export default function Hero() {
         />
       ) : (
         <video
+          ref={videoRef}
           src="/Hero3.mp4"
           className={styles.bgVideo}
           autoPlay

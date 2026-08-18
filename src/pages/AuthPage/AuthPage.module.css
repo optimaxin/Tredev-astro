@@ -494,6 +494,73 @@
   .closeBtn { top: 16px; right: 16px; width: 38px; height: 38px; font-size: 16px; }
 }
 
+/* ====================================================
+   DARK THEME — same manuscript concept, aged/night parchment instead of
+   fresh cream. Only the surfaces + text that were hardcoded to light-only
+   colors need a variant; the wood/gold/red ornamental gradients (rollers,
+   tabs, wax seal) already read fine against a dark backdrop.
+   ==================================================== */
+:global([data-theme='dark']) .creamModalOverlay {
+  background: radial-gradient(circle at 50% 30%, #1c130a 0%, #140d06 60%, #0d0904 100%);
+}
+
+:global([data-theme='dark']) .bhojpatraPaper {
+  background: linear-gradient(180deg, #241a0f 0%, #1c140b 35%, #17110a 70%, #221a10 100%);
+  border-left-color: #6b5230;
+  border-right-color: #6b5230;
+  color: #f1e4c9;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+:global([data-theme='dark']) .sanskritInvocation,
+:global([data-theme='dark']) .manuscriptTitle,
+:global([data-theme='dark']) .successHeader {
+  color: #f1e4c9;
+}
+
+:global([data-theme='dark']) .manuscriptSubtitle,
+:global([data-theme='dark']) .inkLabel,
+:global([data-theme='dark']) .successSubtext,
+:global([data-theme='dark']) .scriptFooterStamp,
+:global([data-theme='dark']) .sepText {
+  color: #c9b28c;
+}
+
+:global([data-theme='dark']) .manuscriptTab {
+  color: #c9b28c;
+}
+
+:global([data-theme='dark']) .manuscriptTabs {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(201, 178, 140, 0.25);
+}
+
+:global([data-theme='dark']) .inkInput,
+:global([data-theme='dark']) .genderOption {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: #6b5230;
+  color: #f1e4c9;
+}
+
+:global([data-theme='dark']) .inkInput:focus {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme='dark']) .inkInput::placeholder {
+  color: #8a7454;
+}
+
+:global([data-theme='dark']) .inkInput[type="date"],
+:global([data-theme='dark']) .inkInput[type="time"] {
+  color-scheme: dark;
+}
+
+:global([data-theme='dark']) .devanagariTag {
+  background: rgba(201, 178, 140, 0.12);
+  border-color: rgba(201, 178, 140, 0.25);
+  color: #c9b28c;
+}
+
 /* Devanagari legibility — this page uses its own display fonts (Cinzel /
    Playfair Display) which have no Devanagari glyphs, so hi/mr also need a
    font-family fallback here, not just a size bump. See src/styles/globals.css. */

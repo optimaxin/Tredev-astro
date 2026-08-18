@@ -26,15 +26,14 @@
   box-shadow: 0 14px 42px rgba(24, 16, 12, 0.18);
 }
 
-/* Override dark theme so navbar stays light cream */
 :global([data-theme='dark']) .nav {
-  background: rgba(245, 240, 232, 0.92);
-  border-color: rgba(231, 165, 26, 0.25);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+  background: rgba(8, 12, 28, 0.92);
+  border-color: rgba(199, 161, 90, 0.25);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
 }
 
 :global([data-theme='dark']) .nav.scrolled {
-  background: rgba(245, 240, 232, 0.96);
+  background: rgba(8, 12, 28, 0.97);
   top: 12px;
 }
 
@@ -56,7 +55,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  color: #120704;
+  color: var(--text-primary);
 }
 
 .logoStar {
@@ -70,7 +69,7 @@
   font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: 0.03em;
-  color: #120704;
+  color: var(--text-primary);
 }
 
 /* Links */
@@ -90,7 +89,7 @@
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #120704;
+  color: var(--text-primary);
   opacity: 0.85;
   transition: all var(--transition-base);
   padding: 6px 2px;
@@ -100,10 +99,6 @@
   justify-content: center;
   height: 100%;
   white-space: nowrap;
-}
-
-:global([data-theme='dark']) .link {
-  color: #120704;
 }
 
 .link:hover {
@@ -165,7 +160,7 @@
 .ctaBtnSecondary {
   background: transparent;
   border: 1.5px solid #E7A51A;
-  color: #120704;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--nav-cta-size);
   font-weight: 600;
@@ -188,7 +183,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #120704;
+  color: var(--text-primary);
   opacity: 0.85;
   transition: all var(--transition-base);
   display: flex;
@@ -235,7 +230,7 @@
   border-radius: 999px;
   padding: 6px 12px;
   cursor: pointer;
-  color: #120704;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--nav-badge-size);
   display: flex;
@@ -311,7 +306,7 @@
   border-radius: 999px;
   padding: 6px 14px;
   cursor: pointer;
-  color: #120704;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--nav-badge-size);
   font-weight: 500;
@@ -319,10 +314,6 @@
   align-items: center;
   gap: 6px;
   transition: all var(--transition-base);
-}
-
-:global([data-theme='dark']) .loginBtn {
-  color: #120704;
 }
 
 .loginBtn:hover {
@@ -342,17 +333,13 @@
   border-radius: 999px;
   padding: 4px 12px 4px 6px;
   cursor: pointer;
-  color: #120704;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--nav-badge-size);
   display: flex;
   align-items: center;
   gap: 6px;
   transition: all var(--transition-base);
-}
-
-:global([data-theme='dark']) .profileSelectorBtn {
-  color: #120704;
 }
 
 .profileSelectorBtn:hover {
@@ -406,9 +393,9 @@
 }
 
 :global([data-theme='dark']) .profileDropdown {
-  background: rgba(245, 240, 232, 0.98);
-  border-color: rgba(231, 165, 26, 0.25);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  background: rgba(8, 12, 28, 0.98);
+  border-color: rgba(199, 161, 90, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .profileDropdown button {
@@ -418,7 +405,7 @@
   padding: 8px 12px;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: #120704;
+  color: var(--text-primary);
   border-radius: 8px;
   cursor: pointer;
   transition: all var(--transition-base);

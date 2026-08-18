@@ -87,14 +87,6 @@
   color: var(--text-secondary);
 }
 
-:global([data-theme='light']) .topic {
-  color: var(--text-secondary);
-}
-
-:global([data-theme='light']) .courseStats {
-  color: var(--text-muted);
-}
-
 .courseCard:hover {
   border-color: var(--gold-primary);
   transform: translateY(-4px) scale(1.01);
@@ -172,7 +164,7 @@
 .topic {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: rgba(36, 27, 22, 0.7);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -186,7 +178,7 @@
   gap: var(--space-2);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: rgba(36, 27, 22, 0.55);
+  color: var(--text-muted);
 }
 
 .stars { color: var(--color-gold); }
