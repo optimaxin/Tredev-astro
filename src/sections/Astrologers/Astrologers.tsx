@@ -33,7 +33,13 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
     <section className={styles.section} id="astrologers">
       <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
-        <div className="section-header-split">
+        <motion.div
+          className="section-header-split"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="header-left">
             <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
             <h2 className="section-title-serif">{t('section_astrologers_title')}</h2>
@@ -49,7 +55,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
               Explore All Acharyas →
             </button>
           )}
-        </div>
+        </motion.div>
 
         {featured ? (
           /* Featured mode: show 3 Acharyas in grid */
@@ -58,7 +64,8 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
               <motion.div
                 key={a.id}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.5 }}
               >
                 <AstrologerCard astrologer={a} />

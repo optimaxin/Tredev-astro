@@ -196,7 +196,13 @@ export default function SeekGuidance() {
     <section className={styles.section} id="seek-guidance">
       <div className="section-container">
         {/* Section Header */}
-        <div className="section-header-split">
+        <motion.div
+          className="section-header-split"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="header-left">
             <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
             <h2 className="section-title-serif">{t('seek_title')}</h2>
@@ -204,15 +210,19 @@ export default function SeekGuidance() {
               {t('seek_desc')}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Asymmetrical grid layout - 3 balanced columns */}
         <div className={styles.cardsGrid}>
-          {CARDS.map(card => (
-            <div 
-              key={card.id} 
+          {CARDS.map((card, i) => (
+            <motion.div
+              key={card.id}
               className={`${styles.card} ${styles[card.size]}`}
               onClick={() => handleCardClick(card.concern)}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.55 }}
             >
               {/* Background Sacred Geometry Mandala */}
               <div className={styles.cardBgPattern}>
@@ -233,7 +243,7 @@ export default function SeekGuidance() {
               <p className={styles.cardDesc}>{t(card.descKey)}</p>
               
               <span className={styles.cardCta}>{tOr(card.ctaKey, 'seek_card_cta')}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
