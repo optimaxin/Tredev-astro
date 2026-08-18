@@ -11,11 +11,28 @@ import LoginModal from './components/LoginModal/LoginModal';
 import MonkWidget from './components/MonkWidget/MonkWidget';
 
 function AppContent() {
-  const { theme } = useAppContext();
+  const { theme, language, page, currentUser } = useAppContext();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  // The Admin Console is a separate internal tool with its own layout — it
+  // never shows the public site's navbar/footer chrome.
+  const isAdminConsole = currentUser?.role === 'ADMIN' && ['dashboard', 'profile', 'my-jyotish'].includes(page);
+
+  if (isAdminConsole) {
+    return (
+      <div className="app">
+        <PageRenderer />
+        <LoginModal />
+      </div>
+    );
+  }
 
   return (
     <div className="app">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './ConsultCTA.module.css';
 
 export default function ConsultCTA() {
@@ -9,12 +9,9 @@ export default function ConsultCTA() {
 
   return (
     <section className={styles.section} id="consult-cta">
-      {/* Background celestial ornaments */}
-      <CelestialOrnament type="nakshatra" className={styles.ornamentLeft} animate />
-      <CelestialOrnament type="orbit" className={styles.ornamentRight} />
-
       {/* Deep atmospheric overlay */}
       <div className={styles.atmosphericOverlay} />
+      <CelestialBackdrop variant="surya" intensity="medium" />
 
       <div className={styles.inner}>
 

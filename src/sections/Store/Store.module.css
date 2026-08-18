@@ -344,3 +344,8 @@
   border-color: var(--gold-primary);
   transform: translateX(-50%) scale(1.05);
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .saleBadge, html[lang='mr'] .saleBadge { font-size: var(--text-xs); }
+html[lang='hi'] .productCategory, html[lang='mr'] .productCategory { font-size: var(--text-xs); }
+html[lang='hi'] .toggle3DBtn, html[lang='mr'] .toggle3DBtn { font-size: var(--text-xs); }

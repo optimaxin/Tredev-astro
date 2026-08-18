@@ -1,0 +1,130 @@
+.timePickerContainer {
+  position: relative;
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.inputWrapper input {
+  cursor: pointer !important;
+  width: 100%;
+}
+
+.clockIcon {
+  position: absolute;
+  right: 12px;
+  font-size: 1.1rem;
+  color: #8c4c20;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.timeDropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  margin-top: 8px;
+  background: #FAF6EE;
+  border: 3px double #8c4c20;
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(42, 21, 11, 0.25);
+  animation: fadeIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.timeHeader {
+  text-align: center;
+  border-bottom: 1px solid rgba(140, 76, 26, 0.15);
+  padding-bottom: 6px;
+}
+
+.headerTitle {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: #8c4c20;
+}
+
+.selectors {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selectCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selectLabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: #8c4c20;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.select {
+  background: #FAF6EE;
+  border: 1px solid rgba(140, 76, 26, 0.3);
+  border-radius: 4px;
+  padding: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: #3e2723;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: center;
+}
+
+.select:focus {
+  border-color: #8c4c20;
+}
+
+.confirmBtn {
+  background: linear-gradient(180deg, #7c3e16 0%, #54270a 100%);
+  color: #FAF6EE;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: 'Cinzel', serif, Georgia;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(60, 30, 10, 0.2);
+}
+
+.confirmBtn:hover {
+  background: linear-gradient(180deg, #8e491c 0%, #632f0c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(60, 30, 10, 0.3);
+}
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .selectLabel, html[lang='mr'] .selectLabel { font-size: var(--text-xs); }
+html[lang='hi'] .confirmBtn, html[lang='mr'] .confirmBtn { font-size: var(--text-sm); }

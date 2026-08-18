@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { COURSES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Academy.module.css';
 
 export default function Academy({ featured = false }: { featured?: boolean }) {
@@ -15,20 +15,7 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="academy">
-      <CelestialOrnament
-        type="mandala"
-        className="ornament-bg"
-        style={{
-          position: 'absolute',
-          left: '-120px',
-          top: '8%',
-          width: '420px',
-          height: '420px',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}
-        animate
-      />
+      <CelestialBackdrop variant="mandala" intensity="low" />
       <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         <div className="section-header-split">
           <div className="header-left">

@@ -1,27 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Hero.module.css';
 
 export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  );
   const { t } = useAppContext();
 
   useEffect(() => {
-    const handleScroll = () => {
-      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalHeight <= 0) return;
-      const progress = Math.min(Math.max(window.scrollY / totalHeight, 0), 1);
-      setScrollProgress(progress);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handleChange = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
   }, []);
 
   const scrollToKundli = () => {
@@ -34,18 +28,33 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className={styles.hero} id="hero" aria-label="Hero">
-      {/* Background pre-rendered Video Loop */}
-      <video
-        src="/Hero2.mp4"
-        className={styles.bgVideo}
-        autoPlay
-        loop
-        muted
-        playsInline
-      />
+      {/* Background: video loop on desktop, a static poster on mobile — no
+          point paying video decode/bandwidth cost on a phone screen where the
+          motion barely reads anyway. */}
+      {isMobile ? (
+        <img
+          src="/hero-mobile-poster.jpg"
+          alt=""
+          className={styles.bgVideo}
+        />
+      ) : (
+        <video
+          src="/Hero3.mp4"
+          className={styles.bgVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      )}
 
       {/* Atmospheric dark vignette overlay */}
       <div className={styles.overlay} />
+
+      {/* Celestial atmosphere — desktop only. On mobile the video crop makes
+          this collide visually with the poster's own art, so it's hidden via
+          CSS below rather than kept as clutter. */}
+      <CelestialBackdrop variant="orbit" intensity="high" className={styles.heroBackdrop} />
 
       {/* Main Content Layout */}
       <div className={styles.content}>
@@ -73,9 +82,8 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            Your Stars. Your<br />
-            Dharma.<br />
-            <em className={styles.goldItalic}>Your Journey.</em>
+            {t('hero_headline')}<br />
+            <em className={styles.goldItalic}>{t('hero_headline_italic')}</em>
           </motion.h1>
 
           {/* Hindi Tagline */}
@@ -85,7 +93,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.7 }}
           >
-            "Apne Aakash Ko Samjhiye"
+            {t('hero_hindi_eyebrow')}
           </motion.div>
 
           {/* Subheadline Description */}
@@ -95,7 +103,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.75, duration: 0.8 }}
           >
-            Personalized Vedic astrology, expert guidance, intelligent insights and timeless Jyotish wisdom.
+            {t('hero_subhead')}
           </motion.p>
 
           {/* Action CTAs */}
@@ -110,14 +118,14 @@ export default function Hero() {
               onClick={scrollToKundli}
               id="hero-create-kundli"
             >
-              Generate Free Kundli
+              {t('hero_cta_kundli')}
             </button>
             <button
               className={styles.btnSecondary}
               onClick={scrollToAstrologers}
               id="hero-talk-astrologer"
             >
-              Consult an Astrologist
+              {t('hero_cta_consult')}
             </button>
           </motion.div>
 
@@ -129,7 +137,11 @@ export default function Hero() {
             transition={{ delay: 1.2, duration: 0.9 }}
           >
             <span className={styles.greenDot} />
-            Verified Acharyas <span className={styles.trustSep}>·</span> Personalized Jyotish <span className={styles.trustSep}>·</span> Private &amp; Secure
+            <span className={styles.trustItem}>{t('hero_trust_acharyas')}</span>
+            <span className={styles.trustSep}>·</span>
+            <span className={styles.trustItem}>{t('hero_trust_jyotish')}</span>
+            <span className={styles.trustSep}>·</span>
+            <span className={styles.trustItem}>{t('hero_trust_secure')}</span>
           </motion.div>
         </motion.div>
       </div>

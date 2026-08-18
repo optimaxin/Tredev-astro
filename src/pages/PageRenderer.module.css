@@ -1279,56 +1279,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .horoscopeLayout,
-  .matchingGrid,
-  .profileGrid,
-  .bookingLayout,
-  .reportDetailLayout,
-  .cartLayout,
-  .learningLayout,
-  .timelineGrid,
-  .chartPageGrid,
-  .profileLayout {
-    grid-template-columns: 1fr;
-    gap: var(--space-6);
-  }
-  .profileSidebar {
-    position: static !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-  }
-  .profileCard {
-    width: 100% !important;
-  }
-  .profileBtn {
-    width: auto !important;
-  }
-  .toolsGrid,
-  .blogGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .toolsGrid,
-  .blogGrid {
-    grid-template-columns: 1fr;
-  }
-  .compatGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .profileSidebar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-  .profileBtn {
-    width: 100% !important;
-  }
-}
-
 /* ── Profile Layout Styles ── */
 .profileLayout {
   display: grid;
@@ -1401,5 +1351,150 @@
 .profileMain {
   display: flex;
   flex-direction: column;
+}
+
+/* ── Role Console Theming ──────────────────────────────────────────────────
+   Astrologist/Admin dashboards reuse the profile layout grid but must not
+   look like the customer-facing profile page. Overriding the gold tokens on
+   these wrapper classes retints every element underneath that already reads
+   var(--gold-primary)/--border-subtle (badges, .btn-gold, section-eyebrow,
+   sidebar active state) without duplicating those rules. */
+.astroConsole {
+  --gold-primary: #2F9E8F;
+  --gold-secondary: #1F6F64;
+  --gold-soft: #5CC4B5;
+  --border-subtle: rgba(47, 158, 143, 0.18);
+  --border-strong: rgba(47, 158, 143, 0.34);
+}
+
+.adminConsole {
+  --gold-primary: #B23A3A;
+  --gold-secondary: #7A2626;
+  --gold-soft: #D97575;
+  --border-subtle: rgba(178, 58, 58, 0.18);
+  --border-strong: rgba(178, 58, 58, 0.34);
+}
+
+.consoleHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+}
+
+.consoleHeaderIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--gold-primary) 16%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: var(--gold-primary);
+  flex-shrink: 0;
+}
+
+.consoleHeaderTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.consoleHeaderSub {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.avatarSquare {
+  border-radius: var(--radius-md) !important;
+}
+
+/* Devanagari legibility — see src/styles/globals.css typography system.
+   Diagram glyphs (node symbols/indexes, chart house numbers) are left alone:
+   they're fixed astrological abbreviations, not translated text. */
+html[lang='hi'] .specLabel, html[lang='mr'] .specLabel { font-size: var(--text-xs); }
+html[lang='hi'] .scoreLabel, html[lang='mr'] .scoreLabel { font-size: var(--text-xs); }
+html[lang='hi'] .compatLabel, html[lang='mr'] .compatLabel { font-size: var(--text-xs); }
+html[lang='hi'] .cartItemCat, html[lang='mr'] .cartItemCat { font-size: var(--text-xs); }
+html[lang='hi'] .blogTag, html[lang='mr'] .blogTag { font-size: var(--text-xs); }
+html[lang='hi'] .blogFooter, html[lang='mr'] .blogFooter { font-size: var(--text-xs); }
+
+/* Responsive adjustments — MUST come after the base rules above (.profileLayout
+   etc. are defined further up the file with equal specificity; a media query
+   earlier in the cascade loses to a plain rule later in it, which is exactly
+   why the profile sidebar+content grid never actually stacked on mobile
+   despite this override existing). Keep this block last in the file. */
+@media (max-width: 1024px) {
+  .horoscopeLayout,
+  .matchingGrid,
+  .profileGrid,
+  .bookingLayout,
+  .reportDetailLayout,
+  .cartLayout,
+  .learningLayout,
+  .timelineGrid,
+  .chartPageGrid,
+  .profileLayout {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  /* Grid items default to min-width:auto, so a single-column 1fr track still
+     can't shrink below its content's intrinsic width — the actual cause of
+     the horizontal overflow on these stacked mobile layouts. */
+  .horoscopeLayout > *,
+  .matchingGrid > *,
+  .profileGrid > *,
+  .bookingLayout > *,
+  .reportDetailLayout > *,
+  .cartLayout > *,
+  .learningLayout > *,
+  .timelineGrid > *,
+  .chartPageGrid > *,
+  .profileLayout > * {
+    min-width: 0;
+  }
+  .profileSidebar {
+    position: static !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  .profileCard {
+    width: 100% !important;
+  }
+  .profileBtn {
+    width: auto !important;
+  }
+  .toolsGrid,
+  .blogGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolsGrid,
+  .blogGrid {
+    grid-template-columns: 1fr;
+  }
+  .compatGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .profileSidebar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .profileBtn {
+    width: 100% !important;
+  }
 }
 

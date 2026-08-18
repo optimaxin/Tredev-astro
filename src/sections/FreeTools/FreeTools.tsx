@@ -4,6 +4,7 @@ import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
 import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './FreeTools.module.css';
 
 interface FreeToolsProps {
@@ -11,7 +12,7 @@ interface FreeToolsProps {
 }
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {
-  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction, t } = useAppContext();
+  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction, t, tOr } = useAppContext();
 
   const handleToolClick = (toolName: string) => {
     if (!isLoggedIn) {
@@ -41,20 +42,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
   if (featured) {
     return (
       <section className={styles.section} id="tools">
-        <CelestialOrnament
-          type="orbit"
-          className="ornament-bg"
-          style={{
-            position: 'absolute',
-            left: '-100px',
-            bottom: '-100px',
-            width: '400px',
-            height: '400px',
-            pointerEvents: 'none',
-            zIndex: 0
-          }}
-          animate
-        />
+        <CelestialBackdrop variant="orbit" intensity="low" />
         <div className="section-container">
           <div className="section-header-split">
             <div className="header-left">
@@ -105,7 +93,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                   <p className={styles.cardDesc}>{t('seek_card_marriage_desc')}</p>
                 </div>
               </div>
-              <span className={styles.arrowLink}>{t('seek_card_cta')}</span>
+              <span className={styles.arrowLink}>{tOr('tools_kundli_milan_cta', 'seek_card_cta')}</span>
             </div>
 
             {/* MEDIUM: Nakshatra Finder */}
@@ -121,7 +109,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                   <p className={styles.cardDesc}>{t('seek_card_growth_desc')}</p>
                 </div>
               </div>
-              <span className={styles.arrowLink}>{t('seek_card_cta')}</span>
+              <span className={styles.arrowLink}>{tOr('tools_nakshatra_cta', 'seek_card_cta')}</span>
             </div>
 
             {/* SMALL: Mangal Dosha */}
@@ -164,20 +152,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
 
   return (
     <section className={styles.section} id="tools">
-      <CelestialOrnament
-        type="yantra"
-        className="ornament-bg"
-        style={{
-          position: 'absolute',
-          right: '-80px',
-          top: '40px',
-          width: '320px',
-          height: '320px',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}
-        animate
-      />
+      <CelestialBackdrop variant="yantra" intensity="subtle" />
       <div className="section-container" style={{ position: 'relative', zIndex: 1 }}>
         <div className="section-header">
           <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>

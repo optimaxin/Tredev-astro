@@ -1,17 +1,60 @@
 import React, { useState } from 'react';
 import styles from './Footer.module.css';
 import GuidanceBanner from '../../sections/Guidance/GuidanceBanner';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
+import { useAppContext } from '../../context/AppContext';
 
-const FOOTER_LINKS = {
-  Astrology: ['Free Kundli', 'Kundli Matching', 'Daily Horoscope', 'Panchang', 'Muhurat'],
-  Consultations: ['Find Astrologers', 'Chat Consultation', 'Call Consultation', 'Ask TredevAstro'],
-  Reports: ['Premium Kundli', 'Career Intelligence', 'Marriage Report', 'Year Ahead', 'Soul Purpose'],
-  Academy: ['Vedic Astrology', 'Numerology', 'Tarot', 'Vastu Shastra'],
-  Company: ['About Us', 'Our Approach', 'Careers', 'Press'],
-  Support: ['Help Centre', 'Privacy Policy', 'Terms of Service', 'Contact Us'],
+interface FooterLink {
+  labelKey: string;
+  onClick: (ctx: ReturnType<typeof useAppContext>) => void;
+}
+
+const FOOTER_LINKS: Record<string, FooterLink[]> = {
+  nav_astrology: [
+    { labelKey: 'nav_free_kundli', onClick: ({ setPage }) => setPage('free-kundli') },
+    { labelKey: 'footer_kundli_matching', onClick: ({ setPage }) => setPage('kundli-matching') },
+    { labelKey: 'footer_daily_horoscope', onClick: ({ setPage }) => setPage('horoscope') },
+    { labelKey: 'nav_panchang', onClick: ({ setPage }) => setPage('panchang') },
+    { labelKey: 'footer_muhurat', onClick: ({ setPage }) => setPage('panchang') },
+  ],
+  footer_col_consultations: [
+    { labelKey: 'footer_find_astrologers', onClick: ({ setPage }) => setPage('astrologers') },
+    { labelKey: 'footer_chat_consultation', onClick: ({ setPage }) => setPage('astrologers') },
+    { labelKey: 'footer_call_consultation', onClick: ({ setPage }) => setPage('astrologers') },
+    { labelKey: 'section_ai_title', onClick: ({ setPage }) => setPage('ask-tredevastro') },
+  ],
+  nav_reports: [
+    { labelKey: 'report_4_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(4); setPage('report-detail'); } },
+    { labelKey: 'report_1_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(1); setPage('report-detail'); } },
+    { labelKey: 'report_3_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(3); setPage('report-detail'); } },
+    { labelKey: 'report_7_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(7); setPage('report-detail'); } },
+    { labelKey: 'report_6_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(6); setPage('report-detail'); } },
+  ],
+  nav_academy: [
+    { labelKey: 'course_1_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(1); setPage('course-detail'); } },
+    { labelKey: 'course_2_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(2); setPage('course-detail'); } },
+    { labelKey: 'course_3_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(3); setPage('course-detail'); } },
+    { labelKey: 'course_4_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(4); setPage('course-detail'); } },
+  ],
+  footer_col_company: [
+    // No dedicated Careers/Press/Approach pages exist in this app yet — route to About until they do.
+    { labelKey: 'footer_about_us', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_our_approach', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_careers', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_press', onClick: ({ setPage }) => setPage('about') },
+  ],
+  footer_col_support: [
+    // No dedicated Help/Privacy/Terms/Contact pages exist in this app yet — route to About until they do.
+    { labelKey: 'footer_help_centre', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_privacy_policy', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_terms_of_service', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_contact_us', onClick: ({ setPage }) => setPage('about') },
+  ],
 };
 
 export default function Footer() {
+  const ctx = useAppContext();
+  const { t, setPage } = ctx;
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -20,36 +63,47 @@ export default function Footer() {
     if (email) { setSubscribed(true); }
   };
 
+  const goTo = (link: FooterLink) => {
+    link.onClick(ctx);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <footer className={styles.footer} id="footer">
       <GuidanceBanner />
 
       {/* Main Footer */}
       <div className={styles.main}>
+        <CelestialBackdrop variant="mandala" intensity="subtle" />
         <div className={styles.mainInner}>
           {/* Brand Column */}
           <div className={styles.brandCol}>
-            <div className={styles.logo}>
+            <button
+              className={styles.logo}
+              onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              aria-label="TredevAstro home"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
               <span className={styles.logoStar}>✦</span>
               <span className={styles.logoText}>TredevAstro</span>
-            </div>
+            </button>
             <p className={styles.brandTagline}>
-              Your Sky. Your Story.
+              {t('footer_tagline')}
             </p>
             <p className={styles.brandDesc}>
-              A modern astrology ecosystem combining personalized Vedic astrology, expert consultations, intelligent AI guidance, and timeless wisdom.
+              {t('footer_desc')}
             </p>
 
             {/* Newsletter */}
             <div className={styles.newsletter}>
-              <p className={styles.newsletterLabel}>Receive thoughtful astrology insights</p>
+              <p className={styles.newsletterLabel}>{t('footer_newsletter_label')}</p>
               {subscribed ? (
-                <p className={styles.subscribed}>✓ You&apos;re subscribed. Thank you.</p>
+                <p className={styles.subscribed}>✓ {t('footer_subscribed')}</p>
               ) : (
                 <form className={styles.newsletterForm} onSubmit={handleSubscribe}>
                   <input
                     type="email"
-                    placeholder="Your email address"
+                    placeholder={t('footer_email_placeholder')}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className={styles.emailInput}
@@ -57,7 +111,7 @@ export default function Footer() {
                     required
                   />
                   <button type="submit" className={styles.subscribeBtn} id="footer-subscribe">
-                    Subscribe
+                    {t('btn_subscribe')}
                   </button>
                 </form>
               )}
@@ -65,13 +119,13 @@ export default function Footer() {
           </div>
 
           {/* Link Columns */}
-          {Object.entries(FOOTER_LINKS).map(([category, links]) => (
-            <div key={category} className={styles.linkCol}>
-              <h3 className={styles.colTitle}>{category}</h3>
+          {Object.entries(FOOTER_LINKS).map(([categoryKey, links]) => (
+            <div key={categoryKey} className={styles.linkCol}>
+              <h3 className={styles.colTitle}>{t(categoryKey)}</h3>
               <ul className={styles.linkList}>
                 {links.map(link => (
-                  <li key={link}>
-                    <button className={styles.link}>{link}</button>
+                  <li key={link.labelKey}>
+                    <button className={styles.link} onClick={() => goTo(link)}>{t(link.labelKey)}</button>
                   </li>
                 ))}
               </ul>
@@ -84,15 +138,15 @@ export default function Footer() {
       <div className={styles.bottomBar}>
         <div className={styles.bottomInner}>
           <p className={styles.copyright}>
-            © 2026 TredevAstro. All rights reserved.
+            {t('footer_copyright')}
           </p>
           <div className={styles.bottomLinks}>
-            <button className={styles.bottomLink}>Privacy</button>
-            <button className={styles.bottomLink}>Terms</button>
-            <button className={styles.bottomLink}>Cookies</button>
+            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_privacy_short')}</button>
+            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_terms_short')}</button>
+            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_cookies_short')}</button>
           </div>
           <p className={styles.legalNote}>
-            Astrology is for entertainment and spiritual guidance. Not a substitute for professional advice.
+            {t('footer_legal_note')}
           </p>
         </div>
       </div>

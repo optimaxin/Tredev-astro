@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { REPORTS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import Lightweight3DViewer from '../../components/Lightweight3DViewer/Lightweight3DViewer';
+
+// three.js is a heavy dependency (500KB+) needed only for this decorative
+// sphere — split it into its own chunk instead of shipping it in the main bundle.
+const Lightweight3DViewer = lazy(() => import('../../components/Lightweight3DViewer/Lightweight3DViewer'));
 import { 
   CareerIcon, 
   MarriageIcon, 
@@ -10,6 +13,7 @@ import {
   VastuIcon 
 } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Reports.module.css';
 
 const BUNDLES = [
@@ -32,20 +36,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="reports">
-      <CelestialOrnament
-        type="rashi"
-        className="ornament-bg"
-        style={{
-          position: 'absolute',
-          right: '-120px',
-          top: '12%',
-          width: '460px',
-          height: '460px',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}
-        animate
-      />
+      <CelestialBackdrop variant="rashi" intensity="medium" parallax />
       <div className={styles.container}>
         {/* Header */}
         <div className="section-header-split">
@@ -65,7 +56,9 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
             </button>
           ) : (
             <div className={styles.sphereWrap} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Lightweight3DViewer type="report" color={activeColor} />
+              <Suspense fallback={null}>
+                <Lightweight3DViewer type="report" color={activeColor} />
+              </Suspense>
               <span className={styles.sphereLabel}>Vedic Chart Engine</span>
             </div>
           )}

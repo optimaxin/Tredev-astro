@@ -37,12 +37,14 @@
 .topCtaBtns { display: flex; gap: var(--space-4); flex-wrap: wrap; }
 
 /* Main */
-.main { padding: var(--space-16) 0; }
+.main { padding: var(--space-16) 0; position: relative; overflow: hidden; }
 
 .mainInner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--space-8);
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 2fr repeat(6, 1fr);
   gap: var(--space-8);
@@ -117,6 +119,8 @@
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all var(--transition-base);
   white-space: nowrap;
 }
@@ -223,6 +227,9 @@
   .bottomInner { flex-direction: column; align-items: flex-start; }
   .legalNote { text-align: left; }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .legalNote, html[lang='mr'] .legalNote { font-size: var(--text-xs); }
 
 @media (max-width: 480px) {
   .mainInner { grid-template-columns: 1fr; }

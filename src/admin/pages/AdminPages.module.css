@@ -1,0 +1,241 @@
+.pageHeader { margin-bottom: 20px; }
+.pageTitle { font-size: 1.4rem; font-weight: 700; color: var(--adm-charcoal); }
+.pageSub { font-size: 0.85rem; color: var(--adm-muted); margin-top: 4px; }
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.section {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-lg);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--adm-shadow);
+}
+
+.sectionTitle { font-size: 1rem; font-weight: 700; color: var(--adm-charcoal); margin-bottom: 14px; }
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.quickActionCard {
+  padding: 16px;
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-md);
+  cursor: pointer;
+  background: var(--adm-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font-family: var(--adm-font);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.quickActionCard:hover { border-color: var(--adm-gold); transform: translateY(-2px); }
+
+.quickActionIcon { font-size: 1.3rem; color: var(--adm-gold-dark); }
+.quickActionLabel { font-size: 0.85rem; font-weight: 700; color: var(--adm-charcoal); }
+
+.twoColGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1023px) {
+  .twoColGrid { grid-template-columns: 1fr; }
+}
+
+.formGroup { margin-bottom: 14px; }
+
+.formLabel {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--adm-charcoal-soft);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.formInput, .formSelect, .formTextarea {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-sm);
+  background: var(--adm-ivory-soft);
+  font-family: var(--adm-font);
+  font-size: 0.85rem;
+  color: var(--adm-charcoal);
+}
+
+.formTextarea { height: auto; min-height: 90px; padding: 10px 12px; resize: vertical; }
+
+.formInput:focus, .formSelect:focus, .formTextarea:focus {
+  outline: none;
+  border-color: var(--adm-gold);
+  background: var(--adm-surface);
+}
+
+.radioRow { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--adm-charcoal); margin-bottom: 8px; }
+
+.drawerSectionTitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-muted);
+  font-weight: 700;
+  margin: 20px 0 10px;
+}
+.drawerSectionTitle:first-child { margin-top: 0; }
+
+.drawerField {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.84rem;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--adm-border-soft);
+}
+.drawerField:last-child { border-bottom: none; }
+.drawerFieldLabel { color: var(--adm-muted); flex-shrink: 0; }
+.drawerFieldValue { color: var(--adm-charcoal); text-align: right; }
+
+.docRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-sm);
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+}
+
+.tabsRow {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--adm-border-soft);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+
+.tabBtn {
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--adm-font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--adm-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabBtnActive { color: var(--adm-charcoal); border-bottom-color: var(--adm-gold); }
+
+.viewToggle { display: flex; gap: 4px; }
+
+.astroCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.astroCard {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-lg);
+  padding: 18px;
+  box-shadow: var(--adm-shadow);
+}
+
+.astroCardHeader { display: flex; align-items: center; gap: 12px; }
+
+.astroAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--adm-ivory-soft);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--adm-gold-dark);
+}
+
+.astroCardName { font-weight: 700; color: var(--adm-charcoal); font-size: 0.9rem; }
+.astroCardMeta { font-size: 0.74rem; color: var(--adm-muted); margin-top: 2px; }
+
+.astroCardStats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 0.78rem;
+}
+
+.astroStatLabel { color: var(--adm-muted); }
+.astroStatValue { color: var(--adm-charcoal); font-weight: 700; }
+
+.astroCardActions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.contentCard {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-lg);
+  padding: 18px;
+  box-shadow: var(--adm-shadow);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--adm-font);
+}
+.contentCard:hover { border-color: var(--adm-gold); }
+.contentCardTitle { font-weight: 700; color: var(--adm-charcoal); font-size: 0.9rem; }
+.contentCardMeta { font-size: 0.72rem; color: var(--adm-muted); margin-top: 6px; }
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.settingsCard {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-soft);
+  border-radius: var(--adm-radius-lg);
+  padding: 18px;
+  box-shadow: var(--adm-shadow);
+}
+
+.settingsCardTitle { font-weight: 700; color: var(--adm-charcoal); font-size: 0.88rem; margin-bottom: 6px; }
+.settingsCardDesc { font-size: 0.78rem; color: var(--adm-muted); }

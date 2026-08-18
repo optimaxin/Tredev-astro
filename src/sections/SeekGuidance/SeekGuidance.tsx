@@ -8,13 +8,14 @@ interface CategoryCard {
   titleKey: string;
   sanskrit: string;
   descKey: string;
+  ctaKey: string;
   size: 'large' | 'small';
   iconSvg: React.ReactNode;
   concern: Concern;
 }
 
 export default function SeekGuidance() {
-  const { setPage, setConcern, t } = useAppContext();
+  const { setPage, setConcern, t, tOr } = useAppContext();
 
   const handleCardClick = (concern: Concern) => {
     setConcern(concern);
@@ -28,6 +29,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_marriage_title',
       sanskrit: 'विवाह',
       descKey: 'seek_card_marriage_desc',
+      ctaKey: 'seek_card_marriage_cta',
       size: 'small',
       concern: 'Marriage',
       iconSvg: (
@@ -55,6 +57,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_career_title',
       sanskrit: 'जीविका',
       descKey: 'seek_card_career_desc',
+      ctaKey: 'seek_card_career_cta',
       size: 'small',
       concern: 'Career & Business',
       iconSvg: (
@@ -82,6 +85,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_money_title',
       sanskrit: 'लक्ष्मी',
       descKey: 'seek_card_money_desc',
+      ctaKey: 'seek_card_money_cta',
       size: 'small',
       concern: 'Money & Finance',
       iconSvg: (
@@ -108,6 +112,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_family_title',
       sanskrit: 'कुटुंब',
       descKey: 'seek_card_family_desc',
+      ctaKey: 'seek_card_family_cta',
       size: 'small',
       concern: 'Family',
       iconSvg: (
@@ -127,6 +132,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_growth_title',
       sanskrit: 'विकास',
       descKey: 'seek_card_growth_desc',
+      ctaKey: 'seek_card_growth_cta',
       size: 'small',
       concern: 'Personal Growth',
       iconSvg: (
@@ -147,6 +153,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_spirituality_title',
       sanskrit: 'मोक्ष',
       descKey: 'seek_card_spirituality_desc',
+      ctaKey: 'seek_card_spirituality_cta',
       size: 'small',
       concern: 'Spirituality',
       iconSvg: (
@@ -163,6 +170,7 @@ export default function SeekGuidance() {
       titleKey: 'seek_card_vastu_title',
       sanskrit: 'वास्तु',
       descKey: 'seek_card_vastu_desc',
+      ctaKey: 'seek_card_vastu_cta',
       size: 'large',
       concern: 'Vastu',
       iconSvg: (
@@ -219,13 +227,12 @@ export default function SeekGuidance() {
               <div className={styles.cardHeader}>
                 {card.iconSvg}
                 <div>
-                  <span className={styles.sanskritLabel}>{card.sanskrit}</span>
                   <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
                 </div>
               </div>
               <p className={styles.cardDesc}>{t(card.descKey)}</p>
               
-              <span className={styles.cardCta}>{t('seek_card_cta')}</span>
+              <span className={styles.cardCta}>{tOr(card.ctaKey, 'seek_card_cta')}</span>
             </div>
           ))}
         </div>

@@ -168,3 +168,6 @@
 
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .container { padding: 0 var(--space-5); } }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .tag, html[lang='mr'] .tag { font-size: var(--text-xs); }

@@ -18,7 +18,7 @@ const FILTER_LABELS: Record<string, string> = {
 };
 
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
-  const { setPage } = useAppContext();
+  const { setPage, t } = useAppContext();
   const [activeFilter, setActiveFilter] = useState('All');
 
   const filtered = featured
@@ -31,28 +31,14 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
 
   return (
     <section className={styles.section} id="astrologers">
-      <CelestialOrnament
-        type="mandala"
-        className="ornament-bg"
-        style={{
-          position: 'absolute',
-          left: '-100px',
-          bottom: '-100px',
-          width: '420px',
-          height: '420px',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}
-        animate
-      />
       <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <div className="section-header-split">
           <div className="header-left">
-            <span className="section-eyebrow-gold">Astrologist Margdarshan</span>
-            <h2 className="section-title-serif">Consult an Astrologist</h2>
+            <span className="section-eyebrow-gold">{t('seek_eyebrow')}</span>
+            <h2 className="section-title-serif">{t('section_astrologers_title')}</h2>
             <p className="section-desc-sans">
-              Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.
+              {t('section_astrologers_desc')}
             </p>
           </div>
           {featured && (
@@ -103,7 +89,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
                   onClick={() => setActiveFilter(f)}
                   id={`astrologer-filter-${f.toLowerCase()}`}
                 >
-                  {FILTER_LABELS[f] || f}
+                  {t('cat_' + f.toLowerCase()) || FILTER_LABELS[f] || f}
                 </button>
               ))}
             </div>
@@ -141,7 +127,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
 }
 
 function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof ASTROLOGERS[0]; compact?: boolean }) {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, t } = useAppContext();
 
   const handleCardClick = () => {
     setSelectedId(a.id);
@@ -184,12 +170,12 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof
           </div>
           <div className={styles.statDot} />
           <div className={styles.stat}>
-            <span className={styles.statValue}>{a.experience} yrs</span>
+            <span className={styles.statValue}>{a.experience} {t('lbl_yrs')}</span>
           </div>
           <div className={styles.statDot} />
           <div className={styles.stat}>
             <span className={styles.statValue}>{a.consultations.toLocaleString()}</span>
-            <span className={styles.statLabel}>consults</span>
+            <span className={styles.statLabel}>{t('lbl_consults')}</span>
           </div>
         </div>
 
@@ -203,19 +189,19 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof
         {/* Price + CTAs */}
         <div className={styles.bottom}>
           <div className={styles.priceWrap}>
-            <span className={styles.price}>₹{a.price}<span className={styles.perMin}>/min</span></span>
+            <span className={styles.price}>₹{a.price}<span className={styles.perMin}>{t('lbl_per_min')}</span></span>
             {a.online ? (
-              <span className={styles.onlineStatus}>● Online</span>
+              <span className={styles.onlineStatus}>● {t('lbl_online')}</span>
             ) : (
-              <span className={styles.offlineStatus}>◯ Offline</span>
+              <span className={styles.offlineStatus}>◯ {t('lbl_offline')}</span>
             )}
           </div>
           <div className={styles.ctaBtns}>
             <button className={`${styles.chatBtn} btn btn-outline-gold btn-sm`} id={`astrologer-chat-${a.id}`}>
-              Chat
+              {t('btn_chat')}
             </button>
             <button className={`${styles.callBtn} btn btn-gold btn-sm`} id={`astrologer-call-${a.id}`}>
-              Call
+              {t('btn_call')}
             </button>
           </div>
         </div>

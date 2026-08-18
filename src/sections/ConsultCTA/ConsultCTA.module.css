@@ -146,7 +146,7 @@
 
 .desc {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--text-sm);
   line-height: 1.75;
   color: rgba(230, 220, 200, 0.6);
   margin: 0 0 36px 0;
@@ -167,7 +167,7 @@
   border-radius: 8px;
   padding: 14px 32px;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.02em;
@@ -188,7 +188,7 @@
   border-radius: 8px;
   padding: 14px 32px;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.25s ease, background 0.25s ease, transform 0.2s ease;
@@ -239,3 +239,10 @@
     min-height: auto;
   }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .eyebrow, html[lang='mr'] .eyebrow { font-size: var(--text-xs); }
+html[lang='hi'] .desc, html[lang='mr'] .desc { font-size: var(--text-base); }
+html[lang='hi'] .btnGold, html[lang='mr'] .btnGold { font-size: var(--text-base); }
+html[lang='hi'] .btnOutline, html[lang='mr'] .btnOutline { font-size: var(--text-base); }
+html[lang='hi'] .trustLine, html[lang='mr'] .trustLine { font-size: var(--text-sm); }

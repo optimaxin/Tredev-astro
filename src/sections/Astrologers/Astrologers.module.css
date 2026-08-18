@@ -312,6 +312,12 @@
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .badge, html[lang='mr'] .badge { font-size: var(--text-xs); }
+html[lang='hi'] .lang, html[lang='mr'] .lang { font-size: var(--text-xs); }
+html[lang='hi'] .onlineStatus, html[lang='mr'] .onlineStatus { font-size: var(--text-xs); }
+html[lang='hi'] .offlineStatus, html[lang='mr'] .offlineStatus { font-size: var(--text-xs); }
+
 @media (max-width: 640px) {
   .grid { grid-template-columns: 1fr; }
   .recommendedCards { grid-template-columns: 1fr; }

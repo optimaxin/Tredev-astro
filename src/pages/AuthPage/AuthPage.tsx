@@ -3,18 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
+import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
 import styles from './AuthPage.module.css';
 
 type TabType = 'login' | 'register';
 
 export default function AuthPage() {
-  const { setPage, setLoggedIn } = useAppContext();
+  const { setPage, login, register, t } = useAppContext();
   const [tab, setTab] = useState<TabType>('register');
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [registerError, setRegisterError] = useState('');
 
   // Register state
   const [form, setForm] = useState({
@@ -29,27 +32,41 @@ export default function AuthPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  const redirectByRole = (role: 'USER' | 'ASTROLOGIST' | 'ADMIN') => {
+    setPage(role === 'USER' ? 'home' : 'profile');
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError('');
     setLoginLoading(true);
     setTimeout(() => {
       setLoginLoading(false);
-      setLoggedIn(true);
-      setPage('home');
+      const user = login(loginEmail, loginPassword);
+      if (!user) {
+        setLoginError('Incorrect email or password.');
+        return;
+      }
+      redirectByRole(user.role);
     }, 1200);
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    setRegisterError('');
     setRegisterLoading(true);
     setTimeout(() => {
       setRegisterLoading(false);
+      const user = register(form.fullName, form.email, form.password);
+      if (!user) {
+        setRegisterError('An account with this email already exists. Please sign in instead.');
+        return;
+      }
       setRegistered(true);
     }, 1400);
   };
 
   const handleContinue = () => {
-    setLoggedIn(true);
     setPage('home');
   };
 
@@ -174,9 +191,7 @@ export default function AuthPage() {
               {tab === 'register' ? 'वैदिक जन्म पत्र ग्रन्थ' : 'सदस्य प्रवेश ग्रन्थ'}
             </h1>
             <p className={styles.manuscriptSubtitle}>
-              {tab === 'register'
-                ? 'ANCIENT VEDIC BIRTH MANUSCRIPT · INSCRIBE YOUR KUNDLI DETAILS'
-                : 'SACRED USER VAULT · ACCESS STORED BIRTH PROFILE'}
+              {tab === 'register' ? t('auth_subtitle_register') : t('auth_subtitle_login')}
             </p>
           </div>
 
@@ -187,14 +202,14 @@ export default function AuthPage() {
               className={`${styles.manuscriptTab} ${tab === 'register' ? styles.tabActive : ''}`}
               onClick={() => setTab('register')}
             >
-              📜 Inscribe Birth Details
+              📜 {t('auth_tab_register')}
             </button>
             <button
               type="button"
               className={`${styles.manuscriptTab} ${tab === 'login' ? styles.tabActive : ''}`}
               onClick={() => setTab('login')}
             >
-              🗝️ Member Sign In
+              🗝️ {t('auth_tab_login')}
             </button>
           </div>
 
@@ -213,12 +228,12 @@ export default function AuthPage() {
                 {/* Full Name Field */}
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
-                    <span className={styles.devanagariTag}>नामांकन</span> Full Name / Seeker's Name *
+                    <span className={styles.devanagariTag}>नामांकन</span> {t('auth_label_fullname')}
                   </label>
                   <input
                     type="text"
                     className={styles.inkInput}
-                    placeholder="e.g. Sparsh Sharma"
+                    placeholder={t('auth_placeholder_fullname')}
                     value={form.fullName}
                     onChange={e => setForm({ ...form, fullName: e.target.value })}
                     required
@@ -229,12 +244,12 @@ export default function AuthPage() {
                 <div className={styles.inkRow2}>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>ई-मेल</span> Email Address *
+                      <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_email')}
                     </label>
                     <input
                       type="email"
                       className={styles.inkInput}
-                      placeholder="name@example.com"
+                      placeholder={t('auth_placeholder_email')}
                       value={form.email}
                       onChange={e => setForm({ ...form, email: e.target.value })}
                       required
@@ -242,7 +257,7 @@ export default function AuthPage() {
                   </div>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>गुप्त कुंजी</span> Secret Password *
+                      <span className={styles.devanagariTag}>गुप्त कुंजी</span> {t('auth_label_password')}
                     </label>
                     <input
                       type="password"
@@ -259,7 +274,7 @@ export default function AuthPage() {
                 {/* Celestial Inscription Separator */}
                 <div className={styles.sacredSeparator}>
                   <div className={styles.sepLine} />
-                  <span className={styles.sepText}>❖ जन्म कुण्डली गणना निर्देशांक (Birth Coordinates) ❖</span>
+                  <span className={styles.sepText}>❖ जन्म कुण्डली गणना निर्देशांक ({t('auth_separator_birth_coords')}) ❖</span>
                   <div className={styles.sepLine} />
                 </div>
 
@@ -267,26 +282,26 @@ export default function AuthPage() {
                 <div className={styles.inkRow2}>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म तिथि</span> Date of Birth *
+                      <span className={styles.devanagariTag}>जन्म तिथि</span> {t('auth_label_dob')}
                     </label>
                     <AncientDatePicker
                       className={styles.inkInput}
                       value={form.dob}
                       onChange={val => setForm({ ...form, dob: val })}
                       required
-                      placeholder="Select Date of Birth"
+                      placeholder={t('auth_placeholder_dob')}
                     />
                   </div>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म समय</span> Time of Birth *
+                      <span className={styles.devanagariTag}>जन्म समय</span> {t('auth_label_tob')}
                     </label>
-                    <input
-                      type="time"
+                    <AncientTimePicker
                       className={styles.inkInput}
                       value={form.timeOfBirth}
-                      onChange={e => setForm({ ...form, timeOfBirth: e.target.value })}
+                      onChange={val => setForm({ ...form, timeOfBirth: val })}
                       required
+                      placeholder={t('auth_placeholder_tob')}
                     />
                   </div>
                 </div>
@@ -295,12 +310,12 @@ export default function AuthPage() {
                 <div className={styles.inkRow2}>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म स्थान</span> Place of Birth (City, State) *
+                      <span className={styles.devanagariTag}>जन्म स्थान</span> {t('auth_label_pob')}
                     </label>
                     <input
                       type="text"
                       className={styles.inkInput}
-                      placeholder="e.g. New Delhi, India"
+                      placeholder={t('auth_placeholder_pob')}
                       value={form.placeOfBirth}
                       onChange={e => setForm({ ...form, placeOfBirth: e.target.value })}
                       required
@@ -308,22 +323,26 @@ export default function AuthPage() {
                   </div>
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>लिंग</span> Gender
+                      <span className={styles.devanagariTag}>लिंग</span> {t('auth_label_gender')}
                     </label>
                     <div className={styles.genderRow}>
-                      {['Male', 'Female', 'Other'].map(g => (
+                      {(['Male', 'Female', 'Other'] as const).map(g => (
                         <button
                           type="button"
                           key={g}
                           className={`${styles.genderOption} ${form.gender === g ? styles.genderOptionActive : ''}`}
                           onClick={() => setForm({ ...form, gender: g })}
                         >
-                          {g}
+                          {t(`auth_gender_${g.toLowerCase()}`)}
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
+
+                {registerError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{registerError}</p>
+                )}
 
                 {/* Royal Red Wax Seal Button */}
                 <button
@@ -333,7 +352,7 @@ export default function AuthPage() {
                   id="auth-register-submit"
                 >
                   <div className={styles.sealEmblemInside}>ॐ</div>
-                  <span>{registerLoading ? 'Inscribing Birth Chart...' : 'मुद्रित करें · SEAL INSCRIPTION →'}</span>
+                  <span>{registerLoading ? t('auth_btn_inscribing') : `मुद्रित करें · ${t('auth_btn_seal')}`}</span>
                 </button>
               </motion.form>
             )}
@@ -351,12 +370,12 @@ export default function AuthPage() {
               >
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
-                    <span className={styles.devanagariTag}>ई-मेल</span> Registered Email Address *
+                    <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_login_email')}
                   </label>
                   <input
                     type="email"
                     className={styles.inkInput}
-                    placeholder="name@example.com"
+                    placeholder={t('auth_placeholder_email')}
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     required
@@ -365,7 +384,7 @@ export default function AuthPage() {
 
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
-                    <span className={styles.devanagariTag}>गुप्त कुंजी</span> Password *
+                    <span className={styles.devanagariTag}>गुप्त कुंजी</span> {t('auth_label_login_password')}
                   </label>
                   <input
                     type="password"
@@ -377,6 +396,10 @@ export default function AuthPage() {
                   />
                 </div>
 
+                {loginError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{loginError}</p>
+                )}
+
                 <button
                   type="submit"
                   className={styles.waxSealBtn}
@@ -384,7 +407,7 @@ export default function AuthPage() {
                   id="auth-login-submit"
                 >
                   <div className={styles.sealEmblemInside}>🗝️</div>
-                  <span>{loginLoading ? 'Unlocking Vault...' : 'प्रवेश करें · SIGN IN TO VAULT →'}</span>
+                  <span>{loginLoading ? t('auth_btn_unlocking') : `प्रवेश करें · ${t('auth_btn_signin_vault')}`}</span>
                 </button>
               </motion.form>
             )}
@@ -401,7 +424,11 @@ export default function AuthPage() {
                 <div className={styles.royalWaxSealBig}>ॐ</div>
                 <h2 className={styles.successHeader}>जन्मांग अभिलिखितम्!</h2>
                 <p className={styles.successSubtext}>
-                  Greetings {form.fullName}! Your birth coordinates ({form.dob} at {form.timeOfBirth}, {form.placeOfBirth}) have been successfully inscribed onto the sacred Vedic manuscript archive.
+                  {t('auth_success_message')
+                    .replace('{name}', form.fullName)
+                    .replace('{date}', form.dob)
+                    .replace('{time}', form.timeOfBirth)
+                    .replace('{place}', form.placeOfBirth)}
                 </p>
                 <button
                   type="button"
@@ -409,7 +436,7 @@ export default function AuthPage() {
                   onClick={handleContinue}
                   id="auth-continue-btn"
                 >
-                  <span>✦ ENTER CELESTIAL PORTAL ✦</span>
+                  <span>{t('auth_btn_continue')}</span>
                 </button>
               </motion.div>
             )}
@@ -417,7 +444,7 @@ export default function AuthPage() {
 
           {/* Footer Sanskrit Stamp */}
           <div className={styles.scriptFooterStamp}>
-            🔒 गोपनीयं जन्म पत्रम् · ENCRYPTED ANCIENT VEDIC ARCHIVE
+            🔒 गोपनीयं जन्म पत्रम् · {t('auth_footer_stamp')}
           </div>
 
         </div>

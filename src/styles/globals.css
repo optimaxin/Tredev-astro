@@ -140,6 +140,12 @@ body {
 
   /* Nav */
   --nav-height: 72px;
+  --nav-link-size: 10.5px;
+  --nav-cta-size: 10.5px;
+  --nav-badge-size: 11px;
+
+  /* Devanagari-compatible companion to the Latin display/UI fonts above */
+  --font-devanagari: 'Hind', 'Yatra One', 'Noto Sans', sans-serif;
 
   /* Z-index */
   --z-base:    1;
@@ -191,6 +197,59 @@ body {
   --shadow-elevated:    0 12px 50px rgba(23, 37, 58, 0.10);
 }
 
+
+/* ---------- Devanagari Typography System ----------
+   Hindi & Marathi reuse 'Yatra One' for display headings (it already covers
+   Devanagari) but swap the UI/body font to 'Hind' — a proper Devanagari text
+   face — and scale the whole type ramp up so Devanagari's script proportions
+   read with the same visual weight as the Latin UI at the same hierarchy
+   level. Applied via the document <html lang> attribute, not a class, so it
+   can never be left stale. */
+html[lang='hi'],
+html[lang='mr'] {
+  --font-sans: var(--font-devanagari), 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Yatra One', var(--font-devanagari), 'Cormorant Garamond', serif;
+
+  --text-xs:   0.875rem;   /* 14px, was 12px */
+  --text-sm:   1rem;       /* 16px, was 14px */
+  --text-base: 1.1875rem;  /* 19px, was 16px */
+  --text-md:   1.3125rem;  /* 21px, was 18px */
+  --text-lg:   1.5rem;     /* 24px, was 20px */
+  --text-xl:   1.8125rem;  /* 29px, was 24px */
+  --text-2xl:  2.1875rem;  /* 35px, was 30px */
+  --text-3xl:  2.625rem;   /* 42px, was 36px */
+  --text-4xl:  3.375rem;   /* 54px, was 48px */
+  --text-5xl:  4.125rem;   /* 66px, was 60px */
+  --text-6xl:  4.875rem;   /* 78px, was 72px */
+
+  --nav-link-size: 14.5px;
+  --nav-cta-size: 14px;
+  --nav-badge-size: 14px;
+}
+
+html[lang='hi'] body,
+html[lang='mr'] body {
+  /* Devanagari conjuncts and matras need more vertical room than Latin x-height */
+  line-height: 1.85;
+}
+
+/* Wide Latin tracking crowds/breaks Devanagari conjunct clusters — relax it
+   on the shared uppercase-style label utilities used for eyebrows, badges,
+   buttons and tags. */
+html[lang='hi'] .section-eyebrow-gold,
+html[lang='mr'] .section-eyebrow-gold,
+html[lang='hi'] .section-eyebrow,
+html[lang='mr'] .section-eyebrow,
+html[lang='hi'] .badge,
+html[lang='mr'] .badge,
+html[lang='hi'] .btn,
+html[lang='mr'] .btn,
+html[lang='hi'] .tag,
+html[lang='mr'] .tag,
+html[lang='hi'] .section-explore-link,
+html[lang='mr'] .section-explore-link {
+  letter-spacing: 0.02em;
+}
 
 /* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar { width: 6px; }
@@ -658,6 +717,23 @@ body {
   .section-padding-lg { padding: var(--space-20) 0; }
 }
 
+/* ---------- Mobile spacing scale ----------
+   Every section's vertical padding is written as `padding: var(--space-XX) 0`
+   against these same shared tokens, so redefining the tokens here compacts
+   every section site-wide at once instead of patching each section's CSS
+   file individually. This is the actual fix for "excessive mobile spacing" —
+   the desktop rhythm (96px/80px/64px section padding) was never scaled down,
+   it was just inherited as-is onto a screen a third the width. */
+@media (max-width: 640px) {
+  :root {
+    --space-32: 3.5rem;  /* 56px, was 128px */
+    --space-24: 2.75rem; /* 44px, was 96px */
+    --space-20: 2.5rem;  /* 40px, was 80px */
+    --space-16: 2rem;    /* 32px, was 64px */
+    --space-12: 1.75rem; /* 28px, was 48px */
+  }
+}
+
 /* ---------- World Transition Gradient ---------- */
 .world-transition-to-human {
   background: linear-gradient(180deg, var(--color-dark) 0%, var(--color-surface) 40%, var(--color-ivory) 100%);
@@ -827,6 +903,8 @@ section:not(#hero), [class*="pageWrapper"] {
   margin: 0 auto;
   padding: 0 var(--space-4);
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .section-header-split {
@@ -917,6 +995,7 @@ section:not(#hero), [class*="pageWrapper"] {
 /* ── Yantra Watermarks & Sacred Geometry Backgrounds ── */
 .yantra-watermark-right {
   position: relative;
+  overflow: hidden;
 }
 .yantra-watermark-right::after {
   content: '';
@@ -935,6 +1014,7 @@ section:not(#hero), [class*="pageWrapper"] {
 
 .yantra-watermark-left {
   position: relative;
+  overflow: hidden;
 }
 .yantra-watermark-left::after {
   content: '';

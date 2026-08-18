@@ -4,7 +4,7 @@ import { useAppContext } from '../../context/AppContext';
 import styles from './LoginModal.module.css';
 
 export default function LoginModal() {
-  const { showLoginModal, setShowLoginModal, setLoggedIn, pendingAction, setPendingAction, setPage, theme } = useAppContext();
+  const { showLoginModal, setShowLoginModal, loginOrRegister, pendingAction, setPendingAction, setPage, theme, t } = useAppContext();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,14 +48,23 @@ export default function LoginModal() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const finishLogin = (user: ReturnType<typeof loginOrRegister>) => {
+    setShowLoginModal(false);
+    if (user.role === 'USER') {
+      resumePendingAction(pendingAction);
+    } else {
+      setPage('profile');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setPendingAction(null);
+  };
+
   const handleLogin = () => {
     setLoading(true);
     setTimeout(() => {
-      setLoggedIn(true);
+      const user = loginOrRegister(email);
       setLoading(false);
-      setShowLoginModal(false);
-      resumePendingAction(pendingAction);
-      setPendingAction(null);
+      finishLogin(user);
       setStep('options');
       setEmail('');
     }, 1200);
@@ -64,11 +73,9 @@ export default function LoginModal() {
   const handleGoogleLogin = () => {
     setLoading(true);
     setTimeout(() => {
-      setLoggedIn(true);
+      const user = loginOrRegister('google-user@tredevastro.local');
       setLoading(false);
-      setShowLoginModal(false);
-      resumePendingAction(pendingAction);
-      setPendingAction(null);
+      finishLogin(user);
     }, 900);
   };
 
@@ -117,15 +124,15 @@ export default function LoginModal() {
             {/* Heading */}
             <h2 className={styles.heading}>
               {mode === 'login' ? (
-                <>Sign in to continue <em className={styles.headingItalic}>your journey</em>.</>
+                <>{t('login_heading_signin_prefix')}<em className={styles.headingItalic}>{t('login_heading_em')}</em>.</>
               ) : (
-                <>Begin <em className={styles.headingItalic}>your journey</em>.</>
+                <>{t('login_heading_signup_prefix')}<em className={styles.headingItalic}>{t('login_heading_em')}</em>.</>
               )}
             </h2>
             <p className={styles.subheading}>
               {pendingAction
-                ? 'Please sign in to access this feature.'
-                : 'Your personalized Jyotish experience awaits.'}
+                ? t('login_subheading_pending')
+                : t('login_subheading_default')}
             </p>
 
             {/* Divider */}
@@ -140,7 +147,7 @@ export default function LoginModal() {
                   disabled={loading}
                 >
                   <GoogleIcon />
-                  Continue with Google
+                  {t('login_google')}
                 </button>
 
                 {/* Email Option */}
@@ -150,17 +157,17 @@ export default function LoginModal() {
                   disabled={loading}
                 >
                   <EmailIcon />
-                  Continue with Email
+                  {t('login_email')}
                 </button>
 
                 {/* Mode Switch */}
                 <p className={styles.switchText}>
-                  {mode === 'login' ? "New here? " : "Already have an account? "}
+                  {mode === 'login' ? t('login_new_here') : t('login_have_account')}
                   <button
                     className={styles.switchLink}
                     onClick={() => setMode(m => m === 'login' ? 'signup' : 'login')}
                   >
-                    {mode === 'login' ? 'Create Account' : 'Sign In'}
+                    {mode === 'login' ? t('login_create_account') : t('login_sign_in')}
                   </button>
                 </p>
               </div>
@@ -169,7 +176,7 @@ export default function LoginModal() {
                 <input
                   type="email"
                   className={styles.emailInput}
-                  placeholder="Enter your email or mobile"
+                  placeholder={t('login_email_placeholder')}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && email && handleLogin()}
@@ -183,20 +190,20 @@ export default function LoginModal() {
                   {loading ? (
                     <span className={styles.spinner} />
                   ) : (
-                    mode === 'login' ? 'Sign In' : 'Create Account'
+                    mode === 'login' ? t('login_sign_in') : t('login_create_account')
                   )}
                 </button>
                 <button className={styles.backBtn} onClick={() => setStep('options')}>
-                  ← Back
+                  {t('login_back')}
                 </button>
               </div>
             )}
 
             {/* Privacy note */}
             <p className={styles.privacy}>
-              By continuing, you agree to our{' '}
-              <span className={styles.privacyLink}>Terms</span> &amp;{' '}
-              <span className={styles.privacyLink}>Privacy Policy</span>
+              {t('login_privacy_prefix')}
+              <span className={styles.privacyLink}>{t('login_terms')}</span>{t('login_privacy_and')}
+              <span className={styles.privacyLink}>{t('login_privacy_policy')}</span>
             </p>
           </motion.div>
         </motion.div>

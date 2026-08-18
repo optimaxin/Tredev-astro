@@ -11,6 +11,8 @@
   margin: 0 auto;
   padding: 0 var(--space-8);
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -82,8 +84,8 @@
 /* Report Cards */
 .reportsGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
   margin-bottom: var(--space-16);
 }
 
@@ -99,8 +101,6 @@
   cursor: default;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
-  transform-style: preserve-3d;
-  perspective: 600px;
 }
 
 .reportCard:hover {
@@ -326,10 +326,6 @@
 
 .checkIcon { color: var(--color-gold); font-size: 0.8rem; }
 
-@media (max-width: 1280px) {
-  .reportsGrid { grid-template-columns: repeat(3, 1fr); }
-}
-
 @media (max-width: 980px) {
   .headerGrid { grid-template-columns: 1fr; text-align: center; }
   .headerLeft { text-align: center; }
@@ -338,7 +334,7 @@
   .bundlesGrid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   .reportsGrid { grid-template-columns: 1fr; }
   .container { padding: 0 var(--space-5); }
 }
@@ -411,4 +407,10 @@
 :global([data-theme='light']) .bundleFeatures li {
   color: var(--text-secondary);
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .sphereLabel, html[lang='mr'] .sphereLabel { font-size: var(--text-xs); }
+html[lang='hi'] .popularBadge, html[lang='mr'] .popularBadge { font-size: var(--text-xs); }
+html[lang='hi'] .reportCategory, html[lang='mr'] .reportCategory { font-size: var(--text-xs); }
+html[lang='hi'] .bundlePopularLabel, html[lang='mr'] .bundlePopularLabel { font-size: var(--text-xs); }
 

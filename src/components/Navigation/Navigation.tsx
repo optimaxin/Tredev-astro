@@ -23,15 +23,17 @@ const LANGUAGES = [
 ] as const;
 
 export default function Navigation() {
-  const { 
-    page, 
-    setPage, 
-    kundliGenerated, 
-    cart, 
-    theme, 
-    toggleTheme, 
-    isLoggedIn, 
-    setShowLoginModal, 
+  const {
+    page,
+    setPage,
+    kundliGenerated,
+    cart,
+    theme,
+    toggleTheme,
+    isLoggedIn,
+    currentUser,
+    logout,
+    setShowLoginModal,
     setPendingAction,
     language,
     setLanguage,
@@ -43,7 +45,7 @@ export default function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  
+
   const navRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -137,15 +139,15 @@ export default function Navigation() {
     >
       <div className={styles.inner}>
         {/* Logo */}
-        <button 
-          className={styles.logo} 
-          onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+        <button
+          className={styles.logo}
+          onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           aria-label="TredevAstro home"
         >
           <span className={styles.logoStar}>✦</span>
           <span className={styles.logoText}>TredevAstro</span>
         </button>
- 
+
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
           {NAV_LINKS.map(link => {
@@ -163,7 +165,7 @@ export default function Navigation() {
             );
           })}
         </nav>
- 
+
         {/* Right Actions */}
         <div className={styles.actions}>
           <button
@@ -172,7 +174,7 @@ export default function Navigation() {
           >
             {t('nav_free_kundli')}
           </button>
-          
+
           <button
             className={`${styles.ctaBtn} ${page === 'astrologers' ? styles.active : ''}`}
             onClick={handleConsultClick}
@@ -181,8 +183,8 @@ export default function Navigation() {
           </button>
 
           {/* Cart Icon */}
-          <button 
-            className={styles.cartBtn} 
+          <button
+            className={styles.cartBtn}
             onClick={() => { window.location.href = 'https://tredevastore.com/'; }}
             aria-label="View Cart"
           >
@@ -221,29 +223,28 @@ export default function Navigation() {
           {/* Login / Profile Actions */}
           {isLoggedIn ? (
             <div className={styles.profileDropdownWrapper} ref={profileRef}>
-              <button 
+              <button
                 className={`${styles.profileSelectorBtn} ${page === 'profile' ? styles.active : ''}`}
                 onClick={() => setProfileDropdownOpen(v => !v)}
               >
                 <div className={styles.avatarCircle}>
-                  {birthProfile.name.substring(0, 1).toUpperCase()}
+                  {(currentUser?.name || birthProfile.name).substring(0, 1).toUpperCase()}
                 </div>
-                <span className={styles.profileNameText}>{birthProfile.name.split(' ')[0]}</span>
+                <span className={styles.profileNameText}>{(currentUser?.name || birthProfile.name).split(' ')[0]}</span>
                 <span className={styles.profileArrow}>▼</span>
               </button>
               {profileDropdownOpen && (
                 <div className={styles.profileDropdown}>
                   <button onClick={() => { handleNavClick('profile'); setProfileDropdownOpen(false); }}>
-                    My Workspace
+                    {currentUser?.role === 'USER' ? 'My Profile' : 'Dashboard'}
                   </button>
-                  <button onClick={() => { handleNavClick('free-kundli'); setProfileDropdownOpen(false); }}>
-                    New Kundli
-                  </button>
-                  <button 
-                    onClick={() => {
-                      localStorage.setItem('isLoggedIn', 'false');
-                      window.location.reload();
-                    }}
+                  {currentUser?.role === 'USER' && (
+                    <button onClick={() => { handleNavClick('free-kundli'); setProfileDropdownOpen(false); }}>
+                      New Kundli
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { logout(); setProfileDropdownOpen(false); setPage('home'); }}
                     style={{ color: '#c55' }}
                   >
                     Sign Out
@@ -252,7 +253,7 @@ export default function Navigation() {
               )}
             </div>
           ) : (
-            <button 
+            <button
               className={styles.loginBtn}
               onClick={() => {
                 setPage('auth');
@@ -266,8 +267,8 @@ export default function Navigation() {
           )}
 
           {/* Theme Toggle */}
-          <button 
-            className={styles.themeToggleBtn} 
+          <button
+            className={styles.themeToggleBtn}
             onClick={toggleTheme}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           >
@@ -302,7 +303,7 @@ export default function Navigation() {
             );
           })}
           <div className={styles.mobileDivider} />
-          
+
           {/* Language selector in Mobile Menu */}
           <div className={styles.mobileLangList}>
             {LANGUAGES.map(lang => (

@@ -34,7 +34,6 @@ const PILLARS = [
 export default function WhyTredevAstro() {
   return (
     <section className={styles.section} id="why">
-      <CelestialOrnament type="orbit" className={styles.bgOrnament} />
       <div className={styles.container}>
         <motion.div
           className={styles.header}

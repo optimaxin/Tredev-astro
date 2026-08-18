@@ -9,12 +9,6 @@ export default function MeetAcharya() {
 
   return (
     <section className={styles.section} id="meet-Astrologist">
-      {/* Background ornament — partial mandala, top-right */}
-      <CelestialOrnament
-        type="mandala"
-        className={styles.bgOrnament}
-        animate
-      />
 
       <div className={styles.inner}>
 

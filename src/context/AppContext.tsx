@@ -32,6 +32,264 @@ export interface CartItem {
   image?: string;
 }
 
+// ── Role-based auth (mock/frontend-only prototype — no real backend exists in
+// this project, so "backend authority" is simulated via localStorage) ──
+export type Role = 'USER' | 'ASTROLOGIST' | 'ADMIN';
+
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status?: AccountStatus;
+}
+
+interface StoredAccount extends AuthUser {
+  password: string; // dev/demo only — never store plaintext passwords in a real backend
+}
+
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AstrologerApplication {
+  id: string;
+  userEmail: string;
+  userName: string;
+  expertise: string;
+  experience: string;
+  status: ApplicationStatus;
+  submittedAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  actor: string;
+  target: string;
+  at: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  message: string;
+  at: string;
+  recipientEmail?: string;
+  read?: boolean;
+  kind?: 'request' | 'review' | 'payment' | 'system';
+}
+
+// ── Astrologist practice-management mock domain (dev seed data only — see
+// DEMO_ACCOUNTS below; a real backend would own and authorize all of this) ──
+export type ConsultationType = 'chat' | 'voice' | 'video';
+export type ConsultationStatus = 'upcoming' | 'completed' | 'cancelled';
+export type RequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
+export type AvailabilityStatus = 'AVAILABLE' | 'BUSY' | 'OFFLINE';
+
+export interface ConsultationRequest {
+  id: string;
+  astrologerEmail: string;
+  clientName: string;
+  clientEmail: string;
+  service: string;
+  type: ConsultationType;
+  requestedFor: string; // ISO datetime the client asked for
+  duration: number; // minutes
+  price: number;
+  status: RequestStatus;
+  submittedAt: string;
+}
+
+export interface Consultation {
+  id: string;
+  astrologerEmail: string;
+  clientName: string;
+  clientEmail: string;
+  type: ConsultationType;
+  service: string;
+  scheduledAt: string; // ISO
+  duration: number; // minutes
+  amount: number;
+  status: ConsultationStatus;
+  notes: string; // private astrologer notes — never shown to the client
+  payoutStatus: 'PENDING' | 'PAID';
+}
+
+export interface TimeWindow {
+  start: string; // HH:MM
+  end: string;
+}
+
+export interface BlockedSlot {
+  id: string;
+  astrologerEmail: string;
+  date: string; // YYYY-MM-DD
+  start: string;
+  end: string;
+  reason: string;
+}
+
+export interface AvailabilitySettings {
+  workingDays: number[]; // 0=Sun..6=Sat
+  slots: TimeWindow[];
+  consultationDuration: number; // minutes
+  bufferMinutes: number;
+  status: AvailabilityStatus;
+}
+
+export interface AstrologerReview {
+  id: string;
+  astrologerEmail: string;
+  clientName: string;
+  rating: number;
+  text: string;
+  at: string;
+}
+
+export interface AstrologerProfileOverride {
+  title: string;
+  bio: string;
+  specialization: string[];
+  languages: string[];
+  publicVisible: boolean;
+}
+
+// Development-only demo accounts so all three dashboards can be tested
+// immediately. Not real credentials — never expose seed data like this in production.
+const DEMO_ACCOUNTS: StoredAccount[] = [
+  { id: 'demo-user', name: 'Arjun Sharma', email: 'demo.user@tredevastro.local', password: 'DevUser@123', role: 'USER' },
+  { id: 'demo-astrologer', name: 'Astrologist Rahul Shastri', email: 'demo.astrologer@tredevastro.local', password: 'DevAstro@123', role: 'ASTROLOGIST' },
+  { id: 'demo-admin', name: 'Admin Priya Verma', email: 'demo.admin@tredevastro.local', password: 'DevAdmin@123', role: 'ADMIN' },
+];
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+function loadUsers(): Record<string, StoredAccount> {
+  let saved: Record<string, StoredAccount> = {};
+  try {
+    saved = JSON.parse(localStorage.getItem('auth_users') || '{}');
+  } catch {
+    saved = {};
+  }
+  DEMO_ACCOUNTS.forEach(acc => {
+    if (!saved[acc.email]) saved[acc.email] = acc;
+  });
+  return saved;
+}
+
+function loadLS<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const DEMO_ASTROLOGER_EMAIL = 'demo.astrologer@tredevastro.local';
+
+const DEFAULT_AVAILABILITY: AvailabilitySettings = {
+  workingDays: [1, 2, 3, 4, 5],
+  slots: [{ start: '09:00', end: '13:00' }, { start: '17:00', end: '21:00' }],
+  consultationDuration: 30,
+  bufferMinutes: 10,
+  status: 'AVAILABLE',
+};
+
+// Fallback for astrologists who haven't filled in their profile yet — kept
+// genuinely empty so profile-completion tracking is meaningful for new accounts.
+const EMPTY_PROFILE_OVERRIDE: AstrologerProfileOverride = {
+  title: '',
+  bio: '',
+  specialization: [],
+  languages: [],
+  publicVisible: true,
+};
+
+// Seeded only for the demo astrologer account (see seedAstrologistDemoData) so
+// the dashboard demo has a filled-in profile to show.
+const DEFAULT_PROFILE_OVERRIDE: AstrologerProfileOverride = {
+  title: '',
+  bio: 'Specializes in predictive Vedic astrology with deep expertise in Dashas, transits, and marriage compatibility. Draws on over a decade of consultation experience to give direct, practical guidance.',
+  specialization: [],
+  languages: [],
+  publicVisible: true,
+};
+
+// Seeds the demo Astrologist account (and only that account — see DEMO_ACCOUNTS)
+// with development-only practice data so the dashboard has something to show
+// on first load. Real astrologists start with empty state and an empty-state UI.
+function seedAstrologistDemoData() {
+  const now = Date.now();
+  const day = 86400000;
+  const iso = (offsetDays: number, hh: number, mm: number) => {
+    const d = new Date(now + offsetDays * day);
+    d.setHours(hh, mm, 0, 0);
+    return d.toISOString();
+  };
+
+  const requests = loadLS<ConsultationRequest[]>('astro_requests', []);
+  if (!requests.some(r => r.astrologerEmail === DEMO_ASTROLOGER_EMAIL)) {
+    requests.push(
+      { id: 'req-seed-1', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Priya Sharma', clientEmail: 'priya.sharma@example.com', service: 'Marriage Consultation', type: 'video', requestedFor: iso(1, 10, 0), duration: 30, price: 1470, status: 'PENDING', submittedAt: iso(0, 8, 0) },
+      { id: 'req-seed-2', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Karan Malhotra', clientEmail: 'karan.malhotra@example.com', service: 'Career Reading', type: 'chat', requestedFor: iso(2, 15, 0), duration: 45, price: 2205, status: 'PENDING', submittedAt: iso(0, 9, 30) },
+    );
+    localStorage.setItem('astro_requests', JSON.stringify(requests));
+  }
+
+  const consultations = loadLS<Consultation[]>('astro_consultations', []);
+  if (!consultations.some(c => c.astrologerEmail === DEMO_ASTROLOGER_EMAIL)) {
+    consultations.push(
+      { id: 'con-seed-1', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Rohit Verma', clientEmail: 'rohit.verma@example.com', type: 'video', service: 'Kundli Consultation', scheduledAt: iso(0, 16, 30), duration: 30, amount: 1470, status: 'upcoming', notes: '', payoutStatus: 'PENDING' },
+      { id: 'con-seed-2', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Sneha Iyer', clientEmail: 'sneha.iyer@example.com', type: 'chat', service: 'Love & Relationship Reading', scheduledAt: iso(0, 18, 0), duration: 20, amount: 980, status: 'upcoming', notes: '', payoutStatus: 'PENDING' },
+      { id: 'con-seed-3', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Aditya Rao', clientEmail: 'aditya.rao@example.com', type: 'voice', service: 'Career Reading', scheduledAt: iso(1, 11, 0), duration: 25, amount: 1225, status: 'upcoming', notes: '', payoutStatus: 'PENDING' },
+      { id: 'con-seed-4', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Kiran Kapoor', clientEmail: 'kiran.kapoor@example.com', type: 'video', service: 'Marriage Consultation', scheduledAt: iso(-5, 15, 0), duration: 30, amount: 1470, status: 'completed', notes: 'Recommended a Mangal Dosha remedy; suggested a follow-up in 3 months.', payoutStatus: 'PAID' },
+      { id: 'con-seed-5', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Nalini Suresh', clientEmail: 'nalini.suresh@example.com', type: 'chat', service: 'Vastu Consultation', scheduledAt: iso(-12, 12, 0), duration: 20, amount: 980, status: 'completed', notes: '', payoutStatus: 'PAID' },
+      { id: 'con-seed-6', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Meera Joshi', clientEmail: 'meera.joshi@example.com', type: 'voice', service: 'Kundli Reading', scheduledAt: iso(-2, 17, 0), duration: 30, amount: 1470, status: 'completed', notes: '', payoutStatus: 'PENDING' },
+    );
+    localStorage.setItem('astro_consultations', JSON.stringify(consultations));
+  }
+
+  const blocked = loadLS<BlockedSlot[]>('astro_blocked_slots', []);
+  if (!blocked.some(b => b.astrologerEmail === DEMO_ASTROLOGER_EMAIL)) {
+    blocked.push({ id: 'blk-seed-1', astrologerEmail: DEMO_ASTROLOGER_EMAIL, date: iso(1, 0, 0).slice(0, 10), start: '14:00', end: '16:00', reason: 'Personal' });
+    localStorage.setItem('astro_blocked_slots', JSON.stringify(blocked));
+  }
+
+  const reviews = loadLS<AstrologerReview[]>('astro_reviews', []);
+  if (!reviews.some(r => r.astrologerEmail === DEMO_ASTROLOGER_EMAIL)) {
+    reviews.push(
+      { id: 'rev-seed-1', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Kiran K.', rating: 5, text: 'Incredibly insightful reading on my Saturn transit. Clear, direct, and the remedy actually helped.', at: iso(-4, 10, 0) },
+      { id: 'rev-seed-2', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Nalini S.', rating: 5, text: 'Accurate marriage timing forecast. Strongly recommended.', at: iso(-11, 14, 0) },
+      { id: 'rev-seed-3', astrologerEmail: DEMO_ASTROLOGER_EMAIL, clientName: 'Aditya R.', rating: 4, text: 'Good session overall, would have liked a bit more time on career remedies.', at: iso(-20, 9, 0) },
+    );
+    localStorage.setItem('astro_reviews', JSON.stringify(reviews));
+  }
+
+  const notifs = loadLS<NotificationEntry[]>('astro_notifications', []);
+  if (!notifs.some(n => n.recipientEmail === DEMO_ASTROLOGER_EMAIL)) {
+    notifs.push(
+      { id: 'an-seed-1', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'New consultation request from Priya Sharma.', at: iso(0, 8, 0), read: false, kind: 'request' },
+      { id: 'an-seed-2', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'New consultation request from Karan Malhotra.', at: iso(0, 9, 30), read: false, kind: 'request' },
+      { id: 'an-seed-3', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'Nalini S. left you a 5★ review.', at: iso(-12, 13, 0), read: true, kind: 'review' },
+      { id: 'an-seed-4', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'Payout of ₹1,470 was completed.', at: iso(-5, 16, 0), read: true, kind: 'payment' },
+    );
+    localStorage.setItem('astro_notifications', JSON.stringify(notifs));
+  }
+}
+
+function loadAvailabilityMap(): Record<string, AvailabilitySettings> {
+  const saved = loadLS<Record<string, AvailabilitySettings>>('astro_availability', {});
+  if (!saved[DEMO_ASTROLOGER_EMAIL]) saved[DEMO_ASTROLOGER_EMAIL] = DEFAULT_AVAILABILITY;
+  return saved;
+}
+
+function loadProfileOverrideMap(): Record<string, AstrologerProfileOverride> {
+  const saved = loadLS<Record<string, AstrologerProfileOverride>>('astro_profile_overrides', {});
+  if (!saved[DEMO_ASTROLOGER_EMAIL]) saved[DEMO_ASTROLOGER_EMAIL] = DEFAULT_PROFILE_OVERRIDE;
+  return saved;
+}
+
 interface AppContextValue {
   birthProfile: BirthProfile;
   setBirthProfile: (p: BirthProfile) => void;
@@ -54,17 +312,59 @@ interface AppContextValue {
   // Theme state
   theme: 'dark' | 'light';
   toggleTheme: () => void;
-  // Auth state (mock prototype)
+  // Auth state (mock prototype — role is the single source of truth for dashboard access)
   isLoggedIn: boolean;
-  setLoggedIn: (v: boolean) => void;
+  currentUser: AuthUser | null;
+  login: (email: string, password: string) => AuthUser | null;
+  loginOrRegister: (email: string) => AuthUser;
+  register: (name: string, email: string, password: string) => AuthUser | null;
+  logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
   showLoginModal: boolean;
   setShowLoginModal: (v: boolean) => void;
+  // Astrologer application + admin approval workflow (mock prototype)
+  accounts: AuthUser[];
+  applications: AstrologerApplication[];
+  applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => void;
+  approveApplication: (id: string) => void;
+  rejectApplication: (id: string) => void;
+  auditLog: AuditLogEntry[];
+  notifications: NotificationEntry[];
+  // Admin console actions (mock prototype — see Role-based auth note above)
+  logAdminAction: (action: string, target: string) => void;
+  suspendAccount: (email: string) => void;
+  restoreAccount: (email: string) => void;
+  createAstrologerAccount: (name: string, email: string, password: string) => AuthUser | null;
+  // Astrologist practice-management (mock prototype, scoped to currentUser.email)
+  consultationRequests: ConsultationRequest[];
+  consultations: Consultation[];
+  acceptConsultationRequest: (id: string) => void;
+  declineConsultationRequest: (id: string) => void;
+  completeConsultation: (id: string) => void;
+  cancelConsultation: (id: string) => void;
+  saveConsultationNotes: (id: string, notes: string) => void;
+  blockedSlots: BlockedSlot[];
+  addBlockedSlot: (slot: Omit<BlockedSlot, 'id' | 'astrologerEmail'>) => void;
+  removeBlockedSlot: (id: string) => void;
+  availability: AvailabilitySettings;
+  setAvailabilityStatus: (status: AvailabilityStatus) => void;
+  updateAvailability: (partial: Partial<AvailabilitySettings>) => void;
+  profileOverride: AstrologerProfileOverride;
+  updateProfileOverride: (partial: Partial<AstrologerProfileOverride>) => void;
+  astrologerNotifications: NotificationEntry[];
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  astrologerReviews: AstrologerReview[];
   // Language selector state
   language: 'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te';
   setLanguage: (l: 'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te') => void;
   t: (key: string) => string;
+  /** Like t(), but only uses `key` if the CURRENT language has it; otherwise
+   *  falls back to `fallbackKey` in the current language. Lets a subset of
+   *  languages (en/hi/mr) get a specific translation while the rest keep
+   *  using the existing generic one, instead of a blanket replacement. */
+  tOr: (key: string, fallbackKey: string) => string;
 }
 
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
@@ -145,11 +445,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_title: 'Vastu Shastra',
     seek_card_vastu_desc: 'Directional energies, element placement, and home architecture harmony.',
     seek_card_cta: 'Analyze Placement →',
+    seek_card_marriage_cta: 'Explore Relationship →',
+    seek_card_career_cta: 'Explore Career →',
+    seek_card_money_cta: 'Explore Prosperity →',
+    seek_card_family_cta: 'Explore Heritage →',
+    seek_card_growth_cta: 'Explore Personal Growth →',
+    seek_card_spirituality_cta: 'Explore Spirituality →',
+    seek_card_vastu_cta: 'Explore Vastu →',
+    tools_kundli_milan_cta: 'Check Compatibility →',
+    tools_nakshatra_cta: 'Explore Nakshatra →',
 
     // Card details & buttons translations
     btn_add_to_cart: 'Buy Now',
     btn_enroll: 'Enroll Now',
     btn_view_details: 'View Details',
+    btn_chat: 'Chat',
+    btn_call: 'Call',
+    lbl_online: 'Online',
+    lbl_offline: 'Offline',
+    lbl_per_min: '/min',
+    lbl_yrs: 'yrs',
+    lbl_consults: 'consults',
 
     // Categories
     cat_gemstones: 'Ratna (Gemstones)',
@@ -232,6 +548,393 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     prod_6_name: 'Navgraha Puja Kit',
     prod_6_assoc: 'Complete kit for all nine planetary deities',
     prod_6_benefit: 'Planetary harmony and balance',
+
+    // Footer
+    footer_tagline: 'Your Sky. Your Story.',
+    footer_desc: 'A modern astrology ecosystem combining personalized Vedic astrology, expert consultations, intelligent AI guidance, and timeless wisdom.',
+    footer_newsletter_label: 'Receive thoughtful astrology insights',
+    footer_email_placeholder: 'Your email address',
+    btn_subscribe: 'Subscribe',
+    footer_subscribed: "You're subscribed. Thank you.",
+    footer_col_consultations: 'Consultations',
+    footer_col_company: 'Company',
+    footer_col_support: 'Support',
+    footer_kundli_matching: 'Kundli Matching',
+    footer_daily_horoscope: 'Daily Horoscope',
+    footer_muhurat: 'Muhurat',
+    footer_find_astrologers: 'Find Astrologers',
+    footer_chat_consultation: 'Chat Consultation',
+    footer_call_consultation: 'Call Consultation',
+    footer_about_us: 'About Us',
+    footer_our_approach: 'Our Approach',
+    footer_careers: 'Careers',
+    footer_press: 'Press',
+    footer_help_centre: 'Help Centre',
+    footer_privacy_policy: 'Privacy Policy',
+    footer_terms_of_service: 'Terms of Service',
+    footer_contact_us: 'Contact Us',
+    footer_copyright: '© 2026 TredevAstro. All rights reserved.',
+    footer_privacy_short: 'Privacy',
+    footer_terms_short: 'Terms',
+    footer_cookies_short: 'Cookies',
+    footer_legal_note: 'Astrology is for entertainment and spiritual guidance. Not a substitute for professional advice.',
+
+    // Login Modal
+    login_heading_signin_prefix: 'Sign in to continue ',
+    login_heading_signup_prefix: 'Begin ',
+    login_heading_em: 'your journey',
+    login_subheading_pending: 'Please sign in to access this feature.',
+    login_subheading_default: 'Your personalized Jyotish experience awaits.',
+    login_google: 'Continue with Google',
+    login_email: 'Continue with Email',
+    login_new_here: 'New here? ',
+    login_have_account: 'Already have an account? ',
+    login_create_account: 'Create Account',
+    login_sign_in: 'Sign In',
+    login_email_placeholder: 'Enter your email or mobile',
+    login_back: '← Back',
+    login_privacy_prefix: 'By continuing, you agree to our ',
+    login_privacy_and: ' & ',
+    login_terms: 'Terms',
+    login_privacy_policy: 'Privacy Policy',
+
+    // Monk Widget
+    monk_cta_title: 'Ask Monk Guide',
+    monk_dismiss: 'Dismiss',
+    monk_alt: 'Sacred Monk Guide',
+    monk_notif_1: 'Rohan from New Delhi just booked a chat with Astrologist Rahul Shastri 🪐',
+    monk_notif_2: 'Pooja from Bengaluru just ordered a Natural Colombian Emerald 💎',
+    monk_notif_3: 'Aditya from Mumbai just generated a Premium Kundli Report 📜',
+    monk_notif_4: 'Sneha from Pune just booked Pandit Meera Devi 🌸',
+    monk_notif_5: 'Amit from Jaipur just ordered a Five-Mukhi Rudraksha 📿',
+    monk_notif_6: 'Kiran from Indore just enrolled in Vedic Astrology Complete Course 🎓',
+    monk_notif_7: 'Meera from Chennai just generated their Love & Relationships Report 💖',
+    monk_notif_8: 'Rajesh from Hyderabad just booked Dr. Vikram Joshi 🪐',
+    monk_notif_9: 'Ananya from Kolkata just booked a call with Jyotishi Priya Nair 📞',
+    monk_notif_10: 'Sunil from Noida just ordered a Shri Yantra (Brass) 🕉️',
+
+    // Auth Page (manuscript sign-up/sign-in)
+    auth_tab_register: 'Inscribe Birth Details',
+    auth_tab_login: 'Member Sign In',
+    auth_subtitle_register: 'ANCIENT VEDIC BIRTH MANUSCRIPT · INSCRIBE YOUR KUNDLI DETAILS',
+    auth_subtitle_login: 'SACRED USER VAULT · ACCESS STORED BIRTH PROFILE',
+    auth_label_fullname: "Full Name / Seeker's Name *",
+    auth_placeholder_fullname: 'e.g. Sparsh Sharma',
+    auth_label_email: 'Email Address *',
+    auth_placeholder_email: 'name@example.com',
+    auth_label_password: 'Secret Password *',
+    auth_label_login_email: 'Registered Email Address *',
+    auth_label_login_password: 'Password *',
+    auth_separator_birth_coords: 'Birth Coordinates',
+    auth_label_dob: 'Date of Birth *',
+    auth_placeholder_dob: 'Select Date of Birth',
+    auth_label_tob: 'Time of Birth *',
+    auth_placeholder_tob: 'Select Time of Birth',
+    auth_label_pob: 'Place of Birth (City, State) *',
+    auth_placeholder_pob: 'e.g. New Delhi, India',
+    auth_label_gender: 'Gender',
+    auth_gender_male: 'Male',
+    auth_gender_female: 'Female',
+    auth_gender_other: 'Other',
+    auth_btn_inscribing: 'Inscribing Birth Chart...',
+    auth_btn_seal: 'SEAL INSCRIPTION →',
+    auth_btn_unlocking: 'Unlocking Vault...',
+    auth_btn_signin_vault: 'SIGN IN TO VAULT →',
+    auth_success_message: 'Greetings {name}! Your birth coordinates ({date} at {time}, {place}) have been successfully inscribed onto the sacred Vedic manuscript archive.',
+    auth_btn_continue: '✦ ENTER CELESTIAL PORTAL ✦',
+    auth_footer_stamp: 'ENCRYPTED ANCIENT VEDIC ARCHIVE',
+
+    // Admin Console
+    admin_console_name: 'TredevAstro Admin',
+    admin_console_caption: 'Administration Console',
+    admin_search_placeholder: 'Search...',
+    admin_notifications: 'Notifications',
+    admin_profile: 'Admin Profile',
+    admin_logout: 'Logout',
+    admin_sidebar_overview: 'Overview',
+    admin_sidebar_applications: 'Applications',
+    admin_sidebar_astrologers: 'Astrologers',
+    admin_sidebar_users: 'Users',
+    admin_sidebar_consultations: 'Consultations',
+    admin_sidebar_reports: 'Reports',
+    admin_sidebar_orders: 'Orders',
+    admin_sidebar_content: 'Content',
+    admin_sidebar_notifications: 'Notifications',
+    admin_sidebar_audit: 'Audit Logs',
+    admin_sidebar_settings: 'Settings',
+    admin_status_pending: 'Pending',
+    admin_status_approved: 'Approved',
+    admin_status_rejected: 'Rejected',
+    admin_status_active: 'Active',
+    admin_status_suspended: 'Suspended',
+    admin_status_upcoming: 'Upcoming',
+    admin_status_live: 'Live',
+    admin_status_completed: 'Completed',
+    admin_status_cancelled: 'Cancelled',
+    admin_status_all: 'All',
+    admin_status_paid: 'Paid',
+    admin_status_unpaid: 'Unpaid',
+    admin_status_delivered: 'Delivered',
+    admin_status_processing: 'Processing',
+    admin_status_shipped: 'Shipped',
+    admin_action_view: 'View',
+    admin_action_edit: 'Edit',
+    admin_action_suspend: 'Suspend',
+    admin_action_activate: 'Activate',
+    admin_action_restore: 'Restore',
+    admin_action_approve: 'Approve',
+    admin_action_reject: 'Reject',
+    admin_action_request_info: 'Request Information',
+    admin_action_confirm: 'Confirm',
+    admin_action_cancel: 'Cancel',
+    admin_action_send: 'Send',
+    admin_action_close: 'Close',
+    admin_action_add_astrologer: 'Add Astrologer',
+    admin_action_save: 'Save Changes',
+    admin_empty_title: 'Nothing here yet',
+    admin_empty_desc: 'There is no data to display for this view right now.',
+    admin_search_name_email: 'Search by name or email',
+    admin_no_results: 'No results match your search.',
+    admin_kpi_total_users: 'Total Users',
+    admin_kpi_active_users: 'Active Users',
+    admin_kpi_astrologers: 'Astrologers',
+    admin_kpi_pending_applications: 'Pending Applications',
+    admin_kpi_todays_consultations: "Today's Consultations",
+    admin_kpi_revenue: 'Revenue',
+    admin_kpi_reports_generated: 'Reports Generated',
+    admin_kpi_store_orders: 'Store Orders',
+    admin_quick_actions: 'Quick Actions',
+    admin_qa_review_applications: 'Review Applications',
+    admin_qa_add_astrologer: 'Add Astrologer',
+    admin_qa_view_consultations: 'View Consultations',
+    admin_qa_manage_reports: 'Manage Reports',
+    admin_qa_manage_store: 'Manage Store',
+    admin_qa_send_announcement: 'Send Announcement',
+    admin_recent_activity: 'Recent Activity',
+    admin_activity_new_user: '{name} registered a new account',
+    admin_activity_astrologer_applied: '{name} applied to become an astrologer',
+    admin_activity_application_approved: "{name}'s astrologer application was approved",
+    admin_activity_application_rejected: "{name}'s astrologer application was rejected",
+    admin_activity_consultation_booked: '{user} booked a consultation with {astrologer}',
+    admin_activity_report_purchased: '{user} purchased the {report} report',
+    admin_activity_order_completed: 'Order {id} was completed',
+    admin_apps_title: 'Astrologer Applications',
+    admin_apps_col_applicant: 'Applicant',
+    admin_apps_col_experience: 'Experience',
+    admin_apps_col_languages: 'Languages',
+    admin_apps_col_expertise: 'Expertise',
+    admin_apps_col_submitted: 'Submitted',
+    admin_apps_col_status: 'Status',
+    admin_apps_col_action: 'Action',
+    admin_apps_drawer_profile: 'Profile',
+    admin_apps_drawer_professional: 'Professional',
+    admin_apps_drawer_documents: 'Documents',
+    admin_apps_doc_id_proof: 'ID Proof',
+    admin_apps_doc_certification: 'Certification',
+    admin_apps_doc_resume: 'Resume',
+    admin_apps_no_docs: 'No documents submitted with this application.',
+    admin_apps_confirm_approve_title: 'Approve this application?',
+    admin_apps_confirm_approve_desc: 'This will grant the applicant an Astrologist account and console access.',
+    admin_apps_confirm_reject_title: 'Reject this application?',
+    admin_apps_confirm_reject_desc: 'The applicant will be notified that their application was not approved.',
+    admin_astro_title: 'Astrologers',
+    admin_astro_view_cards: 'Cards',
+    admin_astro_view_table: 'Table',
+    admin_astro_col_name: 'Name',
+    admin_astro_col_rating: 'Rating',
+    admin_astro_col_experience: 'Experience',
+    admin_astro_col_languages: 'Languages',
+    admin_astro_col_consultations: 'Consultations',
+    admin_astro_col_earnings: 'Earnings',
+    admin_astro_col_status: 'Status',
+    admin_astro_add_title: 'Add Astrologer',
+    admin_astro_add_name: 'Full Name',
+    admin_astro_add_email: 'Email Address',
+    admin_astro_add_password: 'Temporary Password',
+    admin_astro_tab_overview: 'Overview',
+    admin_astro_tab_schedule: 'Schedule',
+    admin_astro_tab_reviews: 'Reviews',
+    admin_astro_tab_earnings: 'Earnings',
+    admin_astro_tab_consultations: 'Consultations',
+    admin_astro_tab_documents: 'Documents',
+    admin_users_title: 'Users',
+    admin_users_col_user: 'User',
+    admin_users_col_joined: 'Joined',
+    admin_users_col_reports: 'Reports',
+    admin_users_col_consultations: 'Consultations',
+    admin_users_col_orders: 'Orders',
+    admin_users_col_status: 'Status',
+    admin_consult_title: 'Consultations',
+    admin_consult_col_user: 'User',
+    admin_consult_col_astrologer: 'Astrologer',
+    admin_consult_col_date: 'Date',
+    admin_consult_col_time: 'Time',
+    admin_consult_col_type: 'Type',
+    admin_consult_col_payment: 'Payment',
+    admin_consult_col_status: 'Status',
+    admin_reports_title: 'Reports',
+    admin_reports_kpi_total: 'Total Reports',
+    admin_reports_kpi_pending: 'Pending',
+    admin_reports_kpi_completed: 'Completed',
+    admin_reports_kpi_revenue: 'Revenue',
+    admin_reports_col_user: 'User',
+    admin_reports_col_report: 'Report',
+    admin_reports_col_price: 'Price',
+    admin_reports_col_status: 'Status',
+    admin_reports_col_date: 'Date',
+    admin_orders_title: 'Orders',
+    admin_orders_col_id: 'Order ID',
+    admin_orders_col_customer: 'Customer',
+    admin_orders_col_product: 'Product',
+    admin_orders_col_amount: 'Amount',
+    admin_orders_col_payment: 'Payment',
+    admin_orders_col_delivery: 'Delivery Status',
+    admin_content_title: 'Content Management',
+    admin_content_desc: 'Manage published content across the platform. No code editing — content only.',
+    admin_content_homepage: 'Homepage',
+    admin_content_reports: 'Reports',
+    admin_content_panchang: 'Panchang',
+    admin_content_academy: 'Academy',
+    admin_content_store: 'Store',
+    admin_content_faq: 'FAQ',
+    admin_content_edit: 'Edit Content',
+    admin_content_updated: 'Last updated',
+    admin_content_field_heading: 'Heading',
+    admin_content_field_body: 'Body Text',
+    admin_notif_title: 'Announcement Center',
+    admin_notif_target_all_users: 'All Users',
+    admin_notif_target_all_astrologers: 'All Astrologers',
+    admin_notif_target_specific_user: 'Specific User',
+    admin_notif_field_title: 'Title',
+    admin_notif_field_message: 'Message',
+    admin_notif_field_audience: 'Target Audience',
+    admin_notif_field_schedule: 'Schedule',
+    admin_notif_schedule_now: 'Send Now',
+    admin_notif_schedule_later: 'Schedule for Later',
+    admin_notif_field_user_email: 'User Email',
+    admin_notif_history: 'History',
+    admin_notif_sent: 'Announcement sent successfully.',
+    admin_audit_title: 'Audit Logs',
+    admin_audit_col_timestamp: 'Timestamp',
+    admin_audit_col_admin: 'Admin',
+    admin_audit_col_action: 'Action',
+    admin_audit_col_target: 'Target',
+    admin_audit_col_ip: 'IP',
+    admin_audit_col_status: 'Status',
+    admin_settings_title: 'Settings',
+    admin_settings_general: 'General',
+    admin_settings_languages: 'Languages',
+    admin_settings_roles: 'Roles',
+    admin_settings_notification_templates: 'Notification Templates',
+    admin_settings_payment: 'Payment Settings',
+    admin_settings_system_prefs: 'System Preferences',
+    admin_settings_readonly_note: 'Settings management is available to administrators only.',
+    admin_settings_platform: 'Platform',
+    admin_settings_support_email: 'Support Email',
+    admin_settings_admins: 'Admins',
+    admin_settings_notification_templates_desc: 'Manage the message templates used by the Announcement Center.',
+    admin_settings_payment_desc: 'Gateway configuration for reports, consultations and store orders.',
+    admin_settings_system_prefs_desc: 'Session timeouts, audit retention and platform-wide defaults.',
+
+    // Astrologist Console
+    astro_console_title: 'Astrologist Console',
+    astro_console_sub: 'Manage your consultations, availability & earnings',
+    astro_role_label: 'Astrologist',
+    astro_sign_out: 'Sign Out',
+    astro_suspended_banner: 'Your account has been suspended by TredevAstro. You cannot accept new bookings or appear in public search until it is reactivated.',
+    astro_status_available: 'Available',
+    astro_status_busy: 'Busy',
+    astro_status_offline: 'Offline',
+    astro_nav_overview: 'Overview',
+    astro_nav_consultations: 'Consultations',
+    astro_nav_clients: 'Clients',
+    astro_nav_availability: 'Availability',
+    astro_nav_earnings: 'Earnings',
+    astro_nav_reviews: 'Reviews',
+    astro_nav_profile: 'Astrologer Profile',
+    astro_nav_notifications: 'Notifications',
+    astro_nav_settings: 'Settings',
+    astro_greeting_morning: 'Good morning',
+    astro_greeting_afternoon: 'Good afternoon',
+    astro_greeting_evening: 'Good evening',
+    astro_overview_tagline: 'Your astrology practice at a glance',
+    astro_kpi_today: "Today's Consultations",
+    astro_kpi_pending: 'Pending Requests',
+    astro_kpi_month_earnings: "This Month's Earnings",
+    astro_kpi_rating: 'Average Rating',
+    astro_todays_schedule: "Today's Schedule",
+    astro_pending_requests: 'Pending Requests',
+    astro_view_all: 'View All',
+    astro_min: 'min',
+    astro_action_accept: 'Accept',
+    astro_action_decline: 'Decline',
+    astro_action_complete: 'Mark Completed',
+    astro_action_cancel: 'Cancel',
+    astro_action_save_notes: 'Save Notes',
+    astro_private_notes: 'Private Notes',
+    astro_private_notes_placeholder: 'Notes for yourself — never shown to the client.',
+    astro_payout_status: 'Payout Status',
+    astro_subtab_upcoming: 'Upcoming',
+    astro_subtab_requests: 'Requests',
+    astro_subtab_history: 'History',
+    astro_recently_decided: 'Recently Decided',
+    astro_search_clients: 'Search clients by name...',
+    astro_consultations_count: 'consultations',
+    astro_last: 'Last',
+    astro_next: 'Next',
+    astro_working_days: 'Working Days',
+    astro_day_sun: 'Sun',
+    astro_day_mon: 'Mon',
+    astro_day_tue: 'Tue',
+    astro_day_wed: 'Wed',
+    astro_day_thu: 'Thu',
+    astro_day_fri: 'Fri',
+    astro_day_sat: 'Sat',
+    astro_time_slots: 'Time Slots',
+    astro_action_add_slot: 'Add Slot',
+    astro_consultation_duration: 'Consultation Duration',
+    astro_buffer_time: 'Buffer Time Between Consultations',
+    astro_blocked_time: 'Blocked Time',
+    astro_no_blocked_time: 'No blocked time periods.',
+    astro_reason_placeholder: 'Reason (private, not shown publicly)',
+    astro_action_block_time: 'Block Time',
+    astro_earnings_total: 'Total Earnings',
+    astro_earnings_month: 'This Month',
+    astro_earnings_week: 'This Week',
+    astro_earnings_pending_payout: 'Pending Payout',
+    astro_earnings_completed_payout: 'Completed Payout',
+    astro_transactions: 'Transaction History',
+    astro_average_rating: 'Average Rating',
+    astro_total_reviews: 'Total Reviews',
+    astro_recent_reviews: 'Recent Reviews',
+    astro_profile_completion: 'Profile Completion',
+    astro_missing: 'Missing',
+    astro_profile_title: 'Professional Title',
+    astro_profile_bio: 'Biography',
+    astro_profile_expertise: 'Consultation Categories',
+    astro_profile_languages: 'Languages',
+    astro_profile_public_toggle: 'Public Profile',
+    astro_profile_public_desc: 'Visible in public astrologer search and discovery.',
+    astro_public_disabled_suspended: 'Hidden from public search while your account is suspended.',
+    astro_view_public_profile: 'View Public Profile',
+    astro_mark_all_read: 'Mark All as Read',
+    astro_settings_account: 'Account',
+    astro_empty_schedule_title: 'No consultations scheduled today',
+    astro_empty_schedule_desc: 'Your accepted consultations for today will appear here.',
+    astro_empty_requests_title: 'No pending requests',
+    astro_empty_requests_desc: "New consultation requests from clients will show up here.",
+    astro_empty_upcoming_title: 'No upcoming consultations',
+    astro_empty_upcoming_desc: 'Accepted requests will appear here as upcoming consultations.',
+    astro_empty_history_title: 'No consultation history yet',
+    astro_empty_history_desc: 'Completed and cancelled consultations will appear here.',
+    astro_empty_clients_title: 'No clients yet',
+    astro_empty_clients_desc: 'Clients you have consulted with will appear here.',
+    astro_empty_transactions_title: 'No transactions yet',
+    astro_empty_transactions_desc: 'Completed consultations will appear here as transactions.',
+    astro_empty_reviews_title: 'No reviews yet',
+    astro_empty_reviews_desc: 'Client reviews will appear here once you complete consultations.',
+    astro_empty_notifications_title: 'No notifications',
+    astro_empty_notifications_desc: "You're all caught up.",
   },
   hi: {
     nav_astrology: 'ज्योतिष',
@@ -307,10 +1010,26 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_title: 'वास्तु शास्त्र',
     seek_card_vastu_desc: 'दिशात्मक ऊर्जा, पंचतत्व प्लेसमेंट और गृह वास्तुकला सद्भाव।',
     seek_card_cta: 'प्लेसमेंट विश्लेषण →',
+    seek_card_marriage_cta: 'रिश्ते को समझें →',
+    seek_card_career_cta: 'करियर को जानें →',
+    seek_card_money_cta: 'समृद्धि को समझें →',
+    seek_card_family_cta: 'विरासत को जानें →',
+    seek_card_growth_cta: 'व्यक्तिगत विकास जानें →',
+    seek_card_spirituality_cta: 'आध्यात्मिकता को जानें →',
+    seek_card_vastu_cta: 'वास्तु का विश्लेषण करें →',
+    tools_kundli_milan_cta: 'अनुकूलता जांचें →',
+    tools_nakshatra_cta: 'नक्षत्र जानें →',
 
     btn_add_to_cart: 'अभी खरीदें',
     btn_enroll: 'प्रवेश लें',
     btn_view_details: 'विवरण देखें',
+    btn_chat: 'चैट',
+    btn_call: 'कॉल',
+    lbl_online: 'ऑनलाइन',
+    lbl_offline: 'ऑफ़लाइन',
+    lbl_per_min: '/मिनट',
+    lbl_yrs: 'वर्ष',
+    lbl_consults: 'परामर्श',
 
     cat_gemstones: 'रत्न',
     cat_rudraksha: 'रुद्राक्ष',
@@ -389,6 +1108,387 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     prod_6_name: 'नवग्रह पूजा किट',
     prod_6_assoc: 'सभी नौ ग्रहों के देवताओं के लिए पूर्ण किट',
     prod_6_benefit: 'ग्रहों की शांति और संतुलन',
+
+    // Footer
+    footer_tagline: 'आपका आकाश। आपकी कहानी।',
+    footer_desc: 'व्यक्तिगत वैदिक ज्योतिष, विशेषज्ञ परामर्श, बुद्धिमान एआई मार्गदर्शन और कालातीत ज्ञान का आधुनिक संगम।',
+    footer_newsletter_label: 'सारगर्भित ज्योतिष अंतर्दृष्टि प्राप्त करें',
+    footer_email_placeholder: 'आपका ईमेल पता',
+    btn_subscribe: 'सब्सक्राइब करें',
+    footer_subscribed: 'आप सफलतापूर्वक सब्सक्राइब हो गए हैं। धन्यवाद।',
+    footer_col_consultations: 'परामर्श',
+    footer_col_company: 'कंपनी',
+    footer_col_support: 'सहायता',
+    footer_kundli_matching: 'कुंडली मिलान',
+    footer_daily_horoscope: 'दैनिक राशिफल',
+    footer_muhurat: 'मुहूर्त',
+    footer_find_astrologers: 'आचार्य खोजें',
+    footer_chat_consultation: 'चैट परामर्श',
+    footer_call_consultation: 'कॉल परामर्श',
+    footer_about_us: 'हमारे बारे में',
+    footer_our_approach: 'हमारा दृष्टिकोण',
+    footer_careers: 'करियर',
+    footer_press: 'प्रेस',
+    footer_help_centre: 'सहायता केंद्र',
+    footer_privacy_policy: 'गोपनीयता नीति',
+    footer_terms_of_service: 'सेवा की शर्तें',
+    footer_contact_us: 'संपर्क करें',
+    footer_copyright: '© 2026 त्रिदेव ज्योतिष। सर्वाधिकार सुरक्षित।',
+    footer_privacy_short: 'गोपनीयता',
+    footer_terms_short: 'शर्तें',
+    footer_cookies_short: 'कुकीज़',
+    footer_legal_note: 'ज्योतिष मनोरंजन और आध्यात्मिक मार्गदर्शन हेतु है। यह पेशेवर सलाह का विकल्प नहीं है।',
+
+    // Login Modal
+    login_heading_signin_prefix: 'अपनी यात्रा जारी रखने के लिए साइन इन करें ',
+    login_heading_signup_prefix: 'शुरू करें ',
+    login_heading_em: 'अपनी यात्रा',
+    login_subheading_pending: 'इस सुविधा तक पहुंचने के लिए कृपया साइन इन करें।',
+    login_subheading_default: 'आपका व्यक्तिगत ज्योतिष अनुभव तैयार है।',
+    login_google: 'Google से जारी रखें',
+    login_email: 'ईमेल से जारी रखें',
+    login_new_here: 'यहाँ नए हैं? ',
+    login_have_account: 'पहले से खाता है? ',
+    login_create_account: 'खाता बनाएं',
+    login_sign_in: 'साइन इन करें',
+    login_email_placeholder: 'अपना ईमेल या मोबाइल दर्ज करें',
+    login_back: '← वापस',
+    login_privacy_prefix: 'जारी रखकर, आप हमारी ',
+    login_privacy_and: ' और ',
+    login_terms: 'शर्तों',
+    login_privacy_policy: 'गोपनीयता नीति',
+
+    // Monk Widget
+    monk_cta_title: 'मॉन्क गाइड से पूछें',
+    monk_dismiss: 'बंद करें',
+    monk_alt: 'पवित्र मॉन्क गाइड',
+    monk_notif_1: 'रोहन (नई दिल्ली) ने अभी ज्योतिषी राहुल शास्त्री से चैट बुक की 🪐',
+    monk_notif_2: 'पूजा (बेंगलुरु) ने अभी नेचुरल कोलंबियाई पन्ना ऑर्डर किया 💎',
+    monk_notif_3: 'आदित्य (मुंबई) ने अभी प्रीमियम कुंडली रिपोर्ट बनाई 📜',
+    monk_notif_4: 'स्नेहा (पुणे) ने अभी पंडित मीरा देवी को बुक किया 🌸',
+    monk_notif_5: 'अमित (जयपुर) ने अभी पंचमुखी रुद्राक्ष ऑर्डर किया 📿',
+    monk_notif_6: 'किरण (इंदौर) ने अभी वैदिक ज्योतिष पूर्ण पाठ्यक्रम में दाखिला लिया 🎓',
+    monk_notif_7: 'मीरा (चेन्नई) ने अभी अपनी प्रेम और रिश्ते रिपोर्ट बनाई 💖',
+    monk_notif_8: 'राजेश (हैदराबाद) ने अभी डॉ. विक्रम जोशी को बुक किया 🪐',
+    monk_notif_9: 'अनन्या (कोलकाता) ने अभी ज्योतिषी प्रिया नायर से कॉल बुक की 📞',
+    monk_notif_10: 'सुनील (नोएडा) ने अभी श्री यंत्र (पीतल) ऑर्डर किया 🕉️',
+
+    // Auth Page (manuscript sign-up/sign-in)
+    auth_tab_register: 'जन्म विवरण अंकित करें',
+    auth_tab_login: 'सदस्य साइन इन',
+    auth_subtitle_register: 'प्राचीन वैदिक जन्म पत्र · अपनी कुंडली का विवरण दर्ज करें',
+    auth_subtitle_login: 'पवित्र सदस्य कक्ष · संग्रहीत जन्म प्रोफ़ाइल तक पहुंचें',
+    auth_label_fullname: 'पूरा नाम *',
+    auth_placeholder_fullname: 'उदा. स्पर्श शर्मा',
+    auth_label_email: 'ईमेल पता *',
+    auth_placeholder_email: 'name@example.com',
+    auth_label_password: 'गुप्त पासवर्ड *',
+    auth_label_login_email: 'पंजीकृत ईमेल पता *',
+    auth_label_login_password: 'पासवर्ड *',
+    auth_separator_birth_coords: 'जन्म विवरण',
+    auth_label_dob: 'जन्म तिथि *',
+    auth_placeholder_dob: 'जन्म तिथि चुनें',
+    auth_label_tob: 'जन्म समय *',
+    auth_placeholder_tob: 'जन्म समय चुनें',
+    auth_label_pob: 'जन्म स्थान (शहर, राज्य) *',
+    auth_placeholder_pob: 'उदा. नई दिल्ली, भारत',
+    auth_label_gender: 'लिंग',
+    auth_gender_male: 'पुरुष',
+    auth_gender_female: 'महिला',
+    auth_gender_other: 'अन्य',
+    auth_btn_inscribing: 'कुंडली अंकित की जा रही है...',
+    auth_btn_seal: 'मुद्रा लगाएं →',
+    auth_btn_unlocking: 'कक्ष अनलॉक हो रहा है...',
+    auth_btn_signin_vault: 'साइन इन करें →',
+    auth_success_message: 'प्रणाम {name}! आपका जन्म विवरण ({date}, {time} बजे, {place}) पवित्र वैदिक पांडुलिपि संग्रह में सफलतापूर्वक अंकित कर दिया गया है।',
+    auth_btn_continue: '✦ आकाशीय द्वार में प्रवेश करें ✦',
+    auth_footer_stamp: 'एन्क्रिप्टेड प्राचीन वैदिक संग्रह',
+
+    // Admin Console
+    admin_console_name: 'त्रिदेव ज्योतिष एडमिन',
+    admin_console_caption: 'प्रशासन कंसोल',
+    admin_search_placeholder: 'खोजें...',
+    admin_notifications: 'सूचनाएं',
+    admin_profile: 'एडमिन प्रोफ़ाइल',
+    admin_logout: 'लॉगआउट',
+    admin_sidebar_overview: 'अवलोकन',
+    admin_sidebar_applications: 'आवेदन',
+    admin_sidebar_astrologers: 'आचार्यगण',
+    admin_sidebar_users: 'उपयोगकर्ता',
+    admin_sidebar_consultations: 'परामर्श',
+    admin_sidebar_reports: 'रिपोर्ट्स',
+    admin_sidebar_orders: 'ऑर्डर',
+    admin_sidebar_content: 'सामग्री',
+    admin_sidebar_notifications: 'सूचनाएं',
+    admin_sidebar_audit: 'ऑडिट लॉग',
+    admin_sidebar_settings: 'सेटिंग्स',
+    admin_status_pending: 'लंबित',
+    admin_status_approved: 'स्वीकृत',
+    admin_status_rejected: 'अस्वीकृत',
+    admin_status_active: 'सक्रिय',
+    admin_status_suspended: 'निलंबित',
+    admin_status_upcoming: 'आगामी',
+    admin_status_live: 'लाइव',
+    admin_status_completed: 'पूर्ण',
+    admin_status_cancelled: 'रद्द',
+    admin_status_all: 'सभी',
+    admin_status_paid: 'भुगतान हुआ',
+    admin_status_unpaid: 'भुगतान लंबित',
+    admin_status_delivered: 'वितरित',
+    admin_status_processing: 'प्रक्रिया में',
+    admin_status_shipped: 'भेजा गया',
+    admin_action_view: 'देखें',
+    admin_action_edit: 'संपादित करें',
+    admin_action_suspend: 'निलंबित करें',
+    admin_action_activate: 'सक्रिय करें',
+    admin_action_restore: 'पुनर्स्थापित करें',
+    admin_action_approve: 'स्वीकृत करें',
+    admin_action_reject: 'अस्वीकृत करें',
+    admin_action_request_info: 'जानकारी माँगें',
+    admin_action_confirm: 'पुष्टि करें',
+    admin_action_cancel: 'रद्द करें',
+    admin_action_send: 'भेजें',
+    admin_action_close: 'बंद करें',
+    admin_action_add_astrologer: 'आचार्य जोड़ें',
+    admin_action_save: 'परिवर्तन सहेजें',
+    admin_empty_title: 'यहाँ अभी कुछ नहीं है',
+    admin_empty_desc: 'इस दृश्य के लिए फ़िलहाल कोई डेटा उपलब्ध नहीं है।',
+    admin_search_name_email: 'नाम या ईमेल से खोजें',
+    admin_no_results: 'आपकी खोज से कोई परिणाम नहीं मिला।',
+    admin_kpi_total_users: 'कुल उपयोगकर्ता',
+    admin_kpi_active_users: 'सक्रिय उपयोगकर्ता',
+    admin_kpi_astrologers: 'आचार्यगण',
+    admin_kpi_pending_applications: 'लंबित आवेदन',
+    admin_kpi_todays_consultations: 'आज के परामर्श',
+    admin_kpi_revenue: 'राजस्व',
+    admin_kpi_reports_generated: 'बनी रिपोर्ट्स',
+    admin_kpi_store_orders: 'स्टोर ऑर्डर',
+    admin_quick_actions: 'त्वरित कार्य',
+    admin_qa_review_applications: 'आवेदन समीक्षा करें',
+    admin_qa_add_astrologer: 'आचार्य जोड़ें',
+    admin_qa_view_consultations: 'परामर्श देखें',
+    admin_qa_manage_reports: 'रिपोर्ट्स प्रबंधित करें',
+    admin_qa_manage_store: 'स्टोर प्रबंधित करें',
+    admin_qa_send_announcement: 'घोषणा भेजें',
+    admin_recent_activity: 'हाल की गतिविधि',
+    admin_activity_new_user: '{name} ने नया खाता पंजीकृत किया',
+    admin_activity_astrologer_applied: '{name} ने आचार्य बनने हेतु आवेदन किया',
+    admin_activity_application_approved: '{name} का आचार्य आवेदन स्वीकृत हुआ',
+    admin_activity_application_rejected: '{name} का आचार्य आवेदन अस्वीकृत हुआ',
+    admin_activity_consultation_booked: '{user} ने {astrologer} के साथ परामर्श बुक किया',
+    admin_activity_report_purchased: '{user} ने {report} रिपोर्ट खरीदी',
+    admin_activity_order_completed: 'ऑर्डर {id} पूर्ण हुआ',
+    admin_apps_title: 'आचार्य आवेदन',
+    admin_apps_col_applicant: 'आवेदक',
+    admin_apps_col_experience: 'अनुभव',
+    admin_apps_col_languages: 'भाषाएं',
+    admin_apps_col_expertise: 'विशेषज्ञता',
+    admin_apps_col_submitted: 'प्रस्तुत तिथि',
+    admin_apps_col_status: 'स्थिति',
+    admin_apps_col_action: 'कार्रवाई',
+    admin_apps_drawer_profile: 'प्रोफ़ाइल',
+    admin_apps_drawer_professional: 'व्यावसायिक विवरण',
+    admin_apps_drawer_documents: 'दस्तावेज़',
+    admin_apps_doc_id_proof: 'पहचान प्रमाण',
+    admin_apps_doc_certification: 'प्रमाणन',
+    admin_apps_doc_resume: 'रिज्यूमे',
+    admin_apps_no_docs: 'इस आवेदन के साथ कोई दस्तावेज़ प्रस्तुत नहीं किया गया।',
+    admin_apps_confirm_approve_title: 'क्या इस आवेदन को स्वीकृत करें?',
+    admin_apps_confirm_approve_desc: 'इससे आवेदक को आचार्य खाता और कंसोल पहुंच प्राप्त होगी।',
+    admin_apps_confirm_reject_title: 'क्या इस आवेदन को अस्वीकृत करें?',
+    admin_apps_confirm_reject_desc: 'आवेदक को सूचित किया जाएगा कि उनका आवेदन स्वीकृत नहीं हुआ।',
+    admin_astro_title: 'आचार्यगण',
+    admin_astro_view_cards: 'कार्ड',
+    admin_astro_view_table: 'तालिका',
+    admin_astro_col_name: 'नाम',
+    admin_astro_col_rating: 'रेटिंग',
+    admin_astro_col_experience: 'अनुभव',
+    admin_astro_col_languages: 'भाषाएं',
+    admin_astro_col_consultations: 'परामर्श',
+    admin_astro_col_earnings: 'कमाई',
+    admin_astro_col_status: 'स्थिति',
+    admin_astro_add_title: 'आचार्य जोड़ें',
+    admin_astro_add_name: 'पूरा नाम',
+    admin_astro_add_email: 'ईमेल पता',
+    admin_astro_add_password: 'अस्थायी पासवर्ड',
+    admin_astro_tab_overview: 'अवलोकन',
+    admin_astro_tab_schedule: 'समय-सारिणी',
+    admin_astro_tab_reviews: 'समीक्षाएं',
+    admin_astro_tab_earnings: 'कमाई',
+    admin_astro_tab_consultations: 'परामर्श',
+    admin_astro_tab_documents: 'दस्तावेज़',
+    admin_users_title: 'उपयोगकर्ता',
+    admin_users_col_user: 'उपयोगकर्ता',
+    admin_users_col_joined: 'शामिल हुए',
+    admin_users_col_reports: 'रिपोर्ट्स',
+    admin_users_col_consultations: 'परामर्श',
+    admin_users_col_orders: 'ऑर्डर',
+    admin_users_col_status: 'स्थिति',
+    admin_consult_title: 'परामर्श',
+    admin_consult_col_user: 'उपयोगकर्ता',
+    admin_consult_col_astrologer: 'आचार्य',
+    admin_consult_col_date: 'तिथि',
+    admin_consult_col_time: 'समय',
+    admin_consult_col_type: 'प्रकार',
+    admin_consult_col_payment: 'भुगतान',
+    admin_consult_col_status: 'स्थिति',
+    admin_reports_title: 'रिपोर्ट्स',
+    admin_reports_kpi_total: 'कुल रिपोर्ट्स',
+    admin_reports_kpi_pending: 'लंबित',
+    admin_reports_kpi_completed: 'पूर्ण',
+    admin_reports_kpi_revenue: 'राजस्व',
+    admin_reports_col_user: 'उपयोगकर्ता',
+    admin_reports_col_report: 'रिपोर्ट',
+    admin_reports_col_price: 'मूल्य',
+    admin_reports_col_status: 'स्थिति',
+    admin_reports_col_date: 'तिथि',
+    admin_orders_title: 'ऑर्डर',
+    admin_orders_col_id: 'ऑर्डर आईडी',
+    admin_orders_col_customer: 'ग्राहक',
+    admin_orders_col_product: 'उत्पाद',
+    admin_orders_col_amount: 'राशि',
+    admin_orders_col_payment: 'भुगतान',
+    admin_orders_col_delivery: 'डिलीवरी स्थिति',
+    admin_content_title: 'सामग्री प्रबंधन',
+    admin_content_desc: 'प्लेटफ़ॉर्म की प्रकाशित सामग्री प्रबंधित करें। कोई कोड संपादन नहीं — केवल सामग्री।',
+    admin_content_homepage: 'होमपेज',
+    admin_content_reports: 'रिपोर्ट्स',
+    admin_content_panchang: 'पंचांग',
+    admin_content_academy: 'गुरुकुल',
+    admin_content_store: 'स्टोर',
+    admin_content_faq: 'सामान्य प्रश्न',
+    admin_content_edit: 'सामग्री संपादित करें',
+    admin_content_updated: 'अंतिम अद्यतन',
+    admin_content_field_heading: 'शीर्षक',
+    admin_content_field_body: 'मुख्य पाठ',
+    admin_notif_title: 'घोषणा केंद्र',
+    admin_notif_target_all_users: 'सभी उपयोगकर्ता',
+    admin_notif_target_all_astrologers: 'सभी आचार्यगण',
+    admin_notif_target_specific_user: 'विशिष्ट उपयोगकर्ता',
+    admin_notif_field_title: 'शीर्षक',
+    admin_notif_field_message: 'संदेश',
+    admin_notif_field_audience: 'लक्षित दर्शक',
+    admin_notif_field_schedule: 'समय निर्धारण',
+    admin_notif_schedule_now: 'अभी भेजें',
+    admin_notif_schedule_later: 'बाद के लिए निर्धारित करें',
+    admin_notif_field_user_email: 'उपयोगकर्ता ईमेल',
+    admin_notif_history: 'इतिहास',
+    admin_notif_sent: 'घोषणा सफलतापूर्वक भेजी गई।',
+    admin_audit_title: 'ऑडिट लॉग',
+    admin_audit_col_timestamp: 'समय-चिह्न',
+    admin_audit_col_admin: 'एडमिन',
+    admin_audit_col_action: 'कार्रवाई',
+    admin_audit_col_target: 'लक्ष्य',
+    admin_audit_col_ip: 'आईपी',
+    admin_audit_col_status: 'स्थिति',
+    admin_settings_title: 'सेटिंग्स',
+    admin_settings_general: 'सामान्य',
+    admin_settings_languages: 'भाषाएं',
+    admin_settings_roles: 'भूमिकाएं',
+    admin_settings_notification_templates: 'सूचना टेम्पलेट',
+    admin_settings_payment: 'भुगतान सेटिंग्स',
+    admin_settings_system_prefs: 'सिस्टम प्राथमिकताएं',
+    admin_settings_readonly_note: 'सेटिंग्स प्रबंधन केवल प्रशासकों के लिए उपलब्ध है।',
+
+    // Astrologist Console
+    astro_console_title: 'ज्योतिषी कंसोल',
+    astro_console_sub: 'अपने परामर्श, उपलब्धता और आय प्रबंधित करें',
+    astro_role_label: 'ज्योतिषी',
+    astro_sign_out: 'साइन आउट',
+    astro_suspended_banner: 'आपका खाता त्रिदेव ज्योतिष द्वारा निलंबित कर दिया गया है। जब तक इसे पुनः सक्रिय नहीं किया जाता, तब तक आप नई बुकिंग स्वीकार नहीं कर सकते और सार्वजनिक खोज में नहीं दिखेंगे।',
+    astro_status_available: 'उपलब्ध',
+    astro_status_busy: 'व्यस्त',
+    astro_status_offline: 'ऑफ़लाइन',
+    astro_nav_overview: 'अवलोकन',
+    astro_nav_consultations: 'परामर्श',
+    astro_nav_clients: 'ग्राहक',
+    astro_nav_availability: 'उपलब्धता',
+    astro_nav_earnings: 'आय',
+    astro_nav_reviews: 'समीक्षाएं',
+    astro_nav_profile: 'ज्योतिषी प्रोफ़ाइल',
+    astro_nav_notifications: 'सूचनाएं',
+    astro_nav_settings: 'सेटिंग्स',
+    astro_greeting_morning: 'सुप्रभात',
+    astro_greeting_afternoon: 'नमस्कार',
+    astro_greeting_evening: 'शुभ संध्या',
+    astro_overview_tagline: 'आपकी ज्योतिष प्रैक्टिस एक नज़र में',
+    astro_kpi_today: 'आज के परामर्श',
+    astro_kpi_pending: 'लंबित अनुरोध',
+    astro_kpi_month_earnings: 'इस माह की आय',
+    astro_kpi_rating: 'औसत रेटिंग',
+    astro_todays_schedule: 'आज का शेड्यूल',
+    astro_pending_requests: 'लंबित अनुरोध',
+    astro_view_all: 'सभी देखें',
+    astro_min: 'मिनट',
+    astro_action_accept: 'स्वीकार करें',
+    astro_action_decline: 'अस्वीकार करें',
+    astro_action_complete: 'पूर्ण के रूप में चिह्नित करें',
+    astro_action_cancel: 'रद्द करें',
+    astro_action_save_notes: 'नोट्स सहेजें',
+    astro_private_notes: 'निजी नोट्स',
+    astro_private_notes_placeholder: 'अपने लिए नोट्स — ग्राहक को कभी नहीं दिखाए जाते।',
+    astro_payout_status: 'भुगतान स्थिति',
+    astro_subtab_upcoming: 'आगामी',
+    astro_subtab_requests: 'अनुरोध',
+    astro_subtab_history: 'इतिहास',
+    astro_recently_decided: 'हाल ही में तय किए गए',
+    astro_search_clients: 'नाम से ग्राहक खोजें...',
+    astro_consultations_count: 'परामर्श',
+    astro_last: 'पिछला',
+    astro_next: 'अगला',
+    astro_working_days: 'कार्य दिवस',
+    astro_day_sun: 'रवि',
+    astro_day_mon: 'सोम',
+    astro_day_tue: 'मंगल',
+    astro_day_wed: 'बुध',
+    astro_day_thu: 'गुरु',
+    astro_day_fri: 'शुक्र',
+    astro_day_sat: 'शनि',
+    astro_time_slots: 'समय स्लॉट',
+    astro_action_add_slot: 'स्लॉट जोड़ें',
+    astro_consultation_duration: 'परामर्श अवधि',
+    astro_buffer_time: 'परामर्शों के बीच बफर समय',
+    astro_blocked_time: 'अवरुद्ध समय',
+    astro_no_blocked_time: 'कोई अवरुद्ध समय अवधि नहीं है।',
+    astro_reason_placeholder: 'कारण (निजी, सार्वजनिक रूप से नहीं दिखाया जाता)',
+    astro_action_block_time: 'समय अवरुद्ध करें',
+    astro_earnings_total: 'कुल आय',
+    astro_earnings_month: 'इस माह',
+    astro_earnings_week: 'इस सप्ताह',
+    astro_earnings_pending_payout: 'लंबित भुगतान',
+    astro_earnings_completed_payout: 'पूर्ण भुगतान',
+    astro_transactions: 'लेन-देन इतिहास',
+    astro_average_rating: 'औसत रेटिंग',
+    astro_total_reviews: 'कुल समीक्षाएं',
+    astro_recent_reviews: 'हाल की समीक्षाएं',
+    astro_profile_completion: 'प्रोफ़ाइल पूर्णता',
+    astro_missing: 'शेष',
+    astro_profile_title: 'व्यावसायिक उपाधि',
+    astro_profile_bio: 'जीवन परिचय',
+    astro_profile_expertise: 'परामर्श श्रेणियां',
+    astro_profile_languages: 'भाषाएं',
+    astro_profile_public_toggle: 'सार्वजनिक प्रोफ़ाइल',
+    astro_profile_public_desc: 'सार्वजनिक ज्योतिषी खोज में दिखाई देता है।',
+    astro_public_disabled_suspended: 'खाता निलंबित होने तक सार्वजनिक खोज से छिपा हुआ है।',
+    astro_view_public_profile: 'सार्वजनिक प्रोफ़ाइल देखें',
+    astro_mark_all_read: 'सभी को पढ़ा हुआ चिह्नित करें',
+    astro_settings_account: 'खाता',
+    astro_empty_schedule_title: 'आज कोई परामर्श निर्धारित नहीं है',
+    astro_empty_schedule_desc: 'आज के लिए आपके स्वीकृत परामर्श यहां दिखाई देंगे।',
+    astro_empty_requests_title: 'कोई लंबित अनुरोध नहीं',
+    astro_empty_requests_desc: 'ग्राहकों से नए परामर्श अनुरोध यहां दिखाई देंगे।',
+    astro_empty_upcoming_title: 'कोई आगामी परामर्श नहीं',
+    astro_empty_upcoming_desc: 'स्वीकृत अनुरोध यहां आगामी परामर्श के रूप में दिखाई देंगे।',
+    astro_empty_history_title: 'अभी तक कोई परामर्श इतिहास नहीं',
+    astro_empty_history_desc: 'पूर्ण और रद्द किए गए परामर्श यहां दिखाई देंगे।',
+    astro_empty_clients_title: 'अभी तक कोई ग्राहक नहीं',
+    astro_empty_clients_desc: 'जिन ग्राहकों से आपने परामर्श किया है वे यहां दिखाई देंगे।',
+    astro_empty_transactions_title: 'अभी तक कोई लेन-देन नहीं',
+    astro_empty_transactions_desc: 'पूर्ण परामर्श यहां लेन-देन के रूप में दिखाई देंगे।',
+    astro_empty_reviews_title: 'अभी तक कोई समीक्षा नहीं',
+    astro_empty_reviews_desc: 'परामर्श पूर्ण करने के बाद ग्राहक समीक्षाएं यहां दिखाई देंगी।',
+    astro_empty_notifications_title: 'कोई सूचना नहीं',
+    astro_empty_notifications_desc: 'आप पूरी तरह अद्यतित हैं।',
   },
   mr: {
     nav_astrology: 'ज्योतिष',
@@ -464,6 +1564,15 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     seek_card_vastu_title: 'वास्तु शास्त्र',
     seek_card_vastu_desc: 'दिशात्मक ऊर्जा, पंचतत्व मांडणी आणि वास्तुकला सुसंवाद.',
     seek_card_cta: 'विश्लेषण करा →',
+    seek_card_marriage_cta: 'नाते समजून घ्या →',
+    seek_card_career_cta: 'करिअर जाणून घ्या →',
+    seek_card_money_cta: 'समृद्धी समजून घ्या →',
+    seek_card_family_cta: 'वारसा जाणून घ्या →',
+    seek_card_growth_cta: 'वैयक्तिक विकास पहा →',
+    seek_card_spirituality_cta: 'आध्यात्मिकता जाणून घ्या →',
+    seek_card_vastu_cta: 'वास्तु विश्लेषण पहा →',
+    tools_kundli_milan_cta: 'सुसंगतता तपासा →',
+    tools_nakshatra_cta: 'नक्षत्र जाणून घ्या →',
 
     btn_add_to_cart: 'आता खरेदी करा',
     btn_enroll: 'प्रवेश घ्या',
@@ -537,6 +1646,387 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     prod_6_name: 'नवग्रह पूजा किट',
     prod_6_assoc: 'सर्व नऊ ग्रहांच्या पूजेचे साहित्य',
     prod_6_benefit: 'ग्रहांची शांती आणि संतुलन',
+
+    // Footer
+    footer_tagline: 'तुमचे आकाश। तुमची कहाणी।',
+    footer_desc: 'वैयक्तिकृत वैदिक ज्योतिष, तज्ञ सल्ला, बुद्धिमान एआय मार्गदर्शन आणि शाश्वत ज्ञानाचा आधुनिक संगम.',
+    footer_newsletter_label: 'अर्थपूर्ण ज्योतिष अंतर्दृष्टी मिळवा',
+    footer_email_placeholder: 'तुमचा ईमेल पत्ता',
+    btn_subscribe: 'सबस्क्राइब करा',
+    footer_subscribed: 'तुम्ही यशस्वीरित्या सबस्क्राइब झाला आहात. धन्यवाद.',
+    footer_col_consultations: 'सल्लामसलत',
+    footer_col_company: 'कंपनी',
+    footer_col_support: 'सहाय्य',
+    footer_kundli_matching: 'कुंडली जुळवणी',
+    footer_daily_horoscope: 'दैनिक राशीभविष्य',
+    footer_muhurat: 'मुहूर्त',
+    footer_find_astrologers: 'आचार्य शोधा',
+    footer_chat_consultation: 'चॅट सल्ला',
+    footer_call_consultation: 'कॉल सल्ला',
+    footer_about_us: 'आमच्याबद्दल',
+    footer_our_approach: 'आमचा दृष्टिकोन',
+    footer_careers: 'करिअर',
+    footer_press: 'प्रेस',
+    footer_help_centre: 'मदत केंद्र',
+    footer_privacy_policy: 'गोपनीयता धोरण',
+    footer_terms_of_service: 'सेवा अटी',
+    footer_contact_us: 'संपर्क करा',
+    footer_copyright: '© 2026 त्रिदेव ज्योतिष. सर्व हक्क राखीव.',
+    footer_privacy_short: 'गोपनीयता',
+    footer_terms_short: 'अटी',
+    footer_cookies_short: 'कुकीज',
+    footer_legal_note: 'ज्योतिष हे मनोरंजन आणि आध्यात्मिक मार्गदर्शनासाठी आहे. ही व्यावसायिक सल्ल्याची जागा घेत नाही.',
+
+    // Login Modal
+    login_heading_signin_prefix: 'तुमचा प्रवास सुरू ठेवण्यासाठी साइन इन करा ',
+    login_heading_signup_prefix: 'सुरुवात करा ',
+    login_heading_em: 'तुमचा प्रवास',
+    login_subheading_pending: 'ही सुविधा वापरण्यासाठी कृपया साइन इन करा.',
+    login_subheading_default: 'तुमचा वैयक्तिकृत ज्योतिष अनुभव तयार आहे.',
+    login_google: 'Google सह सुरू ठेवा',
+    login_email: 'ईमेलने सुरू ठेवा',
+    login_new_here: 'इथे नवीन आहात? ',
+    login_have_account: 'आधीच खाते आहे? ',
+    login_create_account: 'खाते तयार करा',
+    login_sign_in: 'साइन इन करा',
+    login_email_placeholder: 'तुमचा ईमेल किंवा मोबाइल टाका',
+    login_back: '← मागे',
+    login_privacy_prefix: 'सुरू ठेवून, तुम्ही आमच्या ',
+    login_privacy_and: ' आणि ',
+    login_terms: 'अटी',
+    login_privacy_policy: 'गोपनीयता धोरणा',
+
+    // Monk Widget
+    monk_cta_title: 'मॉन्क गाइडला विचारा',
+    monk_dismiss: 'बंद करा',
+    monk_alt: 'पवित्र मॉन्क गाइड',
+    monk_notif_1: 'रोहन (नवी दिल्ली) यांनी नुकतीच ज्योतिषी राहुल शास्त्री यांच्याशी चॅट बुक केली 🪐',
+    monk_notif_2: 'पूजा (बेंगळुरू) यांनी नुकतेच नैसर्गिक कोलंबियन पाचू ऑर्डर केले 💎',
+    monk_notif_3: 'आदित्य (मुंबई) यांनी नुकताच प्रीमियम कुंडली अहवाल तयार केला 📜',
+    monk_notif_4: 'स्नेहा (पुणे) यांनी नुकतेच पंडित मीरा देवी यांना बुक केले 🌸',
+    monk_notif_5: 'अमित (जयपूर) यांनी नुकतेच पंचमुखी रुद्राक्ष ऑर्डर केले 📿',
+    monk_notif_6: 'किरण (इंदूर) यांनी नुकताच वैदिक ज्योतिष पूर्ण अभ्यासक्रमात प्रवेश घेतला 🎓',
+    monk_notif_7: 'मीरा (चेन्नई) यांनी नुकताच त्यांचा प्रेम आणि नातेसंबंध अहवाल तयार केला 💖',
+    monk_notif_8: 'राजेश (हैदराबाद) यांनी नुकतेच डॉ. विक्रम जोशी यांना बुक केले 🪐',
+    monk_notif_9: 'अनन्या (कोलकाता) यांनी नुकताच ज्योतिषी प्रिया नायर यांच्याशी कॉल बुक केला 📞',
+    monk_notif_10: 'सुनील (नोएडा) यांनी नुकतेच श्री यंत्र (पितळ) ऑर्डर केले 🕉️',
+
+    // Auth Page (manuscript sign-up/sign-in)
+    auth_tab_register: 'जन्म तपशील नोंदवा',
+    auth_tab_login: 'सदस्य साइन इन',
+    auth_subtitle_register: 'प्राचीन वैदिक जन्मपत्रिका · तुमची कुंडली माहिती भरा',
+    auth_subtitle_login: 'पवित्र सदस्य कक्ष · जतन केलेल्या जन्म प्रोफाइलमध्ये प्रवेश करा',
+    auth_label_fullname: 'पूर्ण नाव *',
+    auth_placeholder_fullname: 'उदा. स्पर्श शर्मा',
+    auth_label_email: 'ईमेल पत्ता *',
+    auth_placeholder_email: 'name@example.com',
+    auth_label_password: 'गुप्त पासवर्ड *',
+    auth_label_login_email: 'नोंदणीकृत ईमेल पत्ता *',
+    auth_label_login_password: 'पासवर्ड *',
+    auth_separator_birth_coords: 'जन्म तपशील',
+    auth_label_dob: 'जन्मतारीख *',
+    auth_placeholder_dob: 'जन्मतारीख निवडा',
+    auth_label_tob: 'जन्मवेळ *',
+    auth_placeholder_tob: 'जन्मवेळ निवडा',
+    auth_label_pob: 'जन्मस्थान (शहर, राज्य) *',
+    auth_placeholder_pob: 'उदा. नवी दिल्ली, भारत',
+    auth_label_gender: 'लिंग',
+    auth_gender_male: 'पुरुष',
+    auth_gender_female: 'स्त्री',
+    auth_gender_other: 'इतर',
+    auth_btn_inscribing: 'कुंडली नोंदवली जात आहे...',
+    auth_btn_seal: 'मुद्रा लावा →',
+    auth_btn_unlocking: 'कक्ष अनलॉक होत आहे...',
+    auth_btn_signin_vault: 'साइन इन करा →',
+    auth_success_message: 'नमस्कार {name}! तुमचे जन्म तपशील ({date}, {time} वाजता, {place}) पवित्र वैदिक हस्तलिखित संग्रहात यशस्वीरित्या नोंदवले गेले आहेत.',
+    auth_btn_continue: '✦ खगोलीय द्वारातून प्रवेश करा ✦',
+    auth_footer_stamp: 'एन्क्रिप्टेड प्राचीन वैदिक संग्रह',
+
+    // Admin Console
+    admin_console_name: 'त्रिदेव ज्योतिष अ‍ॅडमिन',
+    admin_console_caption: 'प्रशासन कन्सोल',
+    admin_search_placeholder: 'शोधा...',
+    admin_notifications: 'सूचना',
+    admin_profile: 'अ‍ॅडमिन प्रोफाइल',
+    admin_logout: 'लॉगआउट',
+    admin_sidebar_overview: 'अवलोकन',
+    admin_sidebar_applications: 'अर्ज',
+    admin_sidebar_astrologers: 'आचार्य',
+    admin_sidebar_users: 'वापरकर्ते',
+    admin_sidebar_consultations: 'सल्लामसलत',
+    admin_sidebar_reports: 'अहवाल',
+    admin_sidebar_orders: 'ऑर्डर',
+    admin_sidebar_content: 'मजकूर',
+    admin_sidebar_notifications: 'सूचना',
+    admin_sidebar_audit: 'ऑडिट लॉग',
+    admin_sidebar_settings: 'सेटिंग्ज',
+    admin_status_pending: 'प्रलंबित',
+    admin_status_approved: 'मंजूर',
+    admin_status_rejected: 'नाकारले',
+    admin_status_active: 'सक्रिय',
+    admin_status_suspended: 'निलंबित',
+    admin_status_upcoming: 'आगामी',
+    admin_status_live: 'थेट',
+    admin_status_completed: 'पूर्ण',
+    admin_status_cancelled: 'रद्द',
+    admin_status_all: 'सर्व',
+    admin_status_paid: 'भरणा झाला',
+    admin_status_unpaid: 'भरणा प्रलंबित',
+    admin_status_delivered: 'वितरित',
+    admin_status_processing: 'प्रक्रियेत',
+    admin_status_shipped: 'पाठवले',
+    admin_action_view: 'पहा',
+    admin_action_edit: 'संपादित करा',
+    admin_action_suspend: 'निलंबित करा',
+    admin_action_activate: 'सक्रिय करा',
+    admin_action_restore: 'पुनर्स्थापित करा',
+    admin_action_approve: 'मंजूर करा',
+    admin_action_reject: 'नाकारा',
+    admin_action_request_info: 'माहिती मागवा',
+    admin_action_confirm: 'निश्चित करा',
+    admin_action_cancel: 'रद्द करा',
+    admin_action_send: 'पाठवा',
+    admin_action_close: 'बंद करा',
+    admin_action_add_astrologer: 'आचार्य जोडा',
+    admin_action_save: 'बदल जतन करा',
+    admin_empty_title: 'येथे अजून काही नाही',
+    admin_empty_desc: 'या विभागासाठी सध्या कोणताही डेटा उपलब्ध नाही.',
+    admin_search_name_email: 'नाव किंवा ईमेलने शोधा',
+    admin_no_results: 'तुमच्या शोधाशी जुळणारे कोणतेही परिणाम नाहीत.',
+    admin_kpi_total_users: 'एकूण वापरकर्ते',
+    admin_kpi_active_users: 'सक्रिय वापरकर्ते',
+    admin_kpi_astrologers: 'आचार्य',
+    admin_kpi_pending_applications: 'प्रलंबित अर्ज',
+    admin_kpi_todays_consultations: 'आजची सल्लामसलत',
+    admin_kpi_revenue: 'महसूल',
+    admin_kpi_reports_generated: 'तयार अहवाल',
+    admin_kpi_store_orders: 'स्टोअर ऑर्डर',
+    admin_quick_actions: 'त्वरित कृती',
+    admin_qa_review_applications: 'अर्जांचे पुनरावलोकन करा',
+    admin_qa_add_astrologer: 'आचार्य जोडा',
+    admin_qa_view_consultations: 'सल्लामसलत पहा',
+    admin_qa_manage_reports: 'अहवाल व्यवस्थापित करा',
+    admin_qa_manage_store: 'स्टोअर व्यवस्थापित करा',
+    admin_qa_send_announcement: 'घोषणा पाठवा',
+    admin_recent_activity: 'अलीकडील क्रियाकलाप',
+    admin_activity_new_user: '{name} यांनी नवीन खाते नोंदणी केली',
+    admin_activity_astrologer_applied: '{name} यांनी आचार्य होण्यासाठी अर्ज केला',
+    admin_activity_application_approved: '{name} यांचा आचार्य अर्ज मंजूर झाला',
+    admin_activity_application_rejected: '{name} यांचा आचार्य अर्ज नाकारला गेला',
+    admin_activity_consultation_booked: '{user} यांनी {astrologer} सोबत सल्ला बुक केला',
+    admin_activity_report_purchased: '{user} यांनी {report} अहवाल विकत घेतला',
+    admin_activity_order_completed: 'ऑर्डर {id} पूर्ण झाली',
+    admin_apps_title: 'आचार्य अर्ज',
+    admin_apps_col_applicant: 'अर्जदार',
+    admin_apps_col_experience: 'अनुभव',
+    admin_apps_col_languages: 'भाषा',
+    admin_apps_col_expertise: 'तज्ज्ञता',
+    admin_apps_col_submitted: 'सादर तारीख',
+    admin_apps_col_status: 'स्थिती',
+    admin_apps_col_action: 'कृती',
+    admin_apps_drawer_profile: 'प्रोफाइल',
+    admin_apps_drawer_professional: 'व्यावसायिक तपशील',
+    admin_apps_drawer_documents: 'कागदपत्रे',
+    admin_apps_doc_id_proof: 'ओळखपत्र',
+    admin_apps_doc_certification: 'प्रमाणपत्र',
+    admin_apps_doc_resume: 'रेझ्युमे',
+    admin_apps_no_docs: 'या अर्जासोबत कोणतेही कागदपत्र सादर केलेले नाही.',
+    admin_apps_confirm_approve_title: 'हा अर्ज मंजूर करायचा आहे का?',
+    admin_apps_confirm_approve_desc: 'यामुळे अर्जदाराला आचार्य खाते व कन्सोल प्रवेश मिळेल.',
+    admin_apps_confirm_reject_title: 'हा अर्ज नाकारायचा आहे का?',
+    admin_apps_confirm_reject_desc: 'अर्जदाराला त्यांचा अर्ज मंजूर न झाल्याचे कळवले जाईल.',
+    admin_astro_title: 'आचार्य',
+    admin_astro_view_cards: 'कार्ड',
+    admin_astro_view_table: 'तक्ता',
+    admin_astro_col_name: 'नाव',
+    admin_astro_col_rating: 'रेटिंग',
+    admin_astro_col_experience: 'अनुभव',
+    admin_astro_col_languages: 'भाषा',
+    admin_astro_col_consultations: 'सल्लामसलत',
+    admin_astro_col_earnings: 'कमाई',
+    admin_astro_col_status: 'स्थिती',
+    admin_astro_add_title: 'आचार्य जोडा',
+    admin_astro_add_name: 'पूर्ण नाव',
+    admin_astro_add_email: 'ईमेल पत्ता',
+    admin_astro_add_password: 'तात्पुरता पासवर्ड',
+    admin_astro_tab_overview: 'अवलोकन',
+    admin_astro_tab_schedule: 'वेळापत्रक',
+    admin_astro_tab_reviews: 'अभिप्राय',
+    admin_astro_tab_earnings: 'कमाई',
+    admin_astro_tab_consultations: 'सल्लामसलत',
+    admin_astro_tab_documents: 'कागदपत्रे',
+    admin_users_title: 'वापरकर्ते',
+    admin_users_col_user: 'वापरकर्ता',
+    admin_users_col_joined: 'सामील झाले',
+    admin_users_col_reports: 'अहवाल',
+    admin_users_col_consultations: 'सल्लामसलत',
+    admin_users_col_orders: 'ऑर्डर',
+    admin_users_col_status: 'स्थिती',
+    admin_consult_title: 'सल्लामसलत',
+    admin_consult_col_user: 'वापरकर्ता',
+    admin_consult_col_astrologer: 'आचार्य',
+    admin_consult_col_date: 'तारीख',
+    admin_consult_col_time: 'वेळ',
+    admin_consult_col_type: 'प्रकार',
+    admin_consult_col_payment: 'भरणा',
+    admin_consult_col_status: 'स्थिती',
+    admin_reports_title: 'अहवाल',
+    admin_reports_kpi_total: 'एकूण अहवाल',
+    admin_reports_kpi_pending: 'प्रलंबित',
+    admin_reports_kpi_completed: 'पूर्ण',
+    admin_reports_kpi_revenue: 'महसूल',
+    admin_reports_col_user: 'वापरकर्ता',
+    admin_reports_col_report: 'अहवाल',
+    admin_reports_col_price: 'किंमत',
+    admin_reports_col_status: 'स्थिती',
+    admin_reports_col_date: 'तारीख',
+    admin_orders_title: 'ऑर्डर',
+    admin_orders_col_id: 'ऑर्डर आयडी',
+    admin_orders_col_customer: 'ग्राहक',
+    admin_orders_col_product: 'उत्पादन',
+    admin_orders_col_amount: 'रक्कम',
+    admin_orders_col_payment: 'भरणा',
+    admin_orders_col_delivery: 'वितरण स्थिती',
+    admin_content_title: 'मजकूर व्यवस्थापन',
+    admin_content_desc: 'प्लॅटफॉर्मवरील प्रकाशित मजकूर व्यवस्थापित करा. कोणतेही कोड संपादन नाही — फक्त मजकूर.',
+    admin_content_homepage: 'मुख्यपृष्ठ',
+    admin_content_reports: 'अहवाल',
+    admin_content_panchang: 'पंचांग',
+    admin_content_academy: 'गुरुकुल',
+    admin_content_store: 'स्टोअर',
+    admin_content_faq: 'सामान्य प्रश्न',
+    admin_content_edit: 'मजकूर संपादित करा',
+    admin_content_updated: 'शेवटचे अद्यतन',
+    admin_content_field_heading: 'शीर्षक',
+    admin_content_field_body: 'मुख्य मजकूर',
+    admin_notif_title: 'घोषणा केंद्र',
+    admin_notif_target_all_users: 'सर्व वापरकर्ते',
+    admin_notif_target_all_astrologers: 'सर्व आचार्य',
+    admin_notif_target_specific_user: 'विशिष्ट वापरकर्ता',
+    admin_notif_field_title: 'शीर्षक',
+    admin_notif_field_message: 'संदेश',
+    admin_notif_field_audience: 'लक्ष्य प्रेक्षक',
+    admin_notif_field_schedule: 'वेळापत्रक',
+    admin_notif_schedule_now: 'आत्ता पाठवा',
+    admin_notif_schedule_later: 'नंतरसाठी नियोजित करा',
+    admin_notif_field_user_email: 'वापरकर्ता ईमेल',
+    admin_notif_history: 'इतिहास',
+    admin_notif_sent: 'घोषणा यशस्वीरित्या पाठवली गेली.',
+    admin_audit_title: 'ऑडिट लॉग',
+    admin_audit_col_timestamp: 'वेळनोंद',
+    admin_audit_col_admin: 'अ‍ॅडमिन',
+    admin_audit_col_action: 'कृती',
+    admin_audit_col_target: 'लक्ष्य',
+    admin_audit_col_ip: 'आयपी',
+    admin_audit_col_status: 'स्थिती',
+    admin_settings_title: 'सेटिंग्ज',
+    admin_settings_general: 'सामान्य',
+    admin_settings_languages: 'भाषा',
+    admin_settings_roles: 'भूमिका',
+    admin_settings_notification_templates: 'सूचना टेम्पलेट्स',
+    admin_settings_payment: 'भरणा सेटिंग्ज',
+    admin_settings_system_prefs: 'सिस्टम प्राधान्ये',
+    admin_settings_readonly_note: 'सेटिंग्ज व्यवस्थापन केवळ प्रशासकांसाठी उपलब्ध आहे.',
+
+    // Astrologist Console
+    astro_console_title: 'ज्योतिषी कन्सोल',
+    astro_console_sub: 'तुमचे सल्ला सत्रे, उपलब्धता आणि कमाई व्यवस्थापित करा',
+    astro_role_label: 'ज्योतिषी',
+    astro_sign_out: 'साइन आउट',
+    astro_suspended_banner: 'तुमचे खाते त्रिदेव ज्योतिषने निलंबित केले आहे. ते पुन्हा सक्रिय होईपर्यंत तुम्ही नवीन बुकिंग स्वीकारू शकत नाही आणि सार्वजनिक शोधात दिसणार नाही.',
+    astro_status_available: 'उपलब्ध',
+    astro_status_busy: 'व्यस्त',
+    astro_status_offline: 'ऑफलाइन',
+    astro_nav_overview: 'आढावा',
+    astro_nav_consultations: 'सल्ला सत्रे',
+    astro_nav_clients: 'ग्राहक',
+    astro_nav_availability: 'उपलब्धता',
+    astro_nav_earnings: 'कमाई',
+    astro_nav_reviews: 'समीक्षा',
+    astro_nav_profile: 'ज्योतिषी प्रोफाइल',
+    astro_nav_notifications: 'सूचना',
+    astro_nav_settings: 'सेटिंग्ज',
+    astro_greeting_morning: 'शुभ सकाळ',
+    astro_greeting_afternoon: 'नमस्कार',
+    astro_greeting_evening: 'शुभ संध्याकाळ',
+    astro_overview_tagline: 'तुमची ज्योतिष प्रॅक्टिस एका दृष्टीक्षेपात',
+    astro_kpi_today: 'आजची सल्ला सत्रे',
+    astro_kpi_pending: 'प्रलंबित विनंत्या',
+    astro_kpi_month_earnings: 'या महिन्याची कमाई',
+    astro_kpi_rating: 'सरासरी रेटिंग',
+    astro_todays_schedule: 'आजचे वेळापत्रक',
+    astro_pending_requests: 'प्रलंबित विनंत्या',
+    astro_view_all: 'सर्व पहा',
+    astro_min: 'मिनिटे',
+    astro_action_accept: 'स्वीकार करा',
+    astro_action_decline: 'नाकारा',
+    astro_action_complete: 'पूर्ण म्हणून चिन्हांकित करा',
+    astro_action_cancel: 'रद्द करा',
+    astro_action_save_notes: 'नोंदी जतन करा',
+    astro_private_notes: 'खाजगी नोंदी',
+    astro_private_notes_placeholder: 'स्वतःसाठी नोंदी — ग्राहकाला कधीही दाखवल्या जात नाहीत.',
+    astro_payout_status: 'भरणा स्थिती',
+    astro_subtab_upcoming: 'आगामी',
+    astro_subtab_requests: 'विनंत्या',
+    astro_subtab_history: 'इतिहास',
+    astro_recently_decided: 'नुकतेच ठरवलेले',
+    astro_search_clients: 'नावाने ग्राहक शोधा...',
+    astro_consultations_count: 'सल्ला सत्रे',
+    astro_last: 'शेवटचे',
+    astro_next: 'पुढील',
+    astro_working_days: 'कामाचे दिवस',
+    astro_day_sun: 'रवि',
+    astro_day_mon: 'सोम',
+    astro_day_tue: 'मंगळ',
+    astro_day_wed: 'बुध',
+    astro_day_thu: 'गुरु',
+    astro_day_fri: 'शुक्र',
+    astro_day_sat: 'शनि',
+    astro_time_slots: 'वेळ स्लॉट्स',
+    astro_action_add_slot: 'स्लॉट जोडा',
+    astro_consultation_duration: 'सल्ला सत्राचा कालावधी',
+    astro_buffer_time: 'सत्रांमधील बफर वेळ',
+    astro_blocked_time: 'अवरोधित वेळ',
+    astro_no_blocked_time: 'कोणताही अवरोधित कालावधी नाही.',
+    astro_reason_placeholder: 'कारण (खाजगी, सार्वजनिकरित्या दाखवले जात नाही)',
+    astro_action_block_time: 'वेळ अवरोधित करा',
+    astro_earnings_total: 'एकूण कमाई',
+    astro_earnings_month: 'या महिन्यात',
+    astro_earnings_week: 'या आठवड्यात',
+    astro_earnings_pending_payout: 'प्रलंबित भरणा',
+    astro_earnings_completed_payout: 'पूर्ण झालेला भरणा',
+    astro_transactions: 'व्यवहार इतिहास',
+    astro_average_rating: 'सरासरी रेटिंग',
+    astro_total_reviews: 'एकूण समीक्षा',
+    astro_recent_reviews: 'अलीकडील समीक्षा',
+    astro_profile_completion: 'प्रोफाइल पूर्णता',
+    astro_missing: 'बाकी',
+    astro_profile_title: 'व्यावसायिक पदवी',
+    astro_profile_bio: 'परिचय',
+    astro_profile_expertise: 'सल्ला श्रेणी',
+    astro_profile_languages: 'भाषा',
+    astro_profile_public_toggle: 'सार्वजनिक प्रोफाइल',
+    astro_profile_public_desc: 'सार्वजनिक ज्योतिषी शोधात दृश्यमान.',
+    astro_public_disabled_suspended: 'खाते निलंबित असताना सार्वजनिक शोधातून लपवले आहे.',
+    astro_view_public_profile: 'सार्वजनिक प्रोफाइल पहा',
+    astro_mark_all_read: 'सर्व वाचले म्हणून चिन्हांकित करा',
+    astro_settings_account: 'खाते',
+    astro_empty_schedule_title: 'आज कोणतेही सल्ला सत्र नियोजित नाही',
+    astro_empty_schedule_desc: 'आजचे तुमचे स्वीकृत सल्ला सत्रे येथे दिसतील.',
+    astro_empty_requests_title: 'कोणत्याही प्रलंबित विनंत्या नाहीत',
+    astro_empty_requests_desc: 'ग्राहकांकडून नवीन सल्ला विनंत्या येथे दिसतील.',
+    astro_empty_upcoming_title: 'कोणतेही आगामी सल्ला सत्र नाही',
+    astro_empty_upcoming_desc: 'स्वीकृत विनंत्या येथे आगामी सल्ला सत्रे म्हणून दिसतील.',
+    astro_empty_history_title: 'अद्याप सल्ला इतिहास नाही',
+    astro_empty_history_desc: 'पूर्ण आणि रद्द केलेले सल्ला सत्रे येथे दिसतील.',
+    astro_empty_clients_title: 'अद्याप कोणतेही ग्राहक नाहीत',
+    astro_empty_clients_desc: 'तुम्ही सल्ला दिलेले ग्राहक येथे दिसतील.',
+    astro_empty_transactions_title: 'अद्याप कोणतेही व्यवहार नाहीत',
+    astro_empty_transactions_desc: 'पूर्ण झालेले सल्ला सत्रे येथे व्यवहार म्हणून दिसतील.',
+    astro_empty_reviews_title: 'अद्याप कोणत्याही समीक्षा नाहीत',
+    astro_empty_reviews_desc: 'सल्ला सत्रे पूर्ण केल्यानंतर ग्राहक समीक्षा येथे दिसतील.',
+    astro_empty_notifications_title: 'कोणत्याही सूचना नाहीत',
+    astro_empty_notifications_desc: 'तुम्ही पूर्णपणे अद्ययावत आहात.',
   },
   bn: {
     nav_astrology: 'জ্যোতিষ',
@@ -1081,13 +2571,267 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved === 'dark' ? 'dark' : 'light';
   });
 
-  // Auth State (mock prototype)
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    const saved = localStorage.getItem('isLoggedIn');
-    return saved === null ? true : saved === 'true';
+  // Auth State (mock prototype — simulates a backend-authoritative role system via localStorage)
+  const [users, setUsersState] = useState<Record<string, StoredAccount>>(() => loadUsers());
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const savedEmail = localStorage.getItem('auth_session');
+    if (!savedEmail) return null;
+    const acc = loadUsers()[savedEmail];
+    return acc ? { id: acc.id, name: acc.name, email: acc.email, role: acc.role } : null;
+  });
+  const isLoggedIn = !!currentUser;
+  const [applications, setApplications] = useState<AstrologerApplication[]>(() => {
+    try { return JSON.parse(localStorage.getItem('astro_applications') || '[]'); } catch { return []; }
+  });
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('audit_log') || '[]'); } catch { return []; }
+  });
+  const [notifications, setNotifications] = useState<NotificationEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('notifications') || '[]'); } catch { return []; }
   });
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  const persistUsers = (next: Record<string, StoredAccount>) => {
+    setUsersState(next);
+    localStorage.setItem('auth_users', JSON.stringify(next));
+  };
+
+  const startSession = (acc: StoredAccount): AuthUser => {
+    const user: AuthUser = { id: acc.id, name: acc.name, email: acc.email, role: acc.role };
+    setCurrentUser(user);
+    localStorage.setItem('auth_session', acc.email);
+    return user;
+  };
+
+  const login = (email: string, password: string): AuthUser | null => {
+    const acc = users[normalizeEmail(email)];
+    if (!acc || acc.password !== password) return null;
+    return startSession(acc);
+  };
+
+  // Lenient entry point for the quick-login modal (no password field) — logs
+  // into an existing account if the email is known, otherwise registers a new USER.
+  const loginOrRegister = (email: string): AuthUser => {
+    const key = normalizeEmail(email);
+    const existing = users[key];
+    if (existing) return startSession(existing);
+    const acc: StoredAccount = { id: `u-${Date.now()}`, name: email.split('@')[0], email: key, password: '', role: 'USER' };
+    const next = { ...users, [key]: acc };
+    persistUsers(next);
+    return startSession(acc);
+  };
+
+  const register = (name: string, email: string, password: string): AuthUser | null => {
+    const key = normalizeEmail(email);
+    if (users[key]) return null; // account already exists
+    const acc: StoredAccount = { id: `u-${Date.now()}`, name, email: key, password, role: 'USER' };
+    persistUsers({ ...users, [key]: acc });
+    return startSession(acc);
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('auth_session');
+  };
+
+  const persistApplications = (next: AstrologerApplication[]) => {
+    setApplications(next);
+    localStorage.setItem('astro_applications', JSON.stringify(next));
+  };
+
+  const logAudit = (action: string, actor: string, target: string) => {
+    const entry: AuditLogEntry = { id: `log-${Date.now()}`, action, actor, target, at: new Date().toISOString() };
+    const next = [entry, ...auditLog];
+    setAuditLog(next);
+    localStorage.setItem('audit_log', JSON.stringify(next));
+  };
+
+  const notify = (message: string) => {
+    const entry: NotificationEntry = { id: `notif-${Date.now()}`, message, at: new Date().toISOString() };
+    const next = [entry, ...notifications];
+    setNotifications(next);
+    localStorage.setItem('notifications', JSON.stringify(next));
+  };
+
+  const applyToBecomeAstrologer = (details: { expertise: string; experience: string }) => {
+    if (!currentUser) return;
+    const app: AstrologerApplication = {
+      id: `app-${Date.now()}`,
+      userEmail: currentUser.email,
+      userName: currentUser.name,
+      expertise: details.expertise,
+      experience: details.experience,
+      status: 'PENDING',
+      submittedAt: new Date().toISOString(),
+    };
+    persistApplications([app, ...applications]);
+  };
+
+  const approveApplication = (id: string) => {
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    persistApplications(applications.map(a => a.id === id ? { ...a, status: 'APPROVED' as const } : a));
+    const acc = users[app.userEmail];
+    if (acc) persistUsers({ ...users, [app.userEmail]: { ...acc, role: 'ASTROLOGIST' } });
+    logAudit('APPROVE_ASTROLOGER_APPLICATION', currentUser?.email || 'admin', app.userEmail);
+    notify(`${app.userName}'s astrologer application was approved.`);
+  };
+
+  const rejectApplication = (id: string) => {
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    persistApplications(applications.map(a => a.id === id ? { ...a, status: 'REJECTED' as const } : a));
+    logAudit('REJECT_ASTROLOGER_APPLICATION', currentUser?.email || 'admin', app.userEmail);
+    notify(`${app.userName}'s astrologer application was rejected.`);
+  };
+
+  const suspendAccount = (email: string) => {
+    const key = normalizeEmail(email);
+    const acc = users[key];
+    if (!acc) return;
+    persistUsers({ ...users, [key]: { ...acc, status: 'SUSPENDED' } });
+    logAudit('SUSPEND_ACCOUNT', currentUser?.email || 'admin', key);
+  };
+
+  const restoreAccount = (email: string) => {
+    const key = normalizeEmail(email);
+    const acc = users[key];
+    if (!acc) return;
+    persistUsers({ ...users, [key]: { ...acc, status: 'ACTIVE' } });
+    logAudit('RESTORE_ACCOUNT', currentUser?.email || 'admin', key);
+  };
+
+  const createAstrologerAccount = (name: string, email: string, password: string): AuthUser | null => {
+    const key = normalizeEmail(email);
+    if (users[key]) return null;
+    const acc: StoredAccount = { id: `u-${Date.now()}`, name, email: key, password, role: 'ASTROLOGIST', status: 'ACTIVE' };
+    persistUsers({ ...users, [key]: acc });
+    logAudit('ADD_ASTROLOGER', currentUser?.email || 'admin', key);
+    return { id: acc.id, name: acc.name, email: acc.email, role: acc.role, status: acc.status };
+  };
+
+  const accounts: AuthUser[] = Object.values(users).map(({ id, name, email, role, status }) => ({ id, name, email, role, status }));
+
+  // ── Astrologist practice-management state (mock prototype, see comment on
+  // seedAstrologistDemoData above) ──
+  const [allConsultationRequests, setAllConsultationRequests] = useState<ConsultationRequest[]>(() => {
+    seedAstrologistDemoData();
+    return loadLS<ConsultationRequest[]>('astro_requests', []);
+  });
+  const [allConsultations, setAllConsultations] = useState<Consultation[]>(() => loadLS<Consultation[]>('astro_consultations', []));
+  const [allBlockedSlots, setAllBlockedSlots] = useState<BlockedSlot[]>(() => loadLS<BlockedSlot[]>('astro_blocked_slots', []));
+  const [availabilityMap, setAvailabilityMap] = useState<Record<string, AvailabilitySettings>>(() => loadAvailabilityMap());
+  const [profileOverrideMap, setProfileOverrideMap] = useState<Record<string, AstrologerProfileOverride>>(() => loadProfileOverrideMap());
+  const [allAstrologerNotifications, setAllAstrologerNotifications] = useState<NotificationEntry[]>(() => loadLS<NotificationEntry[]>('astro_notifications', []));
+  const [allAstrologerReviews] = useState<AstrologerReview[]>(() => loadLS<AstrologerReview[]>('astro_reviews', []));
+
+  const astrologerEmail = currentUser?.role === 'ASTROLOGIST' ? currentUser.email : '';
+
+  const persistConsultationRequests = (next: ConsultationRequest[]) => {
+    setAllConsultationRequests(next);
+    localStorage.setItem('astro_requests', JSON.stringify(next));
+  };
+  const persistConsultations = (next: Consultation[]) => {
+    setAllConsultations(next);
+    localStorage.setItem('astro_consultations', JSON.stringify(next));
+  };
+  const persistBlockedSlots = (next: BlockedSlot[]) => {
+    setAllBlockedSlots(next);
+    localStorage.setItem('astro_blocked_slots', JSON.stringify(next));
+  };
+  const persistAvailabilityMap = (next: Record<string, AvailabilitySettings>) => {
+    setAvailabilityMap(next);
+    localStorage.setItem('astro_availability', JSON.stringify(next));
+  };
+  const persistProfileOverrideMap = (next: Record<string, AstrologerProfileOverride>) => {
+    setProfileOverrideMap(next);
+    localStorage.setItem('astro_profile_overrides', JSON.stringify(next));
+  };
+  const persistAstrologerNotifications = (next: NotificationEntry[]) => {
+    setAllAstrologerNotifications(next);
+    localStorage.setItem('astro_notifications', JSON.stringify(next));
+  };
+
+  // Scoped to the signed-in astrologist only — mirrors the ownership checks a
+  // real backend would enforce server-side (see AppContext auth note above).
+  const consultationRequests = allConsultationRequests.filter(r => r.astrologerEmail === astrologerEmail);
+  const consultations = allConsultations.filter(c => c.astrologerEmail === astrologerEmail);
+  const blockedSlots = allBlockedSlots.filter(b => b.astrologerEmail === astrologerEmail);
+  const availability = availabilityMap[astrologerEmail] || DEFAULT_AVAILABILITY;
+  const profileOverride = profileOverrideMap[astrologerEmail] || EMPTY_PROFILE_OVERRIDE;
+  const astrologerNotifications = allAstrologerNotifications.filter(n => n.recipientEmail === astrologerEmail);
+  const astrologerReviews = allAstrologerReviews.filter(r => r.astrologerEmail === astrologerEmail);
+
+  const acceptConsultationRequest = (id: string) => {
+    const req = allConsultationRequests.find(r => r.id === id);
+    if (!req) return;
+    persistConsultationRequests(allConsultationRequests.map(r => r.id === id ? { ...r, status: 'ACCEPTED' as const } : r));
+    const consultation: Consultation = {
+      id: `con-${Date.now()}`,
+      astrologerEmail: req.astrologerEmail,
+      clientName: req.clientName,
+      clientEmail: req.clientEmail,
+      type: req.type,
+      service: req.service,
+      scheduledAt: req.requestedFor,
+      duration: req.duration,
+      amount: req.price,
+      status: 'upcoming',
+      notes: '',
+      payoutStatus: 'PENDING',
+    };
+    persistConsultations([consultation, ...allConsultations]);
+  };
+
+  const declineConsultationRequest = (id: string) => {
+    persistConsultationRequests(allConsultationRequests.map(r => r.id === id ? { ...r, status: 'DECLINED' as const } : r));
+  };
+
+  const completeConsultation = (id: string) => {
+    persistConsultations(allConsultations.map(c => c.id === id ? { ...c, status: 'completed' as const } : c));
+  };
+
+  const cancelConsultation = (id: string) => {
+    persistConsultations(allConsultations.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c));
+  };
+
+  const saveConsultationNotes = (id: string, notes: string) => {
+    persistConsultations(allConsultations.map(c => c.id === id ? { ...c, notes } : c));
+  };
+
+  const addBlockedSlot = (slot: Omit<BlockedSlot, 'id' | 'astrologerEmail'>) => {
+    if (!astrologerEmail) return;
+    const entry: BlockedSlot = { id: `blk-${Date.now()}`, astrologerEmail, ...slot };
+    persistBlockedSlots([entry, ...allBlockedSlots]);
+  };
+
+  const removeBlockedSlot = (id: string) => {
+    persistBlockedSlots(allBlockedSlots.filter(b => b.id !== id));
+  };
+
+  const setAvailabilityStatus = (status: AvailabilityStatus) => {
+    if (!astrologerEmail) return;
+    persistAvailabilityMap({ ...availabilityMap, [astrologerEmail]: { ...availability, status } });
+  };
+
+  const updateAvailability = (partial: Partial<AvailabilitySettings>) => {
+    if (!astrologerEmail) return;
+    persistAvailabilityMap({ ...availabilityMap, [astrologerEmail]: { ...availability, ...partial } });
+  };
+
+  const updateProfileOverride = (partial: Partial<AstrologerProfileOverride>) => {
+    if (!astrologerEmail) return;
+    persistProfileOverrideMap({ ...profileOverrideMap, [astrologerEmail]: { ...profileOverride, ...partial } });
+  };
+
+  const markNotificationRead = (id: string) => {
+    persistAstrologerNotifications(allAstrologerNotifications.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllNotificationsRead = () => {
+    persistAstrologerNotifications(allAstrologerNotifications.map(n => n.recipientEmail === astrologerEmail ? { ...n, read: true } : n));
+  };
 
   // Language selector state
   const [language, setLanguageState] = useState<'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te'>(() => {
@@ -1102,6 +2846,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key;
+  };
+
+  const tOr = (key: string, fallbackKey: string): string => {
+    return TRANSLATIONS[language]?.[key] || t(fallbackKey);
   };
 
   const setBirthProfile = (p: BirthProfile) => {
@@ -1121,12 +2869,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   };
-
-  const setLoggedIn = (v: boolean) => {
-    setIsLoggedIn(v);
-    localStorage.setItem('isLoggedIn', v ? 'true' : 'false');
-  };
-
 
   const addToCart = (item: CartItem) => {
     setCart(prev => {
@@ -1154,10 +2896,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       selectedId, setSelectedId,
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
-      isLoggedIn, setLoggedIn,
+      isLoggedIn, currentUser, login, loginOrRegister, register, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
-      language, setLanguage, t
+      accounts, applications, applyToBecomeAstrologer, approveApplication, rejectApplication,
+      auditLog, notifications,
+      logAdminAction: (action: string, target: string) => logAudit(action, currentUser?.email || 'admin', target),
+      suspendAccount, restoreAccount, createAstrologerAccount,
+      consultationRequests, consultations,
+      acceptConsultationRequest, declineConsultationRequest, completeConsultation, cancelConsultation, saveConsultationNotes,
+      blockedSlots, addBlockedSlot, removeBlockedSlot,
+      availability, setAvailabilityStatus, updateAvailability,
+      profileOverride, updateProfileOverride,
+      astrologerNotifications, markNotificationRead, markAllNotificationsRead,
+      astrologerReviews,
+      language, setLanguage, t, tOr
     }}>
       {children}
     </AppContext.Provider>

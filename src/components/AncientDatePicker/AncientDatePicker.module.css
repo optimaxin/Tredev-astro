@@ -28,9 +28,11 @@
 .calendarDropdown {
   position: absolute;
   top: 100%;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
-  width: 290px;
+  width: 280px;
+  max-width: calc(100vw - 32px);
   margin-top: 8px;
   background: #FAF6EE;
   border: 3px double #8c4c20;
@@ -41,8 +43,8 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .calendarHeader {
@@ -151,3 +153,8 @@
   width: 28px;
   height: 28px;
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .select, html[lang='mr'] .select { font-size: var(--text-sm); }
+html[lang='hi'] .dayOfWeekHeader, html[lang='mr'] .dayOfWeekHeader { font-size: var(--text-xs); }
+html[lang='hi'] .dayButton, html[lang='mr'] .dayButton { font-size: var(--text-sm); }

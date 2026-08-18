@@ -30,6 +30,8 @@ import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
 import AuthPage from './AuthPage/AuthPage';
 import AncientDatePicker from '../components/AncientDatePicker/AncientDatePicker';
+import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
+import AdminConsole from '../admin/AdminConsole';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -85,7 +87,7 @@ export default function PageRenderer() {
 
     case 'free-kundli':
       return (
-        <div className={`${styles.pageWrapper} ${styles.palmLeafPage}`}>
+        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
           <div className={styles.container}>
             <KundliSection />
           </div>
@@ -97,7 +99,8 @@ export default function PageRenderer() {
 
     case 'my-jyotish':
     case 'profile':
-      return <ProfileDashboardPage />;
+    case 'dashboard':
+      return <DashboardEntry />;
 
     case 'horoscope':
       return <HoroscopePage />;
@@ -199,9 +202,6 @@ export default function PageRenderer() {
           </div>
         </div>
       );
-
-    case 'profile':
-      return <ProfilePage />;
 
     case 'my-reports':
       return <MyReportsPage />;
@@ -1201,7 +1201,7 @@ function ProfilePage() {
   };
 
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+    <>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Yajamana Profile</span>
@@ -1276,7 +1276,7 @@ function ProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1298,7 +1298,7 @@ function KundliResultPage() {
   ];
 
   return (
-    <div className={`${styles.pageWrapper} ${styles.palmLeafPage}`}>
+    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Your Birth Blueprint</span>
@@ -1421,7 +1421,7 @@ function KundliResultPage() {
 }
 
 // 13. My Reports Page
-function MyReportsPage() {
+function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = () => {
@@ -1432,8 +1432,11 @@ function MyReportsPage() {
     }, 1500);
   };
 
+  const Wrapper = nested ? React.Fragment : 'div';
+  const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
+
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+    <Wrapper {...wrapperProps}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Your generated files</span>
@@ -1462,19 +1465,22 @@ function MyReportsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
 // 14. My Consultations Page
-function MyConsultationsPage() {
+function MyConsultationsPage({ nested = false }: { nested?: boolean } = {}) {
   const CONSULTATIONS = [
     { Astrologist: 'Astrologist Rahul Shastri', date: '12 August 2026 - 06:30 PM', format: 'Live Video Consultation', status: 'Scheduled' },
     { Astrologist: 'Pandit Meera Devi', date: '04 July 2026 - 10:00 AM', format: 'Live Chat Guidance', status: 'Completed' },
   ];
 
+  const Wrapper = nested ? React.Fragment : 'div';
+  const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
+
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+    <Wrapper {...wrapperProps}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Your bookings history</span>
@@ -1496,19 +1502,22 @@ function MyConsultationsPage() {
           ))}
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
 // 15. My Orders Page
-function MyOrdersPage() {
+function MyOrdersPage({ nested = false }: { nested?: boolean } = {}) {
   const ORDERS = [
     { orderId: 'TA-98384', items: 'Natural Colombian Emerald Gemstone', total: 2499, date: '12 August 2026', status: 'Puja Energization Scheduled' },
     { orderId: 'TA-83748', items: 'Shri Yantra (Brass)', total: 1299, date: '02 July 2026', status: 'Delivered' },
   ];
 
+  const Wrapper = nested ? React.Fragment : 'div';
+  const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
+
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+    <Wrapper {...wrapperProps}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Your remedial orders</span>
@@ -1531,7 +1540,7 @@ function MyOrdersPage() {
           ))}
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -1587,11 +1596,33 @@ function AboutPage() {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Dashboard Entry — single logical /dashboard route, resolved by backend-authenticated role
+// ─────────────────────────────────────────────────────────────────────────────
+function DashboardEntry() {
+  const { currentUser } = useAppContext();
+  if (currentUser?.role === 'ADMIN') return <AdminDashboardPage />;
+  if (currentUser?.role === 'ASTROLOGIST') return <AstrologistDashboard />;
+  return <ProfileDashboardPage />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin Dashboard — a fully separate internal console, see src/admin/AdminConsole.tsx
+// ─────────────────────────────────────────────────────────────────────────────
+function AdminDashboardPage() {
+  return <AdminConsole />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Profile Dashboard Page
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileDashboardPage() {
-  const { birthProfile, setPage, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated } = useAppContext();
+  const {
+    birthProfile, setPage, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated,
+    currentUser, applications, applyToBecomeAstrologer,
+  } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
+  const [expertise, setExpertise] = React.useState('');
+  const [experience, setExperience] = React.useState('');
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -1599,6 +1630,8 @@ function ProfileDashboardPage() {
       setShowLoginModal(true);
     }
   }, [isLoggedIn]);
+
+  const myApplication = applications.find(a => a.userEmail === currentUser?.email);
 
   const SIDEBAR_ITEMS = [
     { key: 'my-jyotish', label: 'My Jyotish', icon: '✦' },
@@ -1608,6 +1641,7 @@ function ProfileDashboardPage() {
     { key: 'my-orders', label: 'My Orders', icon: '◈' },
     { key: 'saved-astrologers', label: 'Saved Astrologers', icon: '♃' },
     { key: 'my-courses', label: 'My Courses', icon: '◉' },
+    { key: 'become-astrologer', label: 'Become an Astrologer', icon: '🪐' },
     { key: 'settings', label: 'Account Settings', icon: '⚙' },
   ];
 
@@ -1666,7 +1700,7 @@ function ProfileDashboardPage() {
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Jyotish</h1>
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {birthProfile.name} · Born {birthProfile.dob}</p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
                 {[{ label: 'Janma Rashi', value: 'Vrishabha (Taurus)', icon: '☽' }, { label: 'Lagna (Ascendant)', value: 'Simha (Leo)', icon: '↑' }, { label: 'Nakshatra', value: 'Rohini (4th Pada)', icon: '✦' }].map(item => (
                   <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
                     <span style={{ fontSize: '1.5rem', color: 'var(--gold-primary)', display: 'block', marginBottom: 'var(--space-2)' }}>{item.icon}</span>
@@ -1681,7 +1715,7 @@ function ProfileDashboardPage() {
                   <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Lahiri Ayanamsa</span>
                 </div>
                 {PLANETARY_PLACEMENTS.map((p, i) => (
-                  <div key={p.planet} style={{ display: 'grid', gridTemplateColumns: '40px 180px 1fr 100px', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-6)', borderBottom: i < PLANETARY_PLACEMENTS.length - 1 ? '1px solid var(--border-subtle)' : 'none', alignItems: 'center' }}>
+                  <div key={p.planet} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1.4fr) minmax(0, 1.6fr) auto', gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-6)', borderBottom: i < PLANETARY_PLACEMENTS.length - 1 ? '1px solid var(--border-subtle)' : 'none', alignItems: 'center' }}>
                     <span style={{ fontSize: '1.1rem', color: 'var(--gold-primary)', textAlign: 'center' }}>{p.symbol}</span>
                     <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{p.planet}</span>
                     <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{p.rashi} · {p.bhava}</span>
@@ -1786,12 +1820,60 @@ function ProfileDashboardPage() {
             </div>
           )}
 
-          {activeTab !== 'my-jyotish' && activeTab !== 'my-kundli' && (
+          {activeTab === 'my-reports' && <MyReportsPage nested />}
+          {activeTab === 'my-consultations' && <MyConsultationsPage nested />}
+          {activeTab === 'my-orders' && <MyOrdersPage nested />}
+          {activeTab === 'settings' && <ProfilePage />}
+
+          {activeTab === 'become-astrologer' && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8)' }}>
+              <span className="section-eyebrow">Join Our Acharya Panel</span>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)', marginBottom: 'var(--space-6)' }}>Become an Astrologer</h1>
+
+              {myApplication?.status === 'PENDING' && (
+                <p style={{ color: 'var(--gold-primary)', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
+                  Your application is under review. You'll be notified once an admin has responded.
+                </p>
+              )}
+              {myApplication?.status === 'APPROVED' && (
+                <p style={{ color: 'var(--gold-primary)', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
+                  Congratulations — your application was approved! Sign out and sign back in to access your Astrologist Dashboard.
+                </p>
+              )}
+              {(!myApplication || myApplication.status === 'REJECTED') && (
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    applyToBecomeAstrologer({ expertise, experience });
+                    setExpertise('');
+                    setExperience('');
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '420px' }}
+                >
+                  {myApplication?.status === 'REJECTED' && (
+                    <p style={{ color: '#c0392b', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
+                      Your previous application was rejected. You may submit a new one below.
+                    </p>
+                  )}
+                  <div className="form-group">
+                    <label className="form-label">Area of Expertise</label>
+                    <input className="input-field" required value={expertise} onChange={e => setExpertise(e.target.value)} placeholder="e.g. Vedic Astrology, Numerology" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Years of Experience</label>
+                    <input className="input-field" required value={experience} onChange={e => setExperience(e.target.value)} placeholder="e.g. 6 years" />
+                  </div>
+                  <button type="submit" className="btn btn-gold" style={{ width: 'fit-content' }}>Submit Application</button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {['saved-astrologers', 'my-courses'].includes(activeTab) && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
               <span style={{ fontSize: '3rem', opacity: 0.3 }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.icon}</span>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.label}</h3>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>Generate your Kundli first to unlock this section.</p>
-              <button className="btn btn-gold" onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Generate Kundli</button>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>This section is coming soon.</p>
             </div>
           )}
         </main>

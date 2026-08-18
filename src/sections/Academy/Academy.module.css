@@ -304,3 +304,8 @@
   .roadmapSteps { gap: var(--space-4); flex-direction: column; }
   .stepLine { display: none; }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .certBadge, html[lang='mr'] .certBadge { font-size: var(--text-xs); }
+html[lang='hi'] .courseCategory, html[lang='mr'] .courseCategory { font-size: var(--text-xs); }
+html[lang='hi'] .stepLabel, html[lang='mr'] .stepLabel { font-size: var(--text-xs); }

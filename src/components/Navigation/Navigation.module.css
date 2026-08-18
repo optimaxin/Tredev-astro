@@ -86,7 +86,7 @@
   border: none;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: var(--nav-link-size);
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@
   color: #120704;
   border: none;
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: var(--nav-cta-size);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
   border: 1.5px solid #E7A51A;
   color: #120704;
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: var(--nav-cta-size);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -237,7 +237,7 @@
   cursor: pointer;
   color: #120704;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--nav-badge-size);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -313,7 +313,7 @@
   cursor: pointer;
   color: #120704;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--nav-badge-size);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -344,7 +344,7 @@
   cursor: pointer;
   color: #120704;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--nav-badge-size);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -543,6 +543,35 @@
   to { transform: rotate(360deg); }
 }
 
+/* Devanagari nav: bigger link text needs a touch more room and less tracking
+   so labels never wrap or collide — never achieved by shrinking the font. */
+:global(html[lang='hi']) .nav,
+:global(html[lang='mr']) .nav {
+  max-width: 1400px;
+}
+
+:global(html[lang='hi']) .links,
+:global(html[lang='mr']) .links {
+  gap: 7px;
+}
+
+:global(html[lang='hi']) .link,
+:global(html[lang='mr']) .link,
+:global(html[lang='hi']) .ctaBtn,
+:global(html[lang='mr']) .ctaBtn,
+:global(html[lang='hi']) .ctaBtnSecondary,
+:global(html[lang='mr']) .ctaBtnSecondary {
+  letter-spacing: 0.01em;
+}
+
+:global(html[lang='hi']) .ctaBtn,
+:global(html[lang='mr']) .ctaBtn,
+:global(html[lang='hi']) .ctaBtnSecondary,
+:global(html[lang='mr']) .ctaBtnSecondary {
+  padding-left: 11px;
+  padding-right: 11px;
+}
+
 @media (max-width: 1024px) {
   .links {
     display: none;
@@ -566,3 +595,6 @@
     transform: translateY(-7px) rotate(-45deg);
   }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .mobileLangBtn, html[lang='mr'] .mobileLangBtn { font-size: var(--text-xs); }

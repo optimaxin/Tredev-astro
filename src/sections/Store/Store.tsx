@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { PRODUCTS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import Lightweight3DViewer from '../../components/Lightweight3DViewer/Lightweight3DViewer';
+
+// three.js is a heavy dependency (500KB+) only needed once a shopper opts
+// into the 3D view — split it into its own chunk instead of the main bundle.
+const Lightweight3DViewer = lazy(() => import('../../components/Lightweight3DViewer/Lightweight3DViewer'));
 import { 
   ConstellationIcon, 
   RashiChakraIcon, 
@@ -12,7 +15,7 @@ import {
   VastuIcon, 
   ManuscriptIcon 
 } from '../../components/Icons/Icons';
-import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Store.module.css';
 
 const CATEGORIES = ['All', 'Gemstones', 'Rudraksha', 'Crystals', 'Bracelets', 'Yantras', 'Puja Essentials'];
@@ -51,20 +54,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
 
   return (
     <section className={styles.section} id="store">
-      <CelestialOrnament
-        type="yantra"
-        className="ornament-bg"
-        style={{
-          position: 'absolute',
-          right: '-100px',
-          top: '15%',
-          width: '450px',
-          height: '450px',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}
-        animate
-      />
+      <CelestialBackdrop variant="yantra" intensity="subtle" />
       <div className={styles.container} style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <div className="section-header-split">
@@ -213,8 +203,10 @@ function ProductCard({ product: p, featured = false }: { product: typeof PRODUCT
       >
         {show3D ? (
           <div className={styles.product3DWrapper}>
-            <Lightweight3DViewer type={viewerType} color={viewerColor} />
-            <button 
+            <Suspense fallback={null}>
+              <Lightweight3DViewer type={viewerType} color={viewerColor} />
+            </Suspense>
+            <button
               className={styles.toggle3DBtn} 
               onClick={(e) => {
                 e.stopPropagation();

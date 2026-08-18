@@ -164,4 +164,33 @@
   .medium, .small, .large {
     grid-column: span 6;
   }
+  /* Mobile cards: natural content height, not the desktop min-height/
+     space-between combo — that was stretching a 2-line card description
+     across ~350px of vertical space with the CTA shoved to the bottom. */
+  .section {
+    padding: var(--space-16) 0;
+  }
+  .cardsGrid {
+    gap: var(--space-4);
+  }
+  .card {
+    min-height: 0;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+  }
+  .large {
+    min-height: 0;
+  }
+  .icon {
+    width: 44px;
+    height: 44px;
+  }
+  .cardDesc {
+    margin: 0;
+  }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .sanskritLabel, html[lang='mr'] .sanskritLabel { font-size: var(--text-xs); }
+html[lang='hi'] .cardCta, html[lang='mr'] .cardCta { font-size: var(--text-sm); }

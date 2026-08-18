@@ -208,7 +208,7 @@
 
 .tradition {
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--gold-primary);
   opacity: 0.8;
   margin: 0 0 24px 0;
@@ -229,7 +229,7 @@
 
 .bio {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--text-sm);
   line-height: 1.75;
   color: var(--text-secondary);
   margin: 0 0 18px 0;
@@ -289,7 +289,7 @@
   border-radius: 8px;
   padding: 12px 28px;
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.02em;
@@ -310,7 +310,7 @@
   border-radius: 8px;
   padding: 12px 28px;
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.25s ease, background 0.25s ease, transform 0.2s ease;
@@ -353,3 +353,12 @@
     padding: 64px 0;
   }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .credentialPill, html[lang='mr'] .credentialPill { font-size: var(--text-xs); }
+html[lang='hi'] .eyebrow, html[lang='mr'] .eyebrow { font-size: var(--text-xs); }
+html[lang='hi'] .tradition, html[lang='mr'] .tradition { font-size: var(--text-sm); }
+html[lang='hi'] .bio, html[lang='mr'] .bio { font-size: var(--text-base); }
+html[lang='hi'] .pill, html[lang='mr'] .pill { font-size: var(--text-sm); }
+html[lang='hi'] .btnGold, html[lang='mr'] .btnGold { font-size: var(--text-sm); }
+html[lang='hi'] .btnOutline, html[lang='mr'] .btnOutline { font-size: var(--text-sm); }

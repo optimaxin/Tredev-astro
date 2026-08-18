@@ -68,6 +68,7 @@ export default function GuidanceBanner() {
                 loop
                 muted
                 playsInline
+                preload="none"
               />
             )}
             {/* Clean cinematic atmospheric background video */}

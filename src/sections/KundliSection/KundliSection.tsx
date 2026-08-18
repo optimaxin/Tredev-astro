@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import { KUNDLI_PLANETS, HOUSE_MEANINGS } from '../../data/mockData';
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
+import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './KundliSection.module.css';
 
 const ZODIAC_SIGNS = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'];
@@ -53,6 +55,7 @@ export default function KundliSection() {
 
   return (
     <section className={styles.section} id="kundli">
+      <CelestialBackdrop variant="kundli" intensity="medium" />
       <div className={styles.container}>
         <AnimatePresence mode="wait">
           {!kundliGenerated ? (
@@ -101,12 +104,11 @@ export default function KundliSection() {
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor="kundli-tob">Time of Birth</label>
-                    <input
-                      id="kundli-tob"
-                      type="time"
+                    <AncientTimePicker
                       className={`${styles.input} input-field input-cosmos`}
                       value={formData.tob}
-                      onChange={e => setFormData(p => ({ ...p, tob: e.target.value }))}
+                      onChange={val => setFormData(p => ({ ...p, tob: val }))}
+                      placeholder="Select Time of Birth"
                     />
                   </div>
                   <div className={styles.field}>

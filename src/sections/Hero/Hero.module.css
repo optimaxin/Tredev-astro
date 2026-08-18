@@ -35,12 +35,36 @@
   pointer-events: none;
 }
 
+/* CelestialBackdrop defaults to z-index:0 (behind page content); Hero needs
+   it above the video/vignette (both z-index:1) but below the text (z-index:10).
+   Compound selector wins on specificity so this holds regardless of CSS load order. */
+.hero .heroBackdrop {
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  /* Mobile uses a static poster instead of the video, and its own art
+     already fills the frame — the orbit overlay just competes with it. */
+  .hero .heroBackdrop {
+    display: none;
+  }
+}
+
 .overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   background: radial-gradient(circle at 20% 50%, rgba(18, 7, 4, 0.45) 0%, rgba(18, 7, 4, 0.2) 60%, rgba(18, 7, 4, 0.7) 100%);
   pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  /* The mobile poster is a full-frame subject (not a side-positioned video
+     scene), so the text column sits directly over its brightest area —
+     needs a stronger, more even scrim than desktop's side vignette. */
+  .overlay {
+    background: linear-gradient(180deg, rgba(18, 7, 4, 0.8) 0%, rgba(18, 7, 4, 0.6) 45%, rgba(18, 7, 4, 0.85) 100%);
+  }
 }
 
 /* Background Cosmic Particles and Star dust */
@@ -157,7 +181,7 @@
 /* Subheadline Description */
 .subhead {
   font-family: var(--font-sans);
-  font-size: 18px;
+  font-size: var(--text-md);
   font-weight: 300;
   line-height: 1.6;
   color: #D8D1C8;
@@ -175,19 +199,22 @@
 }
 
 .btnPrimary {
-  width: 240px;
+  min-width: 240px;
+  width: auto;
+  padding: 0 28px;
   height: 58px;
   border-radius: 999px;
   background: linear-gradient(135deg, #F5B72A 0%, #E7A51A 100%);
   color: #120704 !important;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   box-shadow: 0 4px 18px rgba(231, 165, 26, 0.22);
   transition: all 0.3s ease;
   text-decoration: none;
@@ -200,19 +227,22 @@
 }
 
 .btnSecondary {
-  width: 240px;
+  min-width: 240px;
+  width: auto;
+  padding: 0 28px;
   height: 58px;
   border-radius: 999px;
   background: rgba(36, 16, 6, 0.4);
   color: #FFFFFF !important;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
   border: 1.5px solid rgba(245, 240, 232, 0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   transition: all 0.3s ease;
   text-decoration: none;
 }
@@ -227,14 +257,20 @@
 .trustLine {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 6px;
   gap: 8px;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 400;
   color: #D8D1C8;
   opacity: 0.75;
   letter-spacing: 0.04em;
   margin-top: 12px;
+}
+
+.trustItem {
+  white-space: nowrap;
 }
 
 .greenDot {
@@ -591,7 +627,7 @@
     width: 100%;
     max-width: 280px;
     height: 50px;
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .rightColumn {
     height: 320px;
@@ -626,3 +662,7 @@
     width: 220px;
   }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .eyebrow, html[lang='mr'] .eyebrow { font-size: var(--text-xs); }
+html[lang='hi'] .scrollText, html[lang='mr'] .scrollText { font-size: var(--text-xs); }

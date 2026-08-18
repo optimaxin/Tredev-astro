@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_SUGGESTIONS, AI_DEMO_RESPONSES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './AIAstrology.module.css';
 
 const FREE_MINUTES = 5;
@@ -130,6 +131,7 @@ export default function AIAstrology() {
 
   return (
     <section className={styles.section} id="ai" aria-label="Ask TredevAstro AI">
+      <CelestialBackdrop variant="surya_chandra" intensity="subtle" />
       <div className={styles.container}>
         <div className={styles.layout}>
           {/* Left: Header */}

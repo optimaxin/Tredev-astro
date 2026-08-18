@@ -160,3 +160,6 @@
     bottom: 18px;
   }
 }
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .closeBtn, html[lang='mr'] .closeBtn { font-size: var(--text-xs); }
