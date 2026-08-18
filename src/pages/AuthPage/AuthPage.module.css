@@ -266,7 +266,14 @@
   flex-direction: column;
   gap: 15px;
   position: relative;
-  z-index: 2;
+  /* Higher than .scriptFooterStamp (z-index: 2) — the calendar/time dropdowns
+     nested inside this form use z-index: 1000, but that only matters within
+     this form's own stacking context. Since framer-motion applies a
+     transform to this element, it creates its own stacking context, so from
+     the footer stamp's perspective this whole form counted as z-index: 2 —
+     tied with the footer, which then won on DOM order and painted over the
+     open calendar dropdown. */
+  z-index: 5;
 }
 
 .inkField {

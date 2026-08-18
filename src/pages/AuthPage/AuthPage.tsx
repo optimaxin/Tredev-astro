@@ -9,7 +9,7 @@ import styles from './AuthPage.module.css';
 type TabType = 'login' | 'register';
 
 export default function AuthPage() {
-  const { setPage, login, register, t } = useAppContext();
+  const { setPage, login, register, t, pendingAction, setPendingAction } = useAppContext();
   const [tab, setTab] = useState<TabType>('register');
 
   // Login state
@@ -32,8 +32,25 @@ export default function AuthPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // Mirrors the resume behaviour the old LoginModal popup used to do —
+  // some gated actions (ai-chat, panchang-location) don't map to a page of
+  // their own; those sections watch pendingAction themselves once back home.
+  const resumePendingAction = (action: string | null) => {
+    if (action === 'profile') setPage('profile');
+    else if (action === 'free-kundli') setPage('free-kundli');
+    else if (action === 'astrologers') setPage('astrologers');
+    else if (action === 'calculator') setPage('astrology-tools');
+    else setPage('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const redirectByRole = (role: 'USER' | 'ASTROLOGIST' | 'ADMIN') => {
-    setPage(role === 'USER' ? 'home' : 'profile');
+    if (role === 'USER') {
+      resumePendingAction(pendingAction);
+    } else {
+      setPage('profile');
+    }
+    setPendingAction(null);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -67,7 +84,8 @@ export default function AuthPage() {
   };
 
   const handleContinue = () => {
-    setPage('home');
+    resumePendingAction(pendingAction);
+    setPendingAction(null);
   };
 
   return (

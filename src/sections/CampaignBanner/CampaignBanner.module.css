@@ -189,20 +189,12 @@
   pointer-events: none;
   user-select: none;
   z-index: 3;
-  /* Fade edges so the portrait dissolves naturally into the banner.
-     Top fade starts at 92% (not 70%) so it only eats into empty headroom
-     above the portrait, never the face — the chakra ring was showing
-     through the face because the old fade started well below the hairline. */
-  mask-image:
-    linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 92%, rgba(0, 0, 0, 0) 100%),
-    linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%),
-    linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 100%);
-  -webkit-mask-image:
-    linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 92%, rgba(0, 0, 0, 0) 100%),
-    linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%),
-    linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 100%);
-  mask-composite: intersect;
-  -webkit-mask-composite: source-in;
+  /* No top fade at all — any fade there, however small, thins the portrait
+     enough for the chakra ring behind it to show through the face. Fully
+     opaque top-to-bottom; only the left edge fades so it dissolves into
+     the text side of the banner. */
+  mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.9) 80%, rgba(0, 0, 0, 0) 100%);
   filter: drop-shadow(-6px 0 24px rgba(180, 140, 50, 0.12));
 }
 
