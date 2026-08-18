@@ -43,21 +43,6 @@
   object-position: bottom center;
 }
 
-/* CelestialBackdrop defaults to z-index:0 (behind page content); Hero needs
-   it above the video/vignette (both z-index:1) but below the text (z-index:10).
-   Compound selector wins on specificity so this holds regardless of CSS load order. */
-.hero .heroBackdrop {
-  z-index: 2;
-}
-
-@media (max-width: 768px) {
-  /* Mobile uses a static poster instead of the video, and its own art
-     already fills the frame — the orbit overlay just competes with it. */
-  .hero .heroBackdrop {
-    display: none;
-  }
-}
-
 .overlay {
   position: absolute;
   inset: 0;

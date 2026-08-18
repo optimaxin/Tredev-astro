@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Hero.module.css';
 
 export default function Hero() {
@@ -80,11 +79,6 @@ export default function Hero() {
 
       {/* Atmospheric dark vignette overlay */}
       <div className={styles.overlay} />
-
-      {/* Celestial atmosphere — desktop only. On mobile the video crop makes
-          this collide visually with the poster's own art, so it's hidden via
-          CSS below rather than kept as clutter. */}
-      <CelestialBackdrop variant="orbit" intensity="high" className={styles.heroBackdrop} />
 
       {/* Main Content Layout */}
       <div className={styles.content}>
