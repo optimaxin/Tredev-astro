@@ -857,18 +857,18 @@ function ProductDetailPage({ id }: { id: any }) {
             <p className={styles.reviewText} style={{ color: 'var(--color-gold)', fontWeight: 500, margin: '0 0 16px 0' }}>
               {product.association}
             </p>
-            <p className={styles.contentText} style={{ color: 'rgba(245, 241, 232, 0.8)', marginBottom: '24px' }}>
+            <p className={styles.contentText} style={{ color: 'var(--color-text-dark-2)', marginBottom: '24px' }}>
               Traditional association: {product.benefit}. Resourced responsibly, all remedies are purified, verified for dimensional coordinates, and energized through authentic Vedic pran-pratishtha pujas at specific chart-matching muhurtas.
             </p>
 
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', marginBottom: '24px' }}>
+            <div style={{ borderTop: '1px solid var(--color-border-dark)', paddingTop: '20px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
                 <span>Planet Alignment</span>
-                <span style={{ color: '#fff' }}>{product.planet}</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{product.planet}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-muted)' }}>
                 <span>Responsibly Sourced</span>
-                <span style={{ color: '#fff' }}>Certified Authentic</span>
+                <span style={{ color: 'var(--color-text-light)' }}>Certified Authentic</span>
               </div>
             </div>
 
