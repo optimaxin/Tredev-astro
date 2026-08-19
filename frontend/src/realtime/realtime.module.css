@@ -1,0 +1,102 @@
+/* ── Toasts ───────────────────────────────────────────── */
+.toastStack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.toast {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--gold-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  cursor: pointer;
+  animation: realtimeSlideIn 0.2s ease;
+}
+
+.toast_success { border-left-color: #50C878; }
+.toast_warning { border-left-color: #B23A3A; }
+
+@keyframes realtimeSlideIn {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ── Onboarding banner ────────────────────────────────── */
+.onboardBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.onboardText { font-family: var(--font-sans); font-size: 13px; color: var(--text-secondary); }
+.onboardActions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Idle warning banner ──────────────────────────────── */
+.idleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(199, 161, 90, 0.12);
+  border: 1px solid var(--gold-primary);
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* ── Incoming assignment modal ────────────────────────── */
+.assignBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  padding: 16px;
+}
+
+.assignCard {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+
+.assignEyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+}
+
+.assignName { font-family: var(--font-sans); font-weight: 700; font-size: 18px; color: var(--text-primary); margin-top: 6px; }
+.assignMeta { font-family: var(--font-sans); font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.assignRow { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-sans); font-size: 13px; color: var(--text-secondary); }
+.assignActions { display: flex; gap: 8px; margin-top: 18px; }

@@ -1,0 +1,29 @@
+{
+  "name": "tredevastro-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch app/main.ts",
+    "start": "tsx app/main.ts",
+    "test": "tsx tests/auth.test.ts",
+    "test:e2e": "node tests/e2e-smoke.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.12",
+    "typescript": "~6.0.2"
+  }
+}
