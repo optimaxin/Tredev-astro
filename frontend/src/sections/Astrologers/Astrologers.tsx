@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ASTROLOGERS } from '../../data/mockData';
+import { astrologerService } from '../../services/astrologerService';
+import type { UiAstrologer } from '../../services/astrologerService';
 import { useAppContext } from '../../context/AppContext';
-import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import { useRealtime } from '../../realtime/RealtimeContext';
 import styles from './Astrologers.module.css';
 
@@ -21,14 +21,29 @@ const FILTER_LABELS: Record<string, string> = {
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
   const { setPage, t } = useAppContext();
   const [activeFilter, setActiveFilter] = useState('All');
+  const [filtered, setFiltered] = useState<UiAstrologer[]>([]);
+  const [recommended, setRecommended] = useState<UiAstrologer[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
-  const filtered = featured
-    ? ASTROLOGERS.filter(a => a.online).slice(0, 3)
-    : ASTROLOGERS.filter(a => activeFilter === 'All' || a.category.includes(activeFilter));
+  // Featured (homepage) mode shows the top-rated Acharyas; the full listing
+  // is filtered/sorted server-side by the selected category tab.
+  useEffect(() => {
+    let cancelled = false;
+    const params = featured ? { sort: 'rating' as const, limit: 3 } : { category: activeFilter, limit: 50 };
+    astrologerService.list(params)
+      .then(({ data }) => { if (!cancelled) setFiltered(data); })
+      .catch(() => { if (!cancelled) setLoadError(true); });
+    return () => { cancelled = true; };
+  }, [featured, activeFilter]);
 
-  const recommended = ASTROLOGERS.filter(a =>
-    a.category.includes('Career') || a.category.includes('Finance')
-  ).slice(0, 2);
+  useEffect(() => {
+    if (featured) return;
+    let cancelled = false;
+    astrologerService.list({ sort: 'relevance', limit: 2 })
+      .then(({ data }) => { if (!cancelled) setRecommended(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [featured]);
 
   return (
     <section className={styles.section} id="astrologers">
@@ -58,7 +73,9 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
           )}
         </motion.div>
 
-        {featured ? (
+        {loadError ? (
+          <p className={styles.demoNote}>Could not load astrologers right now. Please try again shortly.</p>
+        ) : featured ? (
           /* Featured mode: show 3 Acharyas in grid */
           <div className={styles.grid}>
             {filtered.map((a, i) => (
@@ -134,13 +151,13 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
   );
 }
 
-function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof ASTROLOGERS[0]; compact?: boolean }) {
+function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstrologer; compact?: boolean }) {
   const { setPage, setSelectedId, t } = useAppContext();
   const { publicStates } = useRealtime();
   const live = publicStates[a.id];
-  // Falls back to the static seed value if the realtime service hasn't
-  // connected yet — availability display must never hard-depend on it.
-  const isOnline = live ? live.status === 'ONLINE_AVAILABLE' || live.status === 'ONLINE_BUSY' : a.online;
+  // Availability is authoritative-backend-only now — until the realtime
+  // service reports in, assume offline rather than guessing.
+  const isOnline = live ? live.status === 'ONLINE_AVAILABLE' || live.status === 'ONLINE_BUSY' : false;
   const isBusy = live?.status === 'ONLINE_BUSY';
 
   const handleCardClick = () => {
@@ -171,9 +188,6 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: typeof
             <h3 className={styles.name}>{a.name}</h3>
             <p className={styles.specialization}>{a.title}</p>
           </div>
-          {a.badge && (
-            <span className={styles.badge}>{a.badge}</span>
-          )}
         </div>
 
         {/* Rating + Stats */}

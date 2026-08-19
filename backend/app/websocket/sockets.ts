@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import { bus } from './bus.ts';
-import { getAstrologerByEmail, getAstrologerSyncSnapshot, getUserSyncSnapshot, listPublicAstrologers, touchActivity } from '../services/realtimeStore.ts';
+import { getAstrologerByEmail, getAstrologerSyncSnapshot, getConsultation, getUserSyncSnapshot, listPublicAstrologers, touchActivity } from '../services/realtimeStore.ts';
 
 function resyncAstrologer(io: Server, astrologerId: number) {
   const snapshot = getAstrologerSyncSnapshot(astrologerId);
@@ -75,4 +75,11 @@ export function attachSockets(io: Server) {
   bus.onTyped('queue:expired', ({ entry, recommendations }) => io.to(userRoom(entry.userEmail)).emit('queue:expired', { recommendations }));
 
   bus.onTyped('notification:created', n => io.to(astroRoom(n.astrologerId)).emit('notification:created', n));
+
+  bus.onTyped('chat:message', message => {
+    const consultation = getConsultation(message.consultationId);
+    if (!consultation) return;
+    io.to(astroRoom(consultation.astrologerId)).emit('chat:message', message);
+    io.to(userRoom(consultation.userEmail)).emit('chat:message', message);
+  });
 }

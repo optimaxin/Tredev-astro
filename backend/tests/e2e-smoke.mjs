@@ -101,14 +101,82 @@ async function main() {
   const queuedCount = outcomes.filter(o => o === 'QUEUED').length;
   ok('concurrency: exactly one booking gets ASSIGNED under capacity=1', assignedCount === 1, `got outcomes: ${outcomes}`);
   ok('concurrency: the other two are QUEUED, never double-ASSIGNED', queuedCount === 2, `got outcomes: ${outcomes}`);
-  // Reset astrologer back to OFFLINE so re-running this script starts clean.
+  // Fully drain what this test consumed — otherwise the ASSIGNED consultation
+  // and two QUEUED entries linger and block every later test that also needs
+  // to book astrologer #1 (the only astrologer with a real login). Go OFFLINE
+  // *before* declining so declining doesn't cascade-promote the queue.
+  await post('/api/availability', { email: 'demo.astrologer@tredevastro.local', intent: 'OFFLINE' });
+  for (const r of race) {
+    if (r.json?.outcome === 'ASSIGNED') await post(`/api/consultations/${r.json.consultation.id}/decline`, { email: 'demo.astrologer@tredevastro.local' });
+    else if (r.json?.outcome === 'QUEUED') await post(`/api/queue/${r.json.entry.id}/cancel`, { email: r.json.entry.userEmail });
+  }
+
+  // Chat messages: book, accept, exchange messages, verify persistence +
+  // ownership boundaries (section 30 — never allow reading someone else's chat).
+  await post('/api/availability', { email: 'demo.astrologer@tredevastro.local', intent: 'ONLINE' });
+  const astroLogin = await post('/api/auth/login', { email: 'demo.astrologer@tredevastro.local', password: 'DevAstro@123' });
+  const astroToken = astroLogin.json?.data?.accessToken;
+
+  const chatBooking = await post('/api/consultations/request', {
+    requestId: `smoke-chat-${Date.now()}`, astrologerId: 1, userEmail: email, userName: 'Smoke Test', category: 'Career', type: 'chat',
+  });
+  const chatConsultationId = chatBooking.json?.consultation?.id;
+
+  const beforeAccept = await post(`/api/consultations/${chatConsultationId}/messages`, { content: 'Too early' }, accessToken);
+  ok('chat rejects messages before the astrologer accepts (409)', beforeAccept.status === 409);
+
+  await post(`/api/consultations/${chatConsultationId}/accept`, { email: 'demo.astrologer@tredevastro.local' });
+
+  const sent = await post(`/api/consultations/${chatConsultationId}/messages`, { content: 'Hello from smoke test' }, accessToken);
+  ok('user can send a chat message once accepted (201)', sent.status === 201);
+
+  const reply = await post(`/api/consultations/${chatConsultationId}/messages`, { content: 'Reply from astrologer' }, astroToken);
+  ok('astrologer can reply', reply.status === 201);
+
+  const history = await get(`/api/consultations/${chatConsultationId}/messages`, accessToken);
+  ok('message history returns both messages in order', history.json?.data?.length === 2 && history.json.data[0].senderRole === 'USER' && history.json.data[1].senderRole === 'ASTROLOGIST');
+
+  const noAuthHistory = await get(`/api/consultations/${chatConsultationId}/messages`);
+  ok('chat history requires auth (401)', noAuthHistory.status === 401);
+
+  const strangerReg = await post('/api/auth/register', { name: 'Stranger', email: `smoke-stranger-${Date.now()}@example.com`, password: 'password123' });
+  const strangerToken = strangerReg.json?.data?.accessToken;
+  const strangerRead = await get(`/api/consultations/${chatConsultationId}/messages`, strangerToken);
+  ok('an unrelated authenticated user cannot read someone else\'s chat (403)', strangerRead.status === 403);
+
+  // Drain this test's own consultation too, so re-running the script starts clean.
+  await post(`/api/consultations/${chatConsultationId}/end`, { email: 'demo.astrologer@tredevastro.local' });
   await post('/api/availability', { email: 'demo.astrologer@tredevastro.local', intent: 'OFFLINE' });
 
+  // Astrologer discovery/catalog
+  const catalog = await get('/api/astrologers/catalog');
+  ok('catalog list returns astrologers with pagination', catalog.status === 200 && Array.isArray(catalog.json?.data) && catalog.json.data.length > 0 && catalog.json.pagination?.total > 0);
+
+  const filtered = await get('/api/astrologers/catalog?category=Career');
+  ok('catalog filters by category', filtered.status === 200 && filtered.json.data.every(a => a.categories.includes('Career')));
+
+  const sorted = await get('/api/astrologers/catalog?sort=price&limit=10');
+  const prices = sorted.json?.data?.map(a => a.chatPrice) || [];
+  ok('catalog sorts by price ascending', prices.every((p, i) => i === 0 || p >= prices[i - 1]));
+
+  const singleProfile = await get('/api/astrologers/catalog/1');
+  ok('single astrologer profile returns expected shape', singleProfile.status === 200 && singleProfile.json?.data?.id === 1 && !('email' in singleProfile.json.data));
+
+  const missingProfile = await get('/api/astrologers/catalog/999999');
+  ok('unknown astrologer id returns 404', missingProfile.status === 404);
+
+  const badQuery = await get('/api/astrologers/catalog?limit=999');
+  ok('out-of-range limit is rejected (422)', badQuery.status === 422);
+
   console.log(`\n${pass} passed, ${fail} failed`);
-  process.exit(fail > 0 ? 1 : 0);
+  // ponytail: process.exitCode (not process.exit()) lets Node drain any
+  // still-open fetch keep-alive sockets on its own — forcing an immediate
+  // exit here crashes on some Windows/Node builds (libuv UV_HANDLE_CLOSING
+  // assertion) if a connection is still winding down.
+  process.exitCode = fail > 0 ? 1 : 0;
 }
 
 main().catch(e => {
   console.error('Smoke test crashed:', e);
-  process.exit(1);
+  process.exitCode = 1;
 });

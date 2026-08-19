@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../context/AppContext';
 import {
-  ASTROLOGERS,
   PRODUCTS,
   COURSES,
   REPORTS,
   BLOG_POSTS,
   PANCHANG
 } from '../data/mockData';
+import { useAstrologer } from '../hooks/useAstrologer';
 import styles from './PageRenderer.module.css';
 
 // Import landing sections
@@ -533,7 +533,10 @@ function KundliMatchingPage() {
 // 3. Astrologer Profile Page
 function AstrologerProfilePage({ id }: { id: any }) {
   const { setPage } = useAppContext();
-  const astrologer = ASTROLOGERS.find(a => a.id === Number(id)) || ASTROLOGERS[0];
+  const { astrologer, loading, notFound } = useAstrologer(id);
+
+  if (loading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
+  if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
 
   return (
     <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -637,8 +640,11 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const [activeSlot, setActiveSlot] = useState(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
 
-  const astrologer = ASTROLOGERS.find(a => a.id === Number(id)) || ASTROLOGERS[0];
+  if (astrologerLoading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
+  if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
+
   const live = publicStates[astrologer.id];
   const liveLabel = !live ? null : live.status === 'ONLINE_AVAILABLE' ? '🟢 Available now' : live.status === 'ONLINE_BUSY' ? '🟡 Currently busy' : live.status === 'AWAY' ? '⚪ Away' : '⚪ Offline';
 
@@ -823,7 +829,7 @@ function ConsultationWaitingPage() {
   const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry } = useRealtime();
 
   const astrologerId = userSync?.queueEntry?.astrologerId ?? userSync?.consultation?.astrologerId;
-  const astrologer = ASTROLOGERS.find(a => a.id === astrologerId);
+  const { astrologer } = useAstrologer(astrologerId);
 
   const goToAstrologer = (targetId: number) => {
     clearQueueExpired();

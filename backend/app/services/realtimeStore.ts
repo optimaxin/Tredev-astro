@@ -1,26 +1,34 @@
 import { randomUUID } from 'node:crypto';
-import { ASTROLOGERS } from '../core/seedAstrologers.ts';
+import { listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import * as consultationRepo from '../repositories/consultationRepository.ts';
+import * as queueRepo from '../repositories/queueRepository.ts';
+import * as notificationRepo from '../repositories/notificationRepository.ts';
+import * as processedRequestRepo from '../repositories/processedRequestRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
   AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
   EtaEstimate, NotificationKind, PublicAstrologerState, QueueEntry, RequestResult,
 } from '../models/types.ts';
 
-// ── In-memory store ──────────────────────────────────────────────────────
-// Everything here is authoritative. No client ever decides availability,
-// queue position, ETA, or consultation state — it only reflects what's
-// computed here. Kept fully synchronous (no `await` inside mutations) so
-// Node's single-threaded event loop gives us atomicity for free: two
-// requests can never interleave in the middle of a check-then-write, which
-// is what actually prevents the race conditions this spec calls out. If this
-// ever grows a real database, that guarantee has to be re-earned explicitly
-// (a transaction / row lock) — don't assume it carries over for free.
+// ── Astrologer live-session state ───────────────────────────────────────
+// Consultations, queue entries, notifications, and the request-idempotency
+// cache are all durable — they live in SQLite (see the repositories above)
+// so an active booking or a waiting user survives a server restart.
+//
+// Presence/session state below (intent, status, last-activity, away-flags,
+// recent-duration samples) stays in-memory: it's ephemeral by nature — an
+// astrologer's dashboard re-establishes "I'm online" on reconnect anyway,
+// so persisting it would just mean serving a stale presence signal after a
+// restart until the next heartbeat corrects it.
+//
+// Every mutation here (including the DB calls) stays fully synchronous — no
+// `await` anywhere in this file — so Node's single-threaded event loop still
+// gives atomicity for free, exactly as it did with the old in-memory Maps.
+// node:sqlite's DatabaseSync is synchronous for exactly this reason; if this
+// ever moves to an async driver (e.g. a Postgres client), that guarantee has
+// to be re-earned explicitly (a transaction / row lock).
 
 const astrologers = new Map<number, AstrologerRecord>();
-const consultationsById = new Map<string, Consultation>();
-const queueByAstrologer = new Map<number, QueueEntry[]>();
-const notificationsByAstrologer = new Map<number, AstrologerNotification[]>();
-const processedRequests = new Map<string, RequestResult>();
 
 const adminConfig: AdminConfig = {
   maxQueueWaitMinutes: 15,
@@ -35,43 +43,39 @@ const adminConfig: AdminConfig = {
 // engine and dashboards still have a full roster to reason about.
 const DEMO_ASTROLOGER_EMAIL = 'demo.astrologer@tredevastro.local';
 
-function seed() {
-  for (const a of ASTROLOGERS) {
-    const email = a.name === 'Astrologist Rahul Shastri' ? DEMO_ASTROLOGER_EMAIL : `astrologer${a.id}@tredevastro.local`;
-    astrologers.set(a.id, {
-      id: a.id,
-      name: a.name,
-      title: a.title,
-      category: a.category,
-      languages: a.languages,
-      consultationTypes: ['chat', 'voice', 'video'],
-      rating: a.rating,
-      experience: a.experience,
-      price: a.price,
-      avatar: a.avatar,
+// Called explicitly from main.ts, after migrations + catalog seeding have
+// run — NOT at module-load time, since the `astrologers` DB table doesn't
+// exist yet when this file is first imported.
+export function seedRealtimeStore() {
+  for (const row of listAllAstrologersRaw()) {
+    const email = row.name === 'Astrologist Rahul Shastri' ? DEMO_ASTROLOGER_EMAIL : `astrologer${row.id}@tredevastro.local`;
+    astrologers.set(row.id, {
+      id: row.id,
+      name: row.name,
+      title: row.title,
+      category: JSON.parse(row.categories),
+      languages: JSON.parse(row.languages),
+      consultationTypes: JSON.parse(row.consultation_types),
+      rating: row.rating,
+      experience: row.experience_years,
+      price: row.chat_price,
+      avatar: row.avatar,
       email,
       intent: 'OFFLINE',
       status: 'OFFLINE',
-      maxConcurrent: adminConfig.defaultMaxConcurrent,
+      maxConcurrent: row.max_concurrent,
       lastActivityAt: Date.now(),
       durationSamplesMs: [],
     });
-    queueByAstrologer.set(a.id, []);
-    notificationsByAstrologer.set(a.id, []);
   }
 }
-seed();
 
 const awayFlags = new Map<number, boolean>();
 
 // ── Derived state ────────────────────────────────────────────────────────
 
 export function countActive(astrologerId: number): number {
-  let n = 0;
-  for (const c of consultationsById.values()) {
-    if (c.astrologerId === astrologerId && (c.status === 'ASSIGNED' || c.status === 'ACCEPTED' || c.status === 'ACTIVE')) n++;
-  }
-  return n;
+  return consultationRepo.countActiveForAstrologer(astrologerId);
 }
 
 function recomputeStatus(astrologerId: number) {
@@ -98,7 +102,7 @@ export function toPublicState(astro: AstrologerRecord): PublicAstrologerState {
     status: astro.status,
     activeCount: countActive(astro.id),
     maxConcurrent: astro.maxConcurrent,
-    queueLength: (queueByAstrologer.get(astro.id) || []).filter(q => q.status === 'QUEUED').length,
+    queueLength: queueRepo.listQueuedForAstrologer(astro.id).length,
   };
 }
 
@@ -143,26 +147,22 @@ export function touchActivity(astrologerId: number) {
 
 function createNotification(astrologerId: number, kind: NotificationKind, message: string, relatedConsultationId?: string, idSuffix?: string) {
   const id = `notif-${relatedConsultationId || astrologerId}-${idSuffix || kind}-${idSuffix ? '' : Date.now()}`;
-  const list = notificationsByAstrologer.get(astrologerId) || [];
-  if (list.some(n => n.id === id)) return; // idempotent — never double-notify the same event
+  if (notificationRepo.notificationExists(id)) return; // idempotent — never double-notify the same event
   const entry: AstrologerNotification = { id, astrologerId, kind, message, relatedConsultationId, read: false, createdAt: Date.now() };
-  list.unshift(entry);
-  notificationsByAstrologer.set(astrologerId, list);
+  notificationRepo.insertNotification(entry);
   bus.emitTyped('notification:created', entry);
 }
 
 export function listNotifications(astrologerId: number) {
-  return notificationsByAstrologer.get(astrologerId) || [];
+  return notificationRepo.listNotificationsForAstrologer(astrologerId);
 }
 
 export function markNotificationRead(astrologerId: number, notificationId: string) {
-  const list = notificationsByAstrologer.get(astrologerId) || [];
-  const n = list.find(x => x.id === notificationId);
-  if (n) n.read = true;
+  notificationRepo.markNotificationRead(astrologerId, notificationId);
 }
 
 export function markAllNotificationsRead(astrologerId: number) {
-  for (const n of notificationsByAstrologer.get(astrologerId) || []) n.read = true;
+  notificationRepo.markAllNotificationsRead(astrologerId);
 }
 
 // ── ETA ───────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export function calcEta(astro: AstrologerRecord, positionIndexZeroBased: number)
   const hasHistory = astro.durationSamplesMs.length > 0;
   const avgMs = hasHistory ? mean(astro.durationSamplesMs) : adminConfig.defaultConsultationMinutes * 60_000;
 
-  const activeConsultations = Array.from(consultationsById.values()).filter(c => c.astrologerId === astro.id && c.status === 'ACTIVE' && c.startedAt);
+  const activeConsultations = consultationRepo.findActiveStartedForAstrologer(astro.id);
   const elapsed = activeConsultations.map(c => Date.now() - (c.startedAt as number));
   const headStart = elapsed.length ? Math.max(0, avgMs - Math.min(...elapsed)) : (countActive(astro.id) > 0 ? avgMs : 0);
 
@@ -228,7 +228,7 @@ export interface RequestParams {
 }
 
 export function requestConsultation(params: RequestParams): RequestResult {
-  const cached = processedRequests.get(params.requestId);
+  const cached = processedRequestRepo.getProcessedResult(params.requestId);
   if (cached) return cached; // idempotency — retries/duplicate submits never double-book
 
   const astro = astrologers.get(params.astrologerId);
@@ -243,16 +243,14 @@ export function requestConsultation(params: RequestParams): RequestResult {
       id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
       category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
     };
-    const queue = queueByAstrologer.get(astro.id) || [];
-    queue.push(entry);
-    queueByAstrologer.set(astro.id, queue);
-    const position = queue.filter(q => q.status === 'QUEUED').findIndex(q => q.id === entry.id) + 1;
+    queueRepo.insertQueueEntry(entry);
+    const position = queueRepo.listQueuedForAstrologer(astro.id).findIndex(q => q.id === entry.id) + 1;
     const eta = calcEta(astro, position - 1);
     bus.emitTyped('queue:position', { entry, position, eta });
     createNotification(astro.id, 'queue_waiting', `${params.userName} is waiting in your queue.`, undefined, `queue-${entry.id}`);
     result = { outcome: 'QUEUED', entry, position, eta };
   }
-  processedRequests.set(params.requestId, result);
+  processedRequestRepo.saveProcessedResult(params.requestId, result);
   return result;
 }
 
@@ -261,7 +259,7 @@ function createConsultation(astrologerId: number, params: Omit<RequestParams, 'a
     id: randomUUID(), astrologerId, userEmail: params.userEmail, userName: params.userName,
     category: params.category, type: params.type, status: 'ASSIGNED', fromQueue, requestId: params.requestId, createdAt: Date.now(),
   };
-  consultationsById.set(consultation.id, consultation);
+  consultationRepo.insertConsultation(consultation);
   recomputeStatus(astrologerId);
   bus.emitTyped('chat:assigned', consultation);
   createNotification(astrologerId, 'chat_request', `${params.userName} wants to start a consultation.`, consultation.id, `assign-${consultation.id}`);
@@ -269,7 +267,7 @@ function createConsultation(astrologerId: number, params: Omit<RequestParams, 'a
 }
 
 export function getConsultation(id: string) {
-  return consultationsById.get(id);
+  return consultationRepo.findConsultationById(id);
 }
 
 function assertOwnership(consultation: Consultation | undefined, astrologerEmail: string): Consultation {
@@ -280,11 +278,12 @@ function assertOwnership(consultation: Consultation | undefined, astrologerEmail
 }
 
 export function acceptConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationsById.get(consultationId), astrologerEmail);
+  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot accept a consultation in status ${c.status}`);
   c.status = 'ACTIVE';
   c.acceptedAt = Date.now();
   c.startedAt = Date.now();
+  consultationRepo.updateConsultation(c);
   touchActivity(c.astrologerId);
   bus.emitTyped('chat:accepted', c);
   bus.emitTyped('chat:started', c);
@@ -292,10 +291,11 @@ export function acceptConsultation(consultationId: string, astrologerEmail: stri
 }
 
 export function declineConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationsById.get(consultationId), astrologerEmail);
+  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot decline a consultation in status ${c.status}`);
   c.status = 'DECLINED';
   c.endedAt = Date.now();
+  consultationRepo.updateConsultation(c);
   touchActivity(c.astrologerId);
   recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:declined', c);
@@ -304,10 +304,11 @@ export function declineConsultation(consultationId: string, astrologerEmail: str
 }
 
 export function endConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationsById.get(consultationId), astrologerEmail);
+  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ACTIVE') throw new Error(`Cannot end a consultation in status ${c.status}`);
   c.status = 'COMPLETED';
   c.endedAt = Date.now();
+  consultationRepo.updateConsultation(c);
   if (c.startedAt) {
     const astro = astrologers.get(c.astrologerId);
     if (astro) {
@@ -324,22 +325,20 @@ export function endConsultation(consultationId: string, astrologerEmail: string)
 }
 
 export function cancelQueueEntry(entryId: string, userEmail: string) {
-  for (const [astrologerId, queue] of queueByAstrologer.entries()) {
-    const entry = queue.find(q => q.id === entryId);
-    if (!entry) continue;
-    if (entry.userEmail.toLowerCase() !== userEmail.toLowerCase()) throw new Error('Not authorized for this queue entry');
-    if (entry.status !== 'QUEUED') return entry;
-    entry.status = 'CANCELLED';
-    broadcastQueuePositions(astrologerId);
-    return entry;
-  }
-  throw new Error('Queue entry not found');
+  const entry = queueRepo.findQueueEntryById(entryId);
+  if (!entry) throw new Error('Queue entry not found');
+  if (entry.userEmail.toLowerCase() !== userEmail.toLowerCase()) throw new Error('Not authorized for this queue entry');
+  if (entry.status !== 'QUEUED') return entry;
+  entry.status = 'CANCELLED';
+  queueRepo.updateQueueEntry(entry);
+  broadcastQueuePositions(entry.astrologerId);
+  return entry;
 }
 
 function broadcastQueuePositions(astrologerId: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return;
-  const waiting = (queueByAstrologer.get(astrologerId) || []).filter(q => q.status === 'QUEUED');
+  const waiting = queueRepo.listQueuedForAstrologer(astrologerId);
   waiting.forEach((entry, idx) => {
     const eta = calcEta(astro, idx);
     bus.emitTyped('queue:position', { entry, position: idx + 1, eta });
@@ -349,15 +348,16 @@ function broadcastQueuePositions(astrologerId: number) {
 export function processQueue(astrologerId: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return;
-  const queue = queueByAstrologer.get(astrologerId) || [];
   while (astro.status !== 'OFFLINE' && astro.intent === 'ONLINE' && countActive(astrologerId) < astro.maxConcurrent) {
-    const next = queue.find(q => q.status === 'QUEUED');
+    const [next] = queueRepo.listQueuedForAstrologer(astrologerId);
     if (!next) break;
     next.status = 'PROMOTED';
+    queueRepo.updateQueueEntry(next);
     const consultation = createConsultation(astrologerId, {
       requestId: next.requestId, userEmail: next.userEmail, userName: next.userName, category: next.category, type: next.type,
     }, true);
     next.promotedConsultationId = consultation.id;
+    queueRepo.updateQueueEntry(next);
     bus.emitTyped('queue:promoted', { entry: next, consultation });
   }
   broadcastQueuePositions(astrologerId);
@@ -380,18 +380,18 @@ export function runMaintenanceTick(now = Date.now()) {
     }
   }
 
-  for (const [astrologerId, queue] of queueByAstrologer.entries()) {
-    const maxWaitMs = adminConfig.maxQueueWaitMinutes * 60_000;
-    for (const entry of queue) {
-      if (entry.status === 'QUEUED' && now - entry.joinedAt > maxWaitMs) {
+  const maxWaitMs = adminConfig.maxQueueWaitMinutes * 60_000;
+  for (const astro of astrologers.values()) {
+    const queued = queueRepo.listQueuedForAstrologer(astro.id);
+    for (const entry of queued) {
+      if (now - entry.joinedAt > maxWaitMs) {
         entry.status = 'EXPIRED';
-        const astro = astrologers.get(astrologerId);
-        const category = entry.category;
-        const recs = astro ? getRecommendations(category, astro.id).astrologers : [];
+        queueRepo.updateQueueEntry(entry);
+        const recs = getRecommendations(entry.category, astro.id).astrologers;
         bus.emitTyped('queue:expired', { entry, recommendations: recs });
       }
     }
-    broadcastQueuePositions(astrologerId);
+    if (queued.length > 0) broadcastQueuePositions(astro.id);
   }
 }
 
@@ -400,9 +400,9 @@ export function runMaintenanceTick(now = Date.now()) {
 export function getAstrologerSyncSnapshot(astrologerId: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return null;
-  const active = Array.from(consultationsById.values()).find(c => c.astrologerId === astrologerId && (c.status === 'ACCEPTED' || c.status === 'ACTIVE'));
-  const pendingAssignments = Array.from(consultationsById.values()).filter(c => c.astrologerId === astrologerId && c.status === 'ASSIGNED');
-  const queue = (queueByAstrologer.get(astrologerId) || []).filter(q => q.status === 'QUEUED');
+  const active = consultationRepo.findActiveOrAcceptedForAstrologer(astrologerId);
+  const pendingAssignments = consultationRepo.findAssignedForAstrologer(astrologerId);
+  const queue = queueRepo.listQueuedForAstrologer(astrologerId);
   return {
     status: astro.status,
     intent: astro.intent,
@@ -414,16 +414,11 @@ export function getAstrologerSyncSnapshot(astrologerId: number) {
 }
 
 export function getUserSyncSnapshot(userEmail: string) {
-  const consultation = Array.from(consultationsById.values())
-    .filter(c => c.userEmail.toLowerCase() === userEmail.toLowerCase())
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  for (const [astrologerId, queue] of queueByAstrologer.entries()) {
-    const idx = queue.filter(q => q.status === 'QUEUED').findIndex(q => q.userEmail.toLowerCase() === userEmail.toLowerCase());
-    if (idx >= 0) {
-      const astro = astrologers.get(astrologerId);
-      const entry = queue.filter(q => q.status === 'QUEUED')[idx];
-      return { consultation: consultation || null, queueEntry: entry, position: idx + 1, eta: astro ? calcEta(astro, idx) : null };
-    }
+  const consultation = consultationRepo.findLatestForUser(userEmail);
+  const queued = queueRepo.findQueuedEntryForUserEmail(userEmail);
+  if (queued) {
+    const astro = astrologers.get(queued.entry.astrologerId);
+    return { consultation: consultation || null, queueEntry: queued.entry, position: queued.position, eta: astro ? calcEta(astro, queued.position - 1) : null };
   }
   return { consultation: consultation || null, queueEntry: null, position: null, eta: null };
 }
@@ -443,6 +438,7 @@ export function setMaxConcurrent(astrologerId: number, maxConcurrent: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) throw new Error('Unknown astrologer');
   astro.maxConcurrent = Math.max(1, maxConcurrent);
+  updateMaxConcurrent(astrologerId, astro.maxConcurrent);
   recomputeStatus(astrologerId);
   processQueue(astrologerId);
   return astro.maxConcurrent;

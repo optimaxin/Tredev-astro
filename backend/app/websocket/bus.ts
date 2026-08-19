@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import type {
   AstrologerNotification, Consultation, EtaEstimate, PublicAstrologerState, QueueEntry,
 } from '../models/types.ts';
+import type { ChatMessage } from '../models/chatMessage.ts';
 
 // Business logic (store.ts) never talks to Socket.IO directly — it publishes
 // on this bus, and sockets.ts subscribes and forwards to the right rooms.
@@ -26,6 +27,7 @@ interface BusEvents {
   'notification:created': [AstrologerNotification];
   'astrologer:away': [{ astrologerId: number }];
   'astrologer:idle-warning': [{ astrologerId: number }];
+  'chat:message': [ChatMessage];
 }
 
 class TypedBus extends EventEmitter {
