@@ -18,7 +18,7 @@ CREATE TABLE astrologers (
   review_count INTEGER NOT NULL DEFAULT 0,
   experience_years INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
-  created_at INTEGER NOT NULL
+  created_at BIGINT NOT NULL
 );
 CREATE INDEX idx_astrologers_active ON astrologers(is_active);
 CREATE INDEX idx_astrologers_rating ON astrologers(rating);

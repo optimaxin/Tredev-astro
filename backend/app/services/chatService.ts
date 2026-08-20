@@ -33,14 +33,14 @@ function assertChatOpen(consultation: Consultation) {
   }
 }
 
-export function listMessages(consultationId: string, requesterEmail: string): ChatMessage[] {
-  const consultation = getConsultation(consultationId);
+export async function listMessages(consultationId: string, requesterEmail: string): Promise<ChatMessage[]> {
+  const consultation = await getConsultation(consultationId);
   assertParticipant(consultation, requesterEmail);
   return listMessagesForConsultation(consultationId);
 }
 
-export function sendMessage(consultationId: string, requesterEmail: string, content: string): ChatMessage {
-  const { consultation, role } = assertParticipant(getConsultation(consultationId), requesterEmail);
+export async function sendMessage(consultationId: string, requesterEmail: string, content: string): Promise<ChatMessage> {
+  const { consultation, role } = assertParticipant(await getConsultation(consultationId), requesterEmail);
   assertChatOpen(consultation);
 
   const message: ChatMessage = {
@@ -52,7 +52,7 @@ export function sendMessage(consultationId: string, requesterEmail: string, cont
     content,
     createdAt: Date.now(),
   };
-  insertMessage(message);
+  await insertMessage(message);
   bus.emitTyped('chat:message', message);
   return message;
 }

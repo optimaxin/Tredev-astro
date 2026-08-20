@@ -27,46 +27,46 @@ function astrologerIdFromEmail(email: string | undefined, res: import('express')
   return astro;
 }
 
-router.get('/astrologers', (_req, res) => {
-  res.json(listPublicAstrologers());
+router.get('/astrologers', async (_req, res) => {
+  res.json(await listPublicAstrologers());
 });
 
-router.get('/astrologers/:id/recommendations', (req, res) => {
+router.get('/astrologers/:id/recommendations', async (req, res) => {
   const category = String(req.query.category || '');
-  const result = getRecommendations(category, Number(req.params.id));
+  const result = await getRecommendations(category, Number(req.params.id));
   res.json(result);
 });
 
-router.post('/availability', (req, res) => {
+router.post('/availability', async (req, res) => {
   const { email, intent } = req.body as { email?: string; intent?: 'ONLINE' | 'OFFLINE' };
   const astro = astrologerIdFromEmail(email, res);
   if (!astro) return;
   if (intent !== 'ONLINE' && intent !== 'OFFLINE') return res.status(400).json({ error: 'intent must be ONLINE or OFFLINE' });
-  const status = setIntent(astro.id, intent);
+  const status = await setIntent(astro.id, intent);
   res.json({ status });
 });
 
-router.post('/heartbeat', (req, res) => {
+router.post('/heartbeat', async (req, res) => {
   const { email } = req.body as { email?: string };
   const astro = astrologerIdFromEmail(email, res);
   if (!astro) return;
-  touchActivity(astro.id);
+  await touchActivity(astro.id);
   res.json({ ok: true });
 });
 
-router.get('/astrologers/:id/sync', (req, res) => {
-  const snapshot = getAstrologerSyncSnapshot(Number(req.params.id));
+router.get('/astrologers/:id/sync', async (req, res) => {
+  const snapshot = await getAstrologerSyncSnapshot(Number(req.params.id));
   if (!snapshot) return res.status(404).json({ error: 'Unknown astrologer' });
   res.json(snapshot);
 });
 
-router.get('/users/sync', (req, res) => {
+router.get('/users/sync', async (req, res) => {
   const email = String(req.query.email || '');
   if (!email) return res.status(400).json({ error: 'email is required' });
-  res.json(getUserSyncSnapshot(email));
+  res.json(await getUserSyncSnapshot(email));
 });
 
-router.post('/consultations/request', (req, res) => {
+router.post('/consultations/request', async (req, res) => {
   const { requestId, astrologerId, userEmail, userName, category, type } = req.body as {
     requestId?: string; astrologerId?: number; userEmail?: string; userName?: string; category?: string; type?: ConsultationType;
   };
@@ -75,59 +75,59 @@ router.post('/consultations/request', (req, res) => {
   }
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
-  const result = requestConsultation({ requestId, astrologerId, userEmail, userName, category, type });
+  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type });
   res.json(result);
 });
 
-router.post('/consultations/:id/accept', (req, res) => {
+router.post('/consultations/:id/accept', async (req, res) => {
   try {
-    res.json(acceptConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await acceptConsultation(req.params.id, String(req.body.email || '')));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
-router.post('/consultations/:id/decline', (req, res) => {
+router.post('/consultations/:id/decline', async (req, res) => {
   try {
-    res.json(declineConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await declineConsultation(req.params.id, String(req.body.email || '')));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
-router.post('/consultations/:id/end', (req, res) => {
+router.post('/consultations/:id/end', async (req, res) => {
   try {
-    res.json(endConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await endConsultation(req.params.id, String(req.body.email || '')));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
-router.post('/queue/:id/cancel', (req, res) => {
+router.post('/queue/:id/cancel', async (req, res) => {
   try {
-    res.json(cancelQueueEntry(req.params.id, String(req.body.email || '')));
+    res.json(await cancelQueueEntry(req.params.id, String(req.body.email || '')));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
-router.get('/notifications', (req, res) => {
+router.get('/notifications', async (req, res) => {
   const astro = astrologerIdFromEmail(String(req.query.email || ''), res);
   if (!astro) return;
-  res.json(listNotifications(astro.id));
+  res.json(await listNotifications(astro.id));
 });
 
-router.post('/notifications/:id/read', (req, res) => {
+router.post('/notifications/:id/read', async (req, res) => {
   const astro = astrologerIdFromEmail(String(req.body.email || ''), res);
   if (!astro) return;
-  markNotificationRead(astro.id, req.params.id);
+  await markNotificationRead(astro.id, req.params.id);
   res.json({ ok: true });
 });
 
-router.post('/notifications/read-all', (req, res) => {
+router.post('/notifications/read-all', async (req, res) => {
   const astro = astrologerIdFromEmail(String(req.body.email || ''), res);
   if (!astro) return;
-  markAllNotificationsRead(astro.id);
+  await markAllNotificationsRead(astro.id);
   res.json({ ok: true });
 });
 
@@ -141,9 +141,9 @@ router.post('/admin/config', (req, res) => {
   res.json(updateAdminConfig(req.body || {}));
 });
 
-router.post('/admin/astrologers/:id/max-concurrent', (req, res) => {
+router.post('/admin/astrologers/:id/max-concurrent', async (req, res) => {
   try {
-    const max = setMaxConcurrent(Number(req.params.id), Number(req.body.maxConcurrent));
+    const max = await setMaxConcurrent(Number(req.params.id), Number(req.body.maxConcurrent));
     res.json({ maxConcurrent: max });
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });

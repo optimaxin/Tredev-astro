@@ -1,48 +1,72 @@
-import { readdirSync, readFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DatabaseSync } from 'node:sqlite';
+import pg from 'pg';
 import { config } from './config.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(here, '..', '..', 'migrations');
 
-mkdirSync(dirname(config.dbPath), { recursive: true });
+export const pool = new pg.Pool({
+  connectionString: config.databaseUrl,
+  // Supabase's direct-connection endpoint requires TLS; it uses a
+  // certificate chain Node doesn't have pinned locally, so this trusts the
+  // connection without verifying the chain. Fine for this project's threat
+  // model (a hosted DB reached over its own TLS-encrypted connection); a
+  // stricter deployment would pin Supabase's CA certificate instead.
+  ssl: { rejectUnauthorized: false },
+});
 
-// Node's built-in SQLite (stable since Node 22.5) — no native module build
-// step required, which matters on machines without a C++ toolchain installed.
-export const db = new DatabaseSync(config.dbPath);
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
+// Repository functions normally run against the shared pool, but a caller
+// that needs to participate in an existing transaction (see requestConsultation
+// in realtimeStore.ts) passes the transaction's client instead — both expose
+// the same `.query()` shape, so every repository function accepts either.
+export type Executor = Pick<pg.Pool | pg.PoolClient, 'query'>;
 
-// node:sqlite's DatabaseSync has no built-in `.transaction()` helper (unlike
-// better-sqlite3) — wrap manually, rolling back on any thrown error.
-export function withTransaction<T>(fn: () => T): T {
-  db.exec('BEGIN');
+export async function query<T extends pg.QueryResultRow = any>(text: string, params?: unknown[], executor: Executor = pool): Promise<T[]> {
+  const result = await executor.query<T>(text, params);
+  return result.rows;
+}
+
+export async function queryOne<T extends pg.QueryResultRow = any>(text: string, params?: unknown[], executor: Executor = pool): Promise<T | undefined> {
+  const rows = await query<T>(text, params, executor);
+  return rows[0];
+}
+
+// Runs `fn` inside a single transaction on a dedicated connection. Required
+// for any multi-statement write, and for anything that needs a row lock
+// (`SELECT ... FOR UPDATE`) to stay race-free under concurrent requests —
+// see requestConsultation() in realtimeStore.ts, which is exactly why this
+// exists: node:sqlite's synchronous calls used to make that safe for free,
+// but Postgres's async driver has a real `await` gap a second request can
+// land in, so the lock has to be earned explicitly now.
+export async function withTransaction<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
   try {
-    const result = fn();
-    db.exec('COMMIT');
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
     return result;
   } catch (e) {
-    db.exec('ROLLBACK');
+    await client.query('ROLLBACK');
     throw e;
+  } finally {
+    client.release();
   }
 }
 
 // Minimal versioned migration runner: every .sql file in migrations/ runs at
-// most once, in filename order, inside its own transaction. Real enough for
-// section 57 (versioned, reversible-by-writing-a-new-migration, documented
-// by the filename) without pulling in a full migration framework.
-export function runMigrations() {
-  db.exec('CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)');
-  const applied = new Set(db.prepare('SELECT name FROM _migrations').all().map((r: any) => r.name));
+// most once, in filename order, inside its own transaction.
+export async function runMigrations() {
+  await pool.query('CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at BIGINT NOT NULL)');
+  const applied = new Set((await query<{ name: string }>('SELECT name FROM _migrations')).map(r => r.name));
   const files = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
   for (const file of files) {
     if (applied.has(file)) continue;
     const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf-8');
-    withTransaction(() => {
-      db.exec(sql);
-      db.prepare('INSERT INTO _migrations (name, applied_at) VALUES (?, ?)').run(file, Date.now());
+    await withTransaction(async client => {
+      await client.query(sql);
+      await client.query('INSERT INTO _migrations (name, applied_at) VALUES ($1, $2)', [file, Date.now()]);
     });
     console.log(`[db] applied migration ${file}`);
   }

@@ -17,8 +17,8 @@ function fail(res: import('express').Response, status: number, code: string, mes
 // realtime routes below it, which still trust a client-supplied email — see
 // their own comments). This is a new, more sensitive surface, so it's built
 // on the real auth system from the start rather than the legacy trust model.
-function requesterEmail(req: import('express').Request, res: import('express').Response): string | null {
-  const user = getPublicUser(req.user!.id);
+async function requesterEmail(req: import('express').Request, res: import('express').Response): Promise<string | null> {
+  const user = await getPublicUser(req.user!.id);
   if (!user) {
     fail(res, 401, 'UNAUTHORIZED', 'User account not found');
     return null;
@@ -26,11 +26,11 @@ function requesterEmail(req: import('express').Request, res: import('express').R
   return user.email;
 }
 
-chatRouter.get('/:id/messages', requireAuth, (req, res) => {
-  const email = requesterEmail(req, res);
+chatRouter.get('/:id/messages', requireAuth, async (req, res) => {
+  const email = await requesterEmail(req, res);
   if (!email) return;
   try {
-    res.json({ success: true, data: listMessages(String(req.params.id), email) });
+    res.json({ success: true, data: await listMessages(String(req.params.id), email) });
   } catch (e) {
     if (e instanceof ChatError) return fail(res, e.status, 'CHAT_ERROR', e.message);
     throw e;
@@ -41,12 +41,12 @@ const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(4000),
 });
 
-chatRouter.post('/:id/messages', requireAuth, messageLimiter, (req, res) => {
-  const email = requesterEmail(req, res);
+chatRouter.post('/:id/messages', requireAuth, messageLimiter, async (req, res) => {
+  const email = await requesterEmail(req, res);
   if (!email) return;
   try {
     const body = sendMessageSchema.parse(req.body);
-    const message = sendMessage(String(req.params.id), email, body.content);
+    const message = await sendMessage(String(req.params.id), email, body.content);
     res.status(201).json({ success: true, data: message });
   } catch (e) {
     if (e instanceof ChatError) return fail(res, e.status, 'CHAT_ERROR', e.message);

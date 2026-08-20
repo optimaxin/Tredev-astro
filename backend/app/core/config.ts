@@ -15,7 +15,13 @@ export const config = {
   port: Number(process.env.PORT) || 4000,
   nodeEnv: process.env.NODE_ENV || 'development',
   clientOrigins: [process.env.CLIENT_ORIGIN || 'http://localhost:5173', 'http://localhost:5174'],
-  dbPath: process.env.DATABASE_URL || './data/tredevastro.db',
+  // No dev fallback here — there's no meaningful local default for a hosted
+  // Postgres connection string. Set it in backend/.env (see .env.example).
+  databaseUrl: (() => {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error('Missing required environment variable: DATABASE_URL (see backend/.env.example)');
+    return url;
+  })(),
   jwt: {
     // Dev-only fallback secrets so the app runs out of the box locally.
     // Production MUST set real secrets — required() throws otherwise.

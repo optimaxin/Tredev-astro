@@ -25,10 +25,10 @@ const registerSchema = z.object({
   password: z.string().min(8).max(200),
 });
 
-authRouter.post('/register', authLimiter, (req, res) => {
+authRouter.post('/register', authLimiter, async (req, res) => {
   try {
     const body = registerSchema.parse(req.body);
-    const result = register(body);
+    const result = await register(body);
     res.status(201).json({ success: true, data: result });
   } catch (e) {
     handleAuthError(e, res);
@@ -40,10 +40,10 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-authRouter.post('/login', authLimiter, (req, res) => {
+authRouter.post('/login', authLimiter, async (req, res) => {
   try {
     const body = loginSchema.parse(req.body);
-    const result = login(body.email, body.password);
+    const result = await login(body.email, body.password);
     res.json({ success: true, data: result });
   } catch (e) {
     handleAuthError(e, res);
@@ -52,37 +52,37 @@ authRouter.post('/login', authLimiter, (req, res) => {
 
 const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 
-authRouter.post('/refresh', (req, res) => {
+authRouter.post('/refresh', async (req, res) => {
   try {
     const body = refreshSchema.parse(req.body);
-    res.json({ success: true, data: refresh(body.refreshToken) });
+    res.json({ success: true, data: await refresh(body.refreshToken) });
   } catch (e) {
     handleAuthError(e, res);
   }
 });
 
-authRouter.post('/logout', (req, res) => {
+authRouter.post('/logout', async (req, res) => {
   try {
     const body = refreshSchema.parse(req.body);
-    logout(body.refreshToken);
+    await logout(body.refreshToken);
     res.json({ success: true, data: { ok: true } });
   } catch (e) {
     handleAuthError(e, res);
   }
 });
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  const user = getPublicUser(req.user!.id);
+authRouter.get('/me', requireAuth, async (req, res) => {
+  const user = await getPublicUser(req.user!.id);
   if (!user) return fail(res, 404, 'NOT_FOUND', 'User not found');
   res.json({ success: true, data: user });
 });
 
 const forgotSchema = z.object({ email: z.string().trim().email() });
 
-authRouter.post('/forgot-password', authLimiter, (req, res) => {
+authRouter.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const body = forgotSchema.parse(req.body);
-    const result = requestPasswordReset(body.email);
+    const result = await requestPasswordReset(body.email);
     // Always the same response shape whether or not the email exists.
     res.json({ success: true, data: { message: 'If that email exists, a reset link has been sent.', ...result } });
   } catch (e) {
@@ -92,10 +92,10 @@ authRouter.post('/forgot-password', authLimiter, (req, res) => {
 
 const resetSchema = z.object({ token: z.string().min(1), newPassword: z.string().min(8).max(200) });
 
-authRouter.post('/reset-password', authLimiter, (req, res) => {
+authRouter.post('/reset-password', authLimiter, async (req, res) => {
   try {
     const body = resetSchema.parse(req.body);
-    resetPassword(body.token, body.newPassword);
+    await resetPassword(body.token, body.newPassword);
     res.json({ success: true, data: { ok: true } });
   } catch (e) {
     handleAuthError(e, res);

@@ -17,10 +17,10 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
 // Order matters: tables must exist before anything seeds into them, and the
 // catalog must be seeded before the realtime store reads it.
-runMigrations();
-seedDemoAccounts();
-seedAstrologerCatalog();
-seedRealtimeStore();
+await runMigrations();
+await seedDemoAccounts();
+await seedAstrologerCatalog();
+await seedRealtimeStore();
 
 const app = express();
 app.use(cors({ origin: [CLIENT_ORIGIN, 'http://localhost:5174'] }));
@@ -39,7 +39,7 @@ attachSockets(io);
 // polling loop is actually correct — it's server-side maintenance ticking
 // against in-memory state, not a client polling the network. Push to
 // clients still happens exclusively through the event bus → WebSocket path.
-setInterval(() => runMaintenanceTick(), 20_000);
+setInterval(() => { runMaintenanceTick().catch(console.error); }, 20_000);
 
 httpServer.listen(PORT, () => {
   console.log(`[tredevastro-realtime] listening on http://localhost:${PORT}`);

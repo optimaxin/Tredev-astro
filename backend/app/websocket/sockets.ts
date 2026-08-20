@@ -2,8 +2,8 @@ import type { Server, Socket } from 'socket.io';
 import { bus } from './bus.ts';
 import { getAstrologerByEmail, getAstrologerSyncSnapshot, getConsultation, getUserSyncSnapshot, listPublicAstrologers, touchActivity } from '../services/realtimeStore.ts';
 
-function resyncAstrologer(io: Server, astrologerId: number) {
-  const snapshot = getAstrologerSyncSnapshot(astrologerId);
+async function resyncAstrologer(io: Server, astrologerId: number) {
+  const snapshot = await getAstrologerSyncSnapshot(astrologerId);
   if (snapshot) io.to(astroRoom(astrologerId)).emit('sync:astrologer', snapshot);
 }
 
@@ -27,7 +27,7 @@ export function attachSockets(io: Server) {
 
     // Every client gets live public availability updates for astrologer cards.
     socket.join(PUBLIC_ROOM);
-    socket.emit('sync:public', listPublicAstrologers());
+    listPublicAstrologers().then(state => socket.emit('sync:public', state)).catch(console.error);
 
     if (email) {
       socket.join(userRoom(email));
@@ -36,13 +36,13 @@ export function attachSockets(io: Server) {
         const astro = getAstrologerByEmail(email);
         if (astro) {
           socket.join(astroRoom(astro.id));
-          touchActivity(astro.id);
+          touchActivity(astro.id).catch(console.error);
           // Reconnect recovery: re-send everything this client needs without
           // requiring a manual page refresh.
-          socket.emit('sync:astrologer', getAstrologerSyncSnapshot(astro.id));
+          getAstrologerSyncSnapshot(astro.id).then(snapshot => socket.emit('sync:astrologer', snapshot)).catch(console.error);
         }
       } else {
-        socket.emit('sync:user', getUserSyncSnapshot(email));
+        getUserSyncSnapshot(email).then(snapshot => socket.emit('sync:user', snapshot)).catch(console.error);
       }
     }
   });
@@ -59,16 +59,16 @@ export function attachSockets(io: Server) {
   // different client-side slices, and only one of them was being kept fresh).
   bus.onTyped('astrologer:status', state => {
     io.to(PUBLIC_ROOM).emit('astrologer:status', state);
-    resyncAstrologer(io, state.id);
+    resyncAstrologer(io, state.id).catch(console.error);
   });
-  bus.onTyped('astrologer:away', ({ astrologerId }) => { io.to(astroRoom(astrologerId)).emit('astrologer:away'); resyncAstrologer(io, astrologerId); });
+  bus.onTyped('astrologer:away', ({ astrologerId }) => { io.to(astroRoom(astrologerId)).emit('astrologer:away'); resyncAstrologer(io, astrologerId).catch(console.error); });
   bus.onTyped('astrologer:idle-warning', ({ astrologerId }) => io.to(astroRoom(astrologerId)).emit('astrologer:idle-warning'));
 
-  bus.onTyped('chat:assigned', c => { io.to(astroRoom(c.astrologerId)).emit('chat:assigned', c); resyncAstrologer(io, c.astrologerId); });
-  bus.onTyped('chat:accepted', c => { io.to(astroRoom(c.astrologerId)).emit('chat:accepted', c); io.to(userRoom(c.userEmail)).emit('chat:accepted', c); resyncAstrologer(io, c.astrologerId); });
+  bus.onTyped('chat:assigned', c => { io.to(astroRoom(c.astrologerId)).emit('chat:assigned', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
+  bus.onTyped('chat:accepted', c => { io.to(astroRoom(c.astrologerId)).emit('chat:accepted', c); io.to(userRoom(c.userEmail)).emit('chat:accepted', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
   bus.onTyped('chat:started', c => { io.to(astroRoom(c.astrologerId)).emit('chat:started', c); io.to(userRoom(c.userEmail)).emit('chat:started', c); });
-  bus.onTyped('chat:declined', c => { io.to(userRoom(c.userEmail)).emit('chat:declined', c); resyncAstrologer(io, c.astrologerId); });
-  bus.onTyped('chat:ended', c => { io.to(astroRoom(c.astrologerId)).emit('chat:ended', c); io.to(userRoom(c.userEmail)).emit('chat:ended', c); resyncAstrologer(io, c.astrologerId); });
+  bus.onTyped('chat:declined', c => { io.to(userRoom(c.userEmail)).emit('chat:declined', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
+  bus.onTyped('chat:ended', c => { io.to(astroRoom(c.astrologerId)).emit('chat:ended', c); io.to(userRoom(c.userEmail)).emit('chat:ended', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
 
   bus.onTyped('queue:position', ({ entry, position, eta }) => io.to(userRoom(entry.userEmail)).emit('queue:position', { position, eta }));
   bus.onTyped('queue:promoted', ({ entry, consultation }) => io.to(userRoom(entry.userEmail)).emit('queue:promoted', consultation));
@@ -77,9 +77,10 @@ export function attachSockets(io: Server) {
   bus.onTyped('notification:created', n => io.to(astroRoom(n.astrologerId)).emit('notification:created', n));
 
   bus.onTyped('chat:message', message => {
-    const consultation = getConsultation(message.consultationId);
-    if (!consultation) return;
-    io.to(astroRoom(consultation.astrologerId)).emit('chat:message', message);
-    io.to(userRoom(consultation.userEmail)).emit('chat:message', message);
+    getConsultation(message.consultationId).then(consultation => {
+      if (!consultation) return;
+      io.to(astroRoom(consultation.astrologerId)).emit('chat:message', message);
+      io.to(userRoom(consultation.userEmail)).emit('chat:message', message);
+    }).catch(console.error);
   });
 }

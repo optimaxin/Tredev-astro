@@ -1,4 +1,4 @@
-import { db } from '../core/db.ts';
+import { query, queryOne, type Executor } from '../core/db.ts';
 import type { AstrologerNotification, NotificationKind } from '../models/types.ts';
 
 interface NotificationDbRow {
@@ -8,7 +8,7 @@ interface NotificationDbRow {
   message: string;
   related_consultation_id: string | null;
   read: number;
-  created_at: number;
+  created_at: string; // BIGINT comes back as a string from node-postgres
 }
 
 function fromRow(row: NotificationDbRow): AstrologerNotification {
@@ -19,40 +19,37 @@ function fromRow(row: NotificationDbRow): AstrologerNotification {
     message: row.message,
     relatedConsultationId: row.related_consultation_id ?? undefined,
     read: !!row.read,
-    createdAt: row.created_at,
+    createdAt: Number(row.created_at),
   };
 }
 
-export function notificationExists(id: string): boolean {
-  return !!db.prepare('SELECT 1 FROM astrologer_notifications WHERE id = ?').get(id);
+export async function notificationExists(id: string, executor?: Executor): Promise<boolean> {
+  const row = await queryOne('SELECT 1 FROM astrologer_notifications WHERE id = $1', [id], executor);
+  return !!row;
 }
 
-export function insertNotification(n: AstrologerNotification) {
-  db.prepare(`
-    INSERT INTO astrologer_notifications (id, astrologer_id, kind, message, related_consultation_id, read, created_at)
-    VALUES (@id, @astrologerId, @kind, @message, @relatedConsultationId, @read, @createdAt)
-  `).run({
-    id: n.id,
-    astrologerId: n.astrologerId,
-    kind: n.kind,
-    message: n.message,
-    relatedConsultationId: n.relatedConsultationId ?? null,
-    read: n.read ? 1 : 0,
-    createdAt: n.createdAt,
-  });
+// Accepts an optional `executor` — createNotification() in realtimeStore.ts
+// runs the idempotency check + insert together from inside the same booking
+// transaction when called during requestConsultation, so a concurrent
+// duplicate can't slip in between the check and the write.
+export async function insertNotification(n: AstrologerNotification, executor?: Executor) {
+  await query(
+    `INSERT INTO astrologer_notifications (id, astrologer_id, kind, message, related_consultation_id, read, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [n.id, n.astrologerId, n.kind, n.message, n.relatedConsultationId ?? null, n.read ? 1 : 0, n.createdAt],
+    executor
+  );
 }
 
-export function listNotificationsForAstrologer(astrologerId: number): AstrologerNotification[] {
-  const rows = db
-    .prepare('SELECT * FROM astrologer_notifications WHERE astrologer_id = ? ORDER BY created_at DESC')
-    .all(astrologerId) as unknown as NotificationDbRow[];
+export async function listNotificationsForAstrologer(astrologerId: number): Promise<AstrologerNotification[]> {
+  const rows = await query<NotificationDbRow>('SELECT * FROM astrologer_notifications WHERE astrologer_id = $1 ORDER BY created_at DESC', [astrologerId]);
   return rows.map(fromRow);
 }
 
-export function markNotificationRead(astrologerId: number, id: string) {
-  db.prepare('UPDATE astrologer_notifications SET read = 1 WHERE astrologer_id = ? AND id = ?').run(astrologerId, id);
+export async function markNotificationRead(astrologerId: number, id: string) {
+  await query('UPDATE astrologer_notifications SET read = 1 WHERE astrologer_id = $1 AND id = $2', [astrologerId, id]);
 }
 
-export function markAllNotificationsRead(astrologerId: number) {
-  db.prepare('UPDATE astrologer_notifications SET read = 1 WHERE astrologer_id = ?').run(astrologerId);
+export async function markAllNotificationsRead(astrologerId: number) {
+  await query('UPDATE astrologer_notifications SET read = 1 WHERE astrologer_id = $1', [astrologerId]);
 }

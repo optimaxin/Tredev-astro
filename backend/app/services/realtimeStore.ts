@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { withTransaction, type Executor } from '../core/db.ts';
 import { listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
@@ -12,21 +13,21 @@ import type {
 
 // ── Astrologer live-session state ───────────────────────────────────────
 // Consultations, queue entries, notifications, and the request-idempotency
-// cache are all durable — they live in SQLite (see the repositories above)
-// so an active booking or a waiting user survives a server restart.
+// cache all live in Postgres (see the repositories above) so an active
+// booking or a waiting user survives a server restart.
 //
 // Presence/session state below (intent, status, last-activity, away-flags,
 // recent-duration samples) stays in-memory: it's ephemeral by nature — an
-// astrologer's dashboard re-establishes "I'm online" on reconnect anyway,
-// so persisting it would just mean serving a stale presence signal after a
-// restart until the next heartbeat corrects it.
+// astrologer's dashboard re-establishes "I'm online" on reconnect anyway.
 //
-// Every mutation here (including the DB calls) stays fully synchronous — no
-// `await` anywhere in this file — so Node's single-threaded event loop still
-// gives atomicity for free, exactly as it did with the old in-memory Maps.
-// node:sqlite's DatabaseSync is synchronous for exactly this reason; if this
-// ever moves to an async driver (e.g. a Postgres client), that guarantee has
-// to be re-earned explicitly (a transaction / row lock).
+// CONCURRENCY: node:sqlite used to make the booking decision race-free for
+// free, because its calls were synchronous and Node is single-threaded — no
+// `await` gap for a second request to land in. Postgres's driver is async,
+// which reopens exactly that gap, so requestConsultation() and processQueue()
+// below explicitly take a `SELECT ... FOR UPDATE` row lock on the astrologer
+// for the duration of the capacity check + write. That lock (not
+// single-threadedness) is what now guarantees section 51's "capacity=1 never
+// double-assigns" property.
 
 const astrologers = new Map<number, AstrologerRecord>();
 
@@ -46,8 +47,8 @@ const DEMO_ASTROLOGER_EMAIL = 'demo.astrologer@tredevastro.local';
 // Called explicitly from main.ts, after migrations + catalog seeding have
 // run — NOT at module-load time, since the `astrologers` DB table doesn't
 // exist yet when this file is first imported.
-export function seedRealtimeStore() {
-  for (const row of listAllAstrologersRaw()) {
+export async function seedRealtimeStore() {
+  for (const row of await listAllAstrologersRaw()) {
     const email = row.name === 'Astrologist Rahul Shastri' ? DEMO_ASTROLOGER_EMAIL : `astrologer${row.id}@tredevastro.local`;
     astrologers.set(row.id, {
       id: row.id,
@@ -72,13 +73,23 @@ export function seedRealtimeStore() {
 
 const awayFlags = new Map<number, boolean>();
 
-// ── Derived state ────────────────────────────────────────────────────────
-
-export function countActive(astrologerId: number): number {
-  return consultationRepo.countActiveForAstrologer(astrologerId);
+// Locks the astrologer's catalog row for the lifetime of a transaction —
+// any other concurrent request for the SAME astrologer serializes behind
+// this until `fn` commits or rolls back.
+async function withAstrologerLock<T>(astrologerId: number, fn: (client: Executor) => Promise<T>): Promise<T> {
+  return withTransaction(async client => {
+    await client.query('SELECT id FROM astrologers WHERE id = $1 FOR UPDATE', [astrologerId]);
+    return fn(client);
+  });
 }
 
-function recomputeStatus(astrologerId: number) {
+// ── Derived state ────────────────────────────────────────────────────────
+
+export function countActive(astrologerId: number, executor?: Executor): Promise<number> {
+  return consultationRepo.countActiveForAstrologer(astrologerId, executor);
+}
+
+async function recomputeStatus(astrologerId: number, executor?: Executor) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return;
   const prev = astro.status;
@@ -86,28 +97,32 @@ function recomputeStatus(astrologerId: number) {
     astro.status = 'OFFLINE';
   } else if (awayFlags.get(astrologerId)) {
     astro.status = 'AWAY';
-  } else if (countActive(astrologerId) >= astro.maxConcurrent) {
+  } else if ((await countActive(astrologerId, executor)) >= astro.maxConcurrent) {
     astro.status = 'ONLINE_BUSY';
   } else {
     astro.status = 'ONLINE_AVAILABLE';
   }
   if (prev !== astro.status) {
-    bus.emitTyped('astrologer:status', toPublicState(astro));
+    bus.emitTyped('astrologer:status', await toPublicState(astro, executor));
   }
 }
 
-export function toPublicState(astro: AstrologerRecord): PublicAstrologerState {
+export async function toPublicState(astro: AstrologerRecord, executor?: Executor): Promise<PublicAstrologerState> {
+  const [activeCount, queue] = await Promise.all([
+    countActive(astro.id, executor),
+    queueRepo.listQueuedForAstrologer(astro.id, executor),
+  ]);
   return {
     id: astro.id,
     status: astro.status,
-    activeCount: countActive(astro.id),
+    activeCount,
     maxConcurrent: astro.maxConcurrent,
-    queueLength: queueRepo.listQueuedForAstrologer(astro.id).length,
+    queueLength: queue.length,
   };
 }
 
-export function listPublicAstrologers(): PublicAstrologerState[] {
-  return Array.from(astrologers.values()).map(toPublicState);
+export function listPublicAstrologers(): Promise<PublicAstrologerState[]> {
+  return Promise.all(Array.from(astrologers.values()).map(a => toPublicState(a)));
 }
 
 export function getAstrologer(id: number) {
@@ -120,36 +135,36 @@ export function getAstrologerByEmail(email: string) {
 
 // ── Availability ─────────────────────────────────────────────────────────
 
-export function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLINE') {
+export async function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLINE') {
   const astro = astrologers.get(astrologerId);
   if (!astro) throw new Error('Unknown astrologer');
   astro.intent = intent;
   astro.lastActivityAt = Date.now();
   if (intent === 'ONLINE') awayFlags.set(astrologerId, false);
-  recomputeStatus(astrologerId);
+  await recomputeStatus(astrologerId);
   // Coming back online (or going offline while a stale queue exists from
   // before) should re-check whether anyone waiting can now be promoted.
-  if (intent === 'ONLINE') processQueue(astrologerId);
+  if (intent === 'ONLINE') await processQueue(astrologerId);
   return astro.status;
 }
 
-export function touchActivity(astrologerId: number) {
+export async function touchActivity(astrologerId: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return;
   astro.lastActivityAt = Date.now();
   if (awayFlags.get(astrologerId)) {
     awayFlags.set(astrologerId, false);
-    recomputeStatus(astrologerId);
+    await recomputeStatus(astrologerId);
   }
 }
 
 // ── Notifications ────────────────────────────────────────────────────────
 
-function createNotification(astrologerId: number, kind: NotificationKind, message: string, relatedConsultationId?: string, idSuffix?: string) {
+async function createNotification(astrologerId: number, kind: NotificationKind, message: string, relatedConsultationId?: string, idSuffix?: string, executor?: Executor) {
   const id = `notif-${relatedConsultationId || astrologerId}-${idSuffix || kind}-${idSuffix ? '' : Date.now()}`;
-  if (notificationRepo.notificationExists(id)) return; // idempotent — never double-notify the same event
+  if (await notificationRepo.notificationExists(id, executor)) return; // idempotent — never double-notify the same event
   const entry: AstrologerNotification = { id, astrologerId, kind, message, relatedConsultationId, read: false, createdAt: Date.now() };
-  notificationRepo.insertNotification(entry);
+  await notificationRepo.insertNotification(entry, executor);
   bus.emitTyped('notification:created', entry);
 }
 
@@ -158,11 +173,11 @@ export function listNotifications(astrologerId: number) {
 }
 
 export function markNotificationRead(astrologerId: number, notificationId: string) {
-  notificationRepo.markNotificationRead(astrologerId, notificationId);
+  return notificationRepo.markNotificationRead(astrologerId, notificationId);
 }
 
 export function markAllNotificationsRead(astrologerId: number) {
-  notificationRepo.markAllNotificationsRead(astrologerId);
+  return notificationRepo.markAllNotificationsRead(astrologerId);
 }
 
 // ── ETA ───────────────────────────────────────────────────────────────────
@@ -171,13 +186,16 @@ function mean(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
-export function calcEta(astro: AstrologerRecord, positionIndexZeroBased: number): EtaEstimate {
+export async function calcEta(astro: AstrologerRecord, positionIndexZeroBased: number, executor?: Executor): Promise<EtaEstimate> {
   const hasHistory = astro.durationSamplesMs.length > 0;
   const avgMs = hasHistory ? mean(astro.durationSamplesMs) : adminConfig.defaultConsultationMinutes * 60_000;
 
-  const activeConsultations = consultationRepo.findActiveStartedForAstrologer(astro.id);
+  const [activeConsultations, activeCount] = await Promise.all([
+    consultationRepo.findActiveStartedForAstrologer(astro.id, executor),
+    countActive(astro.id, executor),
+  ]);
   const elapsed = activeConsultations.map(c => Date.now() - (c.startedAt as number));
-  const headStart = elapsed.length ? Math.max(0, avgMs - Math.min(...elapsed)) : (countActive(astro.id) > 0 ? avgMs : 0);
+  const headStart = elapsed.length ? Math.max(0, avgMs - Math.min(...elapsed)) : (activeCount > 0 ? avgMs : 0);
 
   const roundsAhead = Math.floor(positionIndexZeroBased / Math.max(1, astro.maxConcurrent));
   const estimateMs = headStart + avgMs * roundsAhead;
@@ -195,7 +213,7 @@ export function calcEta(astro: AstrologerRecord, positionIndexZeroBased: number)
 
 const STATUS_RANK: Record<string, number> = { ONLINE_AVAILABLE: 0, ONLINE_BUSY: 1, AWAY: 2, OFFLINE: 3 };
 
-export function getRecommendations(category: string, excludeAstrologerId: number, limit = 3) {
+export async function getRecommendations(category: string, excludeAstrologerId: number, limit = 3) {
   const excluded = astrologers.get(excludeAstrologerId);
   const all = Array.from(astrologers.values()).filter(a => a.id !== excludeAstrologerId);
   let candidates = all.filter(a => a.category.includes(category));
@@ -213,7 +231,9 @@ export function getRecommendations(category: string, excludeAstrologerId: number
     const bPriceDiff = excluded ? Math.abs(b.price - excluded.price) : 0;
     return aPriceDiff - bPriceDiff;
   });
-  return { usedFallback, astrologers: candidates.slice(0, limit).map(a => ({ ...toPublicState(a), name: a.name, title: a.title, category: a.category, rating: a.rating, experience: a.experience, price: a.price, avatar: a.avatar })) };
+  const top = candidates.slice(0, limit);
+  const states = await Promise.all(top.map(a => toPublicState(a)));
+  return { usedFallback, astrologers: top.map((a, i) => ({ ...states[i], name: a.name, title: a.title, category: a.category, rating: a.rating, experience: a.experience, price: a.price, avatar: a.avatar })) };
 }
 
 // ── Booking / queue ──────────────────────────────────────────────────────
@@ -227,42 +247,50 @@ export interface RequestParams {
   type: ConsultationType;
 }
 
-export function requestConsultation(params: RequestParams): RequestResult {
-  const cached = processedRequestRepo.getProcessedResult(params.requestId);
-  if (cached) return cached; // idempotency — retries/duplicate submits never double-book
-
+export async function requestConsultation(params: RequestParams): Promise<RequestResult> {
   const astro = astrologers.get(params.astrologerId);
-  let result: RequestResult;
-  if (!astro || astro.status === 'OFFLINE' || astro.status === 'AWAY') {
-    result = { outcome: 'UNAVAILABLE', reason: !astro ? 'Unknown astrologer' : `Astrologer is ${astro.status.toLowerCase()}` };
-  } else if (countActive(astro.id) < astro.maxConcurrent) {
-    const consultation = createConsultation(astro.id, params, false);
-    result = { outcome: 'ASSIGNED', consultation };
-  } else {
-    const entry: QueueEntry = {
-      id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
-      category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
-    };
-    queueRepo.insertQueueEntry(entry);
-    const position = queueRepo.listQueuedForAstrologer(astro.id).findIndex(q => q.id === entry.id) + 1;
-    const eta = calcEta(astro, position - 1);
-    bus.emitTyped('queue:position', { entry, position, eta });
-    createNotification(astro.id, 'queue_waiting', `${params.userName} is waiting in your queue.`, undefined, `queue-${entry.id}`);
-    result = { outcome: 'QUEUED', entry, position, eta };
+  if (!astro) {
+    const result: RequestResult = { outcome: 'UNAVAILABLE', reason: 'Unknown astrologer' };
+    return result;
   }
-  processedRequestRepo.saveProcessedResult(params.requestId, result);
-  return result;
+
+  return withAstrologerLock(astro.id, async client => {
+    const cached = await processedRequestRepo.getProcessedResult(params.requestId, client);
+    if (cached) return cached; // idempotency — retries/duplicate submits never double-book
+
+    let result: RequestResult;
+    if (astro.status === 'OFFLINE' || astro.status === 'AWAY') {
+      result = { outcome: 'UNAVAILABLE', reason: `Astrologer is ${astro.status.toLowerCase()}` };
+    } else if ((await countActive(astro.id, client)) < astro.maxConcurrent) {
+      const consultation = await createConsultation(astro.id, params, false, client);
+      result = { outcome: 'ASSIGNED', consultation };
+    } else {
+      const entry: QueueEntry = {
+        id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
+        category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
+      };
+      await queueRepo.insertQueueEntry(entry, client);
+      const queued = await queueRepo.listQueuedForAstrologer(astro.id, client);
+      const position = queued.findIndex(q => q.id === entry.id) + 1;
+      const eta = await calcEta(astro, position - 1, client);
+      bus.emitTyped('queue:position', { entry, position, eta });
+      await createNotification(astro.id, 'queue_waiting', `${params.userName} is waiting in your queue.`, undefined, `queue-${entry.id}`, client);
+      result = { outcome: 'QUEUED', entry, position, eta };
+    }
+    await processedRequestRepo.saveProcessedResult(params.requestId, result, client);
+    return result;
+  });
 }
 
-function createConsultation(astrologerId: number, params: Omit<RequestParams, 'astrologerId'>, fromQueue: boolean): Consultation {
+async function createConsultation(astrologerId: number, params: Omit<RequestParams, 'astrologerId'>, fromQueue: boolean, executor?: Executor): Promise<Consultation> {
   const consultation: Consultation = {
     id: randomUUID(), astrologerId, userEmail: params.userEmail, userName: params.userName,
     category: params.category, type: params.type, status: 'ASSIGNED', fromQueue, requestId: params.requestId, createdAt: Date.now(),
   };
-  consultationRepo.insertConsultation(consultation);
-  recomputeStatus(astrologerId);
+  await consultationRepo.insertConsultation(consultation, executor);
+  await recomputeStatus(astrologerId, executor);
   bus.emitTyped('chat:assigned', consultation);
-  createNotification(astrologerId, 'chat_request', `${params.userName} wants to start a consultation.`, consultation.id, `assign-${consultation.id}`);
+  await createNotification(astrologerId, 'chat_request', `${params.userName} wants to start a consultation.`, consultation.id, `assign-${consultation.id}`, executor);
   return consultation;
 }
 
@@ -277,38 +305,38 @@ function assertOwnership(consultation: Consultation | undefined, astrologerEmail
   return consultation;
 }
 
-export function acceptConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
+export async function acceptConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
+  const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot accept a consultation in status ${c.status}`);
   c.status = 'ACTIVE';
   c.acceptedAt = Date.now();
   c.startedAt = Date.now();
-  consultationRepo.updateConsultation(c);
-  touchActivity(c.astrologerId);
+  await consultationRepo.updateConsultation(c);
+  await touchActivity(c.astrologerId);
   bus.emitTyped('chat:accepted', c);
   bus.emitTyped('chat:started', c);
   return c;
 }
 
-export function declineConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
+export async function declineConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
+  const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot decline a consultation in status ${c.status}`);
   c.status = 'DECLINED';
   c.endedAt = Date.now();
-  consultationRepo.updateConsultation(c);
-  touchActivity(c.astrologerId);
-  recomputeStatus(c.astrologerId);
+  await consultationRepo.updateConsultation(c);
+  await touchActivity(c.astrologerId);
+  await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:declined', c);
-  processQueue(c.astrologerId);
+  await processQueue(c.astrologerId);
   return c;
 }
 
-export function endConsultation(consultationId: string, astrologerEmail: string): Consultation {
-  const c = assertOwnership(consultationRepo.findConsultationById(consultationId), astrologerEmail);
+export async function endConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
+  const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ACTIVE') throw new Error(`Cannot end a consultation in status ${c.status}`);
   c.status = 'COMPLETED';
   c.endedAt = Date.now();
-  consultationRepo.updateConsultation(c);
+  await consultationRepo.updateConsultation(c);
   if (c.startedAt) {
     const astro = astrologers.get(c.astrologerId);
     if (astro) {
@@ -316,63 +344,76 @@ export function endConsultation(consultationId: string, astrologerEmail: string)
       if (astro.durationSamplesMs.length > 20) astro.durationSamplesMs.shift();
     }
   }
-  touchActivity(c.astrologerId);
-  recomputeStatus(c.astrologerId);
+  await touchActivity(c.astrologerId);
+  await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
-  createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
-  processQueue(c.astrologerId);
+  await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
+  await processQueue(c.astrologerId);
   return c;
 }
 
-export function cancelQueueEntry(entryId: string, userEmail: string) {
-  const entry = queueRepo.findQueueEntryById(entryId);
+export async function cancelQueueEntry(entryId: string, userEmail: string) {
+  const entry = await queueRepo.findQueueEntryById(entryId);
   if (!entry) throw new Error('Queue entry not found');
   if (entry.userEmail.toLowerCase() !== userEmail.toLowerCase()) throw new Error('Not authorized for this queue entry');
   if (entry.status !== 'QUEUED') return entry;
   entry.status = 'CANCELLED';
-  queueRepo.updateQueueEntry(entry);
-  broadcastQueuePositions(entry.astrologerId);
+  await queueRepo.updateQueueEntry(entry);
+  await broadcastQueuePositions(entry.astrologerId);
   return entry;
 }
 
-function broadcastQueuePositions(astrologerId: number) {
+async function broadcastQueuePositions(astrologerId: number, executor?: Executor) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return;
-  const waiting = queueRepo.listQueuedForAstrologer(astrologerId);
-  waiting.forEach((entry, idx) => {
-    const eta = calcEta(astro, idx);
+  const waiting = await queueRepo.listQueuedForAstrologer(astrologerId, executor);
+  await Promise.all(waiting.map(async (entry, idx) => {
+    const eta = await calcEta(astro, idx, executor);
     bus.emitTyped('queue:position', { entry, position: idx + 1, eta });
+  }));
+}
+
+// One locked attempt: if there's capacity and someone waiting, promote the
+// single oldest QUEUED entry. Returns whether it promoted anyone, so
+// processQueue can keep calling this until either is false.
+async function promoteOneIfCapacity(astrologerId: number): Promise<boolean> {
+  return withAstrologerLock(astrologerId, async client => {
+    const astro = astrologers.get(astrologerId);
+    if (!astro || astro.status === 'OFFLINE' || astro.intent !== 'ONLINE') return false;
+    if ((await countActive(astrologerId, client)) >= astro.maxConcurrent) return false;
+
+    const [next] = await queueRepo.listQueuedForAstrologer(astrologerId, client);
+    if (!next) return false;
+
+    next.status = 'PROMOTED';
+    await queueRepo.updateQueueEntry(next, client);
+    const consultation = await createConsultation(astrologerId, {
+      requestId: next.requestId, userEmail: next.userEmail, userName: next.userName, category: next.category, type: next.type,
+    }, true, client);
+    next.promotedConsultationId = consultation.id;
+    await queueRepo.updateQueueEntry(next, client);
+    bus.emitTyped('queue:promoted', { entry: next, consultation });
+    return true;
   });
 }
 
-export function processQueue(astrologerId: number) {
-  const astro = astrologers.get(astrologerId);
-  if (!astro) return;
-  while (astro.status !== 'OFFLINE' && astro.intent === 'ONLINE' && countActive(astrologerId) < astro.maxConcurrent) {
-    const [next] = queueRepo.listQueuedForAstrologer(astrologerId);
-    if (!next) break;
-    next.status = 'PROMOTED';
-    queueRepo.updateQueueEntry(next);
-    const consultation = createConsultation(astrologerId, {
-      requestId: next.requestId, userEmail: next.userEmail, userName: next.userName, category: next.category, type: next.type,
-    }, true);
-    next.promotedConsultationId = consultation.id;
-    queueRepo.updateQueueEntry(next);
-    bus.emitTyped('queue:promoted', { entry: next, consultation });
-  }
-  broadcastQueuePositions(astrologerId);
+export async function processQueue(astrologerId: number) {
+  // Each promotion takes its own lock rather than holding one lock across
+  // the whole loop — keeps any single transaction short.
+  while (await promoteOneIfCapacity(astrologerId)) { /* keep promoting while there's room and people waiting */ }
+  await broadcastQueuePositions(astrologerId);
 }
 
 // ── Periodic maintenance (auto-away, queue timeout) ──────────────────────
 
-export function runMaintenanceTick(now = Date.now()) {
+export async function runMaintenanceTick(now = Date.now()) {
   for (const astro of astrologers.values()) {
     if (astro.intent === 'ONLINE' && !awayFlags.get(astro.id)) {
       const idleMs = now - astro.lastActivityAt;
       const timeoutMs = adminConfig.awayTimeoutMinutes * 60_000;
       if (idleMs > timeoutMs) {
         awayFlags.set(astro.id, true);
-        recomputeStatus(astro.id);
+        await recomputeStatus(astro.id);
         bus.emitTyped('astrologer:away', { astrologerId: astro.id });
       } else if (idleMs > timeoutMs * 0.7) {
         bus.emitTyped('astrologer:idle-warning', { astrologerId: astro.id });
@@ -382,43 +423,49 @@ export function runMaintenanceTick(now = Date.now()) {
 
   const maxWaitMs = adminConfig.maxQueueWaitMinutes * 60_000;
   for (const astro of astrologers.values()) {
-    const queued = queueRepo.listQueuedForAstrologer(astro.id);
+    const queued = await queueRepo.listQueuedForAstrologer(astro.id);
     for (const entry of queued) {
       if (now - entry.joinedAt > maxWaitMs) {
         entry.status = 'EXPIRED';
-        queueRepo.updateQueueEntry(entry);
-        const recs = getRecommendations(entry.category, astro.id).astrologers;
+        await queueRepo.updateQueueEntry(entry);
+        const recs = (await getRecommendations(entry.category, astro.id)).astrologers;
         bus.emitTyped('queue:expired', { entry, recommendations: recs });
       }
     }
-    if (queued.length > 0) broadcastQueuePositions(astro.id);
+    if (queued.length > 0) await broadcastQueuePositions(astro.id);
   }
 }
 
 // ── Reconnect / resync ────────────────────────────────────────────────────
 
-export function getAstrologerSyncSnapshot(astrologerId: number) {
+export async function getAstrologerSyncSnapshot(astrologerId: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) return null;
-  const active = consultationRepo.findActiveOrAcceptedForAstrologer(astrologerId);
-  const pendingAssignments = consultationRepo.findAssignedForAstrologer(astrologerId);
-  const queue = queueRepo.listQueuedForAstrologer(astrologerId);
+  const [active, pendingAssignments, queue, notifications] = await Promise.all([
+    consultationRepo.findActiveOrAcceptedForAstrologer(astrologerId),
+    consultationRepo.findAssignedForAstrologer(astrologerId),
+    queueRepo.listQueuedForAstrologer(astrologerId),
+    listNotifications(astrologerId),
+  ]);
+  const queueWithPositions = await Promise.all(queue.map(async (entry, idx) => ({ entry, position: idx + 1, eta: await calcEta(astro, idx) })));
   return {
     status: astro.status,
     intent: astro.intent,
     activeConsultation: active || null,
     pendingAssignments,
-    queue: queue.map((entry, idx) => ({ entry, position: idx + 1, eta: calcEta(astro, idx) })),
-    notifications: listNotifications(astrologerId),
+    queue: queueWithPositions,
+    notifications,
   };
 }
 
-export function getUserSyncSnapshot(userEmail: string) {
-  const consultation = consultationRepo.findLatestForUser(userEmail);
-  const queued = queueRepo.findQueuedEntryForUserEmail(userEmail);
+export async function getUserSyncSnapshot(userEmail: string) {
+  const [consultation, queued] = await Promise.all([
+    consultationRepo.findLatestForUser(userEmail),
+    queueRepo.findQueuedEntryForUserEmail(userEmail),
+  ]);
   if (queued) {
     const astro = astrologers.get(queued.entry.astrologerId);
-    return { consultation: consultation || null, queueEntry: queued.entry, position: queued.position, eta: astro ? calcEta(astro, queued.position - 1) : null };
+    return { consultation: consultation || null, queueEntry: queued.entry, position: queued.position, eta: astro ? await calcEta(astro, queued.position - 1) : null };
   }
   return { consultation: consultation || null, queueEntry: null, position: null, eta: null };
 }
@@ -434,12 +481,12 @@ export function updateAdminConfig(partial: Partial<AdminConfig>) {
   return getAdminConfig();
 }
 
-export function setMaxConcurrent(astrologerId: number, maxConcurrent: number) {
+export async function setMaxConcurrent(astrologerId: number, maxConcurrent: number) {
   const astro = astrologers.get(astrologerId);
   if (!astro) throw new Error('Unknown astrologer');
   astro.maxConcurrent = Math.max(1, maxConcurrent);
-  updateMaxConcurrent(astrologerId, astro.maxConcurrent);
-  recomputeStatus(astrologerId);
-  processQueue(astrologerId);
+  await updateMaxConcurrent(astrologerId, astro.maxConcurrent);
+  await recomputeStatus(astrologerId);
+  await processQueue(astrologerId);
   return astro.maxConcurrent;
 }

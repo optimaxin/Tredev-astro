@@ -1,4 +1,4 @@
-import { db } from '../core/db.ts';
+import { query, queryOne, type Executor } from '../core/db.ts';
 import type { ConsultationType, QueueEntry, QueueEntryStatus } from '../models/types.ts';
 
 interface QueueEntryDbRow {
@@ -10,7 +10,7 @@ interface QueueEntryDbRow {
   type: string;
   status: string;
   request_id: string;
-  joined_at: number;
+  joined_at: string; // BIGINT comes back as a string from node-postgres
   promoted_consultation_id: string | null;
 }
 
@@ -24,55 +24,55 @@ function fromRow(row: QueueEntryDbRow): QueueEntry {
     type: row.type as ConsultationType,
     status: row.status as QueueEntryStatus,
     requestId: row.request_id,
-    joinedAt: row.joined_at,
+    joinedAt: Number(row.joined_at),
     promotedConsultationId: row.promoted_consultation_id ?? undefined,
   };
 }
 
-export function insertQueueEntry(e: QueueEntry) {
-  db.prepare(`
-    INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id)
-    VALUES (@id, @astrologerId, @userEmail, @userName, @category, @type, @status, @requestId, @joinedAt, @promotedConsultationId)
-  `).run({
-    id: e.id,
-    astrologerId: e.astrologerId,
-    userEmail: e.userEmail.toLowerCase(),
-    userName: e.userName,
-    category: e.category,
-    type: e.type,
-    status: e.status,
-    requestId: e.requestId,
-    joinedAt: e.joinedAt,
-    promotedConsultationId: e.promotedConsultationId ?? null,
-  });
+// Accepts an optional `executor` — requestConsultation in realtimeStore.ts
+// inserts the queue entry from inside the same locked transaction it used to
+// decide QUEUED, so the decision and the write stay atomic together.
+export async function insertQueueEntry(e: QueueEntry, executor?: Executor) {
+  await query(
+    `INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [e.id, e.astrologerId, e.userEmail.toLowerCase(), e.userName, e.category, e.type, e.status, e.requestId, e.joinedAt, e.promotedConsultationId ?? null],
+    executor
+  );
 }
 
-export function updateQueueEntry(e: QueueEntry) {
-  db.prepare('UPDATE queue_entries SET status = @status, promoted_consultation_id = @promotedConsultationId WHERE id = @id')
-    .run({ id: e.id, status: e.status, promotedConsultationId: e.promotedConsultationId ?? null });
+export async function updateQueueEntry(e: QueueEntry, executor?: Executor) {
+  await query(
+    'UPDATE queue_entries SET status = $1, promoted_consultation_id = $2 WHERE id = $3',
+    [e.status, e.promotedConsultationId ?? null, e.id],
+    executor
+  );
 }
 
-export function findQueueEntryById(id: string): QueueEntry | undefined {
-  const row = db.prepare('SELECT * FROM queue_entries WHERE id = ?').get(id) as QueueEntryDbRow | undefined;
+export async function findQueueEntryById(id: string): Promise<QueueEntry | undefined> {
+  const row = await queryOne<QueueEntryDbRow>('SELECT * FROM queue_entries WHERE id = $1', [id]);
   return row ? fromRow(row) : undefined;
 }
 
 // Ordered by joined_at so position/FIFO semantics match the old array's
 // natural insertion order — this ORDER BY is load-bearing, not cosmetic.
-export function listQueuedForAstrologer(astrologerId: number): QueueEntry[] {
-  const rows = db
-    .prepare(`SELECT * FROM queue_entries WHERE astrologer_id = ? AND status = 'QUEUED' ORDER BY joined_at ASC`)
-    .all(astrologerId) as unknown as QueueEntryDbRow[];
+export async function listQueuedForAstrologer(astrologerId: number, executor?: Executor): Promise<QueueEntry[]> {
+  const rows = await query<QueueEntryDbRow>(
+    `SELECT * FROM queue_entries WHERE astrologer_id = $1 AND status = 'QUEUED' ORDER BY joined_at ASC`,
+    [astrologerId],
+    executor
+  );
   return rows.map(fromRow);
 }
 
-export function findQueuedEntryForUserEmail(userEmail: string): { entry: QueueEntry; position: number } | undefined {
-  const row = db
-    .prepare(`SELECT * FROM queue_entries WHERE status = 'QUEUED' AND user_email = ? ORDER BY joined_at ASC LIMIT 1`)
-    .get(userEmail.toLowerCase()) as QueueEntryDbRow | undefined;
+export async function findQueuedEntryForUserEmail(userEmail: string): Promise<{ entry: QueueEntry; position: number } | undefined> {
+  const row = await queryOne<QueueEntryDbRow>(
+    `SELECT * FROM queue_entries WHERE status = 'QUEUED' AND user_email = $1 ORDER BY joined_at ASC LIMIT 1`,
+    [userEmail.toLowerCase()]
+  );
   if (!row) return undefined;
   const entry = fromRow(row);
-  const queued = listQueuedForAstrologer(entry.astrologerId);
+  const queued = await listQueuedForAstrologer(entry.astrologerId);
   const position = queued.findIndex(q => q.id === entry.id) + 1;
   return { entry, position };
 }

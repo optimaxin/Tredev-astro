@@ -21,12 +21,12 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-astrologersCatalogRouter.get('/catalog', (req, res) => {
+astrologersCatalogRouter.get('/catalog', async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
   }
-  const { rows, total } = listAstrologers(parsed.data);
+  const { rows, total } = await listAstrologers(parsed.data);
   res.json({
     success: true,
     data: rows.map(toPublicAstrologerProfile),
@@ -34,12 +34,12 @@ astrologersCatalogRouter.get('/catalog', (req, res) => {
   });
 });
 
-astrologersCatalogRouter.get('/catalog/:id', (req, res) => {
+astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'id must be an integer' } });
   }
-  const row = findAstrologerById(id);
+  const row = await findAstrologerById(id);
   if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Astrologer not found' } });
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
 });

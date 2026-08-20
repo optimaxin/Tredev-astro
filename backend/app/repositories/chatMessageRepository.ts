@@ -1,4 +1,4 @@
-import { db } from '../core/db.ts';
+import { query } from '../core/db.ts';
 import type { ChatMessage, MessageType, SenderRole } from '../models/chatMessage.ts';
 
 interface ChatMessageDbRow {
@@ -8,8 +8,8 @@ interface ChatMessageDbRow {
   sender_role: string;
   message_type: string;
   content: string;
-  created_at: number;
-  read_at: number | null;
+  created_at: string; // BIGINT comes back as a string from node-postgres
+  read_at: string | null;
 }
 
 function fromRow(row: ChatMessageDbRow): ChatMessage {
@@ -20,30 +20,20 @@ function fromRow(row: ChatMessageDbRow): ChatMessage {
     senderRole: row.sender_role as SenderRole,
     messageType: row.message_type as MessageType,
     content: row.content,
-    createdAt: row.created_at,
-    readAt: row.read_at ?? undefined,
+    createdAt: Number(row.created_at),
+    readAt: row.read_at ? Number(row.read_at) : undefined,
   };
 }
 
-export function insertMessage(m: ChatMessage) {
-  db.prepare(`
-    INSERT INTO chat_messages (id, consultation_id, sender_email, sender_role, message_type, content, created_at, read_at)
-    VALUES (@id, @consultationId, @senderEmail, @senderRole, @messageType, @content, @createdAt, @readAt)
-  `).run({
-    id: m.id,
-    consultationId: m.consultationId,
-    senderEmail: m.senderEmail.toLowerCase(),
-    senderRole: m.senderRole,
-    messageType: m.messageType,
-    content: m.content,
-    createdAt: m.createdAt,
-    readAt: m.readAt ?? null,
-  });
+export async function insertMessage(m: ChatMessage) {
+  await query(
+    `INSERT INTO chat_messages (id, consultation_id, sender_email, sender_role, message_type, content, created_at, read_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [m.id, m.consultationId, m.senderEmail.toLowerCase(), m.senderRole, m.messageType, m.content, m.createdAt, m.readAt ?? null]
+  );
 }
 
-export function listMessagesForConsultation(consultationId: string): ChatMessage[] {
-  const rows = db
-    .prepare('SELECT * FROM chat_messages WHERE consultation_id = ? ORDER BY created_at ASC')
-    .all(consultationId) as unknown as ChatMessageDbRow[];
+export async function listMessagesForConsultation(consultationId: string): Promise<ChatMessage[]> {
+  const rows = await query<ChatMessageDbRow>('SELECT * FROM chat_messages WHERE consultation_id = $1 ORDER BY created_at ASC', [consultationId]);
   return rows.map(fromRow);
 }

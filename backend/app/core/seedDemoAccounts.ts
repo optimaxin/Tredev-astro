@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { withTransaction } from './db.ts';
 import { createUser, findUserByEmail } from '../repositories/userRepository.ts';
 
 // Mirrors the three DEMO_ACCOUNTS previously hardcoded in the frontend's
@@ -12,11 +11,9 @@ const DEMO_ACCOUNTS = [
   { name: 'Admin Priya Verma', email: 'demo.admin@tredevastro.local', password: 'DevAdmin@123', role: 'ADMIN' as const },
 ];
 
-export function seedDemoAccounts() {
-  withTransaction(() => {
-    for (const acc of DEMO_ACCOUNTS) {
-      if (findUserByEmail(acc.email)) continue;
-      createUser({ name: acc.name, email: acc.email, passwordHash: bcrypt.hashSync(acc.password, 12), role: acc.role });
-    }
-  });
+export async function seedDemoAccounts() {
+  for (const acc of DEMO_ACCOUNTS) {
+    if (await findUserByEmail(acc.email)) continue;
+    await createUser({ name: acc.name, email: acc.email, passwordHash: bcrypt.hashSync(acc.password, 12), role: acc.role });
+  }
 }

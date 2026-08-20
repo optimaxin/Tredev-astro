@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch app/main.ts",
-    "start": "tsx app/main.ts",
-    "test": "tsx tests/auth.test.ts",
+    "dev": "tsx --env-file-if-exists=.env watch app/main.ts",
+    "start": "tsx --env-file-if-exists=.env app/main.ts",
+    "test": "tsx --env-file-if-exists=.env tests/auth.test.ts",
     "test:e2e": "node tests/e2e-smoke.mjs"
   },
   "dependencies": {
@@ -14,6 +14,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.0",
     "socket.io": "^4.8.3",
     "zod": "^3.24.1"
   },
@@ -23,6 +24,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.12",
     "typescript": "~6.0.2"
   }

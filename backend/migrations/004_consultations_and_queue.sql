@@ -13,10 +13,10 @@ CREATE TABLE consultations (
   status TEXT NOT NULL,
   from_queue INTEGER NOT NULL DEFAULT 0,
   request_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  accepted_at INTEGER,
-  started_at INTEGER,
-  ended_at INTEGER
+  created_at BIGINT NOT NULL,
+  accepted_at BIGINT,
+  started_at BIGINT,
+  ended_at BIGINT
 );
 CREATE INDEX idx_consultations_astrologer_id ON consultations(astrologer_id);
 CREATE INDEX idx_consultations_status ON consultations(status);
@@ -31,7 +31,7 @@ CREATE TABLE queue_entries (
   type TEXT NOT NULL,
   status TEXT NOT NULL,
   request_id TEXT NOT NULL,
-  joined_at INTEGER NOT NULL,
+  joined_at BIGINT NOT NULL,
   promoted_consultation_id TEXT
 );
 CREATE INDEX idx_queue_entries_astrologer_id ON queue_entries(astrologer_id);
@@ -45,7 +45,7 @@ CREATE TABLE astrologer_notifications (
   message TEXT NOT NULL,
   related_consultation_id TEXT,
   read INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL
+  created_at BIGINT NOT NULL
 );
 CREATE INDEX idx_astrologer_notifications_astrologer_id ON astrologer_notifications(astrologer_id);
 CREATE INDEX idx_astrologer_notifications_created_at ON astrologer_notifications(created_at);
@@ -56,5 +56,5 @@ CREATE INDEX idx_astrologer_notifications_created_at ON astrologer_notifications
 CREATE TABLE processed_requests (
   request_id TEXT PRIMARY KEY,
   result_json TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at BIGINT NOT NULL
 );
