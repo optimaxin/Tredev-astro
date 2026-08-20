@@ -21,13 +21,21 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
       return;
     }
 
-    if (toolName === 'Free Kundli' || toolName === 'Lagna / Ascendant' || toolName === 'Moon Sign Calculator' || toolName === 'Nakshatra Finder' || toolName === 'Nakshatra') {
+    if (toolName === 'Free Kundli' || toolName === 'Lagna / Ascendant' || toolName === 'Moon Sign Calculator') {
       if (kundliGenerated) {
         setPage('kundli-result');
       } else {
         setPage('free-kundli');
       }
-    } else if (toolName === 'Kundli Milan' || toolName === 'Kundli Matching' || toolName === 'Love Compatibility' || toolName === 'Numerology Match') {
+    } else if (toolName === 'Nakshatra Finder' || toolName === 'Nakshatra') {
+      setPage('nakshatra-finder');
+    } else if (toolName === 'Mangal Dosha') {
+      setPage('mangal-dosha');
+    } else if (toolName === 'Sade Sati') {
+      setPage('sade-sati');
+    } else if (toolName === 'Numerology' || toolName === 'Numerology Match' || toolName === 'Numerology Report' || toolName === 'Life Path Number' || toolName === 'Name Numerology') {
+      setPage('numerology');
+    } else if (toolName === 'Kundli Milan' || toolName === 'Kundli Matching' || toolName === 'Love Compatibility') {
       setPage('kundli-matching');
     } else if (toolName === 'Daily Horoscope') {
       setPage('horoscope');
@@ -123,8 +131,8 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               <div className={styles.cardHeader}>
                 <ConstellationIcon size={48} className={styles.cardIconMedium} />
                 <div>
-                  <h3 className={styles.cardTitle}>{t('seek_card_growth_title')}</h3>
-                  <p className={styles.cardDesc}>{t('seek_card_growth_desc')}</p>
+                  <h3 className={styles.cardTitle}>Nakshatra Finder</h3>
+                  <p className={styles.cardDesc}>Discover your birth star and its ruling planet.</p>
                 </div>
               </div>
               <span className={styles.arrowLink}>{tOr('tools_nakshatra_cta', 'seek_card_cta')}</span>

@@ -438,9 +438,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cta_consult: 'Consult an Astrologist',
     cta_generate: 'Generate Free Kundli',
     cta_chat: 'START 5-MINUTE FREE SESSION',
-    ai_intro_title: 'Your first 5 minutes are free.',
+    ai_intro_title: 'Your first chat is free.',
     ai_intro_desc: 'Ask questions about your birth chart, current transits, or seek clarity on life matters — all through the lens of classical Vedic Jyotish.',
-    ai_start_btn: 'Start',
+    ai_start_btn: 'Start your Free chat',
 
     // Hero Section
     hero_headline: 'Your Stars. Your Dharma.',
@@ -2703,7 +2703,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     const refreshToken = localStorage.getItem('auth_refresh_token');
-    if (refreshToken) authService.logout(refreshToken).catch(() => {}); // best-effort server-side revoke
+    if (refreshToken) authService.logout(refreshToken).catch(() => { }); // best-effort server-side revoke
     clearTokens();
     setCurrentUser(null);
   };

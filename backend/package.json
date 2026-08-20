@@ -4,12 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file-if-exists=.env watch app/main.ts",
+    "dev": "tsx watch --env-file-if-exists=.env app/main.ts",
     "start": "tsx --env-file-if-exists=.env app/main.ts",
     "test": "tsx --env-file-if-exists=.env tests/auth.test.ts",
-    "test:e2e": "node tests/e2e-smoke.mjs"
+    "test:e2e": "node tests/e2e-smoke.mjs",
+    "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs"
   },
   "dependencies": {
+    "astronomia": "^4.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",

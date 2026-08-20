@@ -30,9 +30,14 @@ import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
 import AuthPage from './AuthPage/AuthPage';
 import AncientDatePicker from '../components/AncientDatePicker/AncientDatePicker';
+import AncientTimePicker from '../components/AncientTimePicker/AncientTimePicker';
+import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
+import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
 import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
+import { calculatorService, CalculatorApiError } from '../services/calculatorService';
+import type { GunMilanResult, MangalDoshaResult, NakshatraResult, NumerologyResult, SadeSatiResult } from '../services/calculatorService';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -117,6 +122,18 @@ export default function PageRenderer() {
 
     case 'kundli-matching':
       return <KundliMatchingPage />;
+
+    case 'nakshatra-finder':
+      return <NakshatraFinderPage />;
+
+    case 'mangal-dosha':
+      return <MangalDoshaPage />;
+
+    case 'sade-sati':
+      return <SadeSatiPage />;
+
+    case 'numerology':
+      return <NumerologyPage />;
 
     case 'astrology-tools':
       return (
@@ -361,20 +378,75 @@ function HoroscopePage() {
   );
 }
 
-// 2. Kundli Matching (Guna Milan) Page
+function ordinal(n: number): string {
+  if (n % 10 === 1 && n !== 11) return 'st';
+  if (n % 10 === 2 && n !== 12) return 'nd';
+  if (n % 10 === 3 && n !== 13) return 'rd';
+  return 'th';
+}
+
+// 2. Kundli Matching (Guna Milan) Page — real Ashtakoot calculation, both
+// partners' places are geocoded server-side (see BirthDetailsForm) rather
+// than trusting a free-text city name.
+function verdictForScore(total: number): string {
+  if (total >= 32) return 'Excellent Match — a highly auspicious pairing by classical Ashtakoot standards.';
+  if (total >= 24) return 'Good Match — favourable compatibility with strong long-term potential.';
+  if (total >= 18) return 'Average Match — workable, but review the Nadi and Bhakoot scores below with an astrologer.';
+  return 'Not Recommended — this pairing scores below the classical minimum (18/36).';
+}
+
+function PartnerBirthFields({ title, value, onChange }: { title: string; value: { name: string; dob: string; tob: string; place: string }; onChange: (v: typeof value) => void }) {
+  return (
+    <div className={styles.partnerFormCard}>
+      <h3 className={styles.partnerTitle}>✦ {title}</h3>
+      <div className="form-group" style={{ marginBottom: '12px' }}>
+        <label className="form-label">Name</label>
+        <input type="text" className="input-field input-cosmos" value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} />
+      </div>
+      <div className="form-group" style={{ marginBottom: '12px' }}>
+        <label className="form-label">Date of Birth</label>
+        <AncientDatePicker className="input-field input-cosmos" value={value.dob} onChange={val => onChange({ ...value, dob: val })} placeholder="Select Date of Birth" />
+      </div>
+      <div className="form-group" style={{ marginBottom: '12px' }}>
+        <label className="form-label">Time of Birth</label>
+        <AncientTimePicker className="input-field input-cosmos" value={value.tob} onChange={val => onChange({ ...value, tob: val })} placeholder="Select Time of Birth" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Place of Birth</label>
+        <input type="text" className="input-field input-cosmos" placeholder="City, Country" value={value.place} onChange={e => onChange({ ...value, place: e.target.value })} />
+      </div>
+    </div>
+  );
+}
+
 function KundliMatchingPage() {
   const [calculating, setCalculating] = useState(false);
-  const [result, setResult] = useState(false);
-  const [boy, setBoy] = useState({ name: 'Rohit', dob: '1992-04-14', tob: '08:30', place: 'Mumbai' });
-  const [girl, setGirl] = useState({ name: 'Meera', dob: '1993-07-20', tob: '14:45', place: 'Pune' });
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<GunMilanResult | null>(null);
+  const [boy, setBoy] = useState({ name: 'Rohit', dob: '1992-04-14', tob: '08:30', place: 'Mumbai, India' });
+  const [girl, setGirl] = useState({ name: 'Meera', dob: '1993-07-20', tob: '14:45', place: 'Pune, India' });
 
-  const handleMatch = (e: React.FormEvent) => {
+  const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!boy.dob || !boy.tob || !boy.place || !girl.dob || !girl.tob || !girl.place) return;
     setCalculating(true);
-    setTimeout(() => {
+    setError('');
+    setResult(null);
+    try {
+      const [boyGeo, girlGeo] = await Promise.all([calculatorService.geocode(boy.place), calculatorService.geocode(girl.place)]);
+      // India Standard Time (UTC+5:30) — matches the timezone assumption
+      // used elsewhere on this form; a full per-partner timezone picker
+      // would be the next refinement if international users need it.
+      const data = await calculatorService.kundliMatching(
+        { date: girl.dob, time: girl.tob, timezoneOffsetMinutes: -330, latitude: girlGeo.latitude, longitude: girlGeo.longitude },
+        { date: boy.dob, time: boy.tob, timezoneOffsetMinutes: -330, latitude: boyGeo.latitude, longitude: boyGeo.longitude }
+      );
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate the match. Please check the birth details and try again.');
+    } finally {
       setCalculating(false);
-      setResult(true);
-    }, 1800);
+    }
   };
 
   return (
@@ -391,89 +463,11 @@ function KundliMatchingPage() {
 
         <div className={styles.matchingLayout}>
           <form onSubmit={handleMatch} className={styles.matchingGrid}>
-            {/* Boy Side */}
-            <div className={styles.partnerFormCard}>
-              <h3 className={styles.partnerTitle}>✦ Partner 1 (Boy)</h3>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Name</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={boy.name}
-                  onChange={e => setBoy({ ...boy, name: e.target.value })}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Date of Birth</label>
-                <AncientDatePicker
-                  className="input-field input-cosmos"
-                  value={boy.dob}
-                  onChange={val => setBoy({ ...boy, dob: val })}
-                  placeholder="Select Date of Birth"
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Time of Birth</label>
-                <input
-                  type="time"
-                  className="input-field input-cosmos"
-                  value={boy.tob}
-                  onChange={e => setBoy({ ...boy, tob: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Place of Birth</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={boy.place}
-                  onChange={e => setBoy({ ...boy, place: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Girl Side */}
-            <div className={styles.partnerFormCard}>
-              <h3 className={styles.partnerTitle}>✦ Partner 2 (Girl)</h3>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Name</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={girl.name}
-                  onChange={e => setGirl({ ...girl, name: e.target.value })}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Date of Birth</label>
-                <AncientDatePicker
-                  className="input-field input-cosmos"
-                  value={girl.dob}
-                  onChange={val => setGirl({ ...girl, dob: val })}
-                  placeholder="Select Date of Birth"
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Time of Birth</label>
-                <input
-                  type="time"
-                  className="input-field input-cosmos"
-                  value={girl.tob}
-                  onChange={e => setGirl({ ...girl, tob: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Place of Birth</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={girl.place}
-                  onChange={e => setGirl({ ...girl, place: e.target.value })}
-                />
-              </div>
-            </div>
+            <PartnerBirthFields title="Partner 1 (Boy)" value={boy} onChange={setBoy} />
+            <PartnerBirthFields title="Partner 2 (Girl)" value={girl} onChange={setGirl} />
 
             <div style={{ gridColumn: 'span 2', textAlign: 'center', marginTop: '16px' }}>
+              {error && <p style={{ color: '#d64545', marginBottom: '12px' }}>{error}</p>}
               <button type="submit" className="btn btn-gold btn-lg" disabled={calculating}>
                 {calculating ? 'Analyzing Charts...' : 'Calculate Guna Match'}
               </button>
@@ -487,46 +481,216 @@ function KundliMatchingPage() {
                 <div>
                   <h3 className={styles.partnerTitle} style={{ border: 'none', margin: 0 }}>Guna Milan Result</h3>
                   <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', margin: 0 }}>
-                    Match between {boy.name} &amp; {girl.name}
+                    Match between {boy.name} &amp; {girl.name} — {result.brideMoonRashi} Moon &amp; {result.groomMoonRashi} Moon
                   </p>
                 </div>
                 <div className={styles.scoreCircle}>
-                  <span className={styles.scoreVal}>28</span>
+                  <span className={styles.scoreVal}>{result.totalPoints}</span>
                   <span className={styles.scoreLabel}>Out of 36</span>
                 </div>
               </div>
 
               <div className={styles.compatGrid}>
-                <div className={styles.compatBox}>
-                  <span className={styles.compatLabel}>Nadi</span>
-                  <span className={styles.compatVal}>8 / 8</span>
-                </div>
-                <div className={styles.compatBox}>
-                  <span className={styles.compatLabel}>Bhakoot</span>
-                  <span className={styles.compatVal}>7 / 7</span>
-                </div>
-                <div className={styles.compatBox}>
-                  <span className={styles.compatLabel}>Gana</span>
-                  <span className={styles.compatVal}>5 / 6</span>
-                </div>
-                <div className={styles.compatBox}>
-                  <span className={styles.compatLabel}>Maitri</span>
-                  <span className={styles.compatVal}>4 / 5</span>
-                </div>
-                <div className={styles.compatBox}>
-                  <span className={styles.compatLabel}>Yoni</span>
-                  <span className={styles.compatVal}>3 / 4</span>
-                </div>
+                {result.kootas.map(k => (
+                  <div className={styles.compatBox} key={k.name}>
+                    <span className={styles.compatLabel}>{k.name}</span>
+                    <span className={styles.compatVal}>{k.points} / {k.maxPoints}</span>
+                  </div>
+                ))}
               </div>
 
               <div className={styles.compatVerdict}>
-                <strong>Vedic Verdict:</strong> Excellent Match Compatibility. {boy.name} and {girl.name} share auspicious moon positions indicating stable mutual understanding, harmonious family integration and strong emotional support. Both birth charts indicate favorable planetary transits with no severe Kuja Dosha (Manglik) blockages detected.
+                <strong>Vedic Verdict:</strong> {verdictForScore(result.totalPoints)}
               </div>
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// Nakshatra Finder, Mangal Dosha, Sade Sati, Numerology — one shared shell:
+// a single BirthDetailsForm feeding a calculator endpoint, with the result
+// shown alongside the raw computed values (not just a verdict), so the
+// numbers can be independently cross-checked against any other Kundli tool.
+function CalculatorPageShell({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) {
+  return (
+    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+      <div className={styles.container} style={{ maxWidth: '720px' }}>
+        <div className={styles.pageHeader}>
+          <span className="section-eyebrow">{eyebrow}</span>
+          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>{title}</h1>
+          <div className={styles.divider}>✦ ❖ ✦</div>
+          <p className={styles.pageSubtitle} style={{ color: 'var(--color-text-dark-2)' }}>{description}</p>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className={styles.compatibilityResult} style={{ marginTop: '32px' }}>
+      {children}
+    </div>
+  );
+}
+
+function NakshatraFinderPage() {
+  const [result, setResult] = useState<NakshatraResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.nakshatra(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Nakshatra Finder" title="Find Your Birth Nakshatra" description="Your Nakshatra (lunar mansion) is determined by the Moon's exact position at your birth moment.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Nakshatra" idPrefix="nakshatra" showNameField={false} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>Your Nakshatra: {result.name} (Pada {result.pada})</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your Moon sits at {result.moonLongitude.toFixed(2)}° sidereal longitude, in {result.rashi} Rashi — that places it in the {result.name} Nakshatra,
+            {' '}Pada {result.pada}, ruled by {result.lord.charAt(0).toUpperCase() + result.lord.slice(1)}.
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            You can cross-check this against any other Kundli tool using the same birth date, time, and place — the Moon's longitude above should match closely.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function MangalDoshaPage() {
+  const [result, setResult] = useState<MangalDoshaResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.mangalDosha(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Mangal Dosha" title="Mangal Dosha (Manglik) Check" description="Checks whether Mars falls in a Manglik-causing house counted from your Ascendant.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Mangal Dosha" idPrefix="mangal" showNameField={false} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{result.isManglik ? 'You are Manglik' : 'You are Not Manglik'}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Mars is placed in your {result.marsHouse}{ordinal(result.marsHouse)} house from the Ascendant. Mangal Dosha applies when Mars is in house
+            1, 2, 4, 7, 8, or 12 from the Ascendant — {result.isManglik ? 'and that is the case here.' : 'which is not the case here.'}
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            Some traditions also check Mars's house from the Moon or Venus — this result uses the Ascendant-based rule, the most widely used version.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function SadeSatiPage() {
+  const [result, setResult] = useState<SadeSatiResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.sadeSati(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  const phaseLabel: Record<string, string> = { rising: 'Rising phase (first 2.5 years)', peak: 'Peak phase (middle 2.5 years)', setting: 'Setting phase (final 2.5 years)' };
+
+  return (
+    <CalculatorPageShell eyebrow="Sade Sati" title="Sade Sati Checker" description="Checks whether Saturn is currently transiting the 12th, 1st, or 2nd rashi from your natal Moon.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Sade Sati" idPrefix="sadesati" showNameField={false} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{result.active ? 'Sade Sati is currently active' : 'Sade Sati is not currently active'}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your natal Moon is in {result.moonRashi}. Saturn is currently transiting {result.saturnTransitRashi}.
+            {result.active && result.phase ? ` This is your ${phaseLabel[result.phase]}.` : ' Saturn is not in the 12th, 1st, or 2nd sign from your Moon right now.'}
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function NumerologyPage() {
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
+  const [result, setResult] = useState<NumerologyResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !dob) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.numerology(name.trim(), dob));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Numerology" title="Numerology Calculator" description="Pythagorean numerology derived from your full name and date of birth.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '480px', margin: '0 auto' }}>
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label className="form-label">Full Name</label>
+          <input type="text" className="input-field input-cosmos" value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+        </div>
+        <div className="form-group" style={{ marginBottom: '20px' }}>
+          <label className="form-label">Date of Birth</label>
+          <AncientDatePicker className="input-field input-cosmos" value={dob} onChange={setDob} placeholder="Select Date of Birth" />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', marginBottom: '12px' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%' }} disabled={loading || !name.trim() || !dob}>
+          {loading ? 'Calculating...' : 'Calculate My Numbers'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <div className={styles.compatGrid}>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Life Path</span><span className={styles.compatVal}>{result.lifePathNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Destiny</span><span className={styles.compatVal}>{result.destinyNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Soul Urge</span><span className={styles.compatVal}>{result.soulUrgeNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Personality</span><span className={styles.compatVal}>{result.personalityNumber}</span></div>
+          </div>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '12px' }}>
+            Life Path is derived from your full date of birth; Destiny, Soul Urge, and Personality from the letters in your name (Pythagorean system). Numbers 11, 22, and 33 are Master Numbers and are shown unreduced.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
   );
 }
 

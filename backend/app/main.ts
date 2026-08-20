@@ -9,6 +9,7 @@ import { router } from './api/routes.ts';
 import { authRouter } from './api/auth.routes.ts';
 import { astrologersCatalogRouter } from './api/astrologers.routes.ts';
 import { chatRouter } from './api/chat.routes.ts';
+import { calculatorsRouter } from './api/calculators.routes.ts';
 import { attachSockets } from './websocket/sockets.ts';
 import { runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);
+app.use('/api/calculators', calculatorsRouter);
 app.use('/api', router);
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
