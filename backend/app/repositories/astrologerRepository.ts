@@ -1,6 +1,53 @@
 import { query, queryOne } from '../core/db.ts';
 import type { AstrologerCatalogRow } from '../models/astrologer.ts';
 
+// Used when approving an astrologer application — turns a real user account
+// into a bookable catalog entry. Starts with zero rating/reviews/experience
+// since there's no real history yet; the astrologer/admin can fill in bio,
+// pricing, etc. later (a "complete your profile" flow is a natural follow-up,
+// not built here).
+export async function insertAstrologerForUser(userId: string, name: string, expertise: string): Promise<AstrologerCatalogRow> {
+  const maxIdRow = await queryOne<{ max: number | null }>('SELECT MAX(id) AS max FROM astrologers');
+  const id = (maxIdRow?.max ?? 0) + 1;
+  const row: AstrologerCatalogRow = {
+    id,
+    name,
+    title: 'Astrologer',
+    bio: '',
+    avatar: '',
+    languages: '[]',
+    categories: JSON.stringify([expertise]),
+    expertise: JSON.stringify([expertise]),
+    consultation_types: JSON.stringify(['chat', 'voice', 'video']),
+    chat_price: 0,
+    call_price: 0,
+    video_price: 0,
+    rating: 0,
+    review_count: 0,
+    experience_years: 0,
+    consultation_count: 0,
+    max_concurrent: 1,
+    is_active: 1,
+    created_at: Date.now(),
+    user_id: userId,
+  };
+  await query(
+    `INSERT INTO astrologers
+      (id, name, title, bio, avatar, languages, categories, expertise, consultation_types,
+       chat_price, call_price, video_price, rating, review_count, experience_years, consultation_count,
+       max_concurrent, is_active, created_at, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+    [row.id, row.name, row.title, row.bio, row.avatar, row.languages, row.categories, row.expertise, row.consultation_types,
+      row.chat_price, row.call_price, row.video_price, row.rating, row.review_count, row.experience_years, row.consultation_count,
+      row.max_concurrent, row.is_active, row.created_at, row.user_id]
+  );
+  return row;
+}
+
+export function findAstrologerByUserId(userId: string): Promise<AstrologerCatalogRow | undefined> {
+  return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE user_id = $1', [userId]);
+}
+
 export interface AstrologerFilters {
   category?: string;
   language?: string;
@@ -59,6 +106,13 @@ export async function updateMaxConcurrent(id: number, maxConcurrent: number) {
 
 export function findAstrologerById(id: number): Promise<AstrologerCatalogRow | undefined> {
   return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE id = $1 AND is_active = 1', [id]);
+}
+
+// Unlike findAstrologerById, doesn't filter on is_active — for resolving a
+// name against a *past* consultation/review, where the astrologer might have
+// since gone inactive but the historical record should still show correctly.
+export function findAstrologerByIdRaw(id: number): Promise<AstrologerCatalogRow | undefined> {
+  return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE id = $1', [id]);
 }
 
 // Used by realtimeStore.ts to seed its in-memory live state — includes

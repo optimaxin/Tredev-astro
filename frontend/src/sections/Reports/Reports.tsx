@@ -1,6 +1,7 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
-import { REPORTS } from '../../data/mockData';
+import { contentService } from '../../services/contentService';
+import type { AstrologyReport } from '../../services/contentService';
 import { useAppContext } from '../../context/AppContext';
 
 // three.js is a heavy dependency (500KB+) needed only for this decorative
@@ -24,8 +25,13 @@ const BUNDLES = [
 
 export default function Reports({ featured = false }: { featured?: boolean }) {
   const { setPage, setSelectedId, t } = useAppContext();
+  const [REPORTS, setReports] = useState<AstrologyReport[]>([]);
   const [hovered, setHovered] = useState<number | null>(null);
-  const [hoveredReport, setHoveredReport] = useState<typeof REPORTS[0] | null>(null);
+  const [hoveredReport, setHoveredReport] = useState<AstrologyReport | null>(null);
+
+  useEffect(() => {
+    contentService.listReports().then(setReports).catch(() => setReports([]));
+  }, []);
 
   const handleReportClick = (id: number) => {
     setSelectedId(id);
@@ -33,6 +39,8 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
   };
 
   const activeColor = hoveredReport ? hoveredReport.color : '#C8A96B';
+
+  if (!REPORTS.length) return null;
 
   return (
     <section className={styles.section} id="reports">

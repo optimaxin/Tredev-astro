@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { TESTIMONIALS } from '../../data/mockData';
+import { contentService } from '../../services/contentService';
+import type { Testimonial } from '../../services/contentService';
 import styles from './Testimonials.module.css';
 
 export default function Testimonials() {
+  const [TESTIMONIALS, setTestimonials] = useState<Testimonial[]>([]);
   const [active, setActive] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    contentService.listTestimonials().then(setTestimonials).catch(() => setTestimonials([]));
+  }, []);
+
+  useEffect(() => {
+    if (!TESTIMONIALS.length) return;
     timerRef.current = setInterval(() => {
       setActive(prev => (prev + 1) % TESTIMONIALS.length);
     }, 5000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
+  }, [TESTIMONIALS.length]);
 
   const handleNav = (i: number) => {
     setActive(i);
@@ -21,6 +28,8 @@ export default function Testimonials() {
       setActive(prev => (prev + 1) % TESTIMONIALS.length);
     }, 5000);
   };
+
+  if (!TESTIMONIALS.length) return null;
 
   return (
     <section className={styles.section} id="testimonials">

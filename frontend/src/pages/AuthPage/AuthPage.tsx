@@ -4,6 +4,8 @@ import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
+import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
+import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import styles from './AuthPage.module.css';
 
 type TabType = 'login' | 'register';
@@ -27,6 +29,7 @@ export default function AuthPage() {
     dob: '',
     timeOfBirth: '',
     placeOfBirth: '',
+    timezoneOffset: TIMEZONES[0].offset,
     gender: 'Male',
   });
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -70,13 +73,26 @@ export default function AuthPage() {
     e.preventDefault();
     setRegisterError('');
     setRegisterLoading(true);
-    const user = await register(form.fullName, form.email, form.password);
-    setRegisterLoading(false);
-    if (!user) {
-      setRegisterError('An account with this email already exists, the password is too short, or the server could not be reached. Please try again.');
-      return;
+    try {
+      const geo = await calculatorService.geocode(form.placeOfBirth.trim());
+      const user = await register(form.fullName, form.email, form.password, {
+        birthDate: form.dob,
+        birthTime: form.timeOfBirth,
+        birthPlace: geo.displayName,
+        birthLatitude: geo.latitude,
+        birthLongitude: geo.longitude,
+        birthTimezoneOffsetMinutes: form.timezoneOffset,
+      });
+      if (!user) {
+        setRegisterError('An account with this email already exists, the password is too short, or the server could not be reached. Please try again.');
+        return;
+      }
+      setRegistered(true);
+    } catch (err) {
+      setRegisterError(err instanceof CalculatorApiError ? `Place of birth: ${err.message}` : 'Something went wrong. Please try again.');
+    } finally {
+      setRegisterLoading(false);
     }
-    setRegistered(true);
   };
 
   const handleContinue = () => {
@@ -351,6 +367,24 @@ export default function AuthPage() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                </div>
+
+                {/* Time Zone */}
+                <div className={styles.inkRow2}>
+                  <div className={styles.inkField} style={{ gridColumn: '1 / -1' }}>
+                    <label className={styles.inkLabel}>
+                      <span className={styles.devanagariTag}>समय क्षेत्र</span> Time Zone
+                    </label>
+                    <select
+                      className={styles.inkInput}
+                      value={form.timezoneOffset}
+                      onChange={e => setForm({ ...form, timezoneOffset: Number(e.target.value) })}
+                    >
+                      {TIMEZONES.map(tz => (
+                        <option key={tz.label} value={tz.offset}>{tz.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

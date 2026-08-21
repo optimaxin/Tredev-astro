@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './AncientDatePicker.module.css';
 
 interface AncientDatePickerProps {
@@ -25,22 +26,41 @@ export default function AncientDatePicker({
 }: AncientDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  // The dropdown is portaled to <body> (see render below) so it can never be
+  // clipped by an ancestor's `overflow: hidden` — e.g. a rounded card that
+  // clips its own contents to its corners. Its position is computed from the
+  // trigger's real screen position instead of relying on CSS `position:
+  // absolute` within a (possibly clipped) parent.
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   // Parse initial date or default to today
   const initialDate = value ? new Date(value) : new Date();
   const [selectedYear, setSelectedYear] = useState(initialDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(initialDate.getMonth());
 
-  // Close when clicking outside
+  // Close when clicking outside (checking both the trigger AND the portaled dropdown)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const toggleOpen = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
+    }
+    setIsOpen(prev => !prev);
+  };
 
   // Sync state if value changes externally
   useEffect(() => {
@@ -128,9 +148,71 @@ export default function AncientDatePicker({
     );
   };
 
+  const dropdown = isOpen && coords ? createPortal(
+    <div
+      ref={dropdownRef}
+      className={styles.calendarDropdown}
+      style={{ position: 'fixed', top: coords.top, left: coords.left, transform: 'translateX(-50%)', margin: 0 }}
+    >
+      {/* Header selectors */}
+      <div className={styles.calendarHeader}>
+        <button type="button" className={styles.navBtn} onClick={handlePrevMonth}>◀</button>
+        <div className={styles.selectors}>
+          <select
+            className={styles.select}
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+          >
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+          <select
+            className={styles.select}
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+          >
+            {years.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        <button type="button" className={styles.navBtn} onClick={handleNextMonth}>▶</button>
+      </div>
+
+      {/* Days of week */}
+      <div className={styles.daysOfWeekGrid}>
+        {DAYS_OF_WEEK.map(d => (
+          <div key={d} className={styles.dayOfWeekHeader}>{d}</div>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className={styles.daysGrid}>
+        {days.map((day, idx) => {
+          if (day === null) {
+            return <div key={`empty-${idx}`} className={styles.emptyDay} />;
+          }
+          const selected = isSelected(day);
+          return (
+            <button
+              key={`day-${day}`}
+              type="button"
+              className={`${styles.dayButton} ${selected ? styles.selectedDay : ''}`}
+              onClick={() => handleDayClick(day)}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div className={styles.datePickerContainer} ref={containerRef}>
-      <div className={styles.inputWrapper} onClick={() => setIsOpen(!isOpen)}>
+      <div className={styles.inputWrapper} onClick={toggleOpen}>
         <input
           type="text"
           readOnly
@@ -141,63 +223,7 @@ export default function AncientDatePicker({
         />
         <span className={styles.calendarIcon}>📅</span>
       </div>
-
-      {isOpen && (
-        <div className={styles.calendarDropdown}>
-          {/* Header selectors */}
-          <div className={styles.calendarHeader}>
-            <button type="button" className={styles.navBtn} onClick={handlePrevMonth}>◀</button>
-            <div className={styles.selectors}>
-              <select
-                className={styles.select}
-                value={selectedMonth}
-                onChange={e => setSelectedMonth(Number(e.target.value))}
-              >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i}>{m}</option>
-                ))}
-              </select>
-              <select
-                className={styles.select}
-                value={selectedYear}
-                onChange={e => setSelectedYear(Number(e.target.value))}
-              >
-                {years.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            <button type="button" className={styles.navBtn} onClick={handleNextMonth}>▶</button>
-          </div>
-
-          {/* Days of week */}
-          <div className={styles.daysOfWeekGrid}>
-            {DAYS_OF_WEEK.map(d => (
-              <div key={d} className={styles.dayOfWeekHeader}>{d}</div>
-            ))}
-          </div>
-
-          {/* Days Grid */}
-          <div className={styles.daysGrid}>
-            {days.map((day, idx) => {
-              if (day === null) {
-                return <div key={`empty-${idx}`} className={styles.emptyDay} />;
-              }
-              const selected = isSelected(day);
-              return (
-                <button
-                  key={`day-${day}`}
-                  type="button"
-                  className={`${styles.dayButton} ${selected ? styles.selectedDay : ''}`}
-                  onClick={() => handleDayClick(day)}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

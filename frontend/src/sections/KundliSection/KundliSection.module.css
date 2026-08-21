@@ -309,6 +309,31 @@
   line-height: 1.5;
 }
 
+/* Plain-language overview */
+.overview {
+  margin-top: var(--space-8);
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px solid rgba(141, 79, 40, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.overviewTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+}
+
+.overviewText {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-bottom: var(--space-3);
+}
+
 @media (max-width: 768px) {
   .formGrid { grid-template-columns: 1fr; }
   .chartLayout { grid-template-columns: 1fr; }

@@ -96,6 +96,23 @@ export async function findLatestForUser(userEmail: string): Promise<Consultation
   return row ? fromRow(row) : undefined;
 }
 
+export async function findAllForUser(userEmail: string): Promise<Consultation[]> {
+  const rows = await query<ConsultationDbRow>(
+    'SELECT * FROM consultations WHERE user_email = $1 ORDER BY created_at DESC',
+    [userEmail.toLowerCase()]
+  );
+  return rows.map(fromRow);
+}
+
+export async function listAllConsultations(page: number, limit: number): Promise<{ rows: Consultation[]; total: number }> {
+  const totalRow = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM consultations');
+  const rows = await query<ConsultationDbRow>(
+    'SELECT * FROM consultations ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+    [limit, (page - 1) * limit]
+  );
+  return { rows: rows.map(fromRow), total: Number(totalRow?.n ?? 0) };
+}
+
 export async function findActiveStartedForAstrologer(astrologerId: number, executor?: Executor): Promise<Consultation[]> {
   const rows = await query<ConsultationDbRow>(
     `SELECT * FROM consultations WHERE astrologer_id = $1 AND status = 'ACTIVE' AND started_at IS NOT NULL`,

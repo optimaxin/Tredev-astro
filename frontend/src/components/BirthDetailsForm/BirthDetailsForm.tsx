@@ -9,7 +9,7 @@ import styles from './BirthDetailsForm.module.css';
 // complexity for a birth-details form; this covers the vast majority of
 // this site's audience. Offset is "minutes to ADD to local time to get UTC"
 // (so IST, UTC+5:30, is -330).
-const TIMEZONES = [
+export const TIMEZONES = [
   { label: 'India (IST, UTC+5:30)', offset: -330 },
   { label: 'UTC', offset: 0 },
   { label: 'UK (GMT/UTC+0)', offset: 0 },
@@ -25,20 +25,29 @@ export interface BirthDetailsSubmitValue extends BirthDetailsInput {
   placeName: string;
 }
 
+export interface BirthDetailsInitialValues {
+  name?: string;
+  date?: string;
+  time?: string;
+  place?: string;
+  timezoneOffsetMinutes?: number;
+}
+
 interface BirthDetailsFormProps {
   onSubmit: (details: BirthDetailsSubmitValue) => void;
   showNameField?: boolean;
   nameLabel?: string;
   submitLabel: string;
   idPrefix: string;
+  initialValues?: BirthDetailsInitialValues;
 }
 
-export default function BirthDetailsForm({ onSubmit, showNameField = true, nameLabel = 'Full Name', submitLabel, idPrefix }: BirthDetailsFormProps) {
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
-  const [tob, setTob] = useState('');
-  const [place, setPlace] = useState('');
-  const [timezoneOffset, setTimezoneOffset] = useState(TIMEZONES[0].offset);
+export default function BirthDetailsForm({ onSubmit, showNameField = true, nameLabel = 'Full Name', submitLabel, idPrefix, initialValues }: BirthDetailsFormProps) {
+  const [name, setName] = useState(initialValues?.name || '');
+  const [dob, setDob] = useState(initialValues?.date || '');
+  const [tob, setTob] = useState(initialValues?.time || '');
+  const [place, setPlace] = useState(initialValues?.place || '');
+  const [timezoneOffset, setTimezoneOffset] = useState(initialValues?.timezoneOffsetMinutes ?? TIMEZONES[0].offset);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

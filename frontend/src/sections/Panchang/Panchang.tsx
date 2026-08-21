@@ -1,59 +1,21 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
+import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
+import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import type { PanchangResult } from '../../services/calculatorService';
+import { formatIst, istHourFraction } from '../../utils/istTime';
 import styles from './Panchang.module.css';
 
-// Mock Panchang data for different cities
-const CITY_DATA: Record<string, typeof DELHI_DATA> = {
-  default: {
-    tithi: 'Panchami (5th)',
-    nakshatra: 'Rohini',
-    yoga: 'Shubha',
-    karana: 'Balava',
-    sunrise: '06:12 AM',
-    sunset: '06:48 PM',
-    rahuKaal: '04:30 – 06:00 PM',
-    abhijit: '11:54 AM – 12:42 PM',
-    moonSign: 'Vrishabha (Taurus)',
-    choghadiya: ['Udveg', 'Char', 'Labh', 'Amrit'],
-    moonPhase: 0.3,
-    date: new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-  },
-};
-
-const DELHI_DATA = {
-  tithi: 'Panchami (5th)',
-  nakshatra: 'Rohini',
-  yoga: 'Shubha',
-  karana: 'Balava',
-  sunrise: '06:12 AM',
-  sunset: '06:48 PM',
-  rahuKaal: '04:30 – 06:00 PM',
-  abhijit: '11:54 AM – 12:42 PM',
-  moonSign: 'Vrishabha (Taurus)',
-  choghadiya: ['Udveg', 'Char', 'Labh', 'Amrit'],
-  moonPhase: 0.3,
-  date: new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-};
-
-const MOCK_CITIES: Record<string, typeof DELHI_DATA> = {
-  'new delhi': { ...DELHI_DATA, sunrise: '06:12 AM', sunset: '06:48 PM', rahuKaal: '04:30 – 06:00 PM', abhijit: '11:54 AM – 12:42 PM', nakshatra: 'Rohini', moonSign: 'Vrishabha', moonPhase: 0.3 },
-  'mumbai': { ...DELHI_DATA, sunrise: '06:30 AM', sunset: '07:02 PM', rahuKaal: '03:45 – 05:15 PM', abhijit: '12:10 PM – 12:58 PM', nakshatra: 'Mrigashira', moonSign: 'Mithuna', moonPhase: 0.35, tithi: 'Shashthi (6th)' },
-  'bangalore': { ...DELHI_DATA, sunrise: '06:24 AM', sunset: '06:56 PM', rahuKaal: '04:00 – 05:30 PM', abhijit: '12:02 PM – 12:50 PM', nakshatra: 'Ardra', moonSign: 'Mithuna', moonPhase: 0.4, tithi: 'Saptami (7th)' },
-  'chennai': { ...DELHI_DATA, sunrise: '06:08 AM', sunset: '06:22 PM', rahuKaal: '03:30 – 05:00 PM', abhijit: '11:48 AM – 12:36 PM', nakshatra: 'Punarvasu', moonSign: 'Karka', moonPhase: 0.45, tithi: 'Ashtami (8th)' },
-  'kolkata': { ...DELHI_DATA, sunrise: '05:38 AM', sunset: '06:18 PM', rahuKaal: '03:00 – 04:30 PM', abhijit: '11:32 AM – 12:20 PM', nakshatra: 'Pushya', moonSign: 'Karka', moonPhase: 0.5, tithi: 'Navami (9th)' },
-  'jaipur': { ...DELHI_DATA, sunrise: '06:18 AM', sunset: '06:54 PM', rahuKaal: '04:45 – 06:15 PM', abhijit: '12:00 PM – 12:48 PM', nakshatra: 'Ashlesha', moonSign: 'Karka', moonPhase: 0.28, tithi: 'Chaturthi (4th)' },
-  'varanasi': { ...DELHI_DATA, sunrise: '05:52 AM', sunset: '06:30 PM', rahuKaal: '03:15 – 04:45 PM', abhijit: '11:40 AM – 12:28 PM', nakshatra: 'Magha', moonSign: 'Simha', moonPhase: 0.6, tithi: 'Dashami (10th)' },
-};
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 // Sun position arc — animated based on current time
-function SunArc({ sunrise, sunset, moonPhase }: { sunrise: string; sunset: string; moonPhase: number }) {
-  // Parse sunrise hour for approximate position
-  const sunriseHour = parseInt(sunrise.split(':')[0]);
-  const currentHour = new Date().getHours();
-  const sunsetHour = parseInt(sunset.split(':')[0]) + 12;
-  const daylightHours = sunsetHour - sunriseHour;
+function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; sunsetHour: number; moonPhase: number }) {
+  const currentHour = istHourFraction(new Date().toISOString());
+  const daylightHours = Math.max(0.01, sunsetHour - sunriseHour);
   const elapsed = Math.max(0, Math.min(daylightHours, currentHour - sunriseHour));
   const sunProgress = Math.min(1, elapsed / daylightHours);
 
@@ -121,27 +83,37 @@ function SunArc({ sunrise, sunset, moonPhase }: { sunrise: string; sunset: strin
   );
 }
 
-const FIELDS = [
-  { key: 'tithi', label: 'Tithi', icon: '☽' },
-  { key: 'nakshatra', label: 'Nakshatra', icon: '✦' },
-  { key: 'yoga', label: 'Yoga', icon: '◎' },
-  { key: 'karana', label: 'Karana', icon: '◈' },
-  { key: 'sunrise', label: 'Sunrise', icon: '☀' },
-  { key: 'sunset', label: 'Sunset', icon: '◑' },
-  { key: 'rahuKaal', label: 'Rahu Kaal', icon: '△' },
-  { key: 'abhijit', label: 'Abhijit Muhurat', icon: '⭐' },
-  { key: 'moonSign', label: 'Moon Sign', icon: '♃' },
-] as const;
-
 export default function Panchang() {
   const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
-  const [location, setLocation] = useState('New Delhi');
+  const [location, setLocation] = useState('New Delhi, India');
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
-  const [data, setData] = useState(DELHI_DATA);
+  const [selectedDate, setSelectedDate] = useState(todayDateString());
+  const [data, setData] = useState<PanchangResult | null>(null);
+  const [error, setError] = useState('');
   const [changing, setChanging] = useState(false);
 
-  React.useEffect(() => {
+  const loadFor = useCallback((place: string, date: string) => {
+    setChanging(true);
+    setError('');
+    calculatorService.geocode(place)
+      .then(geo => calculatorService.panchang(date, geo.latitude, geo.longitude).then(result => ({ geo, result })))
+      .then(({ geo, result }) => {
+        setData(result);
+        setLocation(geo.displayName);
+      })
+      .catch(err => setError(err instanceof CalculatorApiError ? err.message : 'Could not load that Panchang. Please try again.'))
+      .finally(() => setChanging(false));
+  }, []);
+
+  useEffect(() => { loadFor(location, selectedDate); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDateChange = (val: string) => {
+    setSelectedDate(val);
+    loadFor(location, val);
+  };
+
+  useEffect(() => {
     if (isLoggedIn && pendingAction === 'panchang-location') {
       setShowInput(true);
       setPendingAction(null);
@@ -155,19 +127,11 @@ export default function Panchang() {
       setShowInput(false);
       return;
     }
-    const key = inputValue.toLowerCase().trim();
-    const found = MOCK_CITIES[key];
-    setChanging(true);
-    setTimeout(() => {
-      if (found) {
-        setData(found);
-        setLocation(inputValue.charAt(0).toUpperCase() + inputValue.slice(1));
-      }
-      setShowInput(false);
-      setInputValue('');
-      setChanging(false);
-    }, 600);
-  }, [inputValue, isLoggedIn, setPendingAction, setShowLoginModal]);
+    if (!inputValue.trim()) return;
+    loadFor(inputValue.trim(), selectedDate);
+    setShowInput(false);
+    setInputValue('');
+  }, [inputValue, isLoggedIn, setPendingAction, setShowLoginModal, loadFor, selectedDate]);
 
   const handleChangeLocation = () => {
     if (!isLoggedIn) {
@@ -177,6 +141,21 @@ export default function Panchang() {
     }
     setShowInput(true);
   };
+
+  const fullTithiNumber = data ? (data.tithi.paksha === 'Shukla' ? data.tithi.number : data.tithi.number + 15) : 1;
+  const moonPhase = ((fullTithiNumber - 0.5) * 12) / 360; // 0 = new moon, 0.5 = full moon — derived from the real tithi, not hardcoded
+
+  const FIELDS = data ? [
+    { label: 'Tithi', icon: '☽', value: `${data.tithi.name} (${data.tithi.paksha})` },
+    { label: 'Nakshatra', icon: '✦', value: `${data.nakshatra.name} (Pada ${data.nakshatra.pada})` },
+    { label: 'Yoga', icon: '◎', value: data.yoga },
+    { label: 'Karana', icon: '◈', value: data.karana },
+    { label: 'Sunrise', icon: '☀', value: `${formatIst(data.sunrise)} IST` },
+    { label: 'Sunset', icon: '◑', value: `${formatIst(data.sunset)} IST` },
+    { label: 'Rahu Kaal', icon: '△', value: data.rahuKaal ? `${formatIst(data.rahuKaal.start)} – ${formatIst(data.rahuKaal.end)} IST` : 'Unavailable' },
+    { label: 'Abhijit Muhurat', icon: '⭐', value: data.abhijitMuhurat ? `${formatIst(data.abhijitMuhurat.start)} – ${formatIst(data.abhijitMuhurat.end)} IST` : 'Unavailable' },
+    { label: 'Moon Sign', icon: '♃', value: data.moonRashi },
+  ] : [];
 
   return (
     <section className={styles.section} id="panchang" aria-label="Today's Panchang">
@@ -201,11 +180,22 @@ export default function Panchang() {
           {/* Left: Header + Sun/Moon Visual */}
           <div className={styles.left}>
             <div className={styles.arcWrap}>
-              <SunArc sunrise={data.sunrise} sunset={data.sunset} moonPhase={data.moonPhase} />
+              <SunArc
+                sunriseHour={data?.sunrise ? istHourFraction(data.sunrise) : 6}
+                sunsetHour={data?.sunset ? istHourFraction(data.sunset) : 18}
+                moonPhase={moonPhase}
+              />
             </div>
 
-            <p className={styles.date}>{data.date}</p>
+            <p className={styles.date}>{data ? `${data.vara}, ${new Date(data.date + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}` : 'Loading...'}</p>
 
+            {/* Date picker — check any day's Panchang, not just today */}
+            <div className={styles.locationWrap} style={{ marginTop: '4px' }}>
+              <AncientDatePicker className={styles.cityInput} value={selectedDate} onChange={handleDateChange} placeholder="Select Date" />
+              {selectedDate !== todayDateString() && (
+                <button className={styles.cancelBtn} onClick={() => handleDateChange(todayDateString())} title="Back to today">Today</button>
+              )}
+            </div>
 
             {/* Location */}
             <div className={styles.locationWrap}>
@@ -246,7 +236,7 @@ export default function Panchang() {
                     ✕
                   </button>
                   <div className={styles.cityHints}>
-                    Try: Mumbai · Bangalore · Chennai · Kolkata · Varanasi
+                    Any city works now — e.g. Mumbai, Bangalore, Chennai, Kolkata, Varanasi
                   </div>
                 </motion.div>
               ) : (
@@ -263,15 +253,7 @@ export default function Panchang() {
               )}
             </AnimatePresence>
 
-            {/* Choghadiya quick view */}
-            <div className={styles.choghadiya}>
-              <span className={styles.choghadiyaLabel}>Today's Choghadiya</span>
-              <div className={styles.choghadiyaPills}>
-                {data.choghadiya.map((c, i) => (
-                  <span key={i} className={styles.choghadiyaPill}>{c}</span>
-                ))}
-              </div>
-            </div>
+            {error && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
           </div>
 
           {/* Right: Panchang Fields */}
@@ -289,7 +271,7 @@ export default function Panchang() {
                     <span className={styles.fieldIcon}>{f.icon}</span>
                     <div className={styles.fieldContent}>
                       <span className={styles.fieldLabel}>{f.label}</span>
-                      <span className={styles.fieldValue}>{(data as any)[f.key]}</span>
+                      <span className={styles.fieldValue}>{f.value}</span>
                     </div>
                   </div>
                 ))}

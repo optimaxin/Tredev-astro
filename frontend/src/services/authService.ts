@@ -12,6 +12,21 @@ export interface ApiUser {
   email: string;
   role: Role;
   status: 'ACTIVE' | 'SUSPENDED';
+  birth_date: string | null;
+  birth_time: string | null;
+  birth_place: string | null;
+  birth_latitude: number | null;
+  birth_longitude: number | null;
+  birth_timezone_offset_minutes: number | null;
+}
+
+export interface RegisterBirthDetails {
+  birthDate?: string;
+  birthTime?: string;
+  birthPlace?: string;
+  birthLatitude?: number;
+  birthLongitude?: number;
+  birthTimezoneOffsetMinutes?: number;
 }
 
 export interface AuthTokens {
@@ -45,8 +60,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const authService = {
-  register: (name: string, email: string, password: string) =>
-    request<{ user: ApiUser } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
+  register: (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails) =>
+    request<{ user: ApiUser } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password, ...birthDetails }) }),
 
   login: (email: string, password: string) =>
     request<{ user: ApiUser } & AuthTokens>('/login', { method: 'POST', body: JSON.stringify({ email, password }) }),

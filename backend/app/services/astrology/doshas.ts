@@ -1,5 +1,5 @@
 import { getPlanetaryPositions } from './ephemeris.ts';
-import { getRashi } from './zodiac.ts';
+import { getHouseFromAscendant, getRashi } from './zodiac.ts';
 import type { Kundli } from './kundli.ts';
 
 // Mangal Dosha (Manglik status) — the traditional rule: a chart is Manglik
@@ -46,5 +46,62 @@ export function checkSadeSati(natalMoonRashiIndex: number, atDate: Date): SadeSa
     phase,
     moonRashi: getRashi(natalMoonRashiIndex * 30).name,
     saturnTransitRashi: saturnRashi.name,
+  };
+}
+
+// Kaal Sarp Dosha — occurs when all 7 classical grahas (excluding the nodes
+// themselves) sit within the same half of the zodiac bounded by Rahu and
+// Ketu. Since the nodes are always exactly 180° apart, every other planet
+// falls in exactly one of the two halves — the dosha is present only when
+// they're ALL in the same half.
+export interface KaalSarpDoshaResult {
+  isKaalSarp: boolean;
+  rahuRashi: string;
+  ketuRashi: string;
+  enclosedSide: 'rahu-to-ketu' | 'ketu-to-rahu' | null;
+}
+
+export function checkKaalSarpDosha(kundli: Kundli): KaalSarpDoshaResult {
+  const rahu = kundli.planets.find(p => p.id === 'rahu')!;
+  const ketu = kundli.planets.find(p => p.id === 'ketu')!;
+  const others = kundli.planets.filter(p => p.id !== 'rahu' && p.id !== 'ketu');
+
+  const forwardDistance = (from: number, to: number) => ((to - from) % 360 + 360) % 360;
+  const onRahuToKetuSide = others.map(p => forwardDistance(rahu.longitude, p.longitude) < 180);
+  const isKaalSarp = onRahuToKetuSide.every(v => v === onRahuToKetuSide[0]);
+
+  return {
+    isKaalSarp,
+    rahuRashi: rahu.rashi,
+    ketuRashi: ketu.rashi,
+    enclosedSide: isKaalSarp ? (onRahuToKetuSide[0] ? 'rahu-to-ketu' : 'ketu-to-rahu') : null,
+  };
+}
+
+// Rahu-Ketu Transit — where the currently-transiting nodes sit relative to
+// the natal Moon's rashi. Unlike Sade Sati, classical sources disagree on
+// which transit houses are favorable, so this reports the factual transit
+// position rather than asserting a specific good/bad verdict per house.
+export interface RahuKetuTransitResult {
+  moonRashi: string;
+  rahuTransitRashi: string;
+  ketuTransitRashi: string;
+  rahuHouseFromMoon: number;
+  ketuHouseFromMoon: number;
+}
+
+export function checkRahuKetuTransit(natalMoonRashiIndex: number, atDate: Date): RahuKetuTransitResult {
+  const positions = getPlanetaryPositions({ utcDate: atDate });
+  const rahu = positions.find(p => p.id === 'rahu')!;
+  const ketu = positions.find(p => p.id === 'ketu')!;
+  const rahuRashi = getRashi(rahu.longitude);
+  const ketuRashi = getRashi(ketu.longitude);
+
+  return {
+    moonRashi: getRashi(natalMoonRashiIndex * 30).name,
+    rahuTransitRashi: rahuRashi.name,
+    ketuTransitRashi: ketuRashi.name,
+    rahuHouseFromMoon: getHouseFromAscendant(natalMoonRashiIndex, rahuRashi.index),
+    ketuHouseFromMoon: getHouseFromAscendant(natalMoonRashiIndex, ketuRashi.index),
   };
 }

@@ -1,45 +1,58 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import { MY_SKY_DATA } from '../../data/mockData';
+import { HOUSE_MEANINGS } from '../../data/mockData';
+import { resolveBirthDetailsInput } from '../../utils/birthChart';
+import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import type { MySkyResult } from '../../services/calculatorService';
 import styles from './MySky.module.css';
 
-const PLACEMENTS = [
-  { label: 'Surya (Sun)', value: 'Vrischika (Scorpio)', house: '4th Bhava', symbol: '☉', color: 'var(--color-gold)' },
-  { label: 'Chandra (Moon)', value: 'Vrishabha (Taurus)', house: '10th Bhava', symbol: '☽', color: 'var(--color-gold-light)' },
-  { label: 'Lagna (Ascendant)', value: 'Simha (Leo)', house: '1st Bhava (Rising)', symbol: '↑', color: 'var(--color-gold-dark)' },
-  { label: 'Janma Nakshatra', value: 'Rohini', house: 'Lunar Mansion', symbol: '✦', color: 'var(--color-terracotta)' },
-];
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
 
-const DAILY_CARDS = [
-  {
-    label: "Gochara (Daily Energy)",
-    value: MY_SKY_DATA.todayEnergy,
-    desc: MY_SKY_DATA.energyDesc,
-    icon: '✦',
-  },
-  {
-    label: 'Planetary Transits',
-    value: MY_SKY_DATA.currentTransit,
-    desc: MY_SKY_DATA.transitDesc,
-    icon: '❂',
-  },
-  {
-    label: 'Vimshottari Dasha',
-    value: MY_SKY_DATA.mahadasha,
-    desc: MY_SKY_DATA.mahadashaDesc,
-    icon: '⌛',
-  },
-  {
-    label: 'Chandra Position',
-    value: MY_SKY_DATA.moonPosition,
-    desc: MY_SKY_DATA.moonDesc,
-    icon: '☽',
-  },
-];
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export default function MySky() {
-  const { birthProfile } = useAppContext();
+  const { birthProfile, currentUser } = useAppContext();
+  const [sky, setSky] = useState<MySkyResult | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const birth = await resolveBirthDetailsInput(birthProfile, currentUser);
+        const result = await calculatorService.mySky(birth);
+        if (!cancelled) setSky(result);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof CalculatorApiError ? err.message : 'Could not load your sky right now.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [birthProfile, currentUser]);
+
+  const placements = sky
+    ? [
+        { label: 'Surya (Sun)', value: sky.sunRashi, house: '', symbol: '☉', color: 'var(--color-gold)' },
+        { label: 'Chandra (Moon)', value: sky.moonRashi, house: '', symbol: '☽', color: 'var(--color-gold-light)' },
+        { label: 'Lagna (Ascendant)', value: sky.ascendantRashi, house: '1st Bhava (Rising)', symbol: '↑', color: 'var(--color-gold-dark)' },
+        { label: 'Janma Nakshatra', value: sky.moonNakshatra.name, house: `Pada ${sky.moonNakshatra.pada}`, symbol: '✦', color: 'var(--color-terracotta)' },
+      ]
+    : [];
+
+  const dailyCards = sky
+    ? [
+        { label: 'Gochara (Daily Energy)', value: `${sky.todayMoonNakshatra} Moon`, desc: `Today's Moon transit is in ${sky.todayMoonNakshatra} Nakshatra.`, icon: '✦' },
+        { label: 'Planetary Transits', value: `Jupiter in ${ordinal(sky.jupiterHouseFromMoon)} House`, desc: HOUSE_MEANINGS[sky.jupiterHouseFromMoon] || '', icon: '❂' },
+        { label: 'Vimshottari Dasha', value: `${cap(sky.mahadasha.lord)} Mahadasha`, desc: `Active ${sky.mahadasha.startsAt} to ${sky.mahadasha.endsAt}.`, icon: '⌛' },
+        { label: 'Chandra Position', value: `${sky.moonRashi} · ${sky.moonNakshatra.name}`, desc: `Pada ${sky.moonNakshatra.pada}.`, icon: '☽' },
+      ]
+    : [];
 
   return (
     <section className={styles.section} id="mysky">
@@ -77,6 +90,8 @@ export default function MySky() {
           </p>
         </motion.div>
 
+        {error && <p className={styles.subtitle} style={{ color: '#d64545' }}>{error}</p>}
+
         {/* Birth Profile Banner */}
         <motion.div
           className={styles.profileBanner}
@@ -85,7 +100,7 @@ export default function MySky() {
           viewport={{ once: true }}
           transition={{ delay: 0.15, duration: 0.7 }}
         >
-          {PLACEMENTS.map((p) => (
+          {placements.map((p) => (
             <div key={p.label} className={styles.placement}>
               <span className={styles.placementSymbol} style={{ color: p.color }}>{p.symbol}</span>
               <div className={styles.placementInfo}>
@@ -105,7 +120,7 @@ export default function MySky() {
           viewport={{ once: true }}
           transition={{ delay: 0.3, duration: 0.7 }}
         >
-          {DAILY_CARDS.map((card) => (
+          {dailyCards.map((card) => (
             <div key={card.label} className={styles.dailyCard}>
               <div className={styles.dailyIcon}>{card.icon}</div>
               <div className={styles.dailyMeta}>

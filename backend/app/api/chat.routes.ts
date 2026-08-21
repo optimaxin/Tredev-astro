@@ -4,6 +4,9 @@ import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { getPublicUser } from '../services/authService.ts';
 import { ChatError, listMessages, sendMessage } from '../services/chatService.ts';
+import { findAllForUser } from '../repositories/consultationRepository.ts';
+import { findAstrologerByIdRaw } from '../repositories/astrologerRepository.ts';
+import { findReviewByConsultation } from '../repositories/reviewRepository.ts';
 
 export const chatRouter = Router();
 
@@ -25,6 +28,21 @@ async function requesterEmail(req: import('express').Request, res: import('expre
   }
   return user.email;
 }
+
+// A user's own consultation history, with the astrologer's name resolved and
+// whether each completed one has already been reviewed — the client needs
+// both to render a "My Consultations" list with a "Leave a Review" action.
+chatRouter.get('/mine', requireAuth, async (req, res) => {
+  const email = await requesterEmail(req, res);
+  if (!email) return;
+  const rows = await findAllForUser(email);
+  const data = await Promise.all(rows.map(async c => {
+    const astro = await findAstrologerByIdRaw(c.astrologerId);
+    const reviewed = c.status === 'COMPLETED' ? !!(await findReviewByConsultation(c.id)) : false;
+    return { ...c, astrologerName: astro?.name || `Astrologer #${c.astrologerId}`, reviewed };
+  }));
+  res.json({ success: true, data });
+});
 
 chatRouter.get('/:id/messages', requireAuth, async (req, res) => {
   const email = await requesterEmail(req, res);

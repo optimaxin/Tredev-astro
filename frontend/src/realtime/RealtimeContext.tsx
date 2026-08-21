@@ -7,6 +7,7 @@ import type {
   AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
   RecommendedAstrologer, RequestResult, UserSyncSnapshot,
 } from './types';
+import type { ChatMessage } from '../services/chatService';
 
 interface NotifPrefs {
   onboarded: boolean;
@@ -57,6 +58,10 @@ interface RealtimeContextValue {
 
   toasts: Toast[];
   dismissToast: (id: string) => void;
+
+  // Live chat — messages arrive here the instant either party sends one;
+  // ChatWindow merges these into the history it loaded via chatService.
+  liveChatMessages: ChatMessage[];
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -80,6 +85,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [recommendations, setRecommendations] = useState<RecommendedAstrologer[] | null>(null);
   const [queueExpired, setQueueExpired] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [liveChatMessages, setLiveChatMessages] = useState<ChatMessage[]>([]);
   const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(() => loadNotifPrefs());
   const notifPrefsRef = useRef(notifPrefs);
   useEffect(() => { notifPrefsRef.current = notifPrefs; }, [notifPrefs]);
@@ -169,6 +175,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on('astrologer:away', () => setIdleWarning(false));
     socket.on('astrologer:idle-warning', () => setIdleWarning(true));
 
+    socket.on('chat:message', (message: ChatMessage) => {
+      setLiveChatMessages(prev => [...prev, message]);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -256,7 +266,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
-      toasts, dismissToast,
+      toasts, dismissToast, liveChatMessages,
     }}>
       {children}
     </RealtimeContext.Provider>

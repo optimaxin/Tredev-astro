@@ -11,8 +11,36 @@ interface FreeToolsProps {
   featured?: boolean;
 }
 
+// Each listed tool routes to its own distinct calculator page — no two
+// entries should share a destination unless they're genuinely the same
+// calculation under a different label (e.g. Kundli Milan / Love Compatibility).
+const TOOL_ROUTES: Record<string, string> = {
+  'Free Kundli': 'free-kundli',
+  'Moon Sign Calculator': 'moon-sign',
+  'Lagna / Ascendant': 'ascendant',
+  'Nakshatra Finder': 'nakshatra-finder',
+  'Nakshatra': 'nakshatra-finder',
+  'Kundli Matching': 'kundli-matching',
+  'Kundli Milan': 'kundli-matching',
+  'Love Compatibility': 'kundli-matching',
+  'Numerology Match': 'numerology-match',
+  'Mangal Dosha': 'mangal-dosha',
+  'Kaal Sarp Dosha': 'kaal-sarp-dosha',
+  'Sade Sati': 'sade-sati',
+  'Rahu Ketu Transit': 'rahu-ketu-transit',
+  'Numerology': 'numerology',
+  'Numerology Report': 'numerology',
+  'Life Path Number': 'life-path-number',
+  'Name Numerology': 'name-numerology',
+  'Daily Horoscope': 'horoscope',
+  "Today's Panchang": 'panchang',
+  'Muhurat Finder': 'muhurat-finder',
+  'Choghadiya': 'choghadiya',
+  'Abhijit Muhurat': 'abhijit-muhurat',
+};
+
 export default function FreeTools({ featured = false }: FreeToolsProps) {
-  const { setPage, kundliGenerated, isLoggedIn, setShowLoginModal, setPendingAction, t, tOr } = useAppContext();
+  const { setPage, isLoggedIn, setShowLoginModal, setPendingAction, t, tOr } = useAppContext();
 
   const handleToolClick = (toolName: string) => {
     if (!isLoggedIn) {
@@ -20,30 +48,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
       setShowLoginModal(true);
       return;
     }
-
-    if (toolName === 'Free Kundli' || toolName === 'Lagna / Ascendant' || toolName === 'Moon Sign Calculator') {
-      if (kundliGenerated) {
-        setPage('kundli-result');
-      } else {
-        setPage('free-kundli');
-      }
-    } else if (toolName === 'Nakshatra Finder' || toolName === 'Nakshatra') {
-      setPage('nakshatra-finder');
-    } else if (toolName === 'Mangal Dosha') {
-      setPage('mangal-dosha');
-    } else if (toolName === 'Sade Sati') {
-      setPage('sade-sati');
-    } else if (toolName === 'Numerology' || toolName === 'Numerology Match' || toolName === 'Numerology Report' || toolName === 'Life Path Number' || toolName === 'Name Numerology') {
-      setPage('numerology');
-    } else if (toolName === 'Kundli Milan' || toolName === 'Kundli Matching' || toolName === 'Love Compatibility') {
-      setPage('kundli-matching');
-    } else if (toolName === 'Daily Horoscope') {
-      setPage('horoscope');
-    } else if (toolName === "Today's Panchang" || toolName === 'Muhurat Finder' || toolName === 'Choghadiya' || toolName === 'Abhijit Muhurat') {
-      setPage('panchang');
-    } else {
-      setPage('free-kundli');
-    }
+    setPage(TOOL_ROUTES[toolName] || 'astrology-tools');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

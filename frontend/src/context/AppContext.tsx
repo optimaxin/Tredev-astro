@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authService } from '../services/authService';
-import type { ApiUser } from '../services/authService';
+import type { ApiUser, RegisterBirthDetails } from '../services/authService';
+import { adminService } from '../services/adminService';
+import { astrologerService } from '../services/astrologerService';
 
 export interface BirthProfile {
   name: string;
@@ -46,10 +48,12 @@ export interface AuthUser {
   email: string;
   role: Role;
   status?: AccountStatus;
-}
-
-interface StoredAccount extends AuthUser {
-  password: string; // dev/demo only — never store plaintext passwords in a real backend
+  birthDate?: string | null;
+  birthTime?: string | null;
+  birthPlace?: string | null;
+  birthLatitude?: number | null;
+  birthLongitude?: number | null;
+  birthTimezoneOffsetMinutes?: number | null;
 }
 
 export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -171,28 +175,7 @@ export interface AstrologerReport {
   updatedAt: string;
 }
 
-// Development-only demo accounts so all three dashboards can be tested
-// immediately. Not real credentials — never expose seed data like this in production.
-const DEMO_ACCOUNTS: StoredAccount[] = [
-  { id: 'demo-user', name: 'Arjun Sharma', email: 'demo.user@tredevastro.local', password: 'DevUser@123', role: 'USER' },
-  { id: 'demo-astrologer', name: 'Astrologist Rahul Shastri', email: 'demo.astrologer@tredevastro.local', password: 'DevAstro@123', role: 'ASTROLOGIST' },
-  { id: 'demo-admin', name: 'Admin Priya Verma', email: 'demo.admin@tredevastro.local', password: 'DevAdmin@123', role: 'ADMIN' },
-];
-
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
-
-function loadUsers(): Record<string, StoredAccount> {
-  let saved: Record<string, StoredAccount> = {};
-  try {
-    saved = JSON.parse(localStorage.getItem('auth_users') || '{}');
-  } catch {
-    saved = {};
-  }
-  DEMO_ACCOUNTS.forEach(acc => {
-    if (!saved[acc.email]) saved[acc.email] = acc;
-  });
-  return saved;
-}
 
 function loadLS<T>(key: string, fallback: T): T {
   try {
@@ -348,25 +331,26 @@ interface AppContextValue {
   currentUser: AuthUser | null;
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
-  register: (name: string, email: string, password: string) => Promise<AuthUser | null>;
+  register: (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails) => Promise<AuthUser | null>;
   logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
   showLoginModal: boolean;
   setShowLoginModal: (v: boolean) => void;
-  // Astrologer application + admin approval workflow (mock prototype)
+  // Astrologer application + admin approval workflow — real backend
+  // (backend/app/api/admin.routes.ts, backend/app/api/astrologers.routes.ts)
   accounts: AuthUser[];
   applications: AstrologerApplication[];
-  applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => void;
-  approveApplication: (id: string) => void;
-  rejectApplication: (id: string) => void;
+  applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => Promise<void>;
+  approveApplication: (id: string) => Promise<void>;
+  rejectApplication: (id: string) => Promise<void>;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
-  // Admin console actions (mock prototype — see Role-based auth note above)
+  // Admin console actions — real backend, requires an ADMIN-role JWT
   logAdminAction: (action: string, target: string) => void;
-  suspendAccount: (email: string) => void;
-  restoreAccount: (email: string) => void;
-  createAstrologerAccount: (name: string, email: string, password: string) => AuthUser | null;
+  suspendAccount: (email: string) => Promise<void>;
+  restoreAccount: (email: string) => Promise<void>;
+  createAstrologerAccount: (name: string, email: string, password: string) => Promise<AuthUser | null>;
   // Astrologist practice-management (mock prototype, scoped to currentUser.email)
   consultationRequests: ConsultationRequest[];
   consultations: Consultation[];
@@ -707,6 +691,10 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_status_live: 'Live',
     admin_status_completed: 'Completed',
     admin_status_cancelled: 'Cancelled',
+    admin_status_assigned: 'Assigned',
+    admin_status_accepted: 'Accepted',
+    admin_status_declined: 'Declined',
+    admin_status_expired: 'Expired',
     admin_status_all: 'All',
     admin_status_paid: 'Paid',
     admin_status_unpaid: 'Unpaid',
@@ -2608,11 +2596,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   // Auth state — sign-in/up/out and session identity are backed by the real
-  // backend (backend/app/api/auth.routes.ts). The `users` map below remains a
-  // local mock directory for the admin console's account-management UI
-  // (suspend/restore/approve — not yet migrated to the backend), kept in sync
-  // on register/login so newly-created accounts still show up there.
-  const [users, setUsersState] = useState<Record<string, StoredAccount>>(() => loadUsers());
+  // backend (backend/app/api/auth.routes.ts). Admin data (accounts,
+  // applications, audit log) is backed by backend/app/api/admin.routes.ts —
+  // real JWT+ADMIN-role-protected, fetched on demand via refreshAdminData().
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const isLoggedIn = !!currentUser;
@@ -2625,20 +2611,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_access_token');
     localStorage.removeItem('auth_refresh_token');
   };
-  const toAuthUser = (u: ApiUser): AuthUser => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status });
-
-  // Mirrors a real user into the local admin-directory mock so the admin
-  // console's Users/Astrologers pages (still localStorage-backed) keep
-  // seeing accounts created through the real backend.
-  const mirrorIntoLocalDirectory = (u: ApiUser) => {
-    setUsersState(prev => {
-      const key = normalizeEmail(u.email);
-      if (prev[key]) return prev;
-      const next = { ...prev, [key]: { id: u.id, name: u.name, email: key, role: u.role, password: '' } };
-      localStorage.setItem('auth_users', JSON.stringify(next));
-      return next;
-    });
-  };
+  const toAuthUser = (u: ApiUser): AuthUser => ({
+    id: u.id, name: u.name, email: u.email, role: u.role, status: u.status,
+    birthDate: u.birth_date, birthTime: u.birth_time, birthPlace: u.birth_place,
+    birthLatitude: u.birth_latitude, birthLongitude: u.birth_longitude, birthTimezoneOffsetMinutes: u.birth_timezone_offset_minutes,
+  });
 
   // Restore session on load: an access token is short-lived (15 min), so a
   // returning visitor almost always needs a refresh before /me will succeed.
@@ -2658,28 +2635,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, []);
-  const [applications, setApplications] = useState<AstrologerApplication[]>(() => {
-    try { return JSON.parse(localStorage.getItem('astro_applications') || '[]'); } catch { return []; }
-  });
-  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem('audit_log') || '[]'); } catch { return []; }
-  });
+  const [accounts, setAccounts] = useState<AuthUser[]>([]);
+  const [applications, setApplications] = useState<AstrologerApplication[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [notifications, setNotifications] = useState<NotificationEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem('notifications') || '[]'); } catch { return []; }
   });
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const persistUsers = (next: Record<string, StoredAccount>) => {
-    setUsersState(next);
-    localStorage.setItem('auth_users', JSON.stringify(next));
+  const refreshAdminData = async () => {
+    try {
+      const [users, apps, logs] = await Promise.all([
+        adminService.listUsers(), adminService.listApplications(), adminService.listAuditLog(),
+      ]);
+      setAccounts(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status })));
+      setApplications(apps.map(a => ({
+        id: a.id, userEmail: a.userEmail, userName: a.userName, expertise: a.expertise, experience: a.experience,
+        status: a.status, submittedAt: new Date(Number(a.submittedAt)).toISOString(),
+      })));
+      setAuditLog(logs.map(l => ({ id: l.id, action: l.action, actor: l.actor_label, target: l.target, at: new Date(Number(l.created_at)).toISOString() })));
+    } catch (e) {
+      console.error('Failed to load admin data', e);
+    }
   };
+
+  // Admin data is only meaningful (and only authorized) for an ADMIN session —
+  // fetch it once whenever one starts, rather than on every render.
+  React.useEffect(() => {
+    if (currentUser?.role === 'ADMIN') refreshAdminData();
+  }, [currentUser?.role]);
 
   const login = async (email: string, password: string): Promise<AuthUser | null> => {
     try {
       const { user, accessToken, refreshToken } = await authService.login(email, password);
       persistTokens(accessToken, refreshToken);
-      mirrorIntoLocalDirectory(user);
       const authUser = toAuthUser(user);
       setCurrentUser(authUser);
       return authUser;
@@ -2688,11 +2678,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<AuthUser | null> => {
+  const register = async (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails): Promise<AuthUser | null> => {
     try {
-      const { user, accessToken, refreshToken } = await authService.register(name, email, password);
+      const { user, accessToken, refreshToken } = await authService.register(name, email, password, birthDetails);
       persistTokens(accessToken, refreshToken);
-      mirrorIntoLocalDirectory(user);
       const authUser = toAuthUser(user);
       setCurrentUser(authUser);
       return authUser;
@@ -2708,18 +2697,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
   };
 
-  const persistApplications = (next: AstrologerApplication[]) => {
-    setApplications(next);
-    localStorage.setItem('astro_applications', JSON.stringify(next));
-  };
-
-  const logAudit = (action: string, actor: string, target: string) => {
-    const entry: AuditLogEntry = { id: `log-${Date.now()}`, action, actor, target, at: new Date().toISOString() };
-    const next = [entry, ...auditLog];
-    setAuditLog(next);
-    localStorage.setItem('audit_log', JSON.stringify(next));
-  };
-
   const notify = (message: string) => {
     const entry: NotificationEntry = { id: `notif-${Date.now()}`, message, at: new Date().toISOString() };
     const next = [entry, ...notifications];
@@ -2727,64 +2704,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('notifications', JSON.stringify(next));
   };
 
-  const applyToBecomeAstrologer = (details: { expertise: string; experience: string }) => {
+  const applyToBecomeAstrologer = async (details: { expertise: string; experience: string }) => {
     if (!currentUser) return;
-    const app: AstrologerApplication = {
-      id: `app-${Date.now()}`,
-      userEmail: currentUser.email,
-      userName: currentUser.name,
-      expertise: details.expertise,
-      experience: details.experience,
-      status: 'PENDING',
-      submittedAt: new Date().toISOString(),
-    };
-    persistApplications([app, ...applications]);
+    await astrologerService.submitApplication(details.expertise, details.experience);
   };
 
-  const approveApplication = (id: string) => {
+  const approveApplication = async (id: string) => {
     const app = applications.find(a => a.id === id);
-    if (!app) return;
-    persistApplications(applications.map(a => a.id === id ? { ...a, status: 'APPROVED' as const } : a));
-    const acc = users[app.userEmail];
-    if (acc) persistUsers({ ...users, [app.userEmail]: { ...acc, role: 'ASTROLOGIST' } });
-    logAudit('APPROVE_ASTROLOGER_APPLICATION', currentUser?.email || 'admin', app.userEmail);
-    notify(`${app.userName}'s astrologer application was approved.`);
+    await adminService.approveApplication(id);
+    await refreshAdminData();
+    if (app) notify(`${app.userName}'s astrologer application was approved.`);
   };
 
-  const rejectApplication = (id: string) => {
+  const rejectApplication = async (id: string) => {
     const app = applications.find(a => a.id === id);
-    if (!app) return;
-    persistApplications(applications.map(a => a.id === id ? { ...a, status: 'REJECTED' as const } : a));
-    logAudit('REJECT_ASTROLOGER_APPLICATION', currentUser?.email || 'admin', app.userEmail);
-    notify(`${app.userName}'s astrologer application was rejected.`);
+    await adminService.rejectApplication(id);
+    await refreshAdminData();
+    if (app) notify(`${app.userName}'s astrologer application was rejected.`);
   };
 
-  const suspendAccount = (email: string) => {
-    const key = normalizeEmail(email);
-    const acc = users[key];
+  const suspendAccount = async (email: string) => {
+    const acc = accounts.find(a => normalizeEmail(a.email) === normalizeEmail(email));
     if (!acc) return;
-    persistUsers({ ...users, [key]: { ...acc, status: 'SUSPENDED' } });
-    logAudit('SUSPEND_ACCOUNT', currentUser?.email || 'admin', key);
+    await adminService.updateUserStatus(acc.id, 'SUSPENDED');
+    await refreshAdminData();
   };
 
-  const restoreAccount = (email: string) => {
-    const key = normalizeEmail(email);
-    const acc = users[key];
+  const restoreAccount = async (email: string) => {
+    const acc = accounts.find(a => normalizeEmail(a.email) === normalizeEmail(email));
     if (!acc) return;
-    persistUsers({ ...users, [key]: { ...acc, status: 'ACTIVE' } });
-    logAudit('RESTORE_ACCOUNT', currentUser?.email || 'admin', key);
+    await adminService.updateUserStatus(acc.id, 'ACTIVE');
+    await refreshAdminData();
   };
 
-  const createAstrologerAccount = (name: string, email: string, password: string): AuthUser | null => {
-    const key = normalizeEmail(email);
-    if (users[key]) return null;
-    const acc: StoredAccount = { id: `u-${Date.now()}`, name, email: key, password, role: 'ASTROLOGIST', status: 'ACTIVE' };
-    persistUsers({ ...users, [key]: acc });
-    logAudit('ADD_ASTROLOGER', currentUser?.email || 'admin', key);
-    return { id: acc.id, name: acc.name, email: acc.email, role: acc.role, status: acc.status };
+  const createAstrologerAccount = async (name: string, email: string, password: string): Promise<AuthUser | null> => {
+    try {
+      const user = await adminService.addAstrologer(name, email, password);
+      await refreshAdminData();
+      return { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status };
+    } catch {
+      return null;
+    }
   };
-
-  const accounts: AuthUser[] = Object.values(users).map(({ id, name, email, role, status }) => ({ id, name, email, role, status }));
 
   // ── Astrologist practice-management state (mock prototype, see comment on
   // seedAstrologistDemoData above) ──
@@ -3006,7 +2967,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       showLoginModal, setShowLoginModal,
       accounts, applications, applyToBecomeAstrologer, approveApplication, rejectApplication,
       auditLog, notifications,
-      logAdminAction: (action: string, target: string) => logAudit(action, currentUser?.email || 'admin', target),
+      logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
       suspendAccount, restoreAccount, createAstrologerAccount,
       consultationRequests, consultations,
       acceptConsultationRequest, declineConsultationRequest, completeConsultation, cancelConsultation, saveConsultationNotes,

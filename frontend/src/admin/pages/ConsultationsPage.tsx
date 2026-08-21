@@ -1,29 +1,50 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import type { AdminConsultation } from '../adminTypes';
-import { SAMPLE_CONSULTATIONS } from '../adminMockData';
+import { adminService } from '../../services/adminService';
+import type { ApiConsultation } from '../../services/adminService';
+import { astrologerService } from '../../services/astrologerService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, FilterBar, EmptyState, AdminButton } from '../components/SharedControls';
 import styles from './AdminPages.module.css';
 
-type FilterKey = 'ALL' | 'UPCOMING' | 'LIVE' | 'COMPLETED' | 'CANCELLED';
+// Real consultation, with the astrologer name resolved from the catalog (the
+// backend only stores astrologerId) — no payment field, since there's no
+// real payment system behind this yet.
+interface RealConsultation extends ApiConsultation {
+  astrologerName: string;
+}
+
+type FilterKey = 'ALL' | ApiConsultation['status'];
+
+const TYPE_LABEL: Record<ApiConsultation['type'], 'Chat' | 'Voice' | 'Video'> = { chat: 'Chat', voice: 'Voice', video: 'Video' };
 
 export default function ConsultationsPage() {
   const { t } = useAppContext();
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [view, setView] = useState<'table' | 'agenda'>('table');
-  const [selected, setSelected] = useState<AdminConsultation | null>(null);
+  const [selected, setSelected] = useState<RealConsultation | null>(null);
+  const [consultations, setConsultations] = useState<RealConsultation[]>([]);
+
+  useEffect(() => {
+    Promise.all([adminService.listConsultations(), astrologerService.list({ limit: 50 })])
+      .then(([rows, catalog]) => {
+        const nameById = new Map(catalog.data.map(a => [a.id, a.name]));
+        setConsultations(rows.map(c => ({ ...c, astrologerName: nameById.get(c.astrologerId) || `Astrologer #${c.astrologerId}` })));
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
-    return SAMPLE_CONSULTATIONS.filter(c => filter === 'ALL' || c.status === filter);
-  }, [filter]);
+    return consultations.filter(c => filter === 'ALL' || c.status === filter);
+  }, [consultations, filter]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, AdminConsultation[]>();
+    const map = new Map<string, RealConsultation[]>();
     filtered.forEach(c => {
-      if (!map.has(c.date)) map.set(c.date, []);
-      map.get(c.date)!.push(c);
+      const date = new Date(c.createdAt).toLocaleDateString();
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(c);
     });
     return Array.from(map.entries());
   }, [filtered]);
@@ -37,10 +58,13 @@ export default function ConsultationsPage() {
       <div className={styles.toolbar}>
         <FilterBar
           filters={[
-            { key: 'UPCOMING', label: t('admin_status_upcoming') },
-            { key: 'LIVE', label: t('admin_status_live') },
+            { key: 'ASSIGNED', label: t('admin_status_assigned') },
+            { key: 'ACCEPTED', label: t('admin_status_accepted') },
+            { key: 'ACTIVE', label: t('admin_status_active') },
             { key: 'COMPLETED', label: t('admin_status_completed') },
+            { key: 'DECLINED', label: t('admin_status_declined') },
             { key: 'CANCELLED', label: t('admin_status_cancelled') },
+            { key: 'EXPIRED', label: t('admin_status_expired') },
             { key: 'ALL', label: t('admin_status_all') },
           ]}
           active={filter}
@@ -57,10 +81,9 @@ export default function ConsultationsPage() {
           columns={[
             { key: 'user', label: t('admin_consult_col_user'), render: c => c.userName },
             { key: 'astrologer', label: t('admin_consult_col_astrologer'), render: c => c.astrologerName },
-            { key: 'date', label: t('admin_consult_col_date'), render: c => c.date },
-            { key: 'time', label: t('admin_consult_col_time'), render: c => c.time },
-            { key: 'type', label: t('admin_consult_col_type'), render: c => c.type },
-            { key: 'payment', label: t('admin_consult_col_payment'), render: c => `₹${c.payment}` },
+            { key: 'date', label: t('admin_consult_col_date'), render: c => new Date(c.createdAt).toLocaleDateString() },
+            { key: 'time', label: t('admin_consult_col_time'), render: c => new Date(c.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) },
+            { key: 'type', label: t('admin_consult_col_type'), render: c => TYPE_LABEL[c.type] },
             { key: 'status', label: t('admin_consult_col_status'), render: c => <StatusBadge status={c.status} label={t(`admin_status_${c.status.toLowerCase()}`)} /> },
           ]}
           rows={filtered}
@@ -78,7 +101,7 @@ export default function ConsultationsPage() {
               <div className={styles.sectionTitle}>{date}</div>
               {items.map(c => (
                 <div key={c.id} className={styles.drawerField} style={{ cursor: 'pointer' }} onClick={() => setSelected(c)}>
-                  <span className={styles.drawerFieldLabel}>{c.time} · {c.userName} → {c.astrologerName}</span>
+                  <span className={styles.drawerFieldLabel}>{new Date(c.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {c.userName} → {c.astrologerName}</span>
                   <StatusBadge status={c.status} label={t(`admin_status_${c.status.toLowerCase()}`)} />
                 </div>
               ))}
@@ -91,10 +114,9 @@ export default function ConsultationsPage() {
           <>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_user')}</span><span className={styles.drawerFieldValue}>{selected.userName}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_astrologer')}</span><span className={styles.drawerFieldValue}>{selected.astrologerName}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_date')}</span><span className={styles.drawerFieldValue}>{selected.date}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_time')}</span><span className={styles.drawerFieldValue}>{selected.time}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_type')}</span><span className={styles.drawerFieldValue}>{selected.type}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_payment')}</span><span className={styles.drawerFieldValue}>₹{selected.payment}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_date')}</span><span className={styles.drawerFieldValue}>{new Date(selected.createdAt).toLocaleDateString()}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_time')}</span><span className={styles.drawerFieldValue}>{new Date(selected.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_type')}</span><span className={styles.drawerFieldValue}>{TYPE_LABEL[selected.type]}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_consult_col_status')}</span><span className={styles.drawerFieldValue}><StatusBadge status={selected.status} label={t(`admin_status_${selected.status.toLowerCase()}`)} /></span></div>
           </>
         )}

@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AI_SUGGESTIONS, AI_DEMO_RESPONSES } from '../../data/mockData';
+import { AI_SUGGESTIONS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
+import { resolveBirthDetailsInput } from '../../utils/birthChart';
+import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import type { BirthDetailsInput } from '../../services/calculatorService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './AIAstrology.module.css';
 
@@ -54,12 +57,12 @@ function TimerDisplay({ secondsLeft }: { secondsLeft: number }) {
 }
 
 export default function AIAstrology() {
-  const { birthProfile, isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
+  const { birthProfile, currentUser, isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
   const [phase, setPhase] = useState<AIPhase>('intro');
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: `Namaste. I am your Vedic Margdarshan guide. I can answer questions based on ${birthProfile.name}'s chart: Surya in Vrischika, Chandra in Vrishabha, and Simha Lagna. What would you like to explore?`,
+      text: `Namaste. I am your Vedic Margdarshan guide, reading from ${birthProfile.name}'s actual birth chart. What would you like to explore?`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -68,6 +71,7 @@ export default function AIAstrology() {
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const timerRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const birthInputRef = useRef<BirthDetailsInput | null>(null);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -108,21 +112,26 @@ export default function AIAstrology() {
     setPhase('active');
   };
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading || phase !== 'active') return;
     const userMsg: Message = { role: 'user', text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
-    setTimeout(() => {
-      const response =
-        AI_DEMO_RESPONSES[text] ||
-        `Based on your chart with Surya in Vrischika (4th Bhava), Chandra in Vrishabha (10th Bhava), and Simha Lagna, traditional Vedic astrology offers the following perspective on "${text}":\n\nYour current planetary period (Venus–Mercury Mahadasha) suggests a time of intellectual and communicative growth. The transit of Jupiter through your 9th house indicates a period of expansion and opportunity.\n\n*This interpretation is based on classical Vedic principles and chart analysis.*`;
-      setMessages(prev => [...prev, { role: 'assistant', text: response }]);
+    try {
+      if (!birthInputRef.current) {
+        birthInputRef.current = await resolveBirthDetailsInput(birthProfile, currentUser);
+      }
+      const { answer } = await calculatorService.aiAsk(birthInputRef.current, text);
+      setMessages(prev => [...prev, { role: 'assistant', text: answer }]);
+    } catch (err) {
+      const message = err instanceof CalculatorApiError ? err.message : 'Could not reach the astrology engine right now. Please try again.';
+      setMessages(prev => [...prev, { role: 'assistant', text: message }]);
+    } finally {
       setLoading(false);
-    }, 1400);
-  }, [loading, phase]);
+    }
+  }, [loading, phase, birthProfile, currentUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

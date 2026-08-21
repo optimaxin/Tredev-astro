@@ -65,6 +65,41 @@ export interface AstrologerListParams {
   limit?: number;
 }
 
+export class AstrologerApiError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+async function authedRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('auth_access_token');
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) },
+    });
+  } catch {
+    throw new AstrologerApiError('NETWORK_ERROR', 'Could not reach the server. Please check your connection.');
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.success) {
+    throw new AstrologerApiError(body?.error?.code || 'UNKNOWN', body?.error?.message || 'Something went wrong.');
+  }
+  return body.data as T;
+}
+
+export interface Review {
+  id: string;
+  astrologerId: number;
+  rating: number;
+  text: string;
+  createdAt: number;
+  authorName: string;
+}
+
 export const astrologerService = {
   async list(params: AstrologerListParams = {}): Promise<{ data: UiAstrologer[]; total: number }> {
     const qs = new URLSearchParams();
@@ -85,4 +120,21 @@ export const astrologerService = {
     if (!body.success) throw new Error(body.error?.message || 'Failed to load astrologer');
     return adapt(body.data as ApiAstrologerProfile);
   },
+
+  // ── Reviews ──────────────────────────────────────────────────────────
+  listReviews: (astrologerId: number) => authedRequest<Review[]>(`/api/astrologers/${astrologerId}/reviews`),
+  submitReview: (astrologerId: number, consultationId: string, rating: number, text: string) =>
+    authedRequest<Review>(`/api/astrologers/${astrologerId}/reviews`, { method: 'POST', body: JSON.stringify({ consultationId, rating, text }) }),
+
+  // ── Favorites ────────────────────────────────────────────────────────
+  isFavorite: (astrologerId: number) => authedRequest<{ favorited: boolean }>(`/api/astrologers/${astrologerId}/favorite`),
+  addFavorite: (astrologerId: number) => authedRequest<{ favorited: boolean }>(`/api/astrologers/${astrologerId}/favorite`, { method: 'POST' }),
+  removeFavorite: (astrologerId: number) => authedRequest<{ favorited: boolean }>(`/api/astrologers/${astrologerId}/favorite`, { method: 'DELETE' }),
+  listFavorites: (): Promise<UiAstrologer[]> =>
+    authedRequest<ApiAstrologerProfile[]>('/api/favorites').then(rows => rows.map(adapt)),
+
+  // ── Become an astrologer ─────────────────────────────────────────────
+  submitApplication: (expertise: string, experience: string) =>
+    authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify({ expertise, experience }) }),
+  myApplication: () => authedRequest<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>('/api/astrologers/applications/mine'),
 };

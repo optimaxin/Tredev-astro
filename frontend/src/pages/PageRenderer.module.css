@@ -357,6 +357,17 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* The hardcoded dark-navy background above never adapted to light theme —
+   every calculator result (Mangal Dosha, Kaal Sarp, Numerology, etc. — all
+   share this one card) rendered its already-theme-aware text colors against
+   a background that stayed dark regardless, producing low-contrast, washed
+   out text on the light theme. */
+:global([data-theme='light']) .compatibilityResult {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: var(--border-strong);
+  box-shadow: 0 10px 40px rgba(23, 37, 58, 0.12);
+}
+
 .compatHeader {
   display: flex;
   align-items: center;

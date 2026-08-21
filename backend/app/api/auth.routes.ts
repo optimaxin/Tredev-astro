@@ -23,6 +23,12 @@ const registerSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
+  birthDate: z.string().optional(),
+  birthTime: z.string().optional(),
+  birthPlace: z.string().optional(),
+  birthLatitude: z.number().optional(),
+  birthLongitude: z.number().optional(),
+  birthTimezoneOffsetMinutes: z.number().optional(),
 });
 
 authRouter.post('/register', authLimiter, async (req, res) => {

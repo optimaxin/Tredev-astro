@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
 import { ASTROLOGERS } from '../../../data/mockData';
 import { useRealtime } from '../../../realtime/RealtimeContext';
+import ChatWindow from '../../../components/ChatWindow/ChatWindow';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
   EmptyState, KpiCard, MiniBarChart, Panel,
@@ -64,6 +65,9 @@ function LiveStatusCard() {
               <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--gold-primary)' }}>{elapsed}</div>
               <button className={styles.iconBtn} style={{ marginTop: 4 }} onClick={endActiveConsultation}>End Consultation</button>
             </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <ChatWindow consultationId={active.id} otherPartyName={active.userName} />
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BLOG_POSTS } from '../../data/mockData';
+import { contentService } from '../../services/contentService';
+import type { BlogPost } from '../../services/contentService';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import styles from './Blog.module.css';
@@ -15,8 +16,15 @@ const TAG_COLORS: Record<string, string> = {
 
 export default function Blog() {
   const { setPage, setSelectedId } = useAppContext();
-  const featured = BLOG_POSTS[0];
-  const rest = BLOG_POSTS.slice(1);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    contentService.listBlogPosts().then(setPosts).catch(() => setPosts([]));
+  }, []);
+
+  if (!posts.length) return null;
+  const featured = posts[0];
+  const rest = posts.slice(1);
 
   const handleBlogClick = (id: number) => {
     setSelectedId(id);

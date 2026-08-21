@@ -30,7 +30,11 @@
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  /* Portaled to <body> (see AncientDatePicker.tsx), so it's a sibling of any
+     open modal rather than nested inside it — needs to outrank the highest
+     z-index in the app (AuthPage's modal overlay is 2010) to still render on
+     top when opened from within a modal. */
+  z-index: 9999;
   width: 280px;
   max-width: calc(100vw - 32px);
   margin-top: 8px;

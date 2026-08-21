@@ -22,6 +22,22 @@ declare module 'astronomia' {
   export namespace julian {
     function DateToJD(date: Date): number;
     function CalendarGregorianToJD(year: number, month: number, day: number): number;
+    class Calendar {
+      constructor(date?: Date);
+      fromDate(date: Date): Calendar;
+      midnight(): Calendar;
+      toJDE(): number;
+      toDate(): Date;
+    }
+  }
+
+  export namespace sunrise {
+    class Sunrise {
+      /** @param lon - longitude in degrees, measured positively WESTWARD (opposite of this app's convention — negate before passing in). */
+      constructor(date: julian.Calendar, lat: number, lon: number);
+      rise(): julian.Calendar | undefined;
+      set(): julian.Calendar | undefined;
+    }
   }
 
   export namespace base {

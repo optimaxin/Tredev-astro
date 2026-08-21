@@ -1,53 +1,115 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import { KUNDLI_PLANETS, HOUSE_MEANINGS } from '../../data/mockData';
-import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
-import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
+import { HOUSE_MEANINGS } from '../../data/mockData';
+import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm';
+import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
+import { toSavedBirthDetails } from '../../utils/birthDetails';
+import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import type { KundliResult } from '../../services/calculatorService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
+import { PLANET_META } from '../../data/planetMeta';
 import styles from './KundliSection.module.css';
 
-const ZODIAC_SIGNS = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'];
-const ZODIAC_FULL = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+interface ChartPlanet {
+  id: string;
+  symbol: string;
+  name: string;
+  sign: string;
+  house: number;
+  degree: string;
+  quality: string;
+  retrograde?: boolean;
+}
+
+function formatDegree(degreeInSign: number): string {
+  const deg = Math.floor(degreeInSign);
+  const min = Math.round((degreeInSign - deg) * 60);
+  return `${deg}°${min}'`;
+}
+
+// Generic, one-sentence-per-sign Lagna (Ascendant) descriptions — same
+// wording for every user with that Ascendant, not personalized.
+const ASCENDANT_BLURBS: Record<string, string> = {
+  Aries: 'bold, direct, and quick to act — you tend to lead with energy and initiative.',
+  Taurus: 'steady, patient, and grounded — you value comfort, stability, and follow-through.',
+  Gemini: 'curious, communicative, and adaptable — you take in and process the world quickly.',
+  Cancer: 'sensitive, nurturing, and protective — your instincts and emotions run deep.',
+  Leo: 'confident, expressive, and warm — you naturally draw attention and like to lead.',
+  Virgo: 'analytical, precise, and service-minded — you notice detail others miss.',
+  Libra: 'diplomatic, balanced, and relationship-focused — you seek fairness and harmony.',
+  Scorpio: 'intense, private, and resilient — you go deep rather than staying on the surface.',
+  Sagittarius: "optimistic, independent, and philosophical — you're drawn to growth and exploration.",
+  Capricorn: 'disciplined, ambitious, and practical — you build things that last.',
+  Aquarius: 'independent, original, and idea-driven — you often think ahead of the crowd.',
+  Pisces: "imaginative, empathetic, and intuitive — you feel and absorb what's around you.",
+};
+
+function buildOverview(result: KundliResult): string[] {
+  const asc = result.ascendant.rashi;
+  const moon = result.planets.find(p => p.id === 'moon');
+  const sun = result.planets.find(p => p.id === 'sun');
+  const lines: string[] = [];
+  lines.push(`Your Ascendant (Lagna) is ${asc} — placed in your 1st house by definition, this is the lens the rest of the chart is read through: ${ASCENDANT_BLURBS[asc] || 'it colors how you come across to others.'}`);
+  if (moon) {
+    lines.push(`Your Moon is in ${moon.rashi} in your ${ordinal(moon.house)} house, and your Janma Nakshatra is ${result.moonNakshatra.name} (Pada ${result.moonNakshatra.pada}) — this shapes your emotional nature and instinctive reactions.`);
+  }
+  if (sun) {
+    lines.push(`Your Sun is in ${sun.rashi} in your ${ordinal(sun.house)} house — in Vedic astrology this points to where you seek purpose, recognition, and authority.`);
+  }
+  return lines;
+}
+
+function toChartPlanets(result: KundliResult): ChartPlanet[] {
+  const asc: ChartPlanet = {
+    id: 'asc',
+    ...PLANET_META.asc,
+    sign: result.ascendant.rashi,
+    house: 1,
+    degree: formatDegree(result.ascendant.degreeInSign),
+  };
+  const planets: ChartPlanet[] = result.planets.map(p => ({
+    id: p.id,
+    symbol: PLANET_META[p.id]?.symbol || '✦',
+    name: PLANET_META[p.id]?.name || p.id,
+    quality: PLANET_META[p.id]?.quality || '',
+    sign: p.rashi,
+    house: p.house,
+    degree: formatDegree(p.degreeInSign),
+    retrograde: p.retrograde,
+  }));
+  return [asc, ...planets];
+}
 
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, kundliGenerated, setKundliGenerated, setPage } = useAppContext();
-  const [formData, setFormData] = useState({
-    name: '',
-    dob: '',
-    tob: '',
-    place: '',
-  });
-  const [loading, setLoading] = useState(false);
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser } = useAppContext();
+  const [kundliResult, setKundliResult] = useState<KundliResult | null>(null);
+  const [error, setError] = useState('');
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name || !formData.dob) return;
-    setLoading(true);
-    setTimeout(() => {
-      setBirthProfile({
-        ...birthProfile,
-        name: formData.name || birthProfile.name,
-        dob: formData.dob || birthProfile.dob,
-        tob: formData.tob || birthProfile.tob,
-        place: formData.place || birthProfile.place,
-      });
-      setLoading(false);
+  const chartPlanets = kundliResult ? toChartPlanets(kundliResult) : [];
+  const savedBirthDetails = toSavedBirthDetails(currentUser);
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    try {
+      const result = await calculatorService.kundli(details);
+      setKundliResult(result);
+      setBirthProfile({ ...birthProfile, name: details.name, dob: details.date, tob: details.time, place: details.placeName });
       setKundliGenerated(true);
-      setPage('kundli-result');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1800);
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not generate your Kundli. Please try again.');
+    }
   };
 
-
-  const handlePlanetHover = (planet: typeof KUNDLI_PLANETS[0], e: React.MouseEvent) => {
+  const handlePlanetHover = (planet: ChartPlanet, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const containerRect = (e.currentTarget.closest('#kundli-chart') as HTMLElement)?.getBoundingClientRect();
     if (!containerRect) return;
     setTooltip({
-      text: `${planet.name} · ${planet.sign} · ${planet.house}${ordinal(planet.house)} House\n${planet.degree}\n${planet.quality}`,
+      text: `${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House\n${planet.degree}\n${planet.quality}`,
       x: rect.left - containerRect.left + rect.width / 2,
       y: rect.top - containerRect.top - 10,
     });
@@ -58,7 +120,7 @@ export default function KundliSection() {
       <CelestialBackdrop variant="kundli" intensity="medium" />
       <div className={styles.container}>
         <AnimatePresence mode="wait">
-          {!kundliGenerated ? (
+          {!kundliResult ? (
             <motion.div
               key="form"
               className={styles.formWrap}
@@ -73,73 +135,16 @@ export default function KundliSection() {
                 <h2 className={styles.sectionTitle}>Apni Janam Kundli Banayein</h2>
                 <div className={styles.divider}>✦ ❖ ✦</div>
                 <p className={styles.subtitle}>
-                  Your birth chart is the blueprint of your soul's journey. Enter your exact birth coordinates 
+                  Your birth chart is the blueprint of your soul's journey. Enter your exact birth coordinates
                   to map your Grahas, Bhavas, and Nakshatras.
                 </p>
               </div>
 
-              {/* Form */}
-              <form className={styles.form} onSubmit={handleSubmit}>
-                <div className={styles.formGrid}>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="kundli-name">Full Name</label>
-                    <input
-                      id="kundli-name"
-                      type="text"
-                      className={`${styles.input} input-field input-cosmos`}
-                      placeholder="Your full name"
-                      value={formData.name}
-                      onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="kundli-dob">Date of Birth</label>
-                    <AncientDatePicker
-                      className={`${styles.input} input-field input-cosmos`}
-                      value={formData.dob}
-                      onChange={val => setFormData(p => ({ ...p, dob: val }))}
-                      required
-                      placeholder="Select Date of Birth"
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="kundli-tob">Time of Birth</label>
-                    <AncientTimePicker
-                      className={`${styles.input} input-field input-cosmos`}
-                      value={formData.tob}
-                      onChange={val => setFormData(p => ({ ...p, tob: val }))}
-                      placeholder="Select Time of Birth"
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="kundli-place">Place of Birth</label>
-                    <input
-                      id="kundli-place"
-                      type="text"
-                      className={`${styles.input} input-field input-cosmos`}
-                      placeholder="City, Country"
-                      value={formData.place}
-                      onChange={e => setFormData(p => ({ ...p, place: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className={`${styles.submitBtn} btn btn-gold btn-lg`}
-                  disabled={loading || !formData.name || !formData.dob}
-                  id="kundli-generate-btn"
-                >
-                  {loading ? (
-                    <>
-                      <span className={styles.spinner} />
-                      Generating your chart...
-                    </>
-                  ) : 'Generate My Free Kundli'}
-                </button>
-                <p className={styles.privacy}>
-                  🔒 Your data is private and never shared with third parties.
-                </p>
-              </form>
+              <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" initialValues={savedBirthDetails} />
+              {savedBirthDetails && (
+                <p className={styles.privacy}>✦ Pre-filled from the birth details you gave at sign-up — edit any field if it's wrong.</p>
+              )}
+              {error && <p className={styles.privacy} style={{ color: '#d64545' }}>{error}</p>}
             </motion.div>
           ) : (
             <motion.div
@@ -161,7 +166,7 @@ export default function KundliSection() {
                 </div>
                 <button
                   className="btn btn-outline-gold"
-                  onClick={() => setKundliGenerated(false)}
+                  onClick={() => setKundliResult(null)}
                   id="kundli-edit-btn"
                 >
                   Edit Details
@@ -172,7 +177,7 @@ export default function KundliSection() {
                 {/* SVG Chart */}
                 <div className={styles.svgWrap} id="kundli-chart">
                   <KundliChart
-                    planets={KUNDLI_PLANETS}
+                    planets={chartPlanets}
                     onPlanetHover={handlePlanetHover}
                     onPlanetLeave={() => setTooltip(null)}
                     onHouseHover={(house, e) => {
@@ -216,7 +221,7 @@ export default function KundliSection() {
                 {/* Planet List */}
                 <div className={styles.planetList}>
                   <h3 className={styles.planetListTitle}>Planetary Placements</h3>
-                  {KUNDLI_PLANETS.map(p => (
+                  {chartPlanets.map(p => (
                     <div key={p.id} className={styles.planetRow}>
                       <span className={styles.planetSymbol}>{p.symbol}</span>
                       <span className={styles.planetName}>{p.name}</span>
@@ -229,6 +234,19 @@ export default function KundliSection() {
                   </div>
                 </div>
               </div>
+
+              {/* Plain-language overview — lets you sanity-check the chart above */}
+              {kundliResult && (
+                <div className={styles.overview}>
+                  <h3 className={styles.overviewTitle}>What This Chart Means</h3>
+                  {buildOverview(kundliResult).map((line, i) => (
+                    <p key={i} className={styles.overviewText}>{line}</p>
+                  ))}
+                  <p className={styles.chartNote}>
+                    To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart and Planetary Placements list — including on any other Kundli tool given the same birth date, time, and place.
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -239,8 +257,8 @@ export default function KundliSection() {
 
 // ---- North Indian Style Kundli Chart (SVG) ----
 interface KundliChartProps {
-  planets: typeof KUNDLI_PLANETS;
-  onPlanetHover: (p: typeof KUNDLI_PLANETS[0], e: React.MouseEvent) => void;
+  planets: ChartPlanet[];
+  onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void;
   onPlanetLeave: () => void;
   onHouseHover: (house: number, e: React.MouseEvent) => void;
   onHouseLeave: () => void;
@@ -305,7 +323,7 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
   };
 
   // Map planets to house positions for display
-  const planetsByHouse: Record<number, typeof KUNDLI_PLANETS> = {};
+  const planetsByHouse: Record<number, ChartPlanet[]> = {};
   planets.forEach(p => {
     if (!planetsByHouse[p.house]) planetsByHouse[p.house] = [];
     planetsByHouse[p.house].push(p);

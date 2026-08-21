@@ -12,7 +12,11 @@ export function findUserById(id: string): Promise<UserRow | undefined> {
   return queryOne<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
 }
 
-export async function createUser(params: { name: string; email: string; passwordHash: string; role?: Role }): Promise<UserRow> {
+export async function createUser(params: {
+  name: string; email: string; passwordHash: string; role?: Role;
+  birthDate?: string; birthTime?: string; birthPlace?: string;
+  birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
+}): Promise<UserRow> {
   const row: UserRow = {
     id: randomUUID(),
     name: params.name,
@@ -21,16 +25,38 @@ export async function createUser(params: { name: string; email: string; password
     role: params.role || 'USER',
     status: 'ACTIVE',
     created_at: Date.now(),
+    birth_date: params.birthDate ?? null,
+    birth_time: params.birthTime ?? null,
+    birth_place: params.birthPlace ?? null,
+    birth_latitude: params.birthLatitude ?? null,
+    birth_longitude: params.birthLongitude ?? null,
+    birth_timezone_offset_minutes: params.birthTimezoneOffsetMinutes ?? null,
   };
   await query(
-    'INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-    [row.id, row.name, row.email, row.password_hash, row.role, row.status, row.created_at]
+    `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [row.id, row.name, row.email, row.password_hash, row.role, row.status, row.created_at,
+      row.birth_date, row.birth_time, row.birth_place, row.birth_latitude, row.birth_longitude, row.birth_timezone_offset_minutes]
   );
   return row;
 }
 
 export async function updatePasswordHash(userId: string, passwordHash: string) {
   await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+}
+
+// ── Admin operations ─────────────────────────────────────────────────────
+
+export function listAllUsers(): Promise<UserRow[]> {
+  return query<UserRow>('SELECT * FROM users ORDER BY created_at DESC');
+}
+
+export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED') {
+  await query('UPDATE users SET status = $1 WHERE id = $2', [status, userId]);
+}
+
+export async function updateUserRole(userId: string, role: Role) {
+  await query('UPDATE users SET role = $1 WHERE id = $2', [role, userId]);
 }
 
 // ── Refresh tokens ───────────────────────────────────────────────────────

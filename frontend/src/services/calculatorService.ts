@@ -87,6 +87,32 @@ export interface NumerologyResult {
   personalityNumber: number;
 }
 
+export interface KaalSarpDoshaResult {
+  isKaalSarp: boolean;
+  rahuRashi: string;
+  ketuRashi: string;
+  enclosedSide: 'rahu-to-ketu' | 'ketu-to-rahu' | null;
+}
+
+export interface RahuKetuTransitResult {
+  moonRashi: string;
+  rahuTransitRashi: string;
+  ketuTransitRashi: string;
+  rahuHouseFromMoon: number;
+  ketuHouseFromMoon: number;
+}
+
+export type NumerologyAffinity = 'same' | 'grouped' | 'different';
+
+export interface NumerologyMatchResult {
+  person1: NumerologyResult;
+  person2: NumerologyResult;
+  lifePathAffinity: NumerologyAffinity;
+  destinyAffinity: NumerologyAffinity;
+  soulUrgeAffinity: NumerologyAffinity;
+  compatibilityScore: number;
+}
+
 export interface GunMilanKoota {
   name: string;
   maxPoints: number;
@@ -103,6 +129,57 @@ export interface GunMilanResult {
   groomNakshatra: string;
 }
 
+export interface ChoghadiyaSegment {
+  name: string;
+  auspicious: boolean;
+  start: string;
+  end: string;
+}
+
+export interface PanchangResult {
+  date: string;
+  vara: string;
+  tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number };
+  nakshatra: { name: string; pada: number; lord: string };
+  yoga: string;
+  karana: string;
+  moonRashi: string;
+  sunrise: string | null;
+  sunset: string | null;
+  rahuKaal: { start: string; end: string } | null;
+  abhijitMuhurat: { start: string; end: string } | null;
+  choghadiya: { day: ChoghadiyaSegment[]; night: ChoghadiyaSegment[] } | null;
+}
+
+export interface DailyTransitEntry {
+  id: string;
+  rashi: string;
+  house: number;
+  retrograde: boolean;
+}
+
+export interface DailyHoroscopeResult {
+  moonSignRashi: string;
+  date: string;
+  transits: DailyTransitEntry[];
+}
+
+export interface MahadashaPeriod {
+  lord: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface MySkyResult {
+  ascendantRashi: string;
+  moonRashi: string;
+  moonNakshatra: { name: string; pada: number; lord: string };
+  sunRashi: string;
+  mahadasha: MahadashaPeriod;
+  todayMoonNakshatra: string;
+  jupiterHouseFromMoon: number;
+}
+
 export const calculatorService = {
   geocode: (place: string) => request<GeocodeResult>(`/api/calculators/geocode?place=${encodeURIComponent(place)}`),
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
@@ -112,4 +189,15 @@ export const calculatorService = {
   numerology: (name: string, date: string) => request<NumerologyResult>('/api/calculators/numerology', { method: 'POST', body: JSON.stringify({ name, date }) }),
   kundliMatching: (bride: BirthDetailsInput, groom: BirthDetailsInput) =>
     request<GunMilanResult>('/api/calculators/kundli-matching', { method: 'POST', body: JSON.stringify({ bride, groom }) }),
+  kaalSarpDosha: (birth: BirthDetailsInput) => request<KaalSarpDoshaResult>('/api/calculators/kaal-sarp-dosha', { method: 'POST', body: JSON.stringify(birth) }),
+  rahuKetuTransit: (birth: BirthDetailsInput) => request<RahuKetuTransitResult>('/api/calculators/rahu-ketu-transit', { method: 'POST', body: JSON.stringify(birth) }),
+  numerologyMatch: (person1: { name: string; date: string }, person2: { name: string; date: string }) =>
+    request<NumerologyMatchResult>('/api/calculators/numerology-match', { method: 'POST', body: JSON.stringify({ person1, person2 }) }),
+  panchang: (date: string, latitude: number, longitude: number) =>
+    request<PanchangResult>('/api/calculators/panchang', { method: 'POST', body: JSON.stringify({ date, latitude, longitude }) }),
+  dailyHoroscope: (rashi: string) =>
+    request<DailyHoroscopeResult>('/api/calculators/daily-horoscope', { method: 'POST', body: JSON.stringify({ rashi }) }),
+  mySky: (birth: BirthDetailsInput) => request<MySkyResult>('/api/calculators/my-sky', { method: 'POST', body: JSON.stringify(birth) }),
+  aiAsk: (birth: BirthDetailsInput, question: string) =>
+    request<{ answer: string }>('/api/calculators/ai-ask', { method: 'POST', body: JSON.stringify({ ...birth, question }) }),
 };

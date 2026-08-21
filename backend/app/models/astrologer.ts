@@ -18,6 +18,7 @@ export interface AstrologerCatalogRow {
   max_concurrent: number;
   is_active: number; // SQLite has no boolean type
   created_at: number;
+  user_id: string | null;
 }
 
 // Public-safe astrologer profile — section 10: no phone/email/internal

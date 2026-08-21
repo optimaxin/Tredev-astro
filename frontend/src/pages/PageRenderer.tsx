@@ -4,10 +4,12 @@ import { useAppContext } from '../context/AppContext';
 import {
   PRODUCTS,
   COURSES,
-  REPORTS,
-  BLOG_POSTS,
-  PANCHANG
+  PANCHANG,
+  HOUSE_MEANINGS
 } from '../data/mockData';
+import { contentService } from '../services/contentService';
+import type { AstrologyReport, BlogPost } from '../services/contentService';
+import { PLANET_META } from '../data/planetMeta';
 import { useAstrologer } from '../hooks/useAstrologer';
 import styles from './PageRenderer.module.css';
 
@@ -33,11 +35,20 @@ import AncientDatePicker from '../components/AncientDatePicker/AncientDatePicker
 import AncientTimePicker from '../components/AncientTimePicker/AncientTimePicker';
 import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
+import PanchangDetailsForm from '../components/PanchangDetailsForm/PanchangDetailsForm';
+import type { PanchangDetailsSubmitValue } from '../components/PanchangDetailsForm/PanchangDetailsForm';
 import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { GunMilanResult, MangalDoshaResult, NakshatraResult, NumerologyResult, SadeSatiResult } from '../services/calculatorService';
+import type { DailyHoroscopeResult, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import { formatIst } from '../utils/istTime';
+import { toSavedBirthDetails } from '../utils/birthDetails';
+import { astrologerService, AstrologerApiError } from '../services/astrologerService';
+import type { Review, UiAstrologer } from '../services/astrologerService';
+import { consultationService, ConsultationApiError } from '../services/consultationService';
+import type { MyConsultation } from '../services/consultationService';
+import ChatWindow from '../components/ChatWindow/ChatWindow';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -86,12 +97,17 @@ export default function PageRenderer() {
             <AcademySection featured />
           </div>
 
+          <div className="yantra-watermark-right">
+            <BlogSection />
+          </div>
+
           <Testimonials />
           <WhyTredevAstro />
         </>
       );
 
     case 'free-kundli':
+    case 'kundli-result':
       return (
         <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
           <div className={styles.container}>
@@ -99,9 +115,6 @@ export default function PageRenderer() {
           </div>
         </div>
       );
-
-    case 'kundli-result':
-      return <KundliResultPage />;
 
     case 'my-jyotish':
     case 'profile':
@@ -120,6 +133,15 @@ export default function PageRenderer() {
         </div>
       );
 
+    case 'choghadiya':
+      return <ChoghadiyaPage />;
+
+    case 'muhurat-finder':
+      return <MuhuratFinderPage />;
+
+    case 'abhijit-muhurat':
+      return <AbhijitMuhuratPage />;
+
     case 'kundli-matching':
       return <KundliMatchingPage />;
 
@@ -132,8 +154,29 @@ export default function PageRenderer() {
     case 'sade-sati':
       return <SadeSatiPage />;
 
+    case 'kaal-sarp-dosha':
+      return <KaalSarpDoshaPage />;
+
+    case 'rahu-ketu-transit':
+      return <RahuKetuTransitPage />;
+
+    case 'moon-sign':
+      return <MoonSignPage />;
+
+    case 'ascendant':
+      return <AscendantPage />;
+
     case 'numerology':
       return <NumerologyPage />;
+
+    case 'life-path-number':
+      return <LifePathNumberPage />;
+
+    case 'name-numerology':
+      return <NameNumerologyPage />;
+
+    case 'numerology-match':
+      return <NumerologyMatchPage />;
 
     case 'astrology-tools':
       return (
@@ -265,9 +308,18 @@ export default function PageRenderer() {
    ==================================================== */
 
 // 1. Horoscope Page
+// Classical Naisargika (natural) benefic/malefic classification — a real,
+// standard Vedic categorization, not an invented one. Mercury is naturally
+// neutral (its nature follows whichever planet it's conjunct/aspected by),
+// so it gets neither color.
+const NATURAL_BENEFIC = new Set(['jupiter', 'venus', 'moon']);
+const NATURAL_MALEFIC = new Set(['saturn', 'mars', 'sun', 'rahu', 'ketu']);
+
 function HoroscopePage() {
   const [activeRashi, setActiveRashi] = useState(0);
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [transitData, setTransitData] = useState<DailyHoroscopeResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const RASHIS = [
     { name: 'Mesha', eng: 'Aries', symbol: '♈', element: 'Fire', graha: 'Mars', index: 1 },
@@ -286,9 +338,17 @@ function HoroscopePage() {
 
   const current = RASHIS[activeRashi];
 
-  const getPrediction = (rashi: string, tab: string) => {
-    return `Today's astrological alignments indicate strong support for the ${rashi} native. Surya in your solar house signals key shifts in career trajectory and dharmic focus. Align your actions to your ruling deity and seek timing alignments. Under this transit, remain reflective regarding significant relationships, especially with Chandra aspecting your house of communication. Use this ${tab} window to strengthen personal foundations.`;
-  };
+  useEffect(() => {
+    setError('');
+    setLoading(true);
+    calculatorService.dailyHoroscope(current.eng)
+      .then(setTransitData)
+      .catch(err => setError(err instanceof CalculatorApiError ? err.message : 'Could not load today\'s transits. Please try again.'))
+      .finally(() => setLoading(false));
+  }, [current.eng]);
+
+  const sortedTransits = transitData ? [...transitData.transits].sort((a, b) => a.house - b.house) : [];
+  const focusPlanet = sortedTransits.find(t => t.house === 1);
 
   return (
     <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -298,7 +358,7 @@ function HoroscopePage() {
           <h1 className={styles.pageTitle}>Free Horoscopes</h1>
           <div className={styles.divider}>✦ ❖ ✦</div>
           <p className={styles.pageSubtitle}>
-            Read daily, weekly and monthly predictions aligned to the Vedic position of your Moon Sign.
+            Real, freshly-computed planetary transits for today, read against your Moon Sign — not a canned prediction.
           </p>
         </div>
 
@@ -356,25 +416,178 @@ function HoroscopePage() {
               </div>
             </div>
 
-            <div className={styles.tabButtons}>
-              {['daily', 'weekly', 'monthly'].map(tab => (
-                <button
-                  key={tab}
-                  className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
-                  onClick={() => setActiveTab(tab as any)}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
             <div className={styles.horoscopeText}>
-              <p>{getPrediction(current.name, activeTab)}</p>
+              {error && <p style={{ color: '#d64545' }}>{error}</p>}
+              {loading && !transitData && (
+                <p className={styles.reviewText}>Computing today's transits for {current.eng}...</p>
+              )}
+              {transitData && (
+                <>
+                  <p className={styles.reviewText} style={{ marginBottom: '14px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                    Real planetary transits for {transitData.date}, counted as houses from {current.eng} (treated as your Moon Sign) — the standard Vedic approach for rashi-based predictions.
+                  </p>
+
+                  {focusPlanet && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                      <span style={{ fontSize: '1.3rem' }}>{PLANET_META[focusPlanet.id]?.symbol}</span>
+                      <span>
+                        <strong style={{ color: 'var(--gold-primary)' }}>Today's Focus:</strong>{' '}
+                        {PLANET_META[focusPlanet.id]?.name} is transiting your 1st house (Self) in {focusPlanet.rashi}{focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
+                      </span>
+                    </div>
+                  )}
+
+                  <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                    {sortedTransits.map(t => {
+                      const meta = PLANET_META[t.id];
+                      const dotColor = NATURAL_BENEFIC.has(t.id) ? '#4caf7d' : NATURAL_MALEFIC.has(t.id) ? '#c85a5a' : '#9a9a9a';
+                      return (
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} title={NATURAL_BENEFIC.has(t.id) ? 'Naturally benefic' : NATURAL_MALEFIC.has(t.id) ? 'Naturally malefic' : 'Naturally neutral'} />
+                          <span style={{ flex: 1 }}>
+                            {meta?.symbol} {meta?.name || t.id} in {t.rashi}
+                            {t.retrograde && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(200,90,90,0.15)', color: '#c85a5a' }}>℞ Retrograde</span>}
+                          </span>
+                          <span style={{ textAlign: 'right', color: 'var(--color-text-muted, #999)', fontSize: '13px' }}>
+                            {t.house}{ordinal(t.house)} house — {HOUSE_MEANINGS[t.house]?.split('—')[1]?.trim()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '14px' }}>
+                    Dot colors show each planet's classical natural temperament (green = benefic, red = malefic, grey = neutral) — a fixed classical property of the planet itself, not a verdict on today specifically.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function ChoghadiyaPage() {
+  const [result, setResult] = useState<PanchangResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: PanchangDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.panchang(details.date, details.latitude, details.longitude));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Choghadiya" title="Choghadiya Muhurat Table" description="All 8 day segments and 8 night segments, each ruled by one of 7 classical types — auspicious, neutral, or inauspicious.">
+      <PanchangDetailsForm onSubmit={handleSubmit} submitLabel="Show Choghadiya" idPrefix="choghadiya" />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && !result.choghadiya && (
+        <p style={{ textAlign: 'center', marginTop: '16px', color: 'var(--color-text-muted)' }}>Could not compute sunrise/sunset for this location and date.</p>
+      )}
+      {result?.choghadiya && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>Day Choghadiya (Sunrise to Sunset)</h3>
+          {result.choghadiya.day.map((s, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <span style={{ color: s.auspicious ? '#2e7d32' : '#b23c3c', fontWeight: 500 }}>{s.name} {s.auspicious ? '(Auspicious)' : '(Inauspicious)'}</span>
+              <span>{formatIst(s.start)} – {formatIst(s.end)} IST</span>
+            </div>
+          ))}
+          <h3 className={styles.partnerTitle} style={{ border: 'none', marginTop: '20px' }}>Night Choghadiya (Sunset to Next Sunrise)</h3>
+          {result.choghadiya.night.map((s, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <span style={{ color: s.auspicious ? '#2e7d32' : '#b23c3c', fontWeight: 500 }}>{s.name} {s.auspicious ? '(Auspicious)' : '(Inauspicious)'}</span>
+              <span>{formatIst(s.start)} – {formatIst(s.end)} IST</span>
+            </div>
+          ))}
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '12px' }}>
+            Amrit, Labh, Shubh, and Chal are auspicious; Rog, Kaal, and Udveg are inauspicious — cross-check against any other Choghadiya table for the same date, time, and place.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function MuhuratFinderPage() {
+  const [result, setResult] = useState<PanchangResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: PanchangDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.panchang(details.date, details.latitude, details.longitude));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  const goodWindows = result?.choghadiya ? [...result.choghadiya.day, ...result.choghadiya.night].filter(s => s.auspicious) : [];
+
+  return (
+    <CalculatorPageShell eyebrow="Muhurat Finder" title="Find an Auspicious Muhurat" description="Filters the day's Choghadiya down to only the auspicious windows (Amrit, Shubh, Labh, Chal) — good times to start something new.">
+      <PanchangDetailsForm onSubmit={handleSubmit} submitLabel="Find Good Muhurats" idPrefix="muhurat" />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result?.choghadiya && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{goodWindows.length} Auspicious Windows on {result.date}</h3>
+          {goodWindows.map((s, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <span style={{ color: '#2e7d32', fontWeight: 500 }}>{s.name}</span>
+              <span>{formatIst(s.start)} – {formatIst(s.end)} IST</span>
+            </div>
+          ))}
+          {result.abhijitMuhurat && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+              <strong>Also: Abhijit Muhurat</strong> — {formatIst(result.abhijitMuhurat.start)} – {formatIst(result.abhijitMuhurat.end)} IST (considered auspicious on any weekday, centered on solar noon).
+            </div>
+          )}
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function AbhijitMuhuratPage() {
+  const [result, setResult] = useState<PanchangResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: PanchangDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.panchang(details.date, details.latitude, details.longitude));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Abhijit Muhurat" title="Find Today's Abhijit Muhurat" description="The 8th of 15 equal divisions of daylight, centered on solar noon — considered auspicious for starting important work on any weekday.">
+      <PanchangDetailsForm onSubmit={handleSubmit} submitLabel="Find Abhijit Muhurat" idPrefix="abhijit" />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          {result.abhijitMuhurat ? (
+            <>
+              <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>{formatIst(result.abhijitMuhurat.start)} – {formatIst(result.abhijitMuhurat.end)} IST</h3>
+              <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+                Sunrise was at {formatIst(result.sunrise)} IST and sunset is at {formatIst(result.sunset)} IST for this date and place — Abhijit Muhurat is the 8th of 15 equal muhurtas dividing that daylight span.
+              </p>
+            </>
+          ) : (
+            <p style={{ textAlign: 'center' }}>Could not compute sunrise/sunset for this location and date.</p>
+          )}
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
   );
 }
 
@@ -539,6 +752,7 @@ function ResultCard({ children }: { children: React.ReactNode }) {
 }
 
 function NakshatraFinderPage() {
+  const { currentUser } = useAppContext();
   const [result, setResult] = useState<NakshatraResult | null>(null);
   const [error, setError] = useState('');
 
@@ -554,7 +768,7 @@ function NakshatraFinderPage() {
 
   return (
     <CalculatorPageShell eyebrow="Nakshatra Finder" title="Find Your Birth Nakshatra" description="Your Nakshatra (lunar mansion) is determined by the Moon's exact position at your birth moment.">
-      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Nakshatra" idPrefix="nakshatra" showNameField={false} />
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Nakshatra" idPrefix="nakshatra" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
       {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
       {result && (
         <ResultCard>
@@ -573,6 +787,7 @@ function NakshatraFinderPage() {
 }
 
 function MangalDoshaPage() {
+  const { currentUser } = useAppContext();
   const [result, setResult] = useState<MangalDoshaResult | null>(null);
   const [error, setError] = useState('');
 
@@ -588,7 +803,7 @@ function MangalDoshaPage() {
 
   return (
     <CalculatorPageShell eyebrow="Mangal Dosha" title="Mangal Dosha (Manglik) Check" description="Checks whether Mars falls in a Manglik-causing house counted from your Ascendant.">
-      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Mangal Dosha" idPrefix="mangal" showNameField={false} />
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Mangal Dosha" idPrefix="mangal" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
       {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
       {result && (
         <ResultCard>
@@ -607,6 +822,7 @@ function MangalDoshaPage() {
 }
 
 function SadeSatiPage() {
+  const { currentUser } = useAppContext();
   const [result, setResult] = useState<SadeSatiResult | null>(null);
   const [error, setError] = useState('');
 
@@ -624,7 +840,7 @@ function SadeSatiPage() {
 
   return (
     <CalculatorPageShell eyebrow="Sade Sati" title="Sade Sati Checker" description="Checks whether Saturn is currently transiting the 12th, 1st, or 2nd rashi from your natal Moon.">
-      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Sade Sati" idPrefix="sadesati" showNameField={false} />
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Sade Sati" idPrefix="sadesati" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
       {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
       {result && (
         <ResultCard>
@@ -639,9 +855,149 @@ function SadeSatiPage() {
   );
 }
 
+function KaalSarpDoshaPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<KaalSarpDoshaResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.kaalSarpDosha(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Kaal Sarp Dosha" title="Kaal Sarp Dosha Check" description="Checks whether all 7 classical planets fall within the same half of the zodiac bounded by Rahu and Ketu.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Kaal Sarp Dosha" idPrefix="kaalsarp" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{result.isKaalSarp ? 'Kaal Sarp Dosha is present' : 'Kaal Sarp Dosha is not present'}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your Rahu is in {result.rahuRashi} and Ketu is in {result.ketuRashi} — these two are always exactly opposite each other.
+            {result.isKaalSarp
+              ? ` All 7 other planets fall within the half of the zodiac running from ${result.enclosedSide === 'rahu-to-ketu' ? 'Rahu to Ketu' : 'Ketu to Rahu'} — the classical condition for Kaal Sarp Dosha.`
+              : ' Your other 7 planets are split across both halves of the Rahu-Ketu axis, so the classical condition for Kaal Sarp Dosha is not met.'}
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            You can verify this yourself: check each planet's sign against your Rahu and Ketu signs above in the Free Kundli chart — if every planet falls on one side, the dosha applies.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function RahuKetuTransitPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<RahuKetuTransitResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.rahuKetuTransit(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Rahu-Ketu Transit" title="Rahu-Ketu Transit Tracker" description="Shows where the currently-transiting lunar nodes sit relative to your natal Moon.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Transit" idPrefix="rahuketu" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>Transiting Rahu is in your {result.rahuHouseFromMoon}{ordinal(result.rahuHouseFromMoon)} house from the Moon</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your natal Moon is in {result.moonRashi}. Rahu is currently transiting {result.rahuTransitRashi} ({result.rahuHouseFromMoon}{ordinal(result.rahuHouseFromMoon)} house from your Moon),
+            and Ketu is transiting {result.ketuTransitRashi} ({result.ketuHouseFromMoon}{ordinal(result.ketuHouseFromMoon)} house from your Moon).
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            Classical sources disagree on which transit houses are favorable or challenging, so this reports the factual transit position rather than a one-size-fits-all verdict — read it alongside the rest of your chart.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function MoonSignPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<NakshatraResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.nakshatra(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Moon Sign Calculator" title="Find Your Moon Sign (Rashi)" description="Your Moon Sign is the zodiac sign (one of 12) the Moon occupied at your exact birth moment — the core of Vedic astrology, distinct from your Sun sign.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Moon Sign" idPrefix="moonsign" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>Your Moon Sign is {result.rashi}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your Moon sits at {result.moonLongitude.toFixed(2)}° sidereal longitude, placing it in {result.rashi} — the sign, out of 12, the Moon occupied at your birth moment.
+            It also falls within the {result.name} Nakshatra (Pada {result.pada}); for the full 27-Nakshatra breakdown, see the dedicated Nakshatra Finder.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function AscendantPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<KundliResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.kundli(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Lagna / Ascendant" title="Find Your Ascendant (Lagna)" description="Your Ascendant is the zodiac sign rising on the eastern horizon at your exact birth moment and place — it defines your 1st house and the whole-sign house layout of your chart.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Ascendant" idPrefix="ascendant" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>Your Ascendant (Lagna) is {result.ascendant.rashi}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            At {result.ascendant.degreeInSign.toFixed(2)}° into {result.ascendant.rashi}, this sign is rising on the eastern horizon at your exact birth time and place.
+            Because Vedic astrology uses whole-sign houses, {result.ascendant.rashi} becomes your 1st house, and every other sign follows in order for houses 2 through 12.
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            Since this depends on your exact birth time (it changes roughly every 2 hours), it's more time-sensitive than your Sun or Moon sign — double-check your birth time if this looks off.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
 function NumerologyPage() {
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
+  const { currentUser } = useAppContext();
+  const [name, setName] = useState(currentUser?.name || '');
+  const [dob, setDob] = useState(currentUser?.birthDate || '');
   const [result, setResult] = useState<NumerologyResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -662,7 +1018,7 @@ function NumerologyPage() {
   };
 
   return (
-    <CalculatorPageShell eyebrow="Numerology" title="Numerology Calculator" description="Pythagorean numerology derived from your full name and date of birth.">
+    <CalculatorPageShell eyebrow="Numerology" title="Full Numerology Report" description="All four Pythagorean numbers derived from your full name and date of birth, in one place.">
       <form onSubmit={handleSubmit} style={{ maxWidth: '480px', margin: '0 auto' }}>
         <div className="form-group" style={{ marginBottom: '16px' }}>
           <label className="form-label">Full Name</label>
@@ -694,10 +1050,218 @@ function NumerologyPage() {
   );
 }
 
+function LifePathNumberPage() {
+  const { currentUser } = useAppContext();
+  const [name, setName] = useState(currentUser?.name || '');
+  const [dob, setDob] = useState(currentUser?.birthDate || '');
+  const [result, setResult] = useState<NumerologyResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !dob) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.numerology(name.trim(), dob));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Life Path Number" title="Find Your Life Path Number" description="Derived purely from your date of birth — the single most important number in Pythagorean numerology, describing your core life direction.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '480px', margin: '0 auto' }}>
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label className="form-label">Full Name</label>
+          <input type="text" className="input-field input-cosmos" value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+        </div>
+        <div className="form-group" style={{ marginBottom: '20px' }}>
+          <label className="form-label">Date of Birth</label>
+          <AncientDatePicker className="input-field input-cosmos" value={dob} onChange={setDob} placeholder="Select Date of Birth" />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', marginBottom: '12px' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%' }} disabled={loading || !name.trim() || !dob}>
+          {loading ? 'Calculating...' : 'Find My Life Path Number'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>Your Life Path Number is {result.lifePathNumber}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            This comes from reducing every digit of your full date of birth to a single digit (or a Master Number — 11, 22, 33 — shown unreduced). It's read as your core life direction, independent of your name.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function NameNumerologyPage() {
+  const { currentUser } = useAppContext();
+  const [name, setName] = useState(currentUser?.name || '');
+  const [dob, setDob] = useState(currentUser?.birthDate || '');
+  const [result, setResult] = useState<NumerologyResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !dob) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.numerology(name.trim(), dob));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Name Numerology" title="Numbers Derived From Your Name" description="Destiny, Soul Urge, and Personality numbers — all derived from the letters in your full name using the Pythagorean letter-value system.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '480px', margin: '0 auto' }}>
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label className="form-label">Full Name</label>
+          <input type="text" className="input-field input-cosmos" value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+        </div>
+        <div className="form-group" style={{ marginBottom: '20px' }}>
+          <label className="form-label">Date of Birth</label>
+          <AncientDatePicker className="input-field input-cosmos" value={dob} onChange={setDob} placeholder="Select Date of Birth" />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', marginBottom: '12px' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%' }} disabled={loading || !name.trim() || !dob}>
+          {loading ? 'Calculating...' : 'Calculate My Name Numbers'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <div className={styles.compatGrid}>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Destiny</span><span className={styles.compatVal}>{result.destinyNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Soul Urge</span><span className={styles.compatVal}>{result.soulUrgeNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Personality</span><span className={styles.compatVal}>{result.personalityNumber}</span></div>
+          </div>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '12px' }}>
+            Destiny sums every letter in your name; Soul Urge sums only the vowels (your inner motivation); Personality sums only the consonants (how others perceive you). Your date of birth isn't used for any of these three.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function NumerologyMatchPage() {
+  const [p1, setP1] = useState({ name: '', dob: '' });
+  const [p2, setP2] = useState({ name: '', dob: '' });
+  const [result, setResult] = useState<NumerologyMatchResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const canSubmit = p1.name.trim() && p1.dob && p2.name.trim() && p2.dob && !loading;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.numerologyMatch({ name: p1.name.trim(), date: p1.dob }, { name: p2.name.trim(), date: p2.dob }));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const affinityLabel: Record<string, string> = { same: 'Same number — strong resonance', grouped: 'Same numerology group — good affinity', different: 'Different groups — more contrast' };
+
+  return (
+    <CalculatorPageShell eyebrow="Numerology Match" title="Numerology Compatibility" description="Compares both people's Life Path, Destiny, and Soul Urge numbers using a widely-used numerology grouping — a distinct compatibility read from Kundli Matching, based on names and dates of birth only.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '560px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div>
+            <h4 className={styles.partnerTitle}>Person 1</h4>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label className="form-label">Full Name</label>
+              <input type="text" className="input-field input-cosmos" value={p1.name} onChange={e => setP1({ ...p1, name: e.target.value })} placeholder="Full name" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Date of Birth</label>
+              <AncientDatePicker className="input-field input-cosmos" value={p1.dob} onChange={val => setP1({ ...p1, dob: val })} placeholder="Select Date" />
+            </div>
+          </div>
+          <div>
+            <h4 className={styles.partnerTitle}>Person 2</h4>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label className="form-label">Full Name</label>
+              <input type="text" className="input-field input-cosmos" value={p2.name} onChange={e => setP2({ ...p2, name: e.target.value })} placeholder="Full name" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Date of Birth</label>
+              <AncientDatePicker className="input-field input-cosmos" value={p2.dob} onChange={val => setP2({ ...p2, dob: val })} placeholder="Select Date" />
+            </div>
+          </div>
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', margin: '16px 0 0' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%', marginTop: '20px' }} disabled={!canSubmit}>
+          {loading ? 'Calculating...' : 'Check Compatibility'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>Compatibility Score: {result.compatibilityScore} / 9</h3>
+          <div className={styles.compatGrid}>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Life Path</span><span className={styles.compatVal}>{result.person1.lifePathNumber} · {result.person2.lifePathNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Destiny</span><span className={styles.compatVal}>{result.person1.destinyNumber} · {result.person2.destinyNumber}</span></div>
+            <div className={styles.compatBox}><span className={styles.compatLabel}>Soul Urge</span><span className={styles.compatVal}>{result.person1.soulUrgeNumber} · {result.person2.soulUrgeNumber}</span></div>
+          </div>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Life Path: {affinityLabel[result.lifePathAffinity]}. Destiny: {affinityLabel[result.destinyAffinity]}. Soul Urge: {affinityLabel[result.soulUrgeAffinity]}.
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            This groups numbers 1/5/7, 2/4/8, and 3/6/9 by shared temperament — a common but simplified numerology convention, not a precise or universally-agreed system. Use it alongside Kundli Matching, not instead of it.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
 // 3. Astrologer Profile Page
 function AstrologerProfilePage({ id }: { id: any }) {
-  const { setPage } = useAppContext();
+  const { setPage, isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
   const { astrologer, loading, notFound } = useAstrologer(id);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isFav, setIsFav] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
+
+  useEffect(() => {
+    if (!astrologer) return;
+    astrologerService.listReviews(astrologer.id).then(setReviews).catch(() => {});
+    if (isLoggedIn) astrologerService.isFavorite(astrologer.id).then(r => setIsFav(r.favorited)).catch(() => {});
+  }, [astrologer?.id, isLoggedIn]);
+
+  const toggleFavorite = async () => {
+    if (!astrologer) return;
+    if (!isLoggedIn) { setPendingAction('astrologers'); setShowLoginModal(true); return; }
+    setFavBusy(true);
+    try {
+      if (isFav) await astrologerService.removeFavorite(astrologer.id);
+      else await astrologerService.addFavorite(astrologer.id);
+      setIsFav(!isFav);
+    } catch {
+      // best-effort — leave state unchanged on failure
+    } finally {
+      setFavBusy(false);
+    }
+  };
 
   if (loading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
   if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
@@ -750,6 +1314,14 @@ function AstrologerProfilePage({ id }: { id: any }) {
             <button className="btn btn-gold" style={{ width: '100%' }} onClick={() => setPage('consultation-booking')}>
               Book Consultation
             </button>
+            <button
+              className="btn btn-outline-gold"
+              style={{ width: '100%', marginTop: '10px' }}
+              disabled={favBusy}
+              onClick={toggleFavorite}
+            >
+              {isFav ? '♥ Saved' : '♡ Save Astrologer'}
+            </button>
           </div>
 
           {/* Content Card */}
@@ -771,22 +1343,21 @@ function AstrologerProfilePage({ id }: { id: any }) {
 
             <div className={styles.contentSection}>
               <h3 className={styles.contentSectionTitle}>Client Reviews</h3>
-              <div className={styles.reviewList}>
-                <div className={styles.reviewItem}>
-                  <div className={styles.reviewHeader}>
-                    <span className={styles.reviewUser}>Kiran K.</span>
-                    <span className={styles.starRating}>★ 5</span>
-                  </div>
-                  <p className={styles.reviewText}>"Incredibly insightful. The Astrologist detailed my Saturn transit blockages so clearly and suggested simple mantra corrections. Felt very supported."</p>
+              {reviews.length === 0 ? (
+                <p className={styles.contentText} style={{ opacity: 0.7 }}>No reviews yet — be the first to consult and share your experience.</p>
+              ) : (
+                <div className={styles.reviewList}>
+                  {reviews.map(r => (
+                    <div key={r.id} className={styles.reviewItem}>
+                      <div className={styles.reviewHeader}>
+                        <span className={styles.reviewUser}>{r.authorName}</span>
+                        <span className={styles.starRating}>★ {r.rating}</span>
+                      </div>
+                      {r.text && <p className={styles.reviewText}>"{r.text}"</p>}
+                    </div>
+                  ))}
                 </div>
-                <div className={styles.reviewItem}>
-                  <div className={styles.reviewHeader}>
-                    <span className={styles.reviewUser}>Nalini S.</span>
-                    <span className={styles.starRating}>★ 5</span>
-                  </div>
-                  <p className={styles.reviewText}>"Accurate timeline forecasts for my marriage Muhurat. Strongly recommended."</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1080,10 +1651,15 @@ function ConsultationWaitingPage() {
   if (consultation.status === 'ACTIVE' || consultation.status === 'ACCEPTED') {
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
-        <div className={styles.container} style={{ textAlign: 'center', padding: '80px 20px' }}>
-          <h2>Your consultation with {astrologer?.name} is now active</h2>
-          <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
-          <button className="btn btn-gold" style={{ marginTop: '24px' }} onClick={() => setPage('home')}>Done</button>
+        <div className={styles.container} style={{ maxWidth: '600px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h2>Your consultation with {astrologer?.name} is now active</h2>
+            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
+          </div>
+          <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} />
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <button className="btn btn-outline-light" onClick={() => setPage('home')}>Back to Home</button>
+          </div>
         </div>
       </div>
     );
@@ -1114,7 +1690,19 @@ function ConsultationWaitingPage() {
 // 5. Report Detail Page
 function ReportDetailPage({ id }: { id: any }) {
   const { addToCart, setPage } = useAppContext();
-  const report = REPORTS.find(r => r.id === Number(id)) || REPORTS[0];
+  const [report, setReport] = useState<AstrologyReport | null>(null);
+
+  useEffect(() => {
+    contentService.getReport(Number(id)).then(setReport).catch(() => setReport(null));
+  }, [id]);
+
+  if (!report) {
+    return (
+      <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+        <div className={styles.container} style={{ textAlign: 'center' }}>Loading report...</div>
+      </div>
+    );
+  }
 
   const BUNDLES = [
     { title: 'Digital Manuscript Only', price: report.price, desc: 'Vedic report delivered as dynamic dashboard + PDF' },
@@ -1661,146 +2249,6 @@ function ProfilePage() {
   );
 }
 
-// 12. Kundli Result Page
-function KundliResultPage() {
-  const { birthProfile } = useAppContext();
-  const [activeTab, setActiveTab] = useState<'lagna' | 'interpretation'>('lagna');
-
-  const KUNDLI_GRID = [
-    { num: 12, sign: 'Pis', planets: 'Guru' },
-    { num: 9, sign: 'Sag', planets: 'Ketu' },
-    { num: 2, sign: 'Taurus', planets: 'Chandra' },
-    { num: 11, sign: 'Aqu', planets: '' },
-    { num: 'Lagna', sign: 'Leo', planets: 'Lagna' },
-    { num: 3, sign: 'Gem', planets: '' },
-    { num: 10, sign: 'Cap', planets: 'Shani' },
-    { num: 4, sign: 'Can', planets: 'Surya' },
-    { num: 5, sign: 'Leo', planets: 'Mangala' },
-  ];
-
-  return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
-      <div className={styles.container}>
-        <div className={styles.pageHeader}>
-          <span className="section-eyebrow">Your Birth Blueprint</span>
-          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>Janam Kundli Chart</h1>
-          <div className={styles.divider}>✦ ❖ ✦</div>
-          <p className={styles.pageSubtitle} style={{ color: 'var(--color-text-dark-2)' }}>
-            Vedic Chart generated for {birthProfile.name} based on birth coordinates: {birthProfile.dob} · {birthProfile.tob} · {birthProfile.place}.
-          </p>
-        </div>
-
-        <div className={styles.chartPageGrid}>
-          {/* Left Chart visual */}
-          <div className={styles.ancientCard}>
-            <div className={styles.tabButtons}>
-              <button className={`${styles.tabBtn} ${activeTab === 'lagna' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('lagna')}>
-                Lagna Chart (D1)
-              </button>
-              <button className={`${styles.tabBtn} ${activeTab === 'interpretation' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('interpretation')}>
-                Grahas Placements
-              </button>
-            </div>
-
-            {activeTab === 'lagna' ? (
-              <div className={styles.chartVisualSection}>
-                <table className={styles.chartGridTable}>
-                  <tbody>
-                    <tr>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[0].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[0].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[0].planets}</span>
-                      </td>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[1].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[1].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[1].planets}</span>
-                      </td>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[2].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[2].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[2].planets}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[3].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[3].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[3].planets}</span>
-                      </td>
-                      <td style={{ background: 'rgba(184, 138, 59, 0.05)' }}>
-                        <span className={styles.houseSign} style={{ fontSize: '10px' }}>ASCENDANT</span>
-                        <span className={styles.housePlanets} style={{ color: 'var(--color-gold-dark)' }}>Simha</span>
-                      </td>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[5].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[5].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[5].planets}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[6].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[6].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[6].planets}</span>
-                      </td>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[7].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[7].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[7].planets}</span>
-                      </td>
-                      <td>
-                        <span className={styles.houseNumber}>{KUNDLI_GRID[8].num}</span>
-                        <span className={styles.houseSign}>{KUNDLI_GRID[8].sign}</span>
-                        <span className={styles.housePlanets}>{KUNDLI_GRID[8].planets}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', margin: 0 }}>✦ Hover houses to view planetary alignments &amp; lord aspects ✦</p>
-              </div>
-            ) : (
-              <div className={styles.syllabusList}>
-                {[
-                  { planet: 'Surya (Sun)', rashi: 'Vrischika (Scorpio)', degree: '14°32\'', house: '4th Bhava', details: 'Atma, authority, maternal connections' },
-                  { planet: 'Chandra (Moon)', rashi: 'Vrishabha (Taurus)', degree: '23°11\'', house: '10th Bhava (Exalted)', details: 'Emotion, mental clarity, career status' },
-                  { planet: 'Lagna (Ascendant)', rashi: 'Simha (Leo)', degree: '06°45\'', house: '1st Bhava', details: 'Self, vitality, physical appearance' },
-                  { planet: 'Guru (Jupiter)', rashi: 'Meena (Pisces)', degree: '11°18\'', house: '8th Bhava', details: 'Wisdom, occult knowledge, expansions' },
-                ].map(p => (
-                  <div key={p.planet} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '10px', paddingTop: '10px' }}>
-                    <div>
-                      <strong style={{ color: 'var(--color-text-dark)' }}>{p.planet}</strong>
-                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-dark-2)' }}>{p.details}</span>
-                    </div>
-                    <div style={{ textAlign: 'right', fontSize: '12px' }}>
-                      <span style={{ display: 'block', fontWeight: 600, color: 'var(--color-gold-dark)' }}>{p.rashi}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--color-text-dark-2)' }}>{p.degree} · {p.house}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right interpretation sidebar */}
-          <div className={styles.interpretCard}>
-            <h3 className={styles.sidebarName} style={{ borderBottom: '1px solid rgba(184,138,59,0.15)', paddingBottom: '8px' }}>Bhava Analysis</h3>
-            <div style={{ marginTop: '16px' }}>
-              <div className={styles.interpretTitle}>Surya in 4th Bhava</div>
-              <p className={styles.interpretBody}>Surya (Sun) aspecting your 10th house from the 4th house brings strong energy toward professional focus and leadership, yet signals a need for inner peace. Your emotional happiness is directly tied to the respect you command at work.</p>
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <div className={styles.interpretTitle}>Chandra in 10th Bhava</div>
-              <p className={styles.interpretBody}>An exalted Moon (Chandra) in your house of career signifies peak emotional stability when leading business projects. You approach commerce with nurturing instincts and high clarity.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // 13. My Reports Page
 function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
   const [downloading, setDownloading] = useState(false);
@@ -1851,11 +2299,69 @@ function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
 }
 
 // 14. My Consultations Page
+const CONSULTATION_STATUS_LABEL: Record<MyConsultation['status'], string> = {
+  ASSIGNED: 'Awaiting Astrologer', ACCEPTED: 'Accepted', ACTIVE: 'In Progress',
+  COMPLETED: 'Completed', DECLINED: 'Declined', CANCELLED: 'Cancelled', EXPIRED: 'Expired',
+};
+
+function ReviewFormInline({ consultation, onDone }: { consultation: MyConsultation; onDone: () => void }) {
+  const [rating, setRating] = useState(5);
+  const [text, setText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await astrologerService.submitReview(consultation.astrologerId, consultation.id, rating, text.trim());
+      onDone();
+    } catch (err) {
+      setError(err instanceof AstrologerApiError ? err.message : 'Could not submit your review. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: '12px 0', borderTop: '1px solid rgba(0,0,0,0.08)', marginTop: '12px' }}>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <span key={n} onClick={() => setRating(n)} style={{ cursor: 'pointer', fontSize: '1.3rem', color: n <= rating ? '#B58A3B' : 'rgba(0,0,0,0.15)' }}>★</span>
+        ))}
+      </div>
+      <textarea
+        className="input-field"
+        style={{ width: '100%', minHeight: '70px', marginBottom: '8px' }}
+        placeholder="How was your consultation? (optional)"
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      {error && <p style={{ color: '#d64545', fontSize: '13px', marginBottom: '8px' }}>{error}</p>}
+      <button className="btn btn-gold btn-sm" disabled={submitting} onClick={handleSubmit}>
+        {submitting ? 'Submitting...' : 'Submit Review'}
+      </button>
+    </div>
+  );
+}
+
 function MyConsultationsPage({ nested = false }: { nested?: boolean } = {}) {
-  const CONSULTATIONS = [
-    { Astrologist: 'Astrologist Rahul Shastri', date: '12 August 2026 - 06:30 PM', format: 'Live Video Consultation', status: 'Scheduled' },
-    { Astrologist: 'Pandit Meera Devi', date: '04 July 2026 - 10:00 AM', format: 'Live Chat Guidance', status: 'Completed' },
-  ];
+  const { setPage } = useAppContext();
+  const [consultations, setConsultations] = useState<MyConsultation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setError('');
+    consultationService.listMine()
+      .then(setConsultations)
+      .catch(err => setError(err instanceof ConsultationApiError ? err.message : 'Could not load your consultations.'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
 
   const Wrapper = nested ? React.Fragment : 'div';
   const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
@@ -1869,16 +2375,40 @@ function MyConsultationsPage({ nested = false }: { nested?: boolean } = {}) {
           <div className={styles.divider}>✦ ❖ ✦</div>
         </div>
 
+        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
+        {error && <p style={{ color: '#d64545', textAlign: 'center' }}>{error}</p>}
+        {!loading && !error && consultations.length === 0 && (
+          <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>You haven't booked a consultation yet.</p>
+        )}
+
         <div className={styles.cartList}>
-          {CONSULTATIONS.map(c => (
-            <div key={c.Astrologist} className={styles.cartItem}>
-              <div className={styles.cartItemInfo}>
-                <h3 className={styles.cartItemName}>{c.Astrologist}</h3>
-                <span className={styles.cartItemCat}>{c.format} · {c.date}</span>
+          {consultations.map(c => (
+            <div key={c.id} className={styles.cartItem} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div className={styles.cartItemInfo}>
+                  <h3 className={styles.cartItemName}>{c.astrologerName}</h3>
+                  <span className={styles.cartItemCat}>{c.category} · {c.type} · {new Date(c.createdAt).toLocaleString()}</span>
+                </div>
+                <span className="badge" style={{ background: c.status === 'COMPLETED' ? 'rgba(80,200,120,0.1)' : 'rgba(0,0,0,0.05)', color: c.status === 'COMPLETED' ? '#50C878' : 'var(--color-text-dark-2)', border: '1px solid' }}>
+                  {CONSULTATION_STATUS_LABEL[c.status]}
+                </span>
               </div>
-              <span className="badge" style={{ background: c.status === 'Scheduled' ? 'rgba(80,200,120,0.1)' : 'rgba(0,0,0,0.05)', color: c.status === 'Scheduled' ? '#50C878' : 'var(--color-text-dark-2)', border: '1px solid' }}>
-                {c.status}
-              </span>
+              {(c.status === 'ACCEPTED' || c.status === 'ACTIVE') && (
+                <button className="btn btn-gold btn-sm" style={{ alignSelf: 'flex-start', marginTop: '10px' }} onClick={() => setPage('consultation-waiting')}>
+                  Open Chat
+                </button>
+              )}
+              {c.status === 'COMPLETED' && !c.reviewed && reviewingId !== c.id && (
+                <button className="btn btn-outline-gold btn-sm" style={{ alignSelf: 'flex-start', marginTop: '10px' }} onClick={() => setReviewingId(c.id)}>
+                  Leave a Review
+                </button>
+              )}
+              {c.status === 'COMPLETED' && c.reviewed && (
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '8px' }}>✦ You reviewed this consultation</span>
+              )}
+              {reviewingId === c.id && (
+                <ReviewFormInline consultation={c} onDone={() => { setReviewingId(null); load(); }} />
+              )}
             </div>
           ))}
         </div>
@@ -1927,7 +2457,19 @@ function MyOrdersPage({ nested = false }: { nested?: boolean } = {}) {
 
 // 16. Blog Detail Page
 function BlogDetailPage({ id }: { id: any }) {
-  const post = BLOG_POSTS.find(p => p.id === Number(id)) || BLOG_POSTS[0];
+  const [post, setPost] = useState<BlogPost | null>(null);
+
+  useEffect(() => {
+    contentService.getBlogPost(Number(id)).then(setPost).catch(() => setPost(null));
+  }, [id]);
+
+  if (!post) {
+    return (
+      <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+        <div className={styles.container} style={{ textAlign: 'center' }}>Loading article...</div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
@@ -1946,8 +2488,9 @@ function BlogDetailPage({ id }: { id: any }) {
             ❂
           </div>
           <p><strong>{post.excerpt}</strong></p>
-          <p style={{ marginTop: '16px' }}>Vedic calculations rely on the sidereal zodiac where planetary positions align directly to the fixed constellations. When investigating Sade Sati or transits, traditional shastras detail several remedial protocols to balance the energies of Saturn, Mars or Rahu.</p>
-          <p style={{ marginTop: '16px' }}>Acharyas suggest establishing daily disciplines (Sadhana), meditating on ruling deities, and deploying energized Yantras to bring focus, alignment and emotional groundedness.</p>
+          {post.content.split('\n\n').map((para, i) => (
+            <p key={i} style={{ marginTop: '16px' }}>{para}</p>
+          ))}
         </div>
       </div>
     </div>
@@ -1993,17 +2536,65 @@ function AdminDashboardPage() {
   return <AdminConsole />;
 }
 
+function SavedAstrologersPanel({ onView }: { onView: (id: number) => void }) {
+  const [favorites, setFavorites] = useState<UiAstrologer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    astrologerService.listFavorites().then(setFavorites).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const handleRemove = async (astrologerId: number) => {
+    await astrologerService.removeFavorite(astrologerId);
+    setFavorites(prev => prev.filter(a => a.id !== astrologerId));
+  };
+
+  if (loading) return <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</p>;
+
+  if (favorites.length === 0) {
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <span style={{ fontSize: '3rem', opacity: 0.3 }}>♃</span>
+        <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>Saved Astrologers</h3>
+        <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>
+          Tap "Save Astrologer" on any astrologer's profile to keep them here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+      {favorites.map(a => (
+        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4) var(--space-5)' }}>
+          {a.avatar ? <img src={a.avatar} alt={a.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} /> : <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{a.name.charAt(0)}</div>}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-primary)' }}>{a.name}</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>★ {a.rating} · {a.title}</div>
+          </div>
+          <button className="btn btn-gold btn-sm" onClick={() => onView(a.id)}>View</button>
+          <button className="btn btn-outline-gold btn-sm" onClick={() => handleRemove(a.id)}>Remove</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Profile Dashboard Page
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileDashboardPage() {
   const {
-    birthProfile, setPage, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated,
-    currentUser, applications, applyToBecomeAstrologer,
+    birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated,
+    currentUser, applyToBecomeAstrologer,
   } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
   const [expertise, setExpertise] = React.useState('');
   const [experience, setExperience] = React.useState('');
+  const [myApplication, setMyApplication] = React.useState<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>(null);
+  const [applyError, setApplyError] = React.useState('');
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -2012,7 +2603,10 @@ function ProfileDashboardPage() {
     }
   }, [isLoggedIn]);
 
-  const myApplication = applications.find(a => a.userEmail === currentUser?.email);
+  const refreshMyApplication = () => {
+    if (isLoggedIn) astrologerService.myApplication().then(setMyApplication).catch(() => {});
+  };
+  React.useEffect(refreshMyApplication, [isLoggedIn]);
 
   const SIDEBAR_ITEMS = [
     { key: 'my-jyotish', label: 'My Jyotish', icon: '✦' },
@@ -2223,11 +2817,17 @@ function ProfileDashboardPage() {
               )}
               {(!myApplication || myApplication.status === 'REJECTED') && (
                 <form
-                  onSubmit={e => {
+                  onSubmit={async e => {
                     e.preventDefault();
-                    applyToBecomeAstrologer({ expertise, experience });
-                    setExpertise('');
-                    setExperience('');
+                    setApplyError('');
+                    try {
+                      await applyToBecomeAstrologer({ expertise, experience });
+                      setExpertise('');
+                      setExperience('');
+                      refreshMyApplication();
+                    } catch (err) {
+                      setApplyError(err instanceof AstrologerApiError ? err.message : 'Could not submit your application. Please try again.');
+                    }
                   }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '420px' }}
                 >
@@ -2236,6 +2836,7 @@ function ProfileDashboardPage() {
                       Your previous application was rejected. You may submit a new one below.
                     </p>
                   )}
+                  {applyError && <p style={{ color: '#c0392b', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>{applyError}</p>}
                   <div className="form-group">
                     <label className="form-label">Area of Expertise</label>
                     <input className="input-field" required value={expertise} onChange={e => setExpertise(e.target.value)} placeholder="e.g. Vedic Astrology, Numerology" />
@@ -2250,7 +2851,11 @@ function ProfileDashboardPage() {
             </div>
           )}
 
-          {['saved-astrologers', 'my-courses'].includes(activeTab) && (
+          {activeTab === 'saved-astrologers' && (
+            <SavedAstrologersPanel onView={id => { setSelectedId(id); setPage('astrologer-profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          )}
+
+          {['my-courses'].includes(activeTab) && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
               <span style={{ fontSize: '3rem', opacity: 0.3 }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.icon}</span>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>{SIDEBAR_ITEMS.find(s => s.key === activeTab)?.label}</h3>

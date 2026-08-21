@@ -33,10 +33,18 @@ async function issueTokenPair(userId: string, role: Role): Promise<TokenPair> {
   return { accessToken, refreshToken: refreshRaw };
 }
 
-export async function register(params: { name: string; email: string; password: string; role?: Role }): Promise<{ user: PublicUser } & TokenPair> {
+export async function register(params: {
+  name: string; email: string; password: string; role?: Role;
+  birthDate?: string; birthTime?: string; birthPlace?: string;
+  birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
+}): Promise<{ user: PublicUser } & TokenPair> {
   if (await findUserByEmail(params.email)) throw new AuthError('An account with this email already exists', 409);
   const passwordHash = bcrypt.hashSync(params.password, BCRYPT_ROUNDS);
-  const row = await createUser({ name: params.name, email: params.email, passwordHash, role: params.role });
+  const row = await createUser({
+    name: params.name, email: params.email, passwordHash, role: params.role,
+    birthDate: params.birthDate, birthTime: params.birthTime, birthPlace: params.birthPlace,
+    birthLatitude: params.birthLatitude, birthLongitude: params.birthLongitude, birthTimezoneOffsetMinutes: params.birthTimezoneOffsetMinutes,
+  });
   const tokens = await issueTokenPair(row.id, row.role);
   return { user: toPublicUser(row), ...tokens };
 }

@@ -33,10 +33,10 @@ export default function ApplicationsPage() {
 
   const closeDrawer = () => { setSelected(null); setConfirmAction(null); };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selected || !confirmAction) return;
-    if (confirmAction === 'approve') approveApplication(selected.id);
-    else rejectApplication(selected.id);
+    if (confirmAction === 'approve') await approveApplication(selected.id);
+    else await rejectApplication(selected.id);
     setConfirmAction(null);
     closeDrawer();
   };

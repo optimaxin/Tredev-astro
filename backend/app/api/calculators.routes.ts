@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { generateKundli } from '../services/astrology/kundli.ts';
-import { checkMangalDosha, checkSadeSati } from '../services/astrology/doshas.ts';
-import { getNakshatra, getRashi } from '../services/astrology/zodiac.ts';
+import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
+import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
-import { calculateNumerology } from '../services/astrology/numerology.ts';
+import { calculateNumerology, calculateNumerologyMatch } from '../services/astrology/numerology.ts';
 import { calculateGunMilan } from '../services/astrology/gunMilan.ts';
+import { calculatePanchang } from '../services/astrology/panchang.ts';
+import { getDailyHoroscope } from '../services/astrology/dailyHoroscope.ts';
+import { getCurrentMahadasha } from '../services/astrology/vimshottariDasha.ts';
+import { answerAstrologyQuestion } from '../services/astrology/aiGuidance.ts';
 
 export const calculatorsRouter = Router();
 
@@ -78,6 +82,23 @@ calculatorsRouter.post('/sade-sati', limiter, (req, res) => {
   });
 });
 
+calculatorsRouter.post('/kaal-sarp-dosha', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+    return checkKaalSarpDosha(kundli);
+  });
+});
+
+calculatorsRouter.post('/rahu-ketu-transit', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+    const moonRashiIndex = Math.floor(kundli.planets.find(p => p.id === 'moon')!.longitude / 30);
+    return checkRahuKetuTransit(moonRashiIndex, new Date());
+  });
+});
+
 const numerologySchema = z.object({
   name: z.string().trim().min(1).max(200),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
@@ -88,6 +109,22 @@ calculatorsRouter.post('/numerology', limiter, (req, res) => {
     const body = numerologySchema.parse(req.body);
     const [year, month, day] = body.date.split('-').map(Number);
     return calculateNumerology(new Date(Date.UTC(year, month - 1, day)), body.name);
+  });
+});
+
+const numerologyMatchSchema = z.object({
+  person1: numerologySchema,
+  person2: numerologySchema,
+});
+
+calculatorsRouter.post('/numerology-match', limiter, (req, res) => {
+  handle(res, () => {
+    const body = numerologyMatchSchema.parse(req.body);
+    const toDob = (d: string) => { const [y, m, day] = d.split('-').map(Number); return new Date(Date.UTC(y, m - 1, day)); };
+    return calculateNumerologyMatch(
+      { dateOfBirth: toDob(body.person1.date), fullName: body.person1.name },
+      { dateOfBirth: toDob(body.person2.date), fullName: body.person2.name },
+    );
   });
 });
 
@@ -102,6 +139,87 @@ calculatorsRouter.post('/kundli-matching', limiter, (req, res) => {
     const brideMoon = getPlanetaryPositions({ utcDate: toUtcDate(body.bride) }).find(p => p.id === 'moon')!;
     const groomMoon = getPlanetaryPositions({ utcDate: toUtcDate(body.groom) }).find(p => p.id === 'moon')!;
     return calculateGunMilan(brideMoon.longitude, groomMoon.longitude);
+  });
+});
+
+const panchangSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+});
+
+calculatorsRouter.post('/panchang', limiter, (req, res) => {
+  handle(res, () => {
+    const body = panchangSchema.parse(req.body);
+    return calculatePanchang(body.date, body.latitude, body.longitude);
+  });
+});
+
+const horoscopeSchema = z.object({
+  rashi: z.enum(RASHIS),
+});
+
+calculatorsRouter.post('/daily-horoscope', limiter, (req, res) => {
+  handle(res, () => {
+    const body = horoscopeSchema.parse(req.body);
+    return getDailyHoroscope(body.rashi, new Date());
+  });
+});
+
+// ── My Sky (personal daily dashboard) ───────────────────────────────────
+// Same stateless birth-details-in/result-out shape as every other
+// calculator above — no separate user-birth storage needed, this just
+// combines the Kundli, a real Vimshottari Mahadasha, and today's Moon/
+// Jupiter transit into the one payload the "Meri Jyotish" section needs.
+
+calculatorsRouter.post('/my-sky', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const utcDate = toUtcDate(birth);
+    const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
+    const moon = kundli.planets.find(p => p.id === 'moon')!;
+    const sun = kundli.planets.find(p => p.id === 'sun')!;
+
+    const span = 360 / 27;
+    const fractionElapsed = (moon.longitude % span) / span;
+    const mahadasha = getCurrentMahadasha(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, new Date());
+
+    const todayPositions = getPlanetaryPositions({ utcDate: new Date() });
+    const todayMoon = todayPositions.find(p => p.id === 'moon')!;
+    const todayJupiter = todayPositions.find(p => p.id === 'jupiter')!;
+    const moonRashiIndex = getRashi(moon.longitude).index;
+
+    return {
+      ascendantRashi: kundli.ascendant.rashi,
+      moonRashi: moon.rashi,
+      moonNakshatra: kundli.moonNakshatra,
+      sunRashi: sun.rashi,
+      mahadasha,
+      todayMoonNakshatra: getNakshatra(todayMoon.longitude).name,
+      jupiterHouseFromMoon: getHouseFromAscendant(moonRashiIndex, getRashi(todayJupiter.longitude).index),
+    };
+  });
+});
+
+// ── Ask TredevAstro AI ───────────────────────────────────────────────────
+// Not a live LLM call — a template engine over a REAL computed chart and
+// Mahadasha, same spirit as every other calculator here. See aiGuidance.ts.
+
+const aiAskSchema = birthSchema.extend({
+  question: z.string().trim().min(1).max(500),
+});
+const aiLimiter = rateLimit({ windowMs: 60_000, max: 20 });
+
+calculatorsRouter.post('/ai-ask', aiLimiter, (req, res) => {
+  handle(res, () => {
+    const body = aiAskSchema.parse(req.body);
+    const utcDate = toUtcDate(body);
+    const kundli = generateKundli({ utcDate, latitude: body.latitude, longitude: body.longitude });
+    const moon = kundli.planets.find(p => p.id === 'moon')!;
+    const span = 360 / 27;
+    const fractionElapsed = (moon.longitude % span) / span;
+    const mahadasha = getCurrentMahadasha(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, new Date());
+    return { answer: answerAstrologyQuestion(body.question, kundli, mahadasha) };
   });
 });
 

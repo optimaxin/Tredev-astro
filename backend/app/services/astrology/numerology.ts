@@ -44,3 +44,51 @@ export function calculateNumerology(dateOfBirth: Date, fullName: string): Numero
     personalityNumber: reduceToSingleDigit(sumLetters(fullName, ch => !VOWELS.has(ch))),
   };
 }
+
+// Numerology Match — a distinct compatibility tool, not just the single-person
+// report run twice. Pythagorean numerology groups 1-9 into three triads by
+// shared temperament (independent/intellectual, practical/material,
+// creative/emotional); this is a widely-used simplified compatibility
+// heuristic, not a precise or universally-agreed system — presented as such
+// rather than a fabricated precision score.
+const NUMBER_GROUPS = [[1, 5, 7], [2, 4, 8], [3, 6, 9]];
+function groupOf(n: number): number {
+  return NUMBER_GROUPS.findIndex(g => g.includes(n));
+}
+
+type Affinity = 'same' | 'grouped' | 'different';
+function affinity(a: number, b: number): Affinity {
+  if (a === b) return 'same';
+  const ga = groupOf(a);
+  return ga !== -1 && ga === groupOf(b) ? 'grouped' : 'different';
+}
+const AFFINITY_SCORE: Record<Affinity, number> = { same: 3, grouped: 2, different: 0 };
+
+export interface NumerologyMatchResult {
+  person1: NumerologyProfile;
+  person2: NumerologyProfile;
+  lifePathAffinity: Affinity;
+  destinyAffinity: Affinity;
+  soulUrgeAffinity: Affinity;
+  compatibilityScore: number; // 0-9
+}
+
+export function calculateNumerologyMatch(
+  person1: { dateOfBirth: Date; fullName: string },
+  person2: { dateOfBirth: Date; fullName: string },
+): NumerologyMatchResult {
+  const p1 = calculateNumerology(person1.dateOfBirth, person1.fullName);
+  const p2 = calculateNumerology(person2.dateOfBirth, person2.fullName);
+  const lifePathAffinity = affinity(p1.lifePathNumber, p2.lifePathNumber);
+  const destinyAffinity = affinity(p1.destinyNumber, p2.destinyNumber);
+  const soulUrgeAffinity = affinity(p1.soulUrgeNumber, p2.soulUrgeNumber);
+
+  return {
+    person1: p1,
+    person2: p2,
+    lifePathAffinity,
+    destinyAffinity,
+    soulUrgeAffinity,
+    compatibilityScore: AFFINITY_SCORE[lifePathAffinity] + AFFINITY_SCORE[destinyAffinity] + AFFINITY_SCORE[soulUrgeAffinity],
+  };
+}

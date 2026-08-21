@@ -1,0 +1,98 @@
+.chatWindow {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface, #fff);
+  overflow: hidden;
+  height: 420px;
+  max-height: 60vh;
+}
+
+.header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  background: var(--surface-elevated, rgba(0, 0, 0, 0.02));
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  margin: auto 0;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+.own {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.own .bubble {
+  background: var(--gold-primary, #b58a3b);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.other .bubble {
+  background: var(--surface-elevated, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary, #222);
+  border-bottom-left-radius: 4px;
+}
+
+.time {
+  font-size: 10px;
+  color: var(--text-muted, #999);
+  margin-top: 2px;
+}
+
+.error {
+  color: #d64545;
+  font-size: 12px;
+  padding: 0 14px;
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+}
+
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+  font-size: 13px;
+}
