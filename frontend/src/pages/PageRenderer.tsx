@@ -7,8 +7,8 @@ import {
   PANCHANG,
   HOUSE_MEANINGS
 } from '../data/mockData';
-import { contentService } from '../services/contentService';
-import type { AstrologyReport, BlogPost } from '../services/contentService';
+import { contentService, ContentApiError } from '../services/contentService';
+import type { AstrologyReport, BlogPost, ReportBundle, ReportPurchase } from '../services/contentService';
 import { PLANET_META } from '../data/planetMeta';
 import { useAstrologer } from '../hooks/useAstrologer';
 import styles from './PageRenderer.module.css';
@@ -1710,8 +1710,10 @@ function ConsultationWaitingPage() {
 
 // 5. Report Detail Page
 function ReportDetailPage({ id }: { id: any }) {
-  const { addToCart, setPage } = useAppContext();
+  const { setPage, isLoggedIn, setShowLoginModal } = useAppContext();
   const [report, setReport] = useState<AstrologyReport | null>(null);
+  const [buying, setBuying] = useState<ReportBundle | null>(null);
+  const [buyError, setBuyError] = useState('');
 
   useEffect(() => {
     contentService.getReport(Number(id)).then(setReport).catch(() => setReport(null));
@@ -1725,21 +1727,27 @@ function ReportDetailPage({ id }: { id: any }) {
     );
   }
 
-  const BUNDLES = [
-    { title: 'Digital Manuscript Only', price: report.price, desc: 'Vedic report delivered as dynamic dashboard + PDF' },
-    { title: 'Manuscript + 2 Astrologist Qs', price: report.price + 300, desc: 'Add 2 direct questions to our Acharyas' },
-    { title: 'Manuscript + 15-min Consult', price: report.price + 900, desc: 'Includes direct video consultation regarding transits' },
+  const BUNDLES: { key: ReportBundle; title: string; price: number; desc: string }[] = [
+    { key: 'report-only', title: 'Digital Manuscript Only', price: report.price, desc: 'Vedic report delivered as dynamic dashboard + PDF' },
+    { key: 'report-qa', title: 'Manuscript + 2 Astrologist Qs', price: report.price + 300, desc: 'Add 2 direct questions to our Acharyas' },
+    { key: 'report-consult', title: 'Manuscript + 15-min Consult', price: report.price + 900, desc: 'Includes direct video consultation regarding transits' },
   ];
 
-  const handleBuy = (bundle: typeof BUNDLES[0]) => {
-    addToCart({
-      id: report.id,
-      name: `${report.title} (${bundle.title})`,
-      price: bundle.price,
-      quantity: 1,
-      category: 'Reports'
-    });
-    setPage('cart');
+  const handleBuy = async (bundle: typeof BUNDLES[0]) => {
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+      return;
+    }
+    setBuying(bundle.key);
+    setBuyError('');
+    try {
+      await contentService.purchaseReport(report.id, bundle.key);
+      setPage('my-reports');
+    } catch (err) {
+      setBuyError(err instanceof ContentApiError ? err.message : 'Could not complete your purchase. Please try again.');
+    } finally {
+      setBuying(null);
+    }
   };
 
   return (
@@ -1782,7 +1790,7 @@ function ReportDetailPage({ id }: { id: any }) {
             <div className={styles.reviewList}>
               {BUNDLES.map(b => (
                 <div
-                  key={b.title}
+                  key={b.key}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -1799,11 +1807,14 @@ function ReportDetailPage({ id }: { id: any }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 600, color: 'var(--color-gold-dark)', marginBottom: '8px' }}>₹{b.price}</div>
-                    <button className="btn btn-gold btn-sm" onClick={() => handleBuy(b)}>Select</button>
+                    <button className="btn btn-gold btn-sm" disabled={!!buying} onClick={() => handleBuy(b)}>
+                      {buying === b.key ? 'Processing...' : 'Select'}
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
+            {buyError && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '8px' }}>{buyError}</p>}
           </div>
         </div>
       </div>
@@ -2271,16 +2282,24 @@ function ProfilePage() {
 }
 
 // 13. My Reports Page
-function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
-  const [downloading, setDownloading] = useState(false);
+const REPORT_BUNDLE_LABEL: Record<string, string> = {
+  'report-only': 'Report Only',
+  'report-qa': 'Report + Expert Q&A',
+  'report-consult': 'Report + Consultation',
+};
 
-  const handleDownload = () => {
-    setDownloading(true);
-    setTimeout(() => {
-      setDownloading(false);
-      alert('Your Kundli Granth manuscript has been compiled and downloaded as PDF.');
-    }, 1500);
-  };
+function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
+  const { setPage, setSelectedId } = useAppContext();
+  const [purchases, setPurchases] = useState<ReportPurchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    contentService.listMyReportPurchases()
+      .then(setPurchases)
+      .catch(err => setError(err instanceof ContentApiError ? err.message : 'Could not load your reports.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const Wrapper = nested ? React.Fragment : 'div';
   const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
@@ -2289,30 +2308,31 @@ function MyReportsPage({ nested = false }: { nested?: boolean } = {}) {
     <Wrapper {...wrapperProps}>
       <div className={styles.container}>
         <div className={styles.pageHeader}>
-          <span className="section-eyebrow">Your generated files</span>
+          <span className="section-eyebrow">Your purchased reports</span>
           <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>My Reports</h1>
           <div className={styles.divider}>✦ ❖ ✦</div>
         </div>
 
+        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
+        {error && <p style={{ color: '#d64545', textAlign: 'center' }}>{error}</p>}
+        {!loading && !error && purchases.length === 0 && (
+          <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>You haven't purchased a report yet.</p>
+        )}
+
         <div className={styles.cartList}>
-          <div className={styles.cartItem}>
-            <div className={styles.cartItemInfo}>
-              <h3 className={styles.cartItemName}>Career Intelligence Granth</h3>
-              <span className={styles.cartItemCat}>Generated: 12 August 2026</span>
+          {purchases.map(p => (
+            <div key={p.id} className={styles.cartItem}>
+              <div className={styles.cartItemInfo}>
+                <h3 className={styles.cartItemName}>{p.reportTitle}</h3>
+                <span className={styles.cartItemCat}>
+                  {REPORT_BUNDLE_LABEL[p.bundle] || p.bundle} · ₹{p.amount} · {new Date(p.purchasedAt).toLocaleDateString()}
+                </span>
+              </div>
+              <button className="btn btn-gold btn-sm" onClick={() => { setSelectedId(p.reportId); setPage('report-detail'); }}>
+                View Report
+              </button>
             </div>
-            <button className="btn btn-gold btn-sm" disabled={downloading} onClick={handleDownload}>
-              {downloading ? 'Downloading...' : 'Download PDF'}
-            </button>
-          </div>
-          <div className={styles.cartItem}>
-            <div className={styles.cartItemInfo}>
-              <h3 className={styles.cartItemName}>120-Page Premium Kundli Granth</h3>
-              <span className={styles.cartItemCat}>Generated: 11 August 2026</span>
-            </div>
-            <button className="btn btn-gold btn-sm" disabled={downloading} onClick={handleDownload}>
-              {downloading ? 'Downloading...' : 'Download PDF'}
-            </button>
-          </div>
+          ))}
         </div>
       </div>
     </Wrapper>

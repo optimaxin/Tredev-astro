@@ -248,6 +248,17 @@
   gap: var(--space-4);
 }
 
+/* 3(large) + 3(medium) fills row 1; 3+3 medium would leave a dangling gap
+   on row 2 since only 2 more small cards (2+2=4 of 6) follow — widen the
+   2nd medium card to the full row so all three rows tile evenly. Desktop
+   only: the sub-992px breakpoints already collapse every card to span 1-2
+   and must stay unaffected. */
+@media (min-width: 993px) {
+  .featuredGrid > :nth-child(3) {
+    grid-column: span 6;
+  }
+}
+
 .cardIconLarge {
   font-size: 2.5rem;
   color: var(--gold-primary);

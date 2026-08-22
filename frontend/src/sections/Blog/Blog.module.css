@@ -146,7 +146,7 @@
 .smallExcerpt {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: rgba(16, 19, 33, 0.5);
+  color: var(--text-secondary);
   line-height: 1.6;
   flex: 1;
 }

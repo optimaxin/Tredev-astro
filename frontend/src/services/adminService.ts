@@ -74,6 +74,16 @@ export interface ApiConsultation {
   endedAt?: number;
 }
 
+export interface ApiReportPurchase {
+  id: string;
+  userName: string;
+  userEmail: string;
+  reportTitle: string;
+  bundle: string;
+  amount: number;
+  purchasedAt: number;
+}
+
 export interface ApiBlogPost {
   id: number;
   title: string;
@@ -123,6 +133,8 @@ export const adminService = {
 
   createBlogPost: (post: NewBlogPost) => request<ApiBlogPost>('/blog', { method: 'POST', body: JSON.stringify(post) }),
   deleteBlogPost: (id: number) => request<{ ok: boolean }>(`/blog/${id}`, { method: 'DELETE' }),
+
+  listReportPurchases: (page = 1, limit = 100) => request<ApiReportPurchase[]>(`/report-purchases?page=${page}&limit=${limit}`),
 
   listBroadcasts: () => request<ApiBroadcast[]>('/broadcasts'),
   createBroadcast: (message: string) => request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message }) }),

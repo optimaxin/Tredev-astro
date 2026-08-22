@@ -5,7 +5,11 @@ import NotificationBell from './NotificationBell';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
-  { translationKey: 'nav_astrology', page: 'astrology-tools' },
+  // "Astrology" and "Calculators" used to both point at the same
+  // 'astrology-tools' page — a dead-duplicate that made either link look
+  // broken/redundant. "Astrology" now goes to the real, already-built
+  // Horoscope page, which had no nav entry of its own at all.
+  { translationKey: 'nav_astrology', page: 'horoscope' },
   { translationKey: 'nav_kundli', page: 'free-kundli' },
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },

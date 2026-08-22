@@ -12,6 +12,7 @@ import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.t
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
+import { listAllPurchases } from '../repositories/reportPurchaseRepository.ts';
 
 export const adminRouter = Router();
 
@@ -125,6 +126,19 @@ adminRouter.get('/consultations', async (req, res) => {
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllConsultations(parsed.data.page, parsed.data.limit);
   res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
+});
+
+// ── Report purchases (real, replacing the old fake SAMPLE_PURCHASED_REPORTS) ──
+
+adminRouter.get('/report-purchases', async (req, res) => {
+  const parsed = pageSchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { rows, total } = await listAllPurchases(parsed.data.page, parsed.data.limit);
+  const data = rows.map(r => ({
+    id: r.id, userName: r.user_name, userEmail: r.user_email, reportTitle: r.report_title,
+    bundle: r.bundle, amount: r.amount, purchasedAt: Number(r.purchased_at),
+  }));
+  res.json({ success: true, data, pagination: { ...parsed.data, total } });
 });
 
 // ── Audit log ────────────────────────────────────────────────────────────

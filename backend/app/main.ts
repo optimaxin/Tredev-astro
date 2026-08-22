@@ -46,7 +46,9 @@ app.use('/api', contentRouter);
 // through to the next one when nothing in the current router matches.
 app.use('/api', router);
 app.use('/api/admin', adminRouter);
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: [CLIENT_ORIGIN, 'http://localhost:5174'] } });

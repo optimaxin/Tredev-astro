@@ -12,10 +12,14 @@ export class ContentApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('auth_access_token');
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`);
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) },
+    });
   } catch {
     throw new ContentApiError('NETWORK_ERROR', 'Could not reach the server. Please check your connection.');
   }
@@ -70,6 +74,17 @@ export interface Broadcast {
   active: boolean;
 }
 
+export type ReportBundle = 'report-only' | 'report-qa' | 'report-consult';
+
+export interface ReportPurchase {
+  id: string;
+  reportId: number;
+  reportTitle: string;
+  bundle: ReportBundle;
+  amount: number;
+  purchasedAt: number;
+}
+
 export const contentService = {
   listBlogPosts: () => request<BlogPost[]>('/api/blog'),
   getBlogPost: (id: number) => request<BlogPost>(`/api/blog/${id}`),
@@ -77,4 +92,7 @@ export const contentService = {
   listReports: () => request<AstrologyReport[]>('/api/reports'),
   getReport: (id: number) => request<AstrologyReport>(`/api/reports/${id}`),
   listActiveBroadcasts: () => request<Broadcast[]>('/api/broadcasts/active'),
+  purchaseReport: (id: number, bundle: ReportBundle) =>
+    request<ReportPurchase>(`/api/reports/${id}/purchase`, { method: 'POST', body: JSON.stringify({ bundle }) }),
+  listMyReportPurchases: () => request<ReportPurchase[]>('/api/reports/mine'),
 };

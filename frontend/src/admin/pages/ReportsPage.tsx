@@ -1,22 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { SAMPLE_PURCHASED_REPORTS } from '../adminMockData';
+import { adminService } from '../../services/adminService';
+import type { ApiReportPurchase } from '../../services/adminService';
 import DataTable from '../components/DataTable';
-import { StatCard, StatusBadge, FilterBar, EmptyState } from '../components/SharedControls';
-import { formatDate } from '../adminUtils';
+import { StatCard, EmptyState } from '../components/SharedControls';
 import styles from './AdminPages.module.css';
 
-type FilterKey = 'ALL' | 'PENDING' | 'COMPLETED';
+const BUNDLE_LABEL: Record<string, string> = {
+  'report-only': 'Report Only',
+  'report-qa': 'Report + Expert Q&A',
+  'report-consult': 'Report + Consultation',
+};
 
 export default function ReportsPage() {
   const { t } = useAppContext();
-  const [filter, setFilter] = useState<FilterKey>('ALL');
+  const [purchases, setPurchases] = useState<ApiReportPurchase[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const revenue = SAMPLE_PURCHASED_REPORTS.filter(r => r.status === 'COMPLETED').reduce((sum, r) => sum + r.price, 0);
-  const pending = SAMPLE_PURCHASED_REPORTS.filter(r => r.status === 'PENDING').length;
-  const completed = SAMPLE_PURCHASED_REPORTS.filter(r => r.status === 'COMPLETED').length;
+  useEffect(() => {
+    adminService.listReportPurchases().then(setPurchases).catch(() => setPurchases([])).finally(() => setLoading(false));
+  }, []);
 
-  const filtered = useMemo(() => SAMPLE_PURCHASED_REPORTS.filter(r => filter === 'ALL' || r.status === filter), [filter]);
+  const revenue = purchases.reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <div>
@@ -25,36 +30,24 @@ export default function ReportsPage() {
       </div>
 
       <div className={styles.kpiGrid}>
-        <StatCard icon="▤" label={t('admin_reports_kpi_total')} value={SAMPLE_PURCHASED_REPORTS.length} />
-        <StatCard icon="◎" label={t('admin_reports_kpi_pending')} value={pending} />
-        <StatCard icon="✓" label={t('admin_reports_kpi_completed')} value={completed} />
+        <StatCard icon="▤" label={t('admin_reports_kpi_total')} value={purchases.length} />
         <StatCard icon="₹" label={t('admin_reports_kpi_revenue')} value={`₹${revenue.toLocaleString()}`} />
       </div>
 
-      <div className={styles.toolbar}>
-        <FilterBar
-          filters={[
-            { key: 'PENDING', label: t('admin_status_pending') },
-            { key: 'COMPLETED', label: t('admin_status_completed') },
-            { key: 'ALL', label: t('admin_status_all') },
+      {!loading && (
+        <DataTable
+          columns={[
+            { key: 'user', label: t('admin_reports_col_user'), render: r => r.userName },
+            { key: 'report', label: t('admin_reports_col_report'), render: r => r.reportTitle },
+            { key: 'bundle', label: 'Bundle', render: r => BUNDLE_LABEL[r.bundle] || r.bundle },
+            { key: 'price', label: t('admin_reports_col_price'), render: r => `₹${r.amount}` },
+            { key: 'date', label: t('admin_reports_col_date'), render: r => new Date(r.purchasedAt).toLocaleDateString() },
           ]}
-          active={filter}
-          onChange={k => setFilter(k as FilterKey)}
+          rows={purchases}
+          keyField="id"
+          emptyState={<EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />}
         />
-      </div>
-
-      <DataTable
-        columns={[
-          { key: 'user', label: t('admin_reports_col_user'), render: r => r.userName },
-          { key: 'report', label: t('admin_reports_col_report'), render: r => r.reportTitle },
-          { key: 'price', label: t('admin_reports_col_price'), render: r => `₹${r.price}` },
-          { key: 'status', label: t('admin_reports_col_status'), render: r => <StatusBadge status={r.status} label={t(`admin_status_${r.status.toLowerCase()}`)} /> },
-          { key: 'date', label: t('admin_reports_col_date'), render: r => formatDate(r.date) },
-        ]}
-        rows={filtered}
-        keyField="id"
-        emptyState={<EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />}
-      />
+      )}
     </div>
   );
 }

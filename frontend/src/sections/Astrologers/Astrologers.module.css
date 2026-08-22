@@ -290,7 +290,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-lg);
   font-weight: 600;
-  color: var(--color-text-dark);
+  color: var(--color-text-light);
 }
 .perMin { font-size: var(--text-xs); font-weight: 400; color: var(--text-muted); }
 .onlineStatus { font-size: 10px; color: #50C878; font-family: var(--font-sans); }

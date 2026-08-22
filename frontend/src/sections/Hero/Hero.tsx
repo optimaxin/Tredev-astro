@@ -17,7 +17,7 @@ export default function Hero() {
   // to play smoothly within a few seconds, drop to the static image.
   const [useVideo, setUseVideo] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { t } = useAppContext();
+  const { t, isLoggedIn, kundliGenerated, setPage, setPendingAction, setShowLoginModal } = useAppContext();
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -46,8 +46,18 @@ export default function Hero() {
     };
   }, [isMobile, useVideo]);
 
-  const scrollToKundli = () => {
-    document.querySelector('#kundli')?.scrollIntoView({ behavior: 'smooth' });
+  // #kundli only exists on the dedicated /free-kundli page, never here on
+  // the home page — this must navigate there (same behavior as the nav
+  // bar's "Free Kundli" link), not scroll to an anchor that doesn't exist
+  // on this page.
+  const goToFreeKundli = () => {
+    if (!isLoggedIn) {
+      setPendingAction('free-kundli');
+      setShowLoginModal(true);
+      return;
+    }
+    setPage(kundliGenerated ? 'kundli-result' : 'free-kundli');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollToAstrologers = () => {
@@ -139,7 +149,7 @@ export default function Hero() {
           >
             <button
               className={styles.btnPrimary}
-              onClick={scrollToKundli}
+              onClick={goToFreeKundli}
               id="hero-create-kundli"
             >
               {t('hero_cta_kundli')}
