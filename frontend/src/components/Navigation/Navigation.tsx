@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { CartIcon, ProfileIcon, SunIcon, MoonIcon } from '../Icons/Icons';
+import NotificationBell from './NotificationBell';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
@@ -191,6 +192,9 @@ export default function Navigation() {
             <CartIcon size={28} />
             {cart.length > 0 && <span className={styles.cartBadge}>{cart.reduce((acc, curr) => acc + curr.quantity, 0)}</span>}
           </button>
+
+          {/* Notifications */}
+          <NotificationBell />
 
           {/* Language Selector Dropdown */}
           <div className={styles.langWrapper} ref={langRef}>

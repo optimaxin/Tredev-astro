@@ -11,6 +11,7 @@ import LoginModal from './components/LoginModal/LoginModal';
 import MonkWidget from './components/MonkWidget/MonkWidget';
 import { RealtimeProvider } from './realtime/RealtimeContext';
 import ToastStack from './realtime/ToastStack';
+import BroadcastBanner from './components/BroadcastBanner/BroadcastBanner';
 
 function AppContent() {
   const { theme, language, page, currentUser } = useAppContext();
@@ -33,6 +34,7 @@ function AppContent() {
   if (isWorkspaceConsole) {
     return (
       <div className="app">
+        <BroadcastBanner />
         <PageRenderer />
         <LoginModal />
         <ToastStack />

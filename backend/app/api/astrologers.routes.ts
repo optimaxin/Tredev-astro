@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { findAstrologerById, listAstrologers } from '../repositories/astrologerRepository.ts';
+import { findAstrologerById, findAstrologerByUserId, listAstrologers } from '../repositories/astrologerRepository.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { findReviewByConsultation, insertReviewAndUpdateRating, listReviewsForAstrologer } from '../repositories/reviewRepository.ts';
@@ -48,6 +48,16 @@ astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   }
   const row = await findAstrologerById(id);
   if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Astrologer not found' } });
+  res.json({ success: true, data: toPublicAstrologerProfile(row) });
+});
+
+// Lets a logged-in astrologer resolve their own catalog row (id + pricing +
+// rating) without needing to search the public catalog by name — the
+// astrologer dashboard's Requests/Consultations/Earnings/Reviews tabs all
+// need this id to query their own real data.
+astrologersCatalogRouter.get('/me', requireAuth, async (req, res) => {
+  const row = await findAstrologerByUserId(req.user!.id);
+  if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No astrologer catalog entry for this account' } });
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
 });
 

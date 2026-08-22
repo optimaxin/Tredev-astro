@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { createUser, findUserByEmail } from '../repositories/userRepository.ts';
+import { findAstrologerByUserId, insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 
 // Mirrors the three DEMO_ACCOUNTS previously hardcoded in the frontend's
 // localStorage-mock AppContext.tsx, so existing manual test flows (logging
@@ -13,7 +14,18 @@ const DEMO_ACCOUNTS = [
 
 export async function seedDemoAccounts() {
   for (const acc of DEMO_ACCOUNTS) {
-    if (await findUserByEmail(acc.email)) continue;
-    await createUser({ name: acc.name, email: acc.email, passwordHash: bcrypt.hashSync(acc.password, 12), role: acc.role });
+    let user = await findUserByEmail(acc.email);
+    if (!user) {
+      user = await createUser({ name: acc.name, email: acc.email, passwordHash: bcrypt.hashSync(acc.password, 12), role: acc.role });
+    }
+
+    // The originally-seeded catalog roster (seedAstrologerCatalog.ts) has no
+    // real account behind it, so the demo astrologer login would otherwise
+    // have no catalog row at all — unable to go online, accept consultations,
+    // or show up in its own dashboard's real data. Give it one, same as the
+    // real apply→approve flow does for a genuine astrologer account.
+    if (acc.role === 'ASTROLOGIST' && !(await findAstrologerByUserId(user.id))) {
+      await insertAstrologerForUser(user.id, user.name, 'General Astrology');
+    }
   }
 }

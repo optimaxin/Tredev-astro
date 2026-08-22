@@ -5,6 +5,8 @@ import { listTestimonials } from '../repositories/testimonialRepository.ts';
 import { toPublicTestimonial } from '../models/testimonial.ts';
 import { findAstrologyReportById, listAstrologyReports } from '../repositories/astrologyReportRepository.ts';
 import { toPublicAstrologyReport } from '../models/astrologyReport.ts';
+import { listActiveBroadcasts } from '../repositories/broadcastRepository.ts';
+import { toPublicBroadcast } from '../models/broadcast.ts';
 
 // Read-only public content (journal posts, testimonials, the paid-report
 // catalog) — no auth, no writes. Editing this content is an admin/CMS
@@ -34,6 +36,10 @@ contentRouter.get('/testimonials', async (_req, res) => {
 
 contentRouter.get('/reports', async (_req, res) => {
   res.json({ success: true, data: (await listAstrologyReports()).map(toPublicAstrologyReport) });
+});
+
+contentRouter.get('/broadcasts/active', async (_req, res) => {
+  res.json({ success: true, data: (await listActiveBroadcasts()).map(toPublicBroadcast) });
 });
 
 contentRouter.get('/reports/:id', async (req, res) => {

@@ -21,17 +21,35 @@ export interface MyConsultation {
   reviewed: boolean;
 }
 
+export interface MyConsultationAsAstrologer {
+  id: string;
+  astrologerId: number;
+  userEmail: string;
+  userName: string;
+  category: string;
+  type: 'chat' | 'voice' | 'video';
+  status: 'ASSIGNED' | 'ACCEPTED' | 'ACTIVE' | 'COMPLETED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
+  createdAt: number;
+  acceptedAt?: number;
+  startedAt?: number;
+  endedAt?: number;
+  estimatedAmount: number;
+}
+
+async function authedGet<T>(path: string): Promise<T> {
+  const token = localStorage.getItem('auth_access_token');
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ConsultationApiError('NETWORK_ERROR', 'Could not reach the server. Please check your connection.');
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.success) throw new ConsultationApiError(body?.error?.code || 'UNKNOWN', body?.error?.message || 'Something went wrong.');
+  return body.data as T;
+}
+
 export const consultationService = {
-  async listMine(): Promise<MyConsultation[]> {
-    const token = localStorage.getItem('auth_access_token');
-    let res: Response;
-    try {
-      res = await fetch(`${API_URL}/api/consultations/mine`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    } catch {
-      throw new ConsultationApiError('NETWORK_ERROR', 'Could not reach the server. Please check your connection.');
-    }
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.success) throw new ConsultationApiError(body?.error?.code || 'UNKNOWN', body?.error?.message || 'Something went wrong.');
-    return body.data as MyConsultation[];
-  },
+  listMine: () => authedGet<MyConsultation[]>('/api/consultations/mine'),
+  listMineAsAstrologer: () => authedGet<MyConsultationAsAstrologer[]>('/api/consultations/mine-as-astrologer'),
 };

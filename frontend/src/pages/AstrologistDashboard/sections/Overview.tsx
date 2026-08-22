@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { ASTROLOGERS } from '../../../data/mockData';
 import { useRealtime } from '../../../realtime/RealtimeContext';
+import { astrologerService } from '../../../services/astrologerService';
+import { consultationService } from '../../../services/consultationService';
+import type { MyConsultationAsAstrologer } from '../../../services/consultationService';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
@@ -9,6 +11,13 @@ import {
 } from './shared';
 import { useDashboardNav } from './shared';
 import styles from './sections.module.css';
+
+function timeAgo(ts: number): string {
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
 
 function LiveStatusCard() {
   const { astrologerSync, goOnline, goOffline, endActiveConsultation, connected } = useRealtime();
@@ -89,42 +98,49 @@ function LiveStatusCard() {
 }
 
 export default function Overview() {
-  const { currentUser, t, consultations, consultationRequests, acceptConsultationRequest, declineConsultationRequest, completeConsultation, cancelConsultation } = useAppContext();
+  const { t, currentUser } = useAppContext();
+  const { astrologerSync, acceptAssignment, declineAssignment } = useRealtime();
   const { navigate } = useDashboardNav();
-  const profile = ASTROLOGERS.find(a => a.name === currentUser?.name) || ASTROLOGERS[0];
+  const [rating, setRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [consultations, setConsultations] = useState<MyConsultationAsAstrologer[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    astrologerService.getMyProfile().then(p => { setRating(p.rating); setReviewCount(p.reviews); }).catch(() => {});
+    consultationService.listMineAsAstrologer().then(setConsultations).catch(() => {});
+  }, []);
+
   const now = new Date();
+  const pendingRequests = astrologerSync?.pendingAssignments || [];
+  const recent = consultations.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
+
+  const createdToday = consultations.filter(c => isSameDay(new Date(c.createdAt), now)).length;
   const yesterday = new Date(now.getTime() - DAY_MS);
+  const createdYesterday = consultations.filter(c => isSameDay(new Date(c.createdAt), yesterday)).length;
 
-  const todaysSchedule = consultations
-    .filter(c => isSameDay(new Date(c.scheduledAt), now))
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-  const yesterdaysCount = consultations.filter(c => isSameDay(new Date(c.scheduledAt), yesterday)).length;
-  const pendingRequests = consultationRequests.filter(r => r.status === 'PENDING').sort((a, b) => a.requestedFor.localeCompare(b.requestedFor));
-
-  const completed = consultations.filter(c => c.status === 'completed');
-  const thisMonth = completed.filter(c => { const d = new Date(c.scheduledAt); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+  const completed = consultations.filter(c => c.status === 'COMPLETED');
+  const thisMonth = completed.filter(c => { const d = new Date(c.createdAt); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
   const lastMonthRef = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonth = completed.filter(c => { const d = new Date(c.scheduledAt); return d.getMonth() === lastMonthRef.getMonth() && d.getFullYear() === lastMonthRef.getFullYear(); });
-  const thisMonthTotal = thisMonth.reduce((s, c) => s + c.amount, 0);
-  const lastMonthTotal = lastMonth.reduce((s, c) => s + c.amount, 0);
+  const lastMonth = completed.filter(c => { const d = new Date(c.createdAt); return d.getMonth() === lastMonthRef.getMonth() && d.getFullYear() === lastMonthRef.getFullYear(); });
+  const thisMonthTotal = thisMonth.reduce((s, c) => s + c.estimatedAmount, 0);
+  const lastMonthTotal = lastMonth.reduce((s, c) => s + c.estimatedAmount, 0);
   const monthDelta = lastMonthTotal > 0 ? Math.round(((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100) : null;
-
-  const thisWeek = consultations.filter(c => now.getTime() - new Date(c.scheduledAt).getTime() >= 0 && now.getTime() - new Date(c.scheduledAt).getTime() <= 7 * DAY_MS);
-  const lastWeek = consultations.filter(c => { const diff = now.getTime() - new Date(c.scheduledAt).getTime(); return diff > 7 * DAY_MS && diff <= 14 * DAY_MS; });
-  const thisWeekEarnings = thisWeek.filter(c => c.status === 'completed').reduce((s, c) => s + c.amount, 0);
-  const lastWeekEarnings = lastWeek.filter(c => c.status === 'completed').reduce((s, c) => s + c.amount, 0);
 
   const chartData = Array.from({ length: 6 }, (_, i) => {
     const weeksAgo = 5 - i;
     const bucket = completed.filter(c => {
-      const diffDays = Math.floor((now.getTime() - new Date(c.scheduledAt).getTime()) / DAY_MS);
+      const diffDays = Math.floor((now.getTime() - c.createdAt) / DAY_MS);
       return diffDays >= weeksAgo * 7 && diffDays < (weeksAgo + 1) * 7;
     });
-    return { label: weeksAgo === 0 ? 'This wk' : `${weeksAgo}w ago`, value: bucket.reduce((s, c) => s + c.amount, 0) };
+    return { label: weeksAgo === 0 ? 'This wk' : `${weeksAgo}w ago`, value: bucket.reduce((s, c) => s + c.estimatedAmount, 0) };
   });
 
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser?.name?.split(' ').slice(-1)[0];
+
+  const handleAccept = async (id: string) => { setBusyId(id); try { await acceptAssignment(id); } finally { setBusyId(null); } };
+  const handleDecline = async (id: string) => { setBusyId(id); try { await declineAssignment(id); } finally { setBusyId(null); } };
 
   return (
     <div>
@@ -139,37 +155,30 @@ export default function Overview() {
       <LiveStatusCard />
 
       <div className={styles.kpiRow}>
-        <KpiCard label={t('astro_kpi_today')} value={todaysSchedule.length} hint={todaysSchedule.length !== yesterdaysCount ? `${todaysSchedule.length > yesterdaysCount ? '+' : ''}${todaysSchedule.length - yesterdaysCount} from yesterday` : 'Same as yesterday'} />
+        <KpiCard label={t('astro_kpi_today')} value={createdToday} hint={createdToday !== createdYesterday ? `${createdToday > createdYesterday ? '+' : ''}${createdToday - createdYesterday} from yesterday` : 'Same as yesterday'} />
         <KpiCard label={t('astro_kpi_pending')} value={pendingRequests.length} />
         <KpiCard label={t('astro_kpi_month_earnings')} value={`₹${thisMonthTotal.toLocaleString()}`} hint={monthDelta !== null ? `${monthDelta >= 0 ? '+' : ''}${monthDelta}% vs last month` : undefined} />
-        <KpiCard label={t('astro_kpi_rating')} value={`★ ${profile.rating}`} hint={`${profile.reviews.toLocaleString()} reviews`} />
+        <KpiCard label={t('astro_kpi_rating')} value={`★ ${rating}`} hint={`${reviewCount.toLocaleString()} reviews`} />
       </div>
 
       <div className={styles.split6535}>
         <div className={styles.panel}>
           <div className={styles.panelHead}>
-            <h3 className={styles.panelTitle}>{t('astro_todays_schedule')}</h3>
+            <h3 className={styles.panelTitle}>Recent Consultations</h3>
           </div>
-          {todaysSchedule.length === 0 ? (
+          {recent.length === 0 ? (
             <EmptyState icon="◎" title={t('astro_empty_schedule_title')} desc={t('astro_empty_schedule_desc')} />
           ) : (
             <div className={styles.timeline}>
-              {todaysSchedule.map(c => (
+              {recent.map(c => (
                 <div key={c.id} className={styles.timelineRow}>
-                  <span className={styles.timelineTime}>{formatTime(c.scheduledAt)}</span>
-                  <div className={styles.timelineDotWrap}><span className={`${styles.timelineDot} ${styles['timelineDot_' + c.status]}`} /></div>
+                  <span className={styles.timelineTime}>{formatTime(new Date(c.createdAt).toISOString())}</span>
+                  <div className={styles.timelineDotWrap}><span className={styles.timelineDot} /></div>
                   <div>
-                    <div className={styles.timelineClient}>{TYPE_ICON[c.type]} {c.clientName}</div>
-                    <div className={styles.timelineMeta}>{c.service} · {c.duration} min</div>
+                    <div className={styles.timelineClient}>{TYPE_ICON[c.type]} {c.userName}</div>
+                    <div className={styles.timelineMeta}>{c.category} · {formatDateShort(new Date(c.createdAt).toISOString())}</div>
                   </div>
-                  {c.status === 'upcoming' ? (
-                    <div className={styles.requestActions}>
-                      <button className={styles.iconBtn} onClick={() => completeConsultation(c.id)}>{t('astro_action_complete')}</button>
-                      <button className={`${styles.iconBtn} ${styles.btnDanger}`} onClick={() => cancelConsultation(c.id)}>{t('astro_action_cancel')}</button>
-                    </div>
-                  ) : (
-                    <span className={styles.tableMuted}>{c.status === 'completed' ? 'Completed' : 'Cancelled'}</span>
-                  )}
+                  <span className={styles.tableMuted}>{c.status}</span>
                 </div>
               ))}
             </div>
@@ -187,16 +196,15 @@ export default function Overview() {
             pendingRequests.slice(0, 4).map(req => (
               <div key={req.id} className={styles.requestCard}>
                 <div className={styles.requestTop}>
-                  <span className={styles.requestAvatar}>{req.clientName.charAt(0)}</span>
+                  <span className={styles.requestAvatar}>{req.userName.charAt(0)}</span>
                   <div>
-                    <div className={styles.requestName}>{req.clientName}</div>
-                    <div className={styles.requestMeta}>{req.service} · {formatDateShort(req.requestedFor)}</div>
+                    <div className={styles.requestName}>{req.userName}</div>
+                    <div className={styles.requestMeta}>{req.category} · {timeAgo(req.createdAt)}</div>
                   </div>
-                  <span className={styles.requestAmount}>₹{req.price}</span>
                 </div>
                 <div className={styles.requestActions}>
-                  <button className={`${styles.btnSm} ${styles.btnGold}`} onClick={() => acceptConsultationRequest(req.id)}>{t('astro_action_accept')}</button>
-                  <button className={styles.btnSm} onClick={() => declineConsultationRequest(req.id)}>{t('astro_action_decline')}</button>
+                  <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busyId === req.id} onClick={() => handleAccept(req.id)}>{t('astro_action_accept')}</button>
+                  <button className={styles.btnSm} disabled={busyId === req.id} onClick={() => handleDecline(req.id)}>{t('astro_action_decline')}</button>
                 </div>
               </div>
             ))
@@ -207,25 +215,17 @@ export default function Overview() {
       <div className={styles.panel}>
         <div className={styles.panelHead}><h3 className={styles.panelTitle}>Quick Actions</h3></div>
         <div className={styles.quickActions}>
-          <button className={styles.btnSm} onClick={() => navigate('availability')}>Manage Availability</button>
-          <button className={styles.btnSm} onClick={() => navigate('calendar')}>View Calendar</button>
-          <button className={styles.btnSm} onClick={() => navigate('clients')}>View Clients</button>
+          <button className={styles.btnSm} onClick={() => navigate('consultations')}>View Consultations</button>
           <button className={styles.btnSm} onClick={() => navigate('earnings')}>View Earnings</button>
+          <button className={styles.btnSm} onClick={() => navigate('reviews')}>View Reviews</button>
         </div>
       </div>
 
       <div className={styles.performanceGrid}>
         <div className={styles.panel}>
-          <div className={styles.panelHead}><h3 className={styles.panelTitle}>Consultations</h3></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>This week</span><span className={styles.statRowValue}>{thisWeek.length}</span></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>Completed</span><span className={styles.statRowValue}>{thisWeek.filter(c => c.status === 'completed').length}</span></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>Cancelled</span><span className={styles.statRowValue}>{thisWeek.filter(c => c.status === 'cancelled').length}</span></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>Upcoming</span><span className={styles.statRowValue}>{thisWeek.filter(c => c.status === 'upcoming').length}</span></div>
-        </div>
-        <div className={styles.panel}>
           <div className={styles.panelHead}><h3 className={styles.panelTitle}>Earnings</h3></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>This week</span><span className={styles.statRowValue}>₹{thisWeekEarnings.toLocaleString()}</span></div>
-          <div className={styles.statRow}><span className={styles.statRowLabel}>Last week</span><span className={styles.statRowValue}>₹{lastWeekEarnings.toLocaleString()}</span></div>
+          <div className={styles.statRow}><span className={styles.statRowLabel}>This month</span><span className={styles.statRowValue}>₹{thisMonthTotal.toLocaleString()}</span></div>
+          <div className={styles.statRow}><span className={styles.statRowLabel}>Last month</span><span className={styles.statRowValue}>₹{lastMonthTotal.toLocaleString()}</span></div>
           {chartData.some(d => d.value > 0) && <div style={{ marginTop: 10 }}><MiniBarChart data={chartData} /></div>}
         </div>
       </div>

@@ -4,8 +4,8 @@ import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { getPublicUser } from '../services/authService.ts';
 import { ChatError, listMessages, sendMessage } from '../services/chatService.ts';
-import { findAllForUser } from '../repositories/consultationRepository.ts';
-import { findAstrologerByIdRaw } from '../repositories/astrologerRepository.ts';
+import { findAllForAstrologer, findAllForUser } from '../repositories/consultationRepository.ts';
+import { findAstrologerByIdRaw, findAstrologerByUserId } from '../repositories/astrologerRepository.ts';
 import { findReviewByConsultation } from '../repositories/reviewRepository.ts';
 
 export const chatRouter = Router();
@@ -41,6 +41,22 @@ chatRouter.get('/mine', requireAuth, async (req, res) => {
     const reviewed = c.status === 'COMPLETED' ? !!(await findReviewByConsultation(c.id)) : false;
     return { ...c, astrologerName: astro?.name || `Astrologer #${c.astrologerId}`, reviewed };
   }));
+  res.json({ success: true, data });
+});
+
+// An astrologer's own consultation history — same shape as user's `/mine`
+// but from the other side. `amount` is an estimate (current catalog price
+// for that consultation's type) rather than a historically-locked price,
+// since no price is captured at booking time and there is no real
+// payment/payout system in this app yet.
+// ponytail: current-price estimate, not a ledger — swap for a captured
+// price-at-booking-time column if real payouts are ever built.
+chatRouter.get('/mine-as-astrologer', requireAuth, async (req, res) => {
+  const astro = await findAstrologerByUserId(req.user!.id);
+  if (!astro) return fail(res, 404, 'NOT_FOUND', 'No astrologer catalog entry for this account');
+  const rows = await findAllForAstrologer(astro.id);
+  const priceByType: Record<string, number> = { chat: astro.chat_price, voice: astro.call_price, video: astro.video_price };
+  const data = rows.map(c => ({ ...c, estimatedAmount: priceByType[c.type] ?? 0 }));
   res.json({ success: true, data });
 });
 

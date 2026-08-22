@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { authService } from '../services/authService';
+import { authService, ApiRequestError } from '../services/authService';
 import type { ApiUser, RegisterBirthDetails } from '../services/authService';
 import { adminService } from '../services/adminService';
 import { astrologerService } from '../services/astrologerService';
@@ -679,6 +679,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_reports: 'Reports',
     admin_sidebar_orders: 'Orders',
     admin_sidebar_content: 'Content',
+    admin_sidebar_blog: 'Blog',
     admin_sidebar_notifications: 'Notifications',
     admin_sidebar_audit: 'Audit Logs',
     admin_sidebar_settings: 'Settings',
@@ -1243,6 +1244,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_reports: 'रिपोर्ट्स',
     admin_sidebar_orders: 'ऑर्डर',
     admin_sidebar_content: 'सामग्री',
+    admin_sidebar_blog: 'ब्लॉग',
     admin_sidebar_notifications: 'सूचनाएं',
     admin_sidebar_audit: 'ऑडिट लॉग',
     admin_sidebar_settings: 'सेटिंग्स',
@@ -1781,6 +1783,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_reports: 'अहवाल',
     admin_sidebar_orders: 'ऑर्डर',
     admin_sidebar_content: 'मजकूर',
+    admin_sidebar_blog: 'ब्लॉग',
     admin_sidebar_notifications: 'सूचना',
     admin_sidebar_audit: 'ऑडिट लॉग',
     admin_sidebar_settings: 'सेटिंग्ज',
@@ -2628,8 +2631,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistTokens(tokens.accessToken, tokens.refreshToken);
         const user = await authService.me(tokens.accessToken);
         setCurrentUser(toAuthUser(user));
-      } catch {
-        clearTokens();
+      } catch (e) {
+        // Only sign the user out when the server explicitly rejected the
+        // refresh token (it's genuinely invalid/expired/revoked) — a network
+        // blip or a transient 500 (e.g. the hosted DB's connection pool
+        // waking up from idle) must NOT wipe a perfectly good session; the
+        // tokens stay put so the next reload can succeed normally.
+        if (e instanceof ApiRequestError && e.code === 'AUTH_ERROR') {
+          clearTokens();
+        }
       } finally {
         setAuthLoading(false);
       }

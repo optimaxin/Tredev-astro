@@ -14,6 +14,7 @@ const ConsultationsPage = lazy(() => import('./pages/ConsultationsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const ContentPage = lazy(() => import('./pages/ContentPage'));
+const BlogPostsPage = lazy(() => import('./pages/BlogPostsPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -42,6 +43,7 @@ export default function AdminConsole() {
       case 'reports': return <ReportsPage />;
       case 'orders': return <OrdersPage />;
       case 'content': return <ContentPage />;
+      case 'blog': return <BlogPostsPage />;
       case 'notifications': return <NotificationsPage />;
       case 'audit': return <AuditLogsPage />;
       case 'settings': return <SettingsPage />;

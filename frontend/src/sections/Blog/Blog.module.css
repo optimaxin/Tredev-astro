@@ -38,6 +38,7 @@
 .layout {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
+  align-items: start;
   gap: var(--space-6);
 }
 

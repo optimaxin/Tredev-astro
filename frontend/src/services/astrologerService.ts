@@ -101,6 +101,10 @@ export interface Review {
 }
 
 export const astrologerService = {
+  // A logged-in astrologer's own catalog profile (id, pricing, rating) —
+  // needed to query their own consultations/reviews/earnings.
+  getMyProfile: () => authedRequest<ApiAstrologerProfile>('/api/astrologers/me').then(adapt),
+
   async list(params: AstrologerListParams = {}): Promise<{ data: UiAstrologer[]; total: number }> {
     const qs = new URLSearchParams();
     if (params.category && params.category !== 'All') qs.set('category', params.category);

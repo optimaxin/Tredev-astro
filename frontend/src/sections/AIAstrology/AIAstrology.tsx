@@ -70,12 +70,15 @@ export default function AIAstrology() {
   const [secondsLeft, setSecondsLeft] = useState(FREE_SECONDS);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const timerRef = useRef<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const birthInputRef = useRef<BirthDetailsInput | null>(null);
 
-  // Auto-scroll messages
+  // Auto-scroll messages — scroll only the message list itself, never the
+  // page (scrollIntoView() on a sentinel can drag the whole document's
+  // scroll position along with it).
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Auto-resume after login
@@ -266,7 +269,7 @@ export default function AIAstrology() {
                   </div>
 
                   {/* Messages */}
-                  <div className={styles.messages}>
+                  <div className={styles.messages} ref={messagesRef}>
                     {messages.map((msg, i) => (
                       <div
                         key={i}
@@ -302,7 +305,6 @@ export default function AIAstrology() {
                         </div>
                       </div>
                     )}
-                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Suggestions */}

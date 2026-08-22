@@ -17,7 +17,7 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMessages([]);
@@ -36,8 +36,12 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
     });
   }, [liveChatMessages, consultationId]);
 
+  // Scroll only the message list itself, never the page — scrollIntoView()
+  // on a sentinel element can drag the whole document's scroll position
+  // along with it, which is what was hijacking the page on every send.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +65,7 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
     <div className={styles.chatWindow}>
       <div className={styles.header}>Chat with {otherPartyName}</div>
 
-      <div className={styles.messages}>
+      <div className={styles.messages} ref={messagesRef}>
         {messages.length === 0 && <p className={styles.empty}>No messages yet — say hello!</p>}
         {messages.map(m => (
           <div key={m.id} className={`${styles.message} ${m.senderEmail.toLowerCase() === currentUser?.email.toLowerCase() ? styles.own : styles.other}`}>
@@ -69,7 +73,6 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
             <div className={styles.time}>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       {error && <p className={styles.error}>{error}</p>}

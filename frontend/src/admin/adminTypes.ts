@@ -60,6 +60,7 @@ export type AdminSection =
   | 'reports'
   | 'orders'
   | 'content'
+  | 'blog'
   | 'notifications'
   | 'audit'
   | 'settings';

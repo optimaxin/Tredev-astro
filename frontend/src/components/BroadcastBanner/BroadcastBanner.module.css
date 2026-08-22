@@ -1,0 +1,42 @@
+.stack {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--gold-primary, #b58a3b);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.message {
+  flex: 1;
+  text-align: center;
+}
+
+.close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  opacity: 0.75;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+}
+
+.close:hover {
+  opacity: 1;
+}

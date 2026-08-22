@@ -74,6 +74,35 @@ export interface ApiConsultation {
   endedAt?: number;
 }
 
+export interface ApiBlogPost {
+  id: number;
+  title: string;
+  category: string;
+  readTime: string;
+  excerpt: string;
+  content: string;
+  tag: string;
+  featured: boolean;
+  date: string;
+}
+
+export interface NewBlogPost {
+  title: string;
+  category: string;
+  readTime: string;
+  excerpt: string;
+  content: string;
+  tag: string;
+  featured: boolean;
+}
+
+export interface ApiBroadcast {
+  id: number;
+  message: string;
+  createdAt: number;
+  active: boolean;
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -91,4 +120,11 @@ export const adminService = {
 
   listAuditLog: (page = 1, limit = 100) => request<ApiAuditEntry[]>(`/audit-log?page=${page}&limit=${limit}`),
   logNote: (action: string, target: string) => request<{ ok: boolean }>('/audit-log', { method: 'POST', body: JSON.stringify({ action, target }) }),
+
+  createBlogPost: (post: NewBlogPost) => request<ApiBlogPost>('/blog', { method: 'POST', body: JSON.stringify(post) }),
+  deleteBlogPost: (id: number) => request<{ ok: boolean }>(`/blog/${id}`, { method: 'DELETE' }),
+
+  listBroadcasts: () => request<ApiBroadcast[]>('/broadcasts'),
+  createBroadcast: (message: string) => request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message }) }),
+  deleteBroadcast: (id: number) => request<{ ok: boolean }>(`/broadcasts/${id}`, { method: 'DELETE' }),
 };

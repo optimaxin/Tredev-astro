@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { withTransaction, type Executor } from '../core/db.ts';
 import { listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import { findUserById } from '../repositories/userRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
 import * as notificationRepo from '../repositories/notificationRepository.ts';
@@ -38,18 +39,20 @@ const adminConfig: AdminConfig = {
   defaultMaxConcurrent: 1,
 };
 
-// The demo astrologer account is the only one with a real login in the mock
-// auth system (see AppContext.tsx DEMO_ACCOUNTS) — every other seed
-// astrologer gets a synthetic, non-login-able email so the recommendation
-// engine and dashboards still have a full roster to reason about.
-const DEMO_ASTROLOGER_EMAIL = 'demo.astrologer@tredevastro.local';
-
 // Called explicitly from main.ts, after migrations + catalog seeding have
 // run — NOT at module-load time, since the `astrologers` DB table doesn't
 // exist yet when this file is first imported.
 export async function seedRealtimeStore() {
   for (const row of await listAllAstrologersRaw()) {
-    const email = row.name === 'Astrologist Rahul Shastri' ? DEMO_ASTROLOGER_EMAIL : `astrologer${row.id}@tredevastro.local`;
+    // A catalog row created for a real account (via the apply→approve flow,
+    // admin-add, or the demo astrologer seed) carries that account's real
+    // login email — that's the identity `getAstrologerByEmail` must resolve
+    // to. Rows from the original seed roster have no account behind them
+    // (user_id is NULL), so they get a synthetic, non-login-able email —
+    // just enough for the recommendation engine and public dashboards to
+    // still have a full roster to reason about.
+    const owner = row.user_id ? await findUserById(row.user_id) : undefined;
+    const email = owner?.email || `astrologer${row.id}@tredevastro.local`;
     astrologers.set(row.id, {
       id: row.id,
       name: row.name,

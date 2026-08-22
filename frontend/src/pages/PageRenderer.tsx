@@ -380,13 +380,13 @@ function HoroscopePage() {
                     key={r.name}
                     className={`${styles.rashiNode} ${activeRashi === i ? styles.rashiNodeActive : ''}`}
                     style={{
-                      left: `calc(50% + ${x}px - 21px)`,
-                      top: `calc(50% + ${y}px - 21px)`,
+                      left: `calc(50% + ${x}px - 28px)`,
+                      top: `calc(50% + ${y}px - 28px)`,
                     }}
                     onClick={() => setActiveRashi(i)}
+                    title={`${r.name} (${r.eng})`}
                   >
-                    <span className={styles.nodeIndex}>{r.index}</span>
-                    <span className={styles.nodeSymbol}>{r.eng.substring(0, 3).toUpperCase()}</span>
+                    <span className={styles.nodeSymbol}>{r.symbol}</span>
                   </button>
                 );
               })}
@@ -442,9 +442,9 @@ function HoroscopePage() {
                       const meta = PLANET_META[t.id];
                       const dotColor = NATURAL_BENEFIC.has(t.id) ? '#4caf7d' : NATURAL_MALEFIC.has(t.id) ? '#c85a5a' : '#9a9a9a';
                       return (
-                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '8px 1fr 160px', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} title={NATURAL_BENEFIC.has(t.id) ? 'Naturally benefic' : NATURAL_MALEFIC.has(t.id) ? 'Naturally malefic' : 'Naturally neutral'} />
-                          <span style={{ flex: 1 }}>
+                          <span>
                             {meta?.symbol} {meta?.name || t.id} in {t.rashi}
                             {t.retrograde && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(200,90,90,0.15)', color: '#c85a5a' }}>℞ Retrograde</span>}
                           </span>
@@ -1562,6 +1562,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
 function ConsultationWaitingPage() {
   const { setPage, setSelectedId } = useAppContext();
   const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry } = useRealtime();
+  const [justReviewed, setJustReviewed] = useState(false);
 
   const astrologerId = userSync?.queueEntry?.astrologerId ?? userSync?.consultation?.astrologerId;
   const { astrologer } = useAstrologer(astrologerId);
@@ -1660,6 +1661,26 @@ function ConsultationWaitingPage() {
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <button className="btn btn-outline-light" onClick={() => setPage('home')}>Back to Home</button>
           </div>
+        </div>
+      </div>
+    );
+  }
+  if (consultation.status === 'COMPLETED') {
+    // ponytail: `justReviewed` is local-only, so navigating away and back to
+    // this same completed consultation re-shows the form; submitting again
+    // just surfaces the backend's ALREADY_REVIEWED error. Fine for now — a
+    // real fix needs `reviewed` on the realtime Consultation type itself.
+    return (
+      <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
+        <div className={styles.container} style={{ maxWidth: '480px', textAlign: 'center', padding: '60px 20px' }}>
+          <h2>Your consultation with {astrologer?.name || 'your astrologer'} has ended</h2>
+          <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
+          {justReviewed ? (
+            <p className={styles.reviewCount} style={{ marginTop: '16px', color: 'var(--color-gold)' }}>✦ Thanks for your feedback!</p>
+          ) : (
+            <ReviewFormInline consultation={consultation} onDone={() => setJustReviewed(true)} />
+          )}
+          <button className="btn btn-outline-light" style={{ marginTop: '20px' }} onClick={() => setPage('home')}>Back to Home</button>
         </div>
       </div>
     );
@@ -2304,7 +2325,7 @@ const CONSULTATION_STATUS_LABEL: Record<MyConsultation['status'], string> = {
   COMPLETED: 'Completed', DECLINED: 'Declined', CANCELLED: 'Cancelled', EXPIRED: 'Expired',
 };
 
-function ReviewFormInline({ consultation, onDone }: { consultation: MyConsultation; onDone: () => void }) {
+function ReviewFormInline({ consultation, onDone }: { consultation: { id: string; astrologerId: number }; onDone: () => void }) {
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);

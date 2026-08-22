@@ -8,6 +8,10 @@ import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts
 import { listAllConsultations } from '../repositories/consultationRepository.ts';
 import { listAuditLog, logAdminAction } from '../repositories/auditLogRepository.ts';
 import { register, AuthError } from '../services/authService.ts';
+import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
+import { toPublicBlogPost } from '../models/blogPost.ts';
+import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
+import { toPublicBroadcast } from '../models/broadcast.ts';
 
 export const adminRouter = Router();
 
@@ -140,4 +144,56 @@ adminRouter.post('/audit-log', async (req, res) => {
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await audit(req, parsed.data.action, parsed.data.target);
   res.status(201).json({ success: true, data: { ok: true } });
+});
+
+// ── Blog posts (add/remove — editing the journal shown on the homepage) ──
+
+const blogPostSchema = z.object({
+  title: z.string().trim().min(2).max(200),
+  category: z.string().trim().min(1).max(50),
+  readTime: z.string().trim().min(1).max(30),
+  excerpt: z.string().trim().min(1).max(500),
+  content: z.string().trim().min(1).max(20000),
+  tag: z.string().trim().min(1).max(50),
+  featured: z.boolean().default(false),
+});
+
+adminRouter.post('/blog', async (req, res) => {
+  const parsed = blogPostSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await createBlogPost(parsed.data);
+  await audit(req, 'blog.create', row.title);
+  res.status(201).json({ success: true, data: toPublicBlogPost(row) });
+});
+
+adminRouter.delete('/blog/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  await deleteBlogPost(id);
+  await audit(req, 'blog.delete', String(id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+// ── Broadcasts (site-wide admin announcements) ──────────────────────────
+
+adminRouter.get('/broadcasts', async (_req, res) => {
+  res.json({ success: true, data: (await listAllBroadcasts()).map(toPublicBroadcast) });
+});
+
+const broadcastSchema = z.object({ message: z.string().trim().min(1).max(500) });
+
+adminRouter.post('/broadcasts', async (req, res) => {
+  const parsed = broadcastSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await createBroadcast(parsed.data.message, req.user!.id);
+  await audit(req, 'broadcast.create', parsed.data.message.slice(0, 80));
+  res.status(201).json({ success: true, data: toPublicBroadcast(row) });
+});
+
+adminRouter.delete('/broadcasts/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  await deactivateBroadcast(id);
+  await audit(req, 'broadcast.deactivate', String(id));
+  res.json({ success: true, data: { ok: true } });
 });

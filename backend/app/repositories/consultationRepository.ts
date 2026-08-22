@@ -104,6 +104,14 @@ export async function findAllForUser(userEmail: string): Promise<Consultation[]>
   return rows.map(fromRow);
 }
 
+export async function findAllForAstrologer(astrologerId: number): Promise<Consultation[]> {
+  const rows = await query<ConsultationDbRow>(
+    'SELECT * FROM consultations WHERE astrologer_id = $1 ORDER BY created_at DESC',
+    [astrologerId]
+  );
+  return rows.map(fromRow);
+}
+
 export async function listAllConsultations(page: number, limit: number): Promise<{ rows: Consultation[]; total: number }> {
   const totalRow = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM consultations');
   const rows = await query<ConsultationDbRow>(

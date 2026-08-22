@@ -23,7 +23,7 @@ export function toPublicReview(row: ReviewRow, authorName: string): PublicReview
     astrologerId: row.astrologer_id,
     rating: row.rating,
     text: row.text,
-    createdAt: row.created_at,
+    createdAt: Number(row.created_at),
     authorName,
   };
 }

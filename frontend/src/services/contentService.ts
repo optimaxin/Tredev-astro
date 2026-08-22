@@ -63,10 +63,18 @@ export interface AstrologyReport {
   category: string;
 }
 
+export interface Broadcast {
+  id: number;
+  message: string;
+  createdAt: number;
+  active: boolean;
+}
+
 export const contentService = {
   listBlogPosts: () => request<BlogPost[]>('/api/blog'),
   getBlogPost: (id: number) => request<BlogPost>(`/api/blog/${id}`),
   listTestimonials: () => request<Testimonial[]>('/api/testimonials'),
   listReports: () => request<AstrologyReport[]>('/api/reports'),
   getReport: (id: number) => request<AstrologyReport>(`/api/reports/${id}`),
+  listActiveBroadcasts: () => request<Broadcast[]>('/api/broadcasts/active'),
 };
