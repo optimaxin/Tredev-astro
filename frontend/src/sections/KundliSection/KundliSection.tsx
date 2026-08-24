@@ -398,6 +398,37 @@ export default function KundliSection() {
                 </div>
               </div>
 
+              {/* Shadbala & Bhavbala — six-fold planetary strength and house strength */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Shadbala (Planetary Strength)</h3>
+                <p className={styles.overviewText}>Six-fold classical strength score per planet, in Rupas — a planet at or above its classical minimum is considered strong enough to deliver its significations well.</p>
+                <div className={styles.planetList}>
+                  {fullResult.shadbala.planets.map(p => (
+                    <div key={p.planet} className={styles.planetRow}>
+                      <span className={styles.planetSymbol}>{PLANET_META[p.planet]?.symbol || '✦'}</span>
+                      <span className={styles.planetName}>{PLANET_META[p.planet]?.name || p.planet}</span>
+                      <span className={styles.planetSign}>{p.rupas.toFixed(2)} / {p.minRequiredRupas.toFixed(1)} Rupas</span>
+                      <span className={`${styles.statusBadge} ${p.isStrong ? styles.statusBadgeClear : styles.statusBadgeActive}`}>
+                        {p.isStrong ? 'Strong' : 'Weak'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className={styles.chartNote}>Ishta/Kashta Bala (auspiciousness/difficulty) and the Sthana/Dig/Kaala/Cheshta/Naisargika/Drik breakdown are computed but not all shown here — ask if you want the full per-component view.</p>
+              </div>
+
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Bhavbala (House Strength)</h3>
+                <div className={styles.infoGrid}>
+                  {fullResult.shadbala.houses.map(h => (
+                    <div key={h.house} className={styles.infoCard}>
+                      <div className={styles.infoLabel}>House {h.house}</div>
+                      <div className={styles.infoValue}>{h.total.toFixed(1)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Yogini Dasha — the alternate 36-year, 8-period dasha system */}
               <div className={styles.timelinePanel}>
                 <h3 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h3>

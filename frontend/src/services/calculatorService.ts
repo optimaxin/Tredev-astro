@@ -241,6 +241,35 @@ export interface AshtakavargaResult {
   sarvaTotal: number;
 }
 
+export interface PlanetShadbala {
+  planet: string;
+  totalVirupas: number;
+  rupas: number;
+  minRequiredRupas: number;
+  isStrong: boolean;
+  ishtabala: number;
+  kashtabala: number;
+  sthanabala: { total: number };
+  digbala: number;
+  kaalabala: { total: number };
+  cheshtabala: number;
+  naisargikabala: number;
+  drikbala: number;
+}
+
+export interface HouseBala {
+  house: number;
+  adhipatiBala: number;
+  digBala: number;
+  drikBala: number;
+  total: number;
+}
+
+export interface ShadbalaResult {
+  planets: PlanetShadbala[];
+  houses: HouseBala[];
+}
+
 export interface KpRow {
   id: string;
   rashi: string;
@@ -291,6 +320,7 @@ export interface KundliFullResult {
   panchang: PanchangResult;
   ashtakavarga: AshtakavargaResult;
   kp: KpResult;
+  shadbala: ShadbalaResult;
 }
 
 export interface MySkyResult {

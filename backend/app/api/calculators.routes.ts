@@ -18,6 +18,7 @@ import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
 import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
 import { buildKpTable } from '../services/astrology/kpAstrology.ts';
+import { calculateShadbala } from '../services/astrology/shadbala.ts';
 
 export const calculatorsRouter = Router();
 
@@ -84,12 +85,21 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
 
     const yoginiDashaTimeline = getYoginiDashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
 
+    const navamsaChart = getNavamsaChart(kundli);
+    const vargaCharts = getAllVargaCharts(kundli);
+    const [birthHourStr, birthMinuteStr] = birth.time.split(':');
+    const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
+
     return {
       kundli,
-      navamsaChart: getNavamsaChart(kundli),
-      vargaCharts: getAllVargaCharts(kundli),
+      navamsaChart,
+      vargaCharts,
       mahadashaTimeline,
       yoginiDashaTimeline,
+      shadbala: calculateShadbala({
+        kundli, navamsaChart, vargaCharts, birthUtcDate: utcDate, birthLocalHour,
+        dateOnly: birth.date, latitude: birth.latitude, longitude: birth.longitude,
+      }),
       doshas: {
         mangal: checkMangalDosha(kundli),
         kaalSarp: checkKaalSarpDosha(kundli),

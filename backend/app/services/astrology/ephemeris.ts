@@ -28,7 +28,7 @@ const normalize360 = (deg: number) => ((deg % 360) + 360) % 360;
 // most Vedic software: ~23.853° at J2000.0, precessing at the general rate
 // of ~50.2388475"/year. Accurate to a few arcminutes across centuries,
 // which is all rashi/nakshatra classification needs.
-function lahiriAyanamsa(jde: number): number {
+export function lahiriAyanamsa(jde: number): number {
   const yearsSinceJ2000 = (jde - 2451545.0) / 365.25;
   return 23.853056 + yearsSinceJ2000 * (50.2388475 / 3600);
 }
@@ -51,13 +51,13 @@ function toRectangular(lonRad: number, latRad: number, range: number) {
   };
 }
 
-function geocentricEclipticLongitude(planetData: unknown, earthPos: { lon: number; lat: number; range: number }, jd: number): number {
+function geocentricEclipticLonLat(planetData: unknown, earthPos: { lon: number; lat: number; range: number }, jd: number): { lon: number; lat: number } {
   const planet = new planetposition.Planet(planetData as ConstructorParameters<typeof planetposition.Planet>[0]);
   const helio = planet.position(jd);
   const p = toRectangular(helio.lon, helio.lat, helio.range);
   const e = toRectangular(earthPos.lon, earthPos.lat, earthPos.range);
-  const x = p.x - e.x, y = p.y - e.y;
-  return normalize360(Math.atan2(y, x) * DEG);
+  const x = p.x - e.x, y = p.y - e.y, z = p.z - e.z;
+  return { lon: normalize360(Math.atan2(y, x) * DEG), lat: Math.atan2(z, Math.sqrt(x * x + y * y)) * DEG };
 }
 
 // A planet appears retrograde when its geocentric longitude a day later is
@@ -96,6 +96,36 @@ export function getAscendant(utcDate: Date, latitudeDeg: number, longitudeDeg: n
   return normalize360(ascTropical - ayanamsa);
 }
 
+// Declination (Kranti) — needed only for Shadbala's Ayana Bala. Uses the
+// standard spherical conversion sin(δ)=sin(β)cos(ε)+cos(β)sin(ε)sin(λ) from
+// TROPICAL ecliptic longitude/latitude (declination is a real physical
+// angle, independent of the sidereal/ayanamsa convention used elsewhere in
+// this file — using tropical here doesn't need reconciling with the
+// sidereal longitudes returned by getPlanetaryPositions above).
+function declinationFromEcliptic(lonDeg: number, latDeg: number, obliquityRad: number): number {
+  const lonRad = lonDeg / DEG, latRad = latDeg / DEG;
+  const sinDec = Math.sin(latRad) * Math.cos(obliquityRad) + Math.cos(latRad) * Math.sin(obliquityRad) * Math.sin(lonRad);
+  return Math.asin(sinDec) * DEG;
+}
+
+export function getDeclination(id: 'sun' | 'moon' | 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn', utcDate: Date): number {
+  const jd = julian.DateToJD(utcDate);
+  const epsilon = nutation.meanObliquity(jd);
+  const earth = new planetposition.Planet(data.earth as ConstructorParameters<typeof planetposition.Planet>[0]);
+  const earthPos = earth.position(jd);
+
+  if (id === 'sun') {
+    const sunTropical = normalize360(earthPos.lon * DEG + 180);
+    return declinationFromEcliptic(sunTropical, 0, epsilon);
+  }
+  if (id === 'moon') {
+    const moonPos = moonposition.position(jd);
+    return declinationFromEcliptic(normalize360(moonPos.lon * DEG), moonPos.lat * DEG, epsilon);
+  }
+  const { lon, lat } = geocentricEclipticLonLat(HELIOCENTRIC_PLANETS[id], earthPos, jd);
+  return declinationFromEcliptic(lon, lat, epsilon);
+}
+
 export interface EphemerisInput {
   /** Birth/event date+time as a UTC JS Date — convert local time to UTC before calling. */
   utcDate: Date;
@@ -123,9 +153,9 @@ export function getPlanetaryPositions({ utcDate }: EphemerisInput): PlanetPositi
   ];
 
   for (const id of ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'] as const) {
-    const lonNow = geocentricEclipticLongitude(HELIOCENTRIC_PLANETS[id], earthPos, jd);
-    const lonNext = geocentricEclipticLongitude(HELIOCENTRIC_PLANETS[id], earthPosNextDay, jdNextDay);
-    results.push({ id, longitude: normalize360(lonNow - ayanamsa), retrograde: isRetrograde(lonNow, lonNext) });
+    const now = geocentricEclipticLonLat(HELIOCENTRIC_PLANETS[id], earthPos, jd);
+    const next = geocentricEclipticLonLat(HELIOCENTRIC_PLANETS[id], earthPosNextDay, jdNextDay);
+    results.push({ id, longitude: normalize360(now.lon - ayanamsa), retrograde: isRetrograde(now.lon, next.lon) });
   }
 
   // Rahu/Ketu: mean lunar node — a real, standard closed-form formula (not a
