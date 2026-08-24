@@ -16,6 +16,8 @@ import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
 import { buildAvakhada, recommendGemstone, recommendRudraksha } from '../services/astrology/avakhada.ts';
 import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
+import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
+import { buildKpTable } from '../services/astrology/kpAstrology.ts';
 
 export const calculatorsRouter = Router();
 
@@ -100,6 +102,8 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
       gemstone: recommendGemstone(kundli),
       rudraksha: recommendRudraksha(kundli),
       panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
+      ashtakavarga: calculateAshtakavarga(kundli),
+      kp: buildKpTable(kundli, utcDate),
     };
   });
 });

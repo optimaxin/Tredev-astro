@@ -235,6 +235,33 @@ export interface YoginiPeriod {
   active: boolean;
 }
 
+export interface AshtakavargaResult {
+  bhinna: { planet: string; points: { rashi: string; bindus: number }[] }[];
+  sarva: { rashi: string; bindus: number }[];
+  sarvaTotal: number;
+}
+
+export interface KpRow {
+  id: string;
+  rashi: string;
+  signLord: string;
+  starLord: string;
+  subLord: string;
+}
+
+export interface KpResult {
+  table: KpRow[];
+  rulingPlanets: {
+    lagnaSignLord: string;
+    lagnaStarLord: string;
+    lagnaSubLord: string;
+    moonSignLord: string;
+    moonStarLord: string;
+    moonSubLord: string;
+    dayLord: string;
+  };
+}
+
 export const VARGA_LABELS: Record<string, string> = {
   D2: 'Hora (D2) — Wealth', D3: 'Drekkana (D3) — Siblings & Courage', D4: 'Chaturthamsa (D4) — Home & Property',
   D7: 'Saptamsa (D7) — Children', D10: 'Dasamsa (D10) — Career', D12: 'Dwadasamsa (D12) — Parents',
@@ -262,6 +289,8 @@ export interface KundliFullResult {
   gemstone: GemstoneResult;
   rudraksha: RudrakshaResult;
   panchang: PanchangResult;
+  ashtakavarga: AshtakavargaResult;
+  kp: KpResult;
 }
 
 export interface MySkyResult {

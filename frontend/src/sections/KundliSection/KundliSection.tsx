@@ -361,6 +361,43 @@ export default function KundliSection() {
                 )}
               </div>
 
+              {/* Sarvashtakavarga — bindu strength per sign, summed across all 7 grahas */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h3>
+                <p className={styles.overviewText}>Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.</p>
+                <div className={styles.infoGrid}>
+                  {fullResult.ashtakavarga.sarva.map(s => (
+                    <div key={s.rashi} className={styles.infoCard}>
+                      <div className={styles.infoLabel}>{s.rashi}</div>
+                      <div className={styles.infoValue}>{s.bindus} bindus</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* KP sub-lord table — the core technique KP astrology is built on */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>KP Sub-Lord Table</h3>
+                <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique. Based on the whole-sign Ascendant, not a full Bhav Chalit cuspal chart.</p>
+                <div className={styles.planetList}>
+                  {fullResult.kp.table.map(row => (
+                    <div key={row.id} className={styles.planetRow}>
+                      <span className={styles.planetName}>{row.id === 'asc' ? 'Ascendant' : (PLANET_META[row.id]?.name || row.id)}</span>
+                      <span className={styles.planetSign}>{row.rashi} ({cap(row.signLord)})</span>
+                      <span className={styles.planetSign}>Star: {cap(row.starLord)}</span>
+                      <span className={styles.planetHouse}>Sub: {cap(row.subLord)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaStarLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaSubLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonStarLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonSubLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Day Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.dayLord)}</div></div>
+                </div>
+              </div>
+
               {/* Yogini Dasha — the alternate 36-year, 8-period dasha system */}
               <div className={styles.timelinePanel}>
                 <h3 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h3>
