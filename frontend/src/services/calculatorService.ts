@@ -215,10 +215,41 @@ export interface GemstoneResult {
   reason: string;
 }
 
+export interface RudrakshaResult {
+  rulingPlanet: string;
+  mukhi: number;
+  deity: string;
+  reason: string;
+}
+
+export interface VargaChart {
+  ascendant: { rashi: string };
+  planets: { id: string; rashi: string; house: number }[];
+}
+
+export interface YoginiPeriod {
+  yogini: string;
+  lord: string;
+  startsAt: string;
+  endsAt: string;
+  active: boolean;
+}
+
+export const VARGA_LABELS: Record<string, string> = {
+  D2: 'Hora (D2) — Wealth', D3: 'Drekkana (D3) — Siblings & Courage', D4: 'Chaturthamsa (D4) — Home & Property',
+  D7: 'Saptamsa (D7) — Children', D10: 'Dasamsa (D10) — Career', D12: 'Dwadasamsa (D12) — Parents',
+  D16: 'Shodasamsa (D16) — Vehicles & Comforts', D20: 'Vimsamsa (D20) — Spiritual Progress',
+  D24: 'Chaturvimsamsa (D24) — Education', D27: 'Saptavimsamsa (D27) — Strengths & Weaknesses',
+  D30: 'Trimsamsa (D30) — Misfortunes', D40: 'Khavedamsa (D40) — General Effects',
+  D45: 'Akshavedamsa (D45) — Character', D60: 'Shashtiamsa (D60) — Overall Life',
+};
+
 export interface KundliFullResult {
   kundli: KundliResult;
   navamsaChart: NavamsaChart;
+  vargaCharts: Record<string, VargaChart>;
   mahadashaTimeline: MahadashaPeriod[];
+  yoginiDashaTimeline: YoginiPeriod[];
   doshas: {
     mangal: MangalDoshaResult;
     kaalSarp: KaalSarpDoshaResult;
@@ -229,6 +260,7 @@ export interface KundliFullResult {
   analysis: KundliAnalysis;
   avakhada: AvakhadaResult;
   gemstone: GemstoneResult;
+  rudraksha: RudrakshaResult;
   panchang: PanchangResult;
 }
 

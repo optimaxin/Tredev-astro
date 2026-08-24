@@ -7,6 +7,7 @@ import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { KundliFullResult, KundliResult } from '../../services/calculatorService';
+import { VARGA_LABELS } from '../../services/calculatorService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
 import styles from './KundliSection.module.css';
@@ -57,6 +58,7 @@ export default function KundliSection() {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [selectedVarga, setSelectedVarga] = useState('D10');
 
   const kundliResult = fullResult?.kundli ?? null;
   const chartPlanets = kundliResult ? toChartPlanets(kundliResult) : [];
@@ -325,6 +327,54 @@ export default function KundliSection() {
                 </div>
               </div>
 
+              {/* Remaining Shodasavarga divisional charts — one at a time via a picker,
+                  rather than dumping all 14 at once. */}
+              <div className={styles.overview}>
+                <div className={styles.overviewTitleRow}>
+                  <h3 className={styles.overviewTitle}>More Divisional Charts</h3>
+                  <select
+                    className={styles.vargaSelect}
+                    value={selectedVarga}
+                    onChange={e => setSelectedVarga(e.target.value)}
+                  >
+                    {Object.keys(fullResult.vargaCharts).map(key => (
+                      <option key={key} value={key}>{VARGA_LABELS[key] || key}</option>
+                    ))}
+                  </select>
+                </div>
+                {fullResult.vargaCharts[selectedVarga] && (
+                  <>
+                    <p className={styles.overviewText}>
+                      {VARGA_LABELS[selectedVarga] || selectedVarga} Ascendant: {fullResult.vargaCharts[selectedVarga].ascendant.rashi}
+                    </p>
+                    <div className={styles.planetList}>
+                      {fullResult.vargaCharts[selectedVarga].planets.map(p => (
+                        <div key={p.id} className={styles.planetRow}>
+                          <span className={styles.planetSymbol}>{PLANET_META[p.id]?.symbol || '✦'}</span>
+                          <span className={styles.planetName}>{PLANET_META[p.id]?.name || p.id}</span>
+                          <span className={styles.planetSign}>{p.rashi}</span>
+                          <span className={styles.planetHouse}>{p.house}H</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Yogini Dasha — the alternate 36-year, 8-period dasha system */}
+              <div className={styles.timelinePanel}>
+                <h3 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h3>
+                <p className={styles.overviewText}>An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.</p>
+                <div className={styles.timelineList}>
+                  {fullResult.yoginiDashaTimeline.map((period, i) => (
+                    <div key={i} className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
+                      <span className={styles.timelineLord}>{period.yogini} Yogini ({cap(period.lord)}){period.active ? ' (current)' : ''}</span>
+                      <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Avakhada Chakra — the classical birth-Nakshatra/Rashi attribute set,
                   plus a Ratna Shastra gemstone recommendation from the Ascendant lord */}
               <div className={styles.overview}>
@@ -340,8 +390,9 @@ export default function KundliSection() {
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Sign Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.signLord)}</div></div>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.nakshatraLord)}</div></div>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Recommended Gemstone</div><div className={styles.infoValue}>{fullResult.gemstone.gemstone} ({fullResult.gemstone.sanskritName})</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Recommended Rudraksha</div><div className={styles.infoValue}>{fullResult.rudraksha.mukhi} Mukhi ({fullResult.rudraksha.deity})</div></div>
                 </div>
-                <p className={styles.chartNote}>{fullResult.gemstone.reason} Consult a qualified astrologer before wearing any gemstone.</p>
+                <p className={styles.chartNote}>{fullResult.gemstone.reason} {fullResult.rudraksha.reason} Consult a qualified astrologer before wearing any gemstone or rudraksha.</p>
               </div>
 
               {/* Save birth details to account, so the next visit prefills automatically */}

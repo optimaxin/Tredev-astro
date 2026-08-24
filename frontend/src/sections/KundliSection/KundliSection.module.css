@@ -326,6 +326,27 @@
   margin-bottom: var(--space-3);
 }
 
+.overviewTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.overviewTitleRow .overviewTitle { margin-bottom: 0; }
+
+.vargaSelect {
+  height: 36px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
 .overviewText {
   font-family: var(--font-sans);
   font-size: var(--text-sm);

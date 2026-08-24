@@ -36,6 +36,21 @@ const GEMSTONE_BY_PLANET: Record<string, { name: string; sanskritName: string }>
   saturn: { name: 'Blue Sapphire', sanskritName: 'Neelam' },
 };
 
+// Rudraksha-by-planet (mukhi count 1-9) — unlike a nakshatra-to-rudraksha
+// table (which varies across sources), this planetary-rulership mapping is
+// the one part of Rudraksha classification that's consistent everywhere.
+const RUDRAKSHA_BY_PLANET: Record<string, { mukhi: number; deity: string }> = {
+  sun: { mukhi: 1, deity: 'Shiva' },
+  moon: { mukhi: 2, deity: 'Ardhanarishvara' },
+  mars: { mukhi: 3, deity: 'Agni' },
+  mercury: { mukhi: 4, deity: 'Brahma' },
+  jupiter: { mukhi: 5, deity: 'Rudra' },
+  venus: { mukhi: 6, deity: 'Kartikeya' },
+  saturn: { mukhi: 7, deity: 'Mahalakshmi' },
+  rahu: { mukhi: 8, deity: 'Ganesha' },
+  ketu: { mukhi: 9, deity: 'Durga' },
+};
+
 export interface AvakhadaResult {
   varna: string;
   vashya: string;
@@ -53,6 +68,13 @@ export interface GemstoneResult {
   rulingPlanet: string;
   gemstone: string;
   sanskritName: string;
+  reason: string;
+}
+
+export interface RudrakshaResult {
+  rulingPlanet: string;
+  mukhi: number;
+  deity: string;
   reason: string;
 }
 
@@ -84,6 +106,18 @@ export function recommendGemstone(kundli: Kundli): GemstoneResult {
     gemstone: gem.name,
     sanskritName: gem.sanskritName,
     reason: `${cap(rulingPlanet)} rules your Ascendant (${kundli.ascendant.rashi}) — in classical Ratna Shastra, wearing its gemstone is said to strengthen the planet governing your overall vitality and personality.`,
+  };
+}
+
+export function recommendRudraksha(kundli: Kundli): RudrakshaResult {
+  const moon = kundli.planets.find(p => p.id === 'moon')!;
+  const nakshatra = getNakshatra(moon.longitude);
+  const rud = RUDRAKSHA_BY_PLANET[nakshatra.lord];
+  return {
+    rulingPlanet: nakshatra.lord,
+    mukhi: rud.mukhi,
+    deity: rud.deity,
+    reason: `${cap(nakshatra.lord)} rules your birth Nakshatra (${nakshatra.name}) — its ${rud.mukhi} Mukhi Rudraksha, associated with ${rud.deity}, is the classical remedial bead for that planet.`,
   };
 }
 
