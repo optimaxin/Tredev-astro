@@ -498,6 +498,130 @@
   color: var(--text-primary);
 }
 
+/* Ascendant Predictions */
+.predictionGrid {
+  margin-top: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.predictionCard {
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px solid rgba(141, 79, 40, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.predictionCardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  margin-bottom: var(--space-2);
+}
+
+/* Dasha prediction narrative, nested under each Mahadasha timeline item */
+.dashaPredictionText {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.65;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  margin: 0;
+}
+
+/* Gemstone & Rudraksha cards */
+.gemGrid {
+  margin-top: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.gemCard {
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px solid rgba(141, 79, 40, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gemCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gemCardPurpose {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gemCardName {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+}
+
+.gemCardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.gemMantra {
+  font-family: var(--font-serif);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--gold-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.gemBenefitList {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.precautionsBox {
+  margin-top: var(--space-6);
+  background: rgba(141, 79, 40, 0.03);
+  border: 1px dashed rgba(141, 79, 40, 0.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.precautionsBox summary {
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.precautionsBox .gemBenefitList {
+  margin-top: var(--space-3);
+}
+
 /* Save birth details */
 .saveBar {
   margin-top: var(--space-8);

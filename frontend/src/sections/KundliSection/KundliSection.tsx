@@ -23,6 +23,24 @@ interface ChartPlanet {
   retrograde?: boolean;
 }
 
+// Fixed classical sign-lord assignments — same universal fact used
+// throughout Vedic astrology, safe to keep as a static lookup here (not
+// computed logic that could drift from the backend's own copy).
+const RASHI_LORD_BY_NAME: Record<string, string> = {
+  Aries: 'mars', Taurus: 'venus', Gemini: 'mercury', Cancer: 'moon', Leo: 'sun', Virgo: 'mercury',
+  Libra: 'venus', Scorpio: 'mars', Sagittarius: 'jupiter', Capricorn: 'saturn', Aquarius: 'saturn', Pisces: 'jupiter',
+};
+
+// Panchang sunrise/sunset come back as UTC ISO instants — shift by the
+// birth's timezone offset to show the actual local clock time, matching how
+// a printed Panchang always states sunrise/sunset in local time.
+function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string {
+  const utcMs = new Date(isoUtc).getTime();
+  const localMs = utcMs - timezoneOffsetMinutes * 60_000;
+  const d = new Date(localMs);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
 function formatDegree(degreeInSign: number): string {
   const deg = Math.floor(degreeInSign);
   const min = Math.round((degreeInSign - deg) * 60);
@@ -51,7 +69,7 @@ function toChartPlanets(result: KundliResult): ChartPlanet[] {
 }
 
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails } = useAppContext();
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
@@ -225,6 +243,23 @@ export default function KundliSection() {
                 </div>
               </div>
 
+              {/* Panchang — the 5 angas plus sunrise/sunset for the birth moment */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Panchang at Birth</h3>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Tithi</div><div className={styles.infoValue}>{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Vara (Weekday)</div><div className={styles.infoValue}>{fullResult.panchang.vara}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Yoga</div><div className={styles.infoValue}>{fullResult.panchang.yoga}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Karana</div><div className={styles.infoValue}>{fullResult.panchang.karana}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra</div><div className={styles.infoValue}>{fullResult.panchang.nakshatra.name} (Pada {fullResult.panchang.nakshatra.pada})</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra Lord</div><div className={styles.infoValue}>{cap(fullResult.panchang.nakshatra.lord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Rashi</div><div className={styles.infoValue}>{fullResult.panchang.moonRashi}</div></div>
+                  {kundliResult && <div className={styles.infoCard}><div className={styles.infoLabel}>Ascendant Lord</div><div className={styles.infoValue}>{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</div></div>}
+                  {fullResult.panchang.sunrise && <div className={styles.infoCard}><div className={styles.infoLabel}>Sunrise</div><div className={styles.infoValue}>{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</div></div>}
+                  {fullResult.panchang.sunset && <div className={styles.infoCard}><div className={styles.infoLabel}>Sunset</div><div className={styles.infoValue}>{formatLocalTime(fullResult.panchang.sunset, submittedDetails?.timezoneOffsetMinutes ?? 0)}</div></div>}
+                </div>
+              </div>
+
               {/* Plain-language overview — lets you sanity-check the chart above */}
               <div className={styles.overview}>
                 <h3 className={styles.overviewTitle}>What This Chart Means</h3>
@@ -236,6 +271,28 @@ export default function KundliSection() {
                 <p className={styles.chartNote}>
                   To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart and Planetary Placements list — including on any other Kundli tool given the same birth date, time, and place.
                 </p>
+              </div>
+
+              {/* Ascendant Predictions — Personality/Physical/Health/Career/Relationship
+                  for the Ascendant sign, matching the depth of a full commercial report */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Ascendant Predictions</h3>
+                <p className={styles.overviewText}>{fullResult.ascendantPredictions.description}</p>
+                <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>Your Ascendant is {fullResult.ascendantPredictions.ascendant}</p>
+                <div className={styles.predictionGrid}>
+                  {([
+                    ['Personality', fullResult.ascendantPredictions.personality],
+                    ['Physical', fullResult.ascendantPredictions.physical],
+                    ['Health', fullResult.ascendantPredictions.health],
+                    ['Career', fullResult.ascendantPredictions.career],
+                    ['Relationship', fullResult.ascendantPredictions.relationship],
+                  ] as const).map(([label, text]) => (
+                    <div key={label} className={styles.predictionCard}>
+                      <div className={styles.predictionCardTitle}>{label}</div>
+                      <p className={styles.doshaCardText}>{text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Doshas & Yogas — every dosha check and the small well-defined
@@ -296,6 +353,9 @@ export default function KundliSection() {
                         <span className={styles.timelineLord}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
                         <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                       </div>
+                      {fullResult.dashaPredictions.find(d => d.lord === period.lord) && (
+                        <p className={styles.dashaPredictionText}>{fullResult.dashaPredictions.find(d => d.lord === period.lord)!.text}</p>
+                      )}
                       {period.active && (
                         <div className={styles.antardashaList}>
                           {period.antardashas.map((sub, j) => (
@@ -443,10 +503,9 @@ export default function KundliSection() {
                 </div>
               </div>
 
-              {/* Avakhada Chakra — the classical birth-Nakshatra/Rashi attribute set,
-                  plus a Ratna Shastra gemstone recommendation from the Ascendant lord */}
+              {/* Avakhada Chakra — the classical birth-Nakshatra/Rashi attribute set */}
               <div className={styles.overview}>
-                <h3 className={styles.overviewTitle}>Avakhada Chakra &amp; Gemstone</h3>
+                <h3 className={styles.overviewTitle}>Avakhada Chakra</h3>
                 <div className={styles.infoGrid}>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Varna</div><div className={styles.infoValue}>{fullResult.avakhada.varna}</div></div>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Vashya</div><div className={styles.infoValue}>{fullResult.avakhada.vashya}</div></div>
@@ -457,10 +516,62 @@ export default function KundliSection() {
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Tatva</div><div className={styles.infoValue}>{fullResult.avakhada.tatva}</div></div>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Sign Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.signLord)}</div></div>
                   <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.nakshatraLord)}</div></div>
-                  <div className={styles.infoCard}><div className={styles.infoLabel}>Recommended Gemstone</div><div className={styles.infoValue}>{fullResult.gemstone.gemstone} ({fullResult.gemstone.sanskritName})</div></div>
-                  <div className={styles.infoCard}><div className={styles.infoLabel}>Recommended Rudraksha</div><div className={styles.infoValue}>{fullResult.rudraksha.mukhi} Mukhi ({fullResult.rudraksha.deity})</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Charan (Pada)</div><div className={styles.infoValue}>{fullResult.avakhada.pada}</div></div>
                 </div>
-                <p className={styles.chartNote}>{fullResult.gemstone.reason} {fullResult.rudraksha.reason} Consult a qualified astrologer before wearing any gemstone or rudraksha.</p>
+              </div>
+
+              {/* Gemstone & Rudraksha Remedies — Life/Lucky/Fortune stones plus the
+                  nakshatra-lord Rudraksha, each with a self-contained SVG "image",
+                  mantra, and how-to-wear detail. No external shop links are used —
+                  the CTA below routes to this app's own astrologer consult flow,
+                  matching how the reference report itself only ever links to
+                  "Chat with Astrologer" rather than any third-party seller. */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Gemstone &amp; Rudraksha Remedies</h3>
+                <p className={styles.overviewText}>Three classical gemstone picks — Life (Ascendant lord), Lucky (5th house/Purva Punya lord), and Fortune (9th house/Bhagya lord) — plus the Rudraksha ruled by your birth Nakshatra's lord.</p>
+                <div className={styles.gemGrid}>
+                  {[fullResult.gemstones.life, fullResult.gemstones.lucky, fullResult.gemstones.fortune].map(g => (
+                    <div key={g.purpose} className={styles.gemCard}>
+                      <div className={styles.gemCardHead}>
+                        <GemIcon color={g.color} />
+                        <div>
+                          <div className={styles.gemCardPurpose}>{g.purpose}</div>
+                          <div className={styles.gemCardName}>{g.gemstone} ({g.sanskritName})</div>
+                        </div>
+                      </div>
+                      <p className={styles.doshaCardText}>{g.reason}</p>
+                      <div className={styles.gemCardMeta}>
+                        <span><strong>Metal:</strong> {g.metal}</span>
+                        <span><strong>Wear on:</strong> {g.finger}</span>
+                      </div>
+                      <p className={styles.gemMantra}>{g.mantra}</p>
+                    </div>
+                  ))}
+                  <div className={styles.gemCard}>
+                    <div className={styles.gemCardHead}>
+                      <RudrakshaIcon mukhi={fullResult.rudraksha.mukhi} />
+                      <div>
+                        <div className={styles.gemCardPurpose}>Rudraksha</div>
+                        <div className={styles.gemCardName}>{fullResult.rudraksha.mukhi} Mukhi ({fullResult.rudraksha.deity})</div>
+                      </div>
+                    </div>
+                    <p className={styles.doshaCardText}>{fullResult.rudraksha.reason}</p>
+                    <ul className={styles.gemBenefitList}>
+                      {fullResult.rudraksha.benefits.map((b, i) => <li key={i}>{b}</li>)}
+                    </ul>
+                    <p className={styles.gemMantra}>{fullResult.rudraksha.howToWear}</p>
+                  </div>
+                </div>
+                <details className={styles.precautionsBox}>
+                  <summary>Precautions before wearing any gemstone or Rudraksha</summary>
+                  <ul className={styles.gemBenefitList}>
+                    {fullResult.rudraksha.precautions.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </details>
+                <p className={styles.chartNote}>These are classical, chart-derived starting points — not a substitute for a full consultation, since remedial choices can shift with other placements in your chart.</p>
+                <button className="btn btn-gold" style={{ marginTop: 'var(--space-4)' }} onClick={() => setPage('astrologers')}>
+                  Consult an Astrologer for Remedies
+                </button>
               </div>
 
               {/* Save birth details to account, so the next visit prefills automatically */}
@@ -686,6 +797,38 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
           </g>
         );
       })}
+    </svg>
+  );
+}
+
+// Simple self-contained SVG "image" for a gemstone — a faceted gem shape
+// tinted with that stone's real color, so each recommendation card has a
+// visual without depending on any external image/icon library or URL.
+function GemIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
+      <polygon points="24,4 40,16 34,44 14,44 8,16" fill={color} stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
+      <polygon points="24,4 40,16 24,20 8,16" fill="rgba(255,255,255,0.35)" />
+      <line x1="24" y1="4" x2="24" y2="44" stroke="rgba(0,0,0,0.15)" strokeWidth="0.75" />
+      <line x1="8" y1="16" x2="40" y2="16" stroke="rgba(0,0,0,0.15)" strokeWidth="0.75" />
+    </svg>
+  );
+}
+
+// A Rudraksha bead icon — a round bead with radial facet lines equal to the
+// mukhi (face) count, so the count itself is visually legible.
+function RudrakshaIcon({ mukhi }: { mukhi: number }) {
+  const lines = Array.from({ length: mukhi }, (_, i) => {
+    const angle = (i / mukhi) * Math.PI * 2;
+    return { x2: 24 + Math.cos(angle) * 18, y2: 24 + Math.sin(angle) * 18 };
+  });
+  return (
+    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
+      <circle cx="24" cy="24" r="19" fill="#5c3a21" stroke="#2e1c0f" strokeWidth="1.5" />
+      {lines.map((l, i) => (
+        <line key={i} x1="24" y1="24" x2={l.x2} y2={l.y2} stroke="#8d5a35" strokeWidth="1" />
+      ))}
+      <circle cx="24" cy="24" r="3" fill="#c7a15a" />
     </svg>
   );
 }

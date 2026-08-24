@@ -6,7 +6,7 @@
 import type { ChartPlanet, Kundli } from './kundli.ts';
 import type { PlanetId } from './ephemeris.ts';
 
-const PLANET_SIGNIFICATIONS: Record<PlanetId, string> = {
+export const PLANET_SIGNIFICATIONS: Record<PlanetId, string> = {
   sun: 'self-confidence, authority, vitality and one\'s father',
   moon: 'emotions, the mind, instincts and one\'s mother',
   mars: 'courage, drive, competitiveness and physical energy',
@@ -20,7 +20,7 @@ const PLANET_SIGNIFICATIONS: Record<PlanetId, string> = {
   ketu: 'detachment, past karma and spiritual inclination',
 };
 
-const HOUSE_LIFE_AREA: Record<number, string> = {
+export const HOUSE_LIFE_AREA: Record<number, string> = {
   1: 'self, physical body and general personality',
   2: 'wealth, family and speech',
   3: 'courage, siblings and short journeys',
@@ -50,13 +50,13 @@ const ASCENDANT_BLURBS: Record<string, string> = {
   Pisces: 'imaginative, empathetic, and intuitive — feeling and absorbing what is around them.',
 };
 
-function ordinal(n: number): string {
+export function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
   return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
 }
 
-function cap(s: string): string {
+export function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 

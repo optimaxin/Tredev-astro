@@ -13,12 +13,14 @@ import { getCurrentMahadasha, getMahadashaTimeline } from '../services/astrology
 import { answerAstrologyQuestion } from '../services/astrology/aiGuidance.ts';
 import { checkYogas } from '../services/astrology/yogas.ts';
 import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
-import { buildAvakhada, recommendGemstone, recommendRudraksha } from '../services/astrology/avakhada.ts';
+import { buildAvakhada, recommendGemstones, recommendRudraksha } from '../services/astrology/avakhada.ts';
 import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
 import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
 import { buildKpTable } from '../services/astrology/kpAstrology.ts';
 import { calculateShadbala } from '../services/astrology/shadbala.ts';
+import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
+import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
 
 export const calculatorsRouter = Router();
 
@@ -108,8 +110,10 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
       },
       yogas: checkYogas(kundli),
       analysis: buildKundliAnalysis(kundli),
+      ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi),
+      dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline),
       avakhada: buildAvakhada(kundli),
-      gemstone: recommendGemstone(kundli),
+      gemstones: recommendGemstones(kundli),
       rudraksha: recommendRudraksha(kundli),
       panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
       ashtakavarga: calculateAshtakavarga(kundli),

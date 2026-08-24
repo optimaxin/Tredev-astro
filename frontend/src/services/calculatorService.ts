@@ -209,17 +209,46 @@ export interface AvakhadaResult {
 }
 
 export interface GemstoneResult {
+  purpose: 'Life Stone' | 'Lucky Stone' | 'Fortune Stone';
   rulingPlanet: string;
   gemstone: string;
   sanskritName: string;
+  metal: string;
+  finger: string;
+  mantra: string;
+  color: string;
   reason: string;
+}
+
+export interface GemstoneRecommendations {
+  life: GemstoneResult;
+  lucky: GemstoneResult;
+  fortune: GemstoneResult;
 }
 
 export interface RudrakshaResult {
   rulingPlanet: string;
   mukhi: number;
   deity: string;
+  benefits: string[];
+  howToWear: string;
+  precautions: string[];
   reason: string;
+}
+
+export interface AscendantPredictions {
+  ascendant: string;
+  description: string;
+  personality: string;
+  physical: string;
+  health: string;
+  career: string;
+  relationship: string;
+}
+
+export interface DashaPrediction {
+  lord: string;
+  text: string;
 }
 
 export interface VargaChart {
@@ -314,8 +343,10 @@ export interface KundliFullResult {
   };
   yogas: YogaResult[];
   analysis: KundliAnalysis;
+  ascendantPredictions: AscendantPredictions;
+  dashaPredictions: DashaPrediction[];
   avakhada: AvakhadaResult;
-  gemstone: GemstoneResult;
+  gemstones: GemstoneRecommendations;
   rudraksha: RudrakshaResult;
   panchang: PanchangResult;
   ashtakavarga: AshtakavargaResult;
