@@ -195,6 +195,11 @@ export interface NavamsaChart {
   planets: { id: string; rashi: string; house: number }[];
 }
 
+export interface ChandraChart {
+  moonRashi: string;
+  planets: { id: string; rashi: string; degreeInSign: number; house: number; retrograde: boolean }[];
+}
+
 export interface AvakhadaResult {
   varna: string;
   vashya: string;
@@ -322,6 +327,7 @@ export interface KpResult {
 
 export const VARGA_LABELS: Record<string, string> = {
   D2: 'Hora (D2) — Wealth', D3: 'Drekkana (D3) — Siblings & Courage', D4: 'Chaturthamsa (D4) — Home & Property',
+  D6: 'Shashthamsa (D6) — Health & Enemies',
   D7: 'Saptamsa (D7) — Children', D10: 'Dasamsa (D10) — Career', D12: 'Dwadasamsa (D12) — Parents',
   D16: 'Shodasamsa (D16) — Vehicles & Comforts', D20: 'Vimsamsa (D20) — Spiritual Progress',
   D24: 'Chaturvimsamsa (D24) — Education', D27: 'Saptavimsamsa (D27) — Strengths & Weaknesses',
@@ -332,6 +338,7 @@ export const VARGA_LABELS: Record<string, string> = {
 export interface KundliFullResult {
   kundli: KundliResult;
   navamsaChart: NavamsaChart;
+  chandraChart: ChandraChart;
   vargaCharts: Record<string, VargaChart>;
   mahadashaTimeline: MahadashaPeriod[];
   yoginiDashaTimeline: YoginiPeriod[];

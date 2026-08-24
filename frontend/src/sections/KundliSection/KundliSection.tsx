@@ -19,9 +19,19 @@ interface ChartPlanet {
   sign: string;
   house: number;
   degree?: string;
+  decimalDegree?: string;
   quality?: string;
   retrograde?: boolean;
 }
+
+// Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
+// degrees (they're the same underlying placements, just re-housed); the
+// D2-D60 varga charts only ever resolve to a final sign, so no degree is
+// shown for those rather than fabricating one.
+const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60', 'D2', 'D3'] as const;
+const CHART_LABELS: Record<string, string> = {
+  D1: 'D1 — Rashi (Birth Chart)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
+};
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -60,10 +70,16 @@ function formatDegree(degreeInSign: number): string {
   return `${deg}°${min}'`;
 }
 
+// Compact decimal-degree label shown directly on the chart (e.g. "6.38°"),
+// matching the reference report's own on-chart labeling convention.
+function formatDecimalDegree(degreeInSign: number): string {
+  return `${degreeInSign.toFixed(2)}°`;
+}
+
 // Converts any divisional-chart shape (Navamsa or the D2-D60 varga charts —
 // which only carry a final sign + house, not the birth-degree D1 tracks)
-// into the same ChartPlanet shape the visual North Indian chart renders, so
-// every divisional chart gets an actual diagram, not just a text list.
+// into the same ChartPlanet shape the visual chart renders, so every
+// divisional chart gets an actual diagram, not just a text list.
 function toSimpleChartPlanets(chart: { ascendant: { rashi: string }; planets: { id: string; rashi: string; house: number }[] }): ChartPlanet[] {
   const asc: ChartPlanet = { id: 'asc', ...PLANET_META.asc, sign: chart.ascendant.rashi, house: 1 };
   const planets: ChartPlanet[] = chart.planets.map(p => ({
@@ -84,6 +100,7 @@ function toChartPlanets(result: KundliResult): ChartPlanet[] {
     sign: result.ascendant.rashi,
     house: 1,
     degree: formatDegree(result.ascendant.degreeInSign),
+    decimalDegree: formatDecimalDegree(result.ascendant.degreeInSign),
   };
   const planets: ChartPlanet[] = result.planets.map(p => ({
     id: p.id,
@@ -93,9 +110,28 @@ function toChartPlanets(result: KundliResult): ChartPlanet[] {
     sign: p.rashi,
     house: p.house,
     degree: formatDegree(p.degreeInSign),
+    decimalDegree: formatDecimalDegree(p.degreeInSign),
     retrograde: p.retrograde,
   }));
   return [asc, ...planets];
+}
+
+// Chandra chart carries the same real degrees/retrograde as D1 (same
+// physical placements, just re-housed from the Moon) — no synthetic
+// Ascendant entry here, since "house 1" in this chart is the Moon's own
+// sign, not a separate rising point.
+function toChandraChartPlanets(chandra: { moonRashi: string; planets: { id: string; rashi: string; degreeInSign: number; house: number; retrograde: boolean }[] }): ChartPlanet[] {
+  return chandra.planets.map(p => ({
+    id: p.id,
+    symbol: PLANET_META[p.id]?.symbol || '✦',
+    name: PLANET_META[p.id]?.name || p.id,
+    quality: PLANET_META[p.id]?.quality || '',
+    sign: p.rashi,
+    house: p.house,
+    degree: formatDegree(p.degreeInSign),
+    decimalDegree: formatDecimalDegree(p.degreeInSign),
+    retrograde: p.retrograde,
+  }));
 }
 
 export default function KundliSection() {
@@ -104,7 +140,7 @@ export default function KundliSection() {
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [selectedVarga, setSelectedVarga] = useState('D10');
+  const [selectedChart, setSelectedChart] = useState<string>('D1');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   const kundliResult = fullResult?.kundli ?? null;
@@ -216,7 +252,7 @@ export default function KundliSection() {
 
               {activeTab === 'overview' && (
                 <>
-                  <ChartDisplay title="Planetary Placements" planets={chartPlanets} />
+                  <ChartDisplay title="Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
 
                   <div className={styles.overview}>
                     <h3 className={styles.overviewTitle}>Panchang at Birth</h3>
@@ -264,29 +300,29 @@ export default function KundliSection() {
                 </>
               )}
 
-              {activeTab === 'charts' && (
-                <>
-                  <ChartDisplay
-                    title="Navamsa (D9)"
-                    subtitle="The secondary chart classically used to judge marriage, spouse, and the inner strength of what D1 shows."
-                    planets={toSimpleChartPlanets(fullResult.navamsaChart)}
-                  />
-
+              {activeTab === 'charts' && (() => {
+                const chartPlanetsForKey: ChartPlanet[] =
+                  selectedChart === 'D1' ? chartPlanets :
+                  selectedChart === 'CHANDRA' ? toChandraChartPlanets(fullResult.chandraChart) :
+                  selectedChart === 'D9' ? toSimpleChartPlanets(fullResult.navamsaChart) :
+                  fullResult.vargaCharts[selectedChart] ? toSimpleChartPlanets(fullResult.vargaCharts[selectedChart]) : [];
+                const ascendantRashiForKey =
+                  selectedChart === 'CHANDRA' ? fullResult.chandraChart.moonRashi :
+                  chartPlanetsForKey.find(p => p.id === 'asc')?.sign ?? kundliResult?.ascendant.rashi ?? '';
+                return (
                   <div className={styles.overview}>
                     <div className={styles.overviewTitleRow}>
-                      <h3 className={styles.overviewTitle}>{VARGA_LABELS[selectedVarga] || selectedVarga}</h3>
-                      <select className={styles.vargaSelect} value={selectedVarga} onChange={e => setSelectedVarga(e.target.value)}>
-                        {Object.keys(fullResult.vargaCharts).map(key => (
-                          <option key={key} value={key}>{VARGA_LABELS[key] || key}</option>
+                      <h3 className={styles.overviewTitle}>{CHART_LABELS[selectedChart] || VARGA_LABELS[selectedChart] || selectedChart}</h3>
+                      <select className={styles.vargaSelect} value={selectedChart} onChange={e => setSelectedChart(e.target.value)}>
+                        {CHART_KEYS.map(key => (
+                          <option key={key} value={key}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</option>
                         ))}
                       </select>
                     </div>
-                    {fullResult.vargaCharts[selectedVarga] && (
-                      <ChartDisplay title={`${VARGA_LABELS[selectedVarga] || selectedVarga} Placements`} planets={toSimpleChartPlanets(fullResult.vargaCharts[selectedVarga])} />
-                    )}
+                    <ChartDisplay title="Placements" planets={chartPlanetsForKey} ascendantRashi={ascendantRashiForKey} />
                   </div>
-                </>
-              )}
+                );
+              })()}
 
               {activeTab === 'dasha' && (
                 <>
@@ -569,50 +605,62 @@ export default function KundliSection() {
   );
 }
 
-// ---- Chart + planet-list panel, reused for D1, D9, and every D2-D60 varga
-// chart — each instance owns its own tooltip state, so multiple charts can
+// ---- Chart + planet-list panel, reused for every chart in the Charts tab
+// (D1, Chandra, D9, and every D2-D60 varga chart) — each instance owns its
+// own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
-function ChartDisplay({ title, subtitle, planets }: { title: string; subtitle?: string; planets: ChartPlanet[] }) {
+function ChartDisplay({ title, subtitle, planets, ascendantRashi }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string }) {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [style, setStyle] = useState<'north' | 'south'>('north');
 
   const handlePlanetHover = (planet: ChartPlanet, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
     if (!containerRect) return;
-    const lines = [`${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`, planet.degree, planet.quality].filter(Boolean);
+    const lines = [`${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`, planet.degree, planet.retrograde ? 'Retrograde (℞)' : null, planet.quality].filter(Boolean);
     setTooltip({ text: lines.join('\n'), x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top - 10 });
   };
 
   return (
     <div className={styles.chartLayout}>
-      <div className={styles.svgWrap}>
-        <KundliChart
-          planets={planets}
-          onPlanetHover={handlePlanetHover}
-          onPlanetLeave={() => setTooltip(null)}
-          onHouseHover={(house, e) => {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
-            if (!containerRect) return;
-            setHouseTooltip({ text: HOUSE_MEANINGS[house] || '', x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top });
-          }}
-          onHouseLeave={() => setHouseTooltip(null)}
-        />
+      <div>
+        <div className={styles.chartStyleToggle}>
+          <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>North Indian</button>
+          <button className={`${styles.chartStyleBtn} ${style === 'south' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('south')}>South Indian</button>
+        </div>
+        <div className={styles.svgWrap}>
+          {style === 'north' ? (
+            <NorthIndianChart
+              planets={planets}
+              onPlanetHover={handlePlanetHover}
+              onPlanetLeave={() => setTooltip(null)}
+              onHouseHover={(house, e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
+                if (!containerRect) return;
+                setHouseTooltip({ text: HOUSE_MEANINGS[house] || '', x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top });
+              }}
+              onHouseLeave={() => setHouseTooltip(null)}
+            />
+          ) : (
+            <SouthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={handlePlanetHover} onPlanetLeave={() => setTooltip(null)} />
+          )}
 
-        {tooltip && (
-          <div className={styles.tooltip} style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}>
-            {tooltip.text.split('\n').map((line, i) => (
-              <div key={i} className={i === 0 ? styles.tooltipTitle : styles.tooltipDeg}>{line}</div>
-            ))}
-          </div>
-        )}
+          {tooltip && (
+            <div className={styles.tooltip} style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}>
+              {tooltip.text.split('\n').map((line, i) => (
+                <div key={i} className={i === 0 ? styles.tooltipTitle : styles.tooltipDeg}>{line}</div>
+              ))}
+            </div>
+          )}
 
-        {houseTooltip && (
-          <div className={styles.tooltip} style={{ left: houseTooltip.x, top: houseTooltip.y, transform: 'translate(-50%, -100%) translateY(-8px)' }}>
-            <div className={styles.tooltipTitle}>{houseTooltip.text}</div>
-          </div>
-        )}
+          {houseTooltip && (
+            <div className={styles.tooltip} style={{ left: houseTooltip.x, top: houseTooltip.y, transform: 'translate(-50%, -100%) translateY(-8px)' }}>
+              <div className={styles.tooltipTitle}>{houseTooltip.text}</div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.planetList}>
@@ -622,17 +670,59 @@ function ChartDisplay({ title, subtitle, planets }: { title: string; subtitle?: 
           <div key={p.id} className={styles.planetRow}>
             <span className={styles.planetSymbol}>{p.symbol}</span>
             <span className={styles.planetName}>{p.name}</span>
-            <span className={styles.planetSign}>{p.sign}</span>
+            <span className={styles.planetSign}>{p.sign}{p.decimalDegree ? ` ${p.decimalDegree}` : ''}{p.retrograde ? ' ℞' : ''}</span>
             <span className={styles.planetHouse}>{p.house}H</span>
           </div>
         ))}
-        <div className={styles.chartNote}>Hover over planets and houses to explore their meanings.</div>
+        <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet.</div>
       </div>
     </div>
   );
 }
 
-// ---- North Indian Style Kundli Chart (SVG) ----
+// ---- North Indian chart geometry, verified against real chart topology ----
+// A square with both full corner-to-corner diagonals plus the diamond
+// connecting the four edge midpoints. Together these create exactly 12
+// regions: 4 "kite" quadrilaterals at the cardinal points (houses 1/4/7/10,
+// the Kendras) and 8 corner triangles pairing up around each corner for the
+// rest. House 1 (Lagna) is always the top kite, and house numbers increase
+// clockwise — confirmed against multiple sources: "house 2 sits to the
+// right of house 1." (The previous version of this chart placed numbers at
+// arbitrary hand-picked pixel coordinates that didn't correspond to any
+// actual drawn boundary — this rewrite fixes that from the geometry up.)
+const NORTH_HOUSE_POLYGONS: Record<number, [number, number][]> = {
+  1: [[100, 100], [200, 200], [300, 100], [200, 0]],
+  2: [[200, 0], [300, 100], [400, 0]],
+  3: [[300, 100], [400, 200], [400, 0]],
+  4: [[300, 100], [200, 200], [300, 300], [400, 200]],
+  5: [[300, 300], [400, 400], [400, 200]],
+  6: [[300, 300], [200, 400], [400, 400]],
+  7: [[100, 300], [200, 400], [300, 300], [200, 200]],
+  8: [[100, 300], [0, 400], [200, 400]],
+  9: [[0, 200], [0, 400], [100, 300]],
+  10: [[0, 200], [100, 300], [200, 200], [100, 100]],
+  11: [[0, 0], [0, 200], [100, 100]],
+  12: [[0, 0], [100, 100], [200, 0]],
+};
+const NORTH_CENTER: [number, number] = [200, 200];
+
+function polygonCentroid(points: [number, number][]): [number, number] {
+  const n = points.length;
+  return [points.reduce((s, p) => s + p[0], 0) / n, points.reduce((s, p) => s + p[1], 0) / n];
+}
+
+// House-number label sits near the polygon's own outermost vertex (pulled
+// 20% back toward center), matching how printed charts keep the number in
+// a corner of the cell rather than overlapping the planets in its middle.
+function outerLabelPos(points: [number, number][]): [number, number] {
+  let best = points[0], bestDist = -1;
+  for (const p of points) {
+    const d = (p[0] - NORTH_CENTER[0]) ** 2 + (p[1] - NORTH_CENTER[1]) ** 2;
+    if (d > bestDist) { bestDist = d; best = p; }
+  }
+  return [best[0] + 0.2 * (NORTH_CENTER[0] - best[0]), best[1] + 0.2 * (NORTH_CENTER[1] - best[1])];
+}
+
 interface KundliChartProps {
   planets: ChartPlanet[];
   onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void;
@@ -641,199 +731,121 @@ interface KundliChartProps {
   onHouseLeave: () => void;
 }
 
-function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave }: KundliChartProps) {
-  const SIZE = 400;
-  const C = SIZE / 2;
-  const S = SIZE;
-
-  // North Indian diamond layout house positions (center x, center y, house number)
-  const HOUSE_CENTERS: Record<number, [number, number]> = {
-    1:  [C, C],
-    2:  [C + S * 0.25, C - S * 0.25],
-    3:  [C + S * 0.375, C],
-    4:  [C + S * 0.25, C + S * 0.25],
-    5:  [C, C + S * 0.25],
-    6:  [C - S * 0.125, C + S * 0.375],
-    7:  [C, C],  // mapped
-    8:  [C - S * 0.25, C + S * 0.25],
-    9:  [C - S * 0.375, C],
-    10: [C - S * 0.25, C - S * 0.25],
-    11: [C, C - S * 0.25],
-    12: [C + S * 0.125, C - S * 0.375],
-  };
-
-  // Recalculate for clean North Indian layout
-  const HP: Record<number, [number, number]> = {
-    1:  [200, 200],
-    2:  [300, 100],
-    3:  [350, 200],
-    4:  [300, 300],
-    5:  [200, 350],
-    6:  [100, 300],
-    7:  [50, 200],
-    8:  [100, 100],
-    9:  [200, 50],
-    10: [300, 300], // reused
-    11: [200, 150],
-    12: [300, 150],
-  };
-
-  // Simpler: use a 4x4 grid approach with triangular cells
-  // Outer box: 0,0 to 400,400; diamond inside
+function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave }: KundliChartProps) {
   const BOX = 400;
-  const MID = BOX / 2;
-
-  // House centers for North Indian chart
-  const housePos: Record<number, [number, number]> = {
-    1:  [MID, MID],             // center
-    2:  [MID + 100, MID - 100], // top-right
-    3:  [MID + 160, MID],       // right
-    4:  [MID + 100, MID + 100], // bottom-right
-    5:  [MID, MID + 160],       // bottom
-    6:  [MID - 100, MID + 100], // bottom-left
-    7:  [MID - 160, MID],       // left
-    8:  [MID - 100, MID - 100], // top-left
-    9:  [MID, MID - 160],       // top
-    10: [MID + 70, MID + 70],   // inner bottom-right
-    11: [MID - 70, MID - 70],   // inner top-left  
-    12: [MID + 70, MID - 70],   // inner top-right
-  };
-
-  // Map planets to house positions for display
   const planetsByHouse: Record<number, ChartPlanet[]> = {};
-  planets.forEach(p => {
-    if (!planetsByHouse[p.house]) planetsByHouse[p.house] = [];
-    planetsByHouse[p.house].push(p);
-  });
+  planets.forEach(p => { (planetsByHouse[p.house] ||= []).push(p); });
 
   return (
-    <svg
-      viewBox={`0 0 ${BOX} ${BOX}`}
-      width="100%"
-      height="100%"
-      className={styles.kundliSvg}
-    >
-      {/* Background */}
+    <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" className={styles.kundliSvg}>
       <rect width={BOX} height={BOX} className={styles.svgBg} rx="12" />
+      <rect x="2" y="2" width={BOX - 4} height={BOX - 4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
 
-      {/* Outer border */}
-      <rect x="2" y="2" width={BOX-4} height={BOX-4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
+      {/* The real structural frame: both diagonals plus the edge-midpoint diamond */}
+      <line x1="0" y1="0" x2={BOX} y2={BOX} className={styles.chartLine} strokeWidth="0.8" />
+      <line x1={BOX} y1="0" x2="0" y2={BOX} className={styles.chartLine} strokeWidth="0.8" />
+      <polygon points="200,0 400,200 200,400 0,200" fill="none" className={styles.chartPolygon} strokeWidth="0.8" />
 
-      {/* Diagonal lines forming the North Indian diamond */}
-      <line x1="0" y1="0" x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
-      <line x1={BOX} y1="0" x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
-      <line x1="0" y1={BOX} x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
-      <line x1={BOX} y1={BOX} x2={MID} y2={MID} className={styles.chartLine} strokeWidth="0.8" />
+      {/* Invisible per-house hit areas, using the true polygon boundaries */}
+      {Object.entries(NORTH_HOUSE_POLYGONS).map(([hStr, points]) => (
+        <polygon
+          key={`hover-${hStr}`}
+          points={points.map(p => p.join(',')).join(' ')}
+          fill="transparent"
+          className={styles.houseHover}
+          onMouseEnter={e => onHouseHover(Number(hStr), e)}
+          onMouseLeave={onHouseLeave}
+        />
+      ))}
 
-      {/* Mid lines */}
-      <line x1={MID} y1="0" x2={MID} y2={BOX} className={styles.chartMidLine} strokeWidth="0.6" />
-      <line x1="0" y1={MID} x2={BOX} y2={MID} className={styles.chartMidLine} strokeWidth="0.6" />
-
-      {/* Inner diamond */}
-      <polygon
-        points={`${MID},${MID*0.4} ${MID*1.6},${MID} ${MID},${MID*1.6} ${MID*0.4},${MID}`}
-        className={styles.chartPolygon}
-        strokeWidth="0.8"
-      />
-
-      {/* House hover areas (invisible rectangles for interaction) */}
-      {Array.from({ length: 12 }, (_, i) => i + 1).map(h => {
-        const [cx, cy] = housePos[h] || [MID, MID];
+      {/* House numbers, anchored toward each cell's outer corner */}
+      {Object.entries(NORTH_HOUSE_POLYGONS).map(([hStr, points]) => {
+        const [lx, ly] = outerLabelPos(points);
         return (
-          <circle
-            key={`hover-${h}`}
-            cx={cx}
-            cy={cy}
-            r={30}
-            fill="transparent"
-            className={styles.houseHover}
-            onMouseEnter={e => onHouseHover(h, e)}
-            onMouseLeave={onHouseLeave}
-          />
-        );
-      })}
-
-      {/* House numbers */}
-      {Array.from({ length: 12 }, (_, i) => i + 1).map(h => {
-        const [cx, cy] = housePos[h] || [MID, MID];
-        return (
-          <text
-            key={`h-${h}`}
-            x={cx}
-            y={cy + 4}
-            textAnchor="middle"
-            fontSize="10"
-            className={styles.houseNumberText}
-            fontFamily="DM Sans, sans-serif"
-            letterSpacing="0.05em"
-          >
-            {h}
+          <text key={`num-${hStr}`} x={lx} y={ly + 3} textAnchor="middle" fontSize="9" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">
+            {hStr}
           </text>
         );
       })}
 
-      {/* Zodiac signs at corners/edges */}
-      {[
-        [MID, 14, 'Leo'],
-        [BOX - 14, MID, 'Sco'],
-        [MID, BOX - 8, 'Aqu'],
-        [14, MID, 'Tau'],
-      ].map(([x, y, sign]) => (
-        <text
-          key={sign as string}
-          x={x as number}
-          y={y as number}
-          textAnchor="middle"
-          fontSize="9"
-          className={styles.zodiacText}
-          fontFamily="DM Sans, sans-serif"
-          letterSpacing="0.05em"
-        >
-          {sign}
-        </text>
-      ))}
-
-      {/* Planets */}
+      {/* Planets, stacked around each house's centroid */}
       {planets.map(planet => {
-        const [bx, by] = housePos[planet.house] || [MID, MID];
+        const points = NORTH_HOUSE_POLYGONS[planet.house];
+        if (!points) return null;
+        const [cx, cy] = polygonCentroid(points);
         const planetsInHouse = planetsByHouse[planet.house] || [];
         const idx = planetsInHouse.indexOf(planet);
-        const offsetX = (idx % 2) * 16 - (planetsInHouse.length > 1 ? 8 : 0);
-        const offsetY = Math.floor(idx / 2) * 16 - (planetsInHouse.length > 2 ? 8 : 0);
-        const px = bx + offsetX - 8;
-        const py = by + offsetY - 20;
+        const cols = planetsInHouse.length > 2 ? 2 : 1;
+        const px = cx + (idx % cols) * 32 - ((cols - 1) * 16);
+        const py = cy + Math.floor(idx / cols) * 22 - (Math.ceil(planetsInHouse.length / cols) > 1 ? 11 : 0);
 
         return (
-          <g
-            key={planet.id}
-            className={styles.planetGroup}
-            onMouseEnter={e => onPlanetHover(planet, e)}
-            onMouseLeave={onPlanetLeave}
-          >
-            <circle cx={px + 10} cy={py + 10} r="12" className={styles.planetCircle} />
-            <text
-              x={px + 10}
-              y={py + 7}
-              textAnchor="middle"
-              fontSize="10"
-              className={styles.planetSymbolText}
-              fontFamily="DM Sans, sans-serif"
-            >
+          <g key={planet.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(planet, e)} onMouseLeave={onPlanetLeave}>
+            <text x={px} y={py} textAnchor="middle" fontSize="11" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
               {planet.symbol}
             </text>
-            <text
-              x={px + 10}
-              y={py + 17}
-              textAnchor="middle"
-              fontSize="7"
-              className={styles.planetNameText}
-              fontFamily="DM Sans, sans-serif"
-            >
-              {planet.name.substring(0, 3)}
+            <text x={px} y={py + 10} textAnchor="middle" fontSize="6" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+              {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
             </text>
           </g>
         );
       })}
+    </svg>
+  );
+}
+
+// ---- South Indian chart — a fixed 4x4 grid where each of the 12 outer
+// cells is permanently one rashi (never rotates with the Ascendant, unlike
+// North Indian); the Ascendant is marked with a small corner notch inside
+// whichever cell matches its sign. This is the other major regional chart
+// format, requested alongside North Indian. ----
+const SOUTH_GRID: (string | null)[][] = [
+  ['Pisces', 'Aries', 'Taurus', 'Gemini'],
+  ['Aquarius', null, null, 'Cancer'],
+  ['Capricorn', null, null, 'Leo'],
+  ['Sagittarius', 'Scorpio', 'Libra', 'Virgo'],
+];
+
+function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave }: { planets: ChartPlanet[]; ascendantRashi: string; onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void; onPlanetLeave: () => void }) {
+  const BOX = 400;
+  const CELL = 100;
+  const planetsByRashi: Record<string, ChartPlanet[]> = {};
+  planets.filter(p => p.id !== 'asc').forEach(p => { (planetsByRashi[p.sign] ||= []).push(p); });
+
+  return (
+    <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" className={styles.kundliSvg}>
+      <rect width={BOX} height={BOX} className={styles.svgBg} rx="12" />
+      <rect x="2" y="2" width={BOX - 4} height={BOX - 4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
+
+      {SOUTH_GRID.map((row, r) => row.map((rashi, c) => {
+        const x = c * CELL, y = r * CELL;
+        if (!rashi) return <rect key={`${r}-${c}`} x={x} y={y} width={CELL} height={CELL} fill="none" className={styles.chartMidLine} strokeWidth="0.6" />;
+        const inHouse = planetsByRashi[rashi] || [];
+        const isAscendant = rashi === ascendantRashi;
+        return (
+          <g key={rashi}>
+            <rect x={x} y={y} width={CELL} height={CELL} fill="none" className={styles.chartBorder} strokeWidth="0.8" />
+            <text x={x + 6} y={y + 13} fontSize="8" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{rashi.slice(0, 3)}</text>
+            {isAscendant && <line x1={x} y1={y} x2={x + 22} y2={y + 22} className={styles.chartLine} strokeWidth="1.4" />}
+            {inHouse.map((p, i) => {
+              const cols = inHouse.length > 2 ? 2 : 1;
+              const px = x + 30 + (i % cols) * 32;
+              const py = y + 45 + Math.floor(i / cols) * 26;
+              return (
+                <g key={p.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(p, e)} onMouseLeave={onPlanetLeave}>
+                  <text x={px} y={py} textAnchor="middle" fontSize="11" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{p.symbol}</text>
+                  <text x={px} y={py + 10} textAnchor="middle" fontSize="6" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+                    {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      }))}
+
+      <text x={200} y={196} textAnchor="middle" fontSize="10" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">South Indian</text>
+      <text x={200} y={210} textAnchor="middle" fontSize="7" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">Asc: {ascendantRashi}</text>
     </svg>
   );
 }

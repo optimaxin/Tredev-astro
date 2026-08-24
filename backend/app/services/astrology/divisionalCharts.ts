@@ -1,6 +1,8 @@
 // The remaining Shodasavarga (16 divisional-chart) set beyond D1 (Rasi,
 // kundli.ts) and D9 (Navamsa, zodiac.ts/kundli.ts): D2, D3, D4, D7, D10,
-// D12, D16, D20, D24, D27, D30, D40, D45, D60. Every starting-sign rule
+// D12, D16, D20, D24, D27, D30, D40, D45, D60 — plus D6 (Shashthamsa),
+// which isn't part of the classical 16 but follows the exact same
+// odd-same/even-7th-from shape as D7 and D10. Every starting-sign rule
 // below was cross-checked against the open-source `jyotishganit` Python
 // library (northtara/jyotishganit, MIT) AND independent published sources
 // — EXCEPT Trimsamsa's (D30) even-sign boundaries, where jyotishganit's
@@ -69,6 +71,7 @@ const VARGA_SIGN_FNS: Record<string, SignFn> = {
   D2: horaSignIndex,
   D3: (signIndex, deg) => dividedSign(deg, 3, signIndex, 4), // same sign, then +5th, +9th
   D4: (signIndex, deg) => dividedSign(deg, 4, signIndex, 3), // same, +4th, +7th, +10th
+  D6: (signIndex, deg) => dividedSign(deg, 6, signIndex % 2 === 0 ? signIndex : (signIndex + 6) % 12), // odd sign, even 7th-from — same odd/even shape as D7/D10
   D7: (signIndex, deg) => dividedSign(deg, 7, signIndex % 2 === 0 ? signIndex : (signIndex + 6) % 12),
   D10: (signIndex, deg) => dividedSign(deg, 10, signIndex % 2 === 0 ? signIndex : (signIndex + 8) % 12),
   D12: (signIndex, deg) => dividedSign(deg, 12, signIndex),

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { generateKundli, getNavamsaChart } from '../services/astrology/kundli.ts';
+import { generateKundli, getNavamsaChart, getChandraChart } from '../services/astrology/kundli.ts';
 import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
@@ -88,6 +88,7 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
     const yoginiDashaTimeline = getYoginiDashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
 
     const navamsaChart = getNavamsaChart(kundli);
+    const chandraChart = getChandraChart(kundli);
     const vargaCharts = getAllVargaCharts(kundli);
     const [birthHourStr, birthMinuteStr] = birth.time.split(':');
     const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
@@ -95,6 +96,7 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
     return {
       kundli,
       navamsaChart,
+      chandraChart,
       vargaCharts,
       mahadashaTimeline,
       yoginiDashaTimeline,

@@ -79,4 +79,24 @@ export function getNavamsaChart(kundli: Kundli): NavamsaChart {
   return { ascendant: { rashi: ascendantNavamsa.name }, planets };
 }
 
+export interface ChandraChart {
+  moonRashi: string;
+  planets: { id: PlanetId; rashi: string; degreeInSign: number; house: number; retrograde: boolean }[];
+}
+
+// Chandra (Moon) chart — the exact same D1 planetary placements, just
+// re-housed with the Moon's own sign as house 1 instead of the Ascendant.
+// Used to judge the mind/emotions the same way D1 judges the physical
+// self — real degrees and retrograde status carry over unchanged since
+// this is the same chart, only the house-counting reference point differs.
+export function getChandraChart(kundli: Kundli): ChandraChart {
+  const moon = kundli.planets.find(p => p.id === 'moon')!;
+  const moonRashiIndex = getRashi(moon.longitude).index;
+  const planets = kundli.planets.map(p => {
+    const rashi = getRashi(p.longitude);
+    return { id: p.id, rashi: rashi.name, degreeInSign: rashi.degreeInSign, house: getHouseFromAscendant(moonRashiIndex, rashi.index), retrograde: p.retrograde };
+  });
+  return { moonRashi: RASHIS[moonRashiIndex], planets };
+}
+
 export { RASHIS };
