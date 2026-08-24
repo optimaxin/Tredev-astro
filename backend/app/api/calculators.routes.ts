@@ -93,7 +93,7 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
     const vargaCharts = getAllVargaCharts(kundli);
     const [birthHourStr, birthMinuteStr] = birth.time.split(':');
     const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
-    const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude);
+    const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude, kundli.ascendant.longitude);
 
     return {
       kundli,

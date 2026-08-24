@@ -35,9 +35,22 @@ export interface HouseCusp {
 // Real Placidus house cusps — the actual boundaries KP's Bhav Chalit chart
 // (and cuspal sub-lord theory) are built on, as opposed to the whole-sign
 // house approximation used everywhere else in this codebase.
-export function getSiderealHouseCusps(utcDate: Date, latitude: number, longitude: number): HouseCusp[] {
+//
+// Placidus is mathematically undefined near the polar circles (confirmed:
+// sweph.houses returns flag=ERR for a 78.9N/summer-solstice test case, but
+// silently still fills `houses` with garbage — the caller must check flag
+// itself, sweph doesn't throw). We degrade to an Equal House system anchored
+// on the real (already independently-verified) sidereal Ascendant rather
+// than serve internally-contradictory cusps.
+export function getSiderealHouseCusps(utcDate: Date, latitude: number, longitude: number, siderealAscendant: number): HouseCusp[] {
   const jd = toJulianDayUT(utcDate);
   const result = sweph.houses(jd, latitude, longitude, 'P');
+  if (result.flag !== sweph.constants.OK) {
+    return Array.from({ length: 12 }, (_, i) => ({
+      house: i + 1,
+      longitude: ((siderealAscendant + i * 30) % 360 + 360) % 360,
+    }));
+  }
   const ayanamsa = sweph.get_ayanamsa_ut(jd) as unknown as number;
   return result.data.houses.map((cuspLongitude: number, i: number) => ({
     house: i + 1,

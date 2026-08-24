@@ -85,24 +85,33 @@ function isRetrograde(lonNow: number, lonNextDay: number): boolean {
 // where RAMC is the local sidereal time expressed as an angle, ε is the
 // obliquity of the ecliptic, and φ is the observer's geographic latitude.
 //
-// BUG FIX (found by cross-checking against a commercial reference report,
-// where every planet's sign matched exactly but the Ascendant came out
-// exactly 180° off): the previous atan2(cos(ramc), -(...)) computed the
-// Descendant, not the Ascendant — atan2(y,x) vs the correct atan2(-y,x)
-// differ by exactly 180° when the x term is unchanged. This affects every
-// house-based feature (doshas, KP, Shadbala/Bhavbala, Kendra/Dig Bala,
-// Ashtakvarga's Lagna contributor) since they all build on this Ascendant.
+// BUG FIX (the real root cause — see history below): astronomia's
+// sidereal.mean(jd) returns Greenwich mean sidereal time in SECONDS OF TIME
+// (range [0, 86400)), not radians — but this was being multiplied by DEG
+// (180/π, a radians→degrees factor) instead of converted seconds→degrees
+// (86400s = 360°, so ÷240). This gave a wrong RAMC for almost every
+// date/latitude, and thus a wrong Ascendant — confirmed by cross-checking
+// against real Swiss Ephemeris across 5 diverse locations, all matching to
+// within 0.02° once fixed.
+//
+// History: an earlier pass at this bug (cross-checking one commercial report,
+// where the Ascendant came out exactly 180° off) misdiagnosed it as the
+// atan2 args being swapped (atan2(cos,-x) vs atan2(-cos,x)) and "fixed" it by
+// flipping them. That flip happened to cancel out with the wrong-RAMC bug for
+// that one birth chart, but is wrong in general — confirmed by testing both
+// atan2 forms against Swiss Ephemeris with the RAMC bug fixed: the ORIGINAL
+// atan2(cos(ramc), -(...)) form is the correct one and is what's below.
 export function getAscendant(utcDate: Date, latitudeDeg: number, longitudeDeg: number): number {
   const jd = julian.DateToJD(utcDate);
-  const gstDeg = sidereal.mean(jd) * DEG;
+  const gstDeg = sidereal.mean(jd) / 240;
   const ramcDeg = normalize360(gstDeg + longitudeDeg);
   const ramc = ramcDeg / DEG;
   const epsilon = nutation.meanObliquity(jd);
   const phi = (latitudeDeg / DEG);
 
   const ascTropical = normalize360(Math.atan2(
-    -Math.cos(ramc),
-    Math.sin(epsilon) * Math.tan(phi) + Math.cos(epsilon) * Math.sin(ramc)
+    Math.cos(ramc),
+    -(Math.sin(epsilon) * Math.tan(phi) + Math.cos(epsilon) * Math.sin(ramc))
   ) * DEG);
 
   const ayanamsa = lahiriAyanamsa(jd);
