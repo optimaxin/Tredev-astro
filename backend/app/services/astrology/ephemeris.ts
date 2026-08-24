@@ -79,6 +79,14 @@ function isRetrograde(lonNow: number, lonNextDay: number): boolean {
 // implementations): asc = atan2(cos(RAMC), -(sin(ε)·tan(φ) + cos(ε)·sin(RAMC)))
 // where RAMC is the local sidereal time expressed as an angle, ε is the
 // obliquity of the ecliptic, and φ is the observer's geographic latitude.
+//
+// BUG FIX (found by cross-checking against a commercial reference report,
+// where every planet's sign matched exactly but the Ascendant came out
+// exactly 180° off): the previous atan2(cos(ramc), -(...)) computed the
+// Descendant, not the Ascendant — atan2(y,x) vs the correct atan2(-y,x)
+// differ by exactly 180° when the x term is unchanged. This affects every
+// house-based feature (doshas, KP, Shadbala/Bhavbala, Kendra/Dig Bala,
+// Ashtakvarga's Lagna contributor) since they all build on this Ascendant.
 export function getAscendant(utcDate: Date, latitudeDeg: number, longitudeDeg: number): number {
   const jd = julian.DateToJD(utcDate);
   const gstDeg = sidereal.mean(jd) * DEG;
@@ -88,8 +96,8 @@ export function getAscendant(utcDate: Date, latitudeDeg: number, longitudeDeg: n
   const phi = (latitudeDeg / DEG);
 
   const ascTropical = normalize360(Math.atan2(
-    Math.cos(ramc),
-    -(Math.sin(epsilon) * Math.tan(phi) + Math.cos(epsilon) * Math.sin(ramc))
+    -Math.cos(ramc),
+    Math.sin(epsilon) * Math.tan(phi) + Math.cos(epsilon) * Math.sin(ramc)
   ) * DEG);
 
   const ayanamsa = lahiriAyanamsa(jd);
