@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { generateKundli } from '../services/astrology/kundli.ts';
+import { generateKundli, getNavamsaChart } from '../services/astrology/kundli.ts';
 import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
@@ -9,8 +9,11 @@ import { calculateNumerology, calculateNumerologyMatch } from '../services/astro
 import { calculateGunMilan } from '../services/astrology/gunMilan.ts';
 import { calculatePanchang } from '../services/astrology/panchang.ts';
 import { getDailyHoroscope } from '../services/astrology/dailyHoroscope.ts';
-import { getCurrentMahadasha } from '../services/astrology/vimshottariDasha.ts';
+import { getCurrentMahadasha, getMahadashaTimeline } from '../services/astrology/vimshottariDasha.ts';
 import { answerAstrologyQuestion } from '../services/astrology/aiGuidance.ts';
+import { checkYogas } from '../services/astrology/yogas.ts';
+import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
+import { buildAvakhada, recommendGemstone } from '../services/astrology/avakhada.ts';
 
 export const calculatorsRouter = Router();
 
@@ -53,6 +56,44 @@ calculatorsRouter.post('/kundli', limiter, (req, res) => {
   handle(res, () => {
     const birth = birthSchema.parse(req.body);
     return generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+  });
+});
+
+// The "Kundli maker ecosystem" endpoint — one call returning the chart plus
+// everything built on top of it: the full-life Mahadasha timeline, every
+// dosha check, the small well-defined yoga set, and a written analysis.
+// Each piece reuses the exact same calculators already exposed individually
+// above — this just composes them from one real chart instead of asking the
+// client to make 6 separate requests.
+calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const utcDate = toUtcDate(birth);
+    const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
+    const moon = kundli.planets.find(p => p.id === 'moon')!;
+    const moonRashiIndex = getRashi(moon.longitude).index;
+
+    const span = 360 / 27;
+    const fractionElapsed = (moon.longitude % span) / span;
+    const now = new Date();
+    const mahadashaTimeline = getMahadashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
+
+    return {
+      kundli,
+      navamsaChart: getNavamsaChart(kundli),
+      mahadashaTimeline,
+      doshas: {
+        mangal: checkMangalDosha(kundli),
+        kaalSarp: checkKaalSarpDosha(kundli),
+        sadeSati: checkSadeSati(moonRashiIndex, now),
+        rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
+      },
+      yogas: checkYogas(kundli),
+      analysis: buildKundliAnalysis(kundli),
+      avakhada: buildAvakhada(kundli),
+      gemstone: recommendGemstone(kundli),
+      panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
+    };
   });
 });
 

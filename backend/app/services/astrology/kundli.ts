@@ -1,5 +1,5 @@
 import { getAscendant, getPlanetaryPositions, type PlanetId } from './ephemeris.ts';
-import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from './zodiac.ts';
+import { getHouseFromAscendant, getNakshatra, getNavamsaSign, getRashi, RASHIS } from './zodiac.ts';
 
 export interface BirthDetails {
   /** Birth date+time as a UTC JS Date — the caller converts local time to UTC. */
@@ -61,6 +61,22 @@ export function generateKundli(birth: BirthDetails): Kundli {
     planets,
     moonNakshatra: { name: moon.nakshatra, pada: moon.nakshatraPada, lord: moon.nakshatraLord },
   };
+}
+
+export interface NavamsaChart {
+  ascendant: { rashi: string };
+  planets: { id: PlanetId; rashi: string; house: number }[];
+}
+
+// Navamsa (D9) — same whole-sign house logic as the main D1 chart, just
+// built from each body's navamsa sign instead of its rashi sign.
+export function getNavamsaChart(kundli: Kundli): NavamsaChart {
+  const ascendantNavamsa = getNavamsaSign(kundli.ascendant.longitude);
+  const planets = kundli.planets.map(p => {
+    const navamsa = getNavamsaSign(p.longitude);
+    return { id: p.id, rashi: navamsa.name, house: getHouseFromAscendant(ascendantNavamsa.index, navamsa.index) };
+  });
+  return { ascendant: { rashi: ascendantNavamsa.name }, planets };
 }
 
 export { RASHIS };

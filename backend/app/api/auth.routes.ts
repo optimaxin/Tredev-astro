@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthError, getPublicUser, login, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
+import { updateBirthDetails } from '../repositories/userRepository.ts';
 
 export const authRouter = Router();
 
@@ -80,6 +81,23 @@ authRouter.post('/logout', async (req, res) => {
 authRouter.get('/me', requireAuth, async (req, res) => {
   const user = await getPublicUser(req.user!.id);
   if (!user) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  res.json({ success: true, data: user });
+});
+
+const birthDetailsSchema = z.object({
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'birthDate must be YYYY-MM-DD'),
+  birthTime: z.string().regex(/^\d{2}:\d{2}$/, 'birthTime must be HH:MM'),
+  birthPlace: z.string().trim().min(1).max(200),
+  birthLatitude: z.number().min(-90).max(90),
+  birthLongitude: z.number().min(-180).max(180),
+  birthTimezoneOffsetMinutes: z.number().min(-720).max(840),
+});
+
+authRouter.patch('/me/birth-details', requireAuth, async (req, res) => {
+  const parsed = birthDetailsSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  await updateBirthDetails(req.user!.id, parsed.data);
+  const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
 });
 

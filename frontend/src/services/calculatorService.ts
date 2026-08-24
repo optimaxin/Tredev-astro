@@ -164,10 +164,72 @@ export interface DailyHoroscopeResult {
   transits: DailyTransitEntry[];
 }
 
+export interface AntardashaPeriod {
+  lord: string;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface MahadashaPeriod {
   lord: string;
   startsAt: string;
   endsAt: string;
+  active: boolean;
+  antardashas: AntardashaPeriod[];
+}
+
+export interface YogaResult {
+  name: string;
+  present: boolean;
+  description: string;
+}
+
+export interface KundliAnalysis {
+  lagna: string;
+  moon: string;
+  planets: { id: string; text: string }[];
+}
+
+export interface NavamsaChart {
+  ascendant: { rashi: string };
+  planets: { id: string; rashi: string; house: number }[];
+}
+
+export interface AvakhadaResult {
+  varna: string;
+  vashya: string;
+  yoni: string;
+  gana: string;
+  nadi: string;
+  paya: string;
+  tatva: string;
+  signLord: string;
+  nakshatraLord: string;
+  pada: number;
+}
+
+export interface GemstoneResult {
+  rulingPlanet: string;
+  gemstone: string;
+  sanskritName: string;
+  reason: string;
+}
+
+export interface KundliFullResult {
+  kundli: KundliResult;
+  navamsaChart: NavamsaChart;
+  mahadashaTimeline: MahadashaPeriod[];
+  doshas: {
+    mangal: MangalDoshaResult;
+    kaalSarp: KaalSarpDoshaResult;
+    sadeSati: SadeSatiResult;
+    rahuKetuTransit: RahuKetuTransitResult;
+  };
+  yogas: YogaResult[];
+  analysis: KundliAnalysis;
+  avakhada: AvakhadaResult;
+  gemstone: GemstoneResult;
+  panchang: PanchangResult;
 }
 
 export interface MySkyResult {
@@ -183,6 +245,7 @@ export interface MySkyResult {
 export const calculatorService = {
   geocode: (place: string) => request<GeocodeResult>(`/api/calculators/geocode?place=${encodeURIComponent(place)}`),
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
+  kundliFull: (birth: BirthDetailsInput) => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify(birth) }),
   nakshatra: (birth: BirthDetailsInput) => request<NakshatraResult>('/api/calculators/nakshatra', { method: 'POST', body: JSON.stringify(birth) }),
   mangalDosha: (birth: BirthDetailsInput) => request<MangalDoshaResult>('/api/calculators/mangal-dosha', { method: 'POST', body: JSON.stringify(birth) }),
   sadeSati: (birth: BirthDetailsInput) => request<SadeSatiResult>('/api/calculators/sade-sati', { method: 'POST', body: JSON.stringify(birth) }),

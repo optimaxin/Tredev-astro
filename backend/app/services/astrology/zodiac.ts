@@ -43,3 +43,17 @@ export function getNakshatra(siderealLongitude: number): { index: number; name: 
 export function getHouseFromAscendant(ascendantRashiIndex: number, planetRashiIndex: number): number {
   return (((planetRashiIndex - ascendantRashiIndex) % 12) + 12) % 12 + 1;
 }
+
+// Navamsa (D9) — the most-used divisional chart beyond the main D1, each
+// sign split into 9 parts of 3°20'. `(signIndex*9 + partIndex) % 12` is the
+// standard closed-form for the classical movable/fixed/dual starting-sign
+// rule (verified: Aries part0 -> Aries; Taurus part0 -> Capricorn, the 9th
+// sign from Taurus per the fixed-sign rule; Gemini part0 -> Libra, the 5th
+// sign from Gemini per the dual-sign rule).
+export function getNavamsaSign(siderealLongitude: number): { index: number; name: (typeof RASHIS)[number] } {
+  const signIndex = Math.floor(siderealLongitude / 30) % 12;
+  const degreeInSign = siderealLongitude % 30;
+  const partIndex = Math.floor(degreeInSign / (30 / 9)) % 9;
+  const index = (signIndex * 9 + partIndex) % 12;
+  return { index, name: RASHIS[index] };
+}

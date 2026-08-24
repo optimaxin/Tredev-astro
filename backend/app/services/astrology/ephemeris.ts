@@ -11,7 +11,7 @@
 import { planetposition, moonposition, julian, base, sidereal, nutation } from 'astronomia';
 import data from 'astronomia/data';
 
-export type PlanetId = 'sun' | 'moon' | 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn' | 'rahu' | 'ketu';
+export type PlanetId = 'sun' | 'moon' | 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn' | 'uranus' | 'neptune' | 'rahu' | 'ketu';
 
 export interface PlanetPosition {
   id: PlanetId;
@@ -33,12 +33,14 @@ function lahiriAyanamsa(jde: number): number {
   return 23.853056 + yearsSinceJ2000 * (50.2388475 / 3600);
 }
 
-const HELIOCENTRIC_PLANETS: Record<'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn', unknown> = {
+const HELIOCENTRIC_PLANETS: Record<'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn' | 'uranus' | 'neptune', unknown> = {
   mercury: data.mercury,
   venus: data.venus,
   mars: data.mars,
   jupiter: data.jupiter,
   saturn: data.saturn,
+  uranus: data.uranus,
+  neptune: data.neptune,
 };
 
 function toRectangular(lonRad: number, latRad: number, range: number) {
@@ -120,7 +122,7 @@ export function getPlanetaryPositions({ utcDate }: EphemerisInput): PlanetPositi
     { id: 'moon', longitude: normalize360(moonTropical - ayanamsa), retrograde: isRetrograde(moonTropical, moonTropicalNextDay) },
   ];
 
-  for (const id of ['mercury', 'venus', 'mars', 'jupiter', 'saturn'] as const) {
+  for (const id of ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'] as const) {
     const lonNow = geocentricEclipticLongitude(HELIOCENTRIC_PLANETS[id], earthPos, jd);
     const lonNext = geocentricEclipticLongitude(HELIOCENTRIC_PLANETS[id], earthPosNextDay, jdNextDay);
     results.push({ id, longitude: normalize360(lonNow - ayanamsa), retrograde: isRetrograde(lonNow, lonNext) });

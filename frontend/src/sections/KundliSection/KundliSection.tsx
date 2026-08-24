@@ -6,7 +6,7 @@ import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm
 import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { KundliResult } from '../../services/calculatorService';
+import type { KundliFullResult, KundliResult } from '../../services/calculatorService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
 import styles from './KundliSection.module.css';
@@ -26,38 +26,6 @@ function formatDegree(degreeInSign: number): string {
   const deg = Math.floor(degreeInSign);
   const min = Math.round((degreeInSign - deg) * 60);
   return `${deg}°${min}'`;
-}
-
-// Generic, one-sentence-per-sign Lagna (Ascendant) descriptions — same
-// wording for every user with that Ascendant, not personalized.
-const ASCENDANT_BLURBS: Record<string, string> = {
-  Aries: 'bold, direct, and quick to act — you tend to lead with energy and initiative.',
-  Taurus: 'steady, patient, and grounded — you value comfort, stability, and follow-through.',
-  Gemini: 'curious, communicative, and adaptable — you take in and process the world quickly.',
-  Cancer: 'sensitive, nurturing, and protective — your instincts and emotions run deep.',
-  Leo: 'confident, expressive, and warm — you naturally draw attention and like to lead.',
-  Virgo: 'analytical, precise, and service-minded — you notice detail others miss.',
-  Libra: 'diplomatic, balanced, and relationship-focused — you seek fairness and harmony.',
-  Scorpio: 'intense, private, and resilient — you go deep rather than staying on the surface.',
-  Sagittarius: "optimistic, independent, and philosophical — you're drawn to growth and exploration.",
-  Capricorn: 'disciplined, ambitious, and practical — you build things that last.',
-  Aquarius: 'independent, original, and idea-driven — you often think ahead of the crowd.',
-  Pisces: "imaginative, empathetic, and intuitive — you feel and absorb what's around you.",
-};
-
-function buildOverview(result: KundliResult): string[] {
-  const asc = result.ascendant.rashi;
-  const moon = result.planets.find(p => p.id === 'moon');
-  const sun = result.planets.find(p => p.id === 'sun');
-  const lines: string[] = [];
-  lines.push(`Your Ascendant (Lagna) is ${asc} — placed in your 1st house by definition, this is the lens the rest of the chart is read through: ${ASCENDANT_BLURBS[asc] || 'it colors how you come across to others.'}`);
-  if (moon) {
-    lines.push(`Your Moon is in ${moon.rashi} in your ${ordinal(moon.house)} house, and your Janma Nakshatra is ${result.moonNakshatra.name} (Pada ${result.moonNakshatra.pada}) — this shapes your emotional nature and instinctive reactions.`);
-  }
-  if (sun) {
-    lines.push(`Your Sun is in ${sun.rashi} in your ${ordinal(sun.house)} house — in Vedic astrology this points to where you seek purpose, recognition, and authority.`);
-  }
-  return lines;
 }
 
 function toChartPlanets(result: KundliResult): ChartPlanet[] {
@@ -82,26 +50,46 @@ function toChartPlanets(result: KundliResult): ChartPlanet[] {
 }
 
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser } = useAppContext();
-  const [kundliResult, setKundliResult] = useState<KundliResult | null>(null);
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails } = useAppContext();
+  const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
+  const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+  const kundliResult = fullResult?.kundli ?? null;
   const chartPlanets = kundliResult ? toChartPlanets(kundliResult) : [];
   const savedBirthDetails = toSavedBirthDetails(currentUser);
+  const alreadySavedThisProfile = !!(currentUser?.birthDate && submittedDetails && currentUser.birthDate === submittedDetails.date);
 
   const handleSubmit = async (details: BirthDetailsSubmitValue) => {
     setError('');
     try {
-      const result = await calculatorService.kundli(details);
-      setKundliResult(result);
+      const result = await calculatorService.kundliFull(details);
+      setFullResult(result);
+      setSubmittedDetails(details);
+      setSaveState('idle');
       setBirthProfile({ ...birthProfile, name: details.name, dob: details.date, tob: details.time, place: details.placeName });
       setKundliGenerated(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Could not generate your Kundli. Please try again.');
     }
+  };
+
+  const handleSaveBirthDetails = async () => {
+    if (!submittedDetails) return;
+    setSaveState('saving');
+    const ok = await saveBirthDetails({
+      birthDate: submittedDetails.date,
+      birthTime: submittedDetails.time,
+      birthPlace: submittedDetails.placeName,
+      birthLatitude: submittedDetails.latitude,
+      birthLongitude: submittedDetails.longitude,
+      birthTimezoneOffsetMinutes: submittedDetails.timezoneOffsetMinutes,
+    });
+    setSaveState(ok ? 'saved' : 'error');
   };
 
   const handlePlanetHover = (planet: ChartPlanet, e: React.MouseEvent) => {
@@ -120,7 +108,7 @@ export default function KundliSection() {
       <CelestialBackdrop variant="kundli" intensity="medium" />
       <div className={styles.container}>
         <AnimatePresence mode="wait">
-          {!kundliResult ? (
+          {!fullResult ? (
             <motion.div
               key="form"
               className={styles.formWrap}
@@ -166,7 +154,7 @@ export default function KundliSection() {
                 </div>
                 <button
                   className="btn btn-outline-gold"
-                  onClick={() => setKundliResult(null)}
+                  onClick={() => setFullResult(null)}
                   id="kundli-edit-btn"
                 >
                   Edit Details
@@ -236,15 +224,137 @@ export default function KundliSection() {
               </div>
 
               {/* Plain-language overview — lets you sanity-check the chart above */}
-              {kundliResult && (
-                <div className={styles.overview}>
-                  <h3 className={styles.overviewTitle}>What This Chart Means</h3>
-                  {buildOverview(kundliResult).map((line, i) => (
-                    <p key={i} className={styles.overviewText}>{line}</p>
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>What This Chart Means</h3>
+                <p className={styles.overviewText}>{fullResult.analysis.lagna}</p>
+                <p className={styles.overviewText}>{fullResult.analysis.moon}</p>
+                {fullResult.analysis.planets.filter(p => p.id !== 'moon').map(p => (
+                  <p key={p.id} className={styles.overviewText}>{p.text}</p>
+                ))}
+                <p className={styles.chartNote}>
+                  To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart and Planetary Placements list — including on any other Kundli tool given the same birth date, time, and place.
+                </p>
+              </div>
+
+              {/* Doshas & Yogas — every dosha check and the small well-defined
+                  yoga set, computed from this same real chart. */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Doshas &amp; Yogas</h3>
+                <div className={styles.doshaYogaGrid}>
+                  <div className={styles.doshaCard}>
+                    <div className={styles.doshaCardHead}>
+                      <span className={styles.doshaCardTitle}>Mangal Dosha</span>
+                      <span className={`${styles.statusBadge} ${fullResult.doshas.mangal.isManglik ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                        {fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'}
+                      </span>
+                    </div>
+                    <p className={styles.doshaCardText}>Mars sits in your {ordinal(fullResult.doshas.mangal.marsHouse)} house from the Ascendant.</p>
+                  </div>
+                  <div className={styles.doshaCard}>
+                    <div className={styles.doshaCardHead}>
+                      <span className={styles.doshaCardTitle}>Kaal Sarp Dosha</span>
+                      <span className={`${styles.statusBadge} ${fullResult.doshas.kaalSarp.isKaalSarp ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                        {fullResult.doshas.kaalSarp.isKaalSarp ? 'Present' : 'Clear'}
+                      </span>
+                    </div>
+                    <p className={styles.doshaCardText}>Rahu in {fullResult.doshas.kaalSarp.rahuRashi}, Ketu in {fullResult.doshas.kaalSarp.ketuRashi}.</p>
+                  </div>
+                  <div className={styles.doshaCard}>
+                    <div className={styles.doshaCardHead}>
+                      <span className={styles.doshaCardTitle}>Sade Sati</span>
+                      <span className={`${styles.statusBadge} ${fullResult.doshas.sadeSati.active ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                        {fullResult.doshas.sadeSati.active ? `Active · ${fullResult.doshas.sadeSati.phase}` : 'Not active'}
+                      </span>
+                    </div>
+                    <p className={styles.doshaCardText}>Saturn is currently transiting {fullResult.doshas.sadeSati.saturnTransitRashi}; your Moon sign is {fullResult.doshas.sadeSati.moonRashi}.</p>
+                  </div>
+                  {fullResult.yogas.map(y => (
+                    <div key={y.name} className={styles.doshaCard}>
+                      <div className={styles.doshaCardHead}>
+                        <span className={styles.doshaCardTitle}>{y.name}</span>
+                        <span className={`${styles.statusBadge} ${y.present ? styles.statusBadgeClear : styles.statusBadgeActive}`}>
+                          {y.present ? 'Present' : 'Not formed'}
+                        </span>
+                      </div>
+                      <p className={styles.doshaCardText}>{y.description}</p>
+                    </div>
                   ))}
-                  <p className={styles.chartNote}>
-                    To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart and Planetary Placements list — including on any other Kundli tool given the same birth date, time, and place.
-                  </p>
+                </div>
+              </div>
+
+              {/* Vimshottari Mahadasha — full life timeline, current period highlighted,
+                  with the active period's Antardasha (sub-period) breakdown shown inline */}
+              <div className={styles.timelinePanel}>
+                <h3 className={styles.overviewTitle}>Your Vimshottari Mahadasha Timeline</h3>
+                <p className={styles.overviewText}>The nine planetary periods of your life, starting from your Moon's nakshatra at birth.</p>
+                <div className={styles.timelineList}>
+                  {fullResult.mahadashaTimeline.map((period, i) => (
+                    <div key={i}>
+                      <div className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
+                        <span className={styles.timelineLord}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
+                        <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
+                      </div>
+                      {period.active && (
+                        <div className={styles.antardashaList}>
+                          {period.antardashas.map((sub, j) => (
+                            <div key={j} className={styles.antardashaItem}>
+                              <span>{cap(sub.lord)} Antardasha</span>
+                              <span>{sub.startsAt} → {sub.endsAt}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Navamsa (D9) — the most-used divisional chart beyond the main D1 */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Navamsa (D9) Chart</h3>
+                <p className={styles.overviewText}>Your Navamsa Ascendant is {fullResult.navamsaChart.ascendant.rashi} — the secondary chart classically used to judge marriage, spouse, and the inner strength of what D1 shows.</p>
+                <div className={styles.planetList}>
+                  {fullResult.navamsaChart.planets.map(p => (
+                    <div key={p.id} className={styles.planetRow}>
+                      <span className={styles.planetSymbol}>{PLANET_META[p.id]?.symbol || '✦'}</span>
+                      <span className={styles.planetName}>{PLANET_META[p.id]?.name || p.id}</span>
+                      <span className={styles.planetSign}>{p.rashi}</span>
+                      <span className={styles.planetHouse}>{p.house}H</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Avakhada Chakra — the classical birth-Nakshatra/Rashi attribute set,
+                  plus a Ratna Shastra gemstone recommendation from the Ascendant lord */}
+              <div className={styles.overview}>
+                <h3 className={styles.overviewTitle}>Avakhada Chakra &amp; Gemstone</h3>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Varna</div><div className={styles.infoValue}>{fullResult.avakhada.varna}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Vashya</div><div className={styles.infoValue}>{fullResult.avakhada.vashya}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Yoni</div><div className={styles.infoValue}>{fullResult.avakhada.yoni}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Gana</div><div className={styles.infoValue}>{fullResult.avakhada.gana}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Nadi</div><div className={styles.infoValue}>{fullResult.avakhada.nadi}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Paya</div><div className={styles.infoValue}>{fullResult.avakhada.paya}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Tatva</div><div className={styles.infoValue}>{fullResult.avakhada.tatva}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Sign Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.signLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra Lord</div><div className={styles.infoValue}>{cap(fullResult.avakhada.nakshatraLord)}</div></div>
+                  <div className={styles.infoCard}><div className={styles.infoLabel}>Recommended Gemstone</div><div className={styles.infoValue}>{fullResult.gemstone.gemstone} ({fullResult.gemstone.sanskritName})</div></div>
+                </div>
+                <p className={styles.chartNote}>{fullResult.gemstone.reason} Consult a qualified astrologer before wearing any gemstone.</p>
+              </div>
+
+              {/* Save birth details to account, so the next visit prefills automatically */}
+              {isLoggedIn && submittedDetails && !alreadySavedThisProfile && (
+                <div className={styles.saveBar}>
+                  <span className={styles.saveText}>
+                    {saveState === 'saved' ? '✓ Saved to your account — this will prefill automatically next time.' : 'Save these birth details to your account so you never have to re-enter them.'}
+                  </span>
+                  {saveState !== 'saved' && (
+                    <button className="btn btn-gold btn-sm" disabled={saveState === 'saving'} onClick={handleSaveBirthDetails}>
+                      {saveState === 'saving' ? 'Saving...' : saveState === 'error' ? 'Retry Save' : 'Save to My Account'}
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -459,6 +569,10 @@ function KundliChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHo
       })}
     </svg>
   );
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function ordinal(n: number): string {

@@ -75,6 +75,9 @@ export const authService = {
   me: (accessToken: string) =>
     request<ApiUser>('/me', { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } }),
 
+  updateBirthDetails: (accessToken: string, details: Required<RegisterBirthDetails>) =>
+    request<ApiUser>('/me/birth-details', { method: 'PATCH', body: JSON.stringify(details), headers: { Authorization: `Bearer ${accessToken}` } }),
+
   forgotPassword: (email: string) =>
     request<{ message: string; devResetToken?: string }>('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 

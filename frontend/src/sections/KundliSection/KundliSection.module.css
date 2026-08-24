@@ -334,11 +334,180 @@
   margin-bottom: var(--space-3);
 }
 
+/* Doshas & Yogas */
+.doshaYogaGrid {
+  margin-top: var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.doshaCard {
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px solid rgba(141, 79, 40, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.doshaCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.doshaCardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.doshaCardText {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.statusBadge {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.statusBadgeActive { background: rgba(231, 165, 26, 0.15); color: #D0A020; }
+.statusBadgeClear { background: rgba(80, 200, 120, 0.12); color: #50C878; }
+
+/* Mahadasha timeline */
+.timelinePanel {
+  margin-top: var(--space-8);
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.timelineItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(141, 79, 40, 0.12);
+}
+
+.timelineItemActive {
+  border-color: var(--gold-primary);
+  background: rgba(199, 161, 90, 0.08);
+}
+
+.timelineLord {
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.timelineDates {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.antardashaList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.antardashaItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  border-bottom: 1px dashed rgba(141, 79, 40, 0.1);
+}
+
+.antardashaItem:last-child { border-bottom: none; }
+
+/* Avakhada Chakra + gemstone — reuse the dosha/yoga card grid pattern */
+.infoGrid {
+  margin-top: var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.infoCard {
+  background: rgba(141, 79, 40, 0.04);
+  border: 1px solid rgba(141, 79, 40, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.infoLabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.infoValue {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+}
+
+/* Save birth details */
+.saveBar {
+  margin-top: var(--space-8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5);
+  background: rgba(199, 161, 90, 0.06);
+  border: 1px solid rgba(199, 161, 90, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.saveText {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
 @media (max-width: 768px) {
   .formGrid { grid-template-columns: 1fr; }
   .chartLayout { grid-template-columns: 1fr; }
   .chartHeader { flex-direction: column; }
   .container { padding: 0 var(--space-5); }
+  .doshaYogaGrid { grid-template-columns: 1fr; }
+  .infoGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .infoGrid { grid-template-columns: 1fr; }
 }
 
 /* Light Theme High Contrast overrides for Planetary placements */

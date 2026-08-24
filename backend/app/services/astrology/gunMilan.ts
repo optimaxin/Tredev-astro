@@ -213,4 +213,7 @@ export function calculateGunMilan(brideMoonLongitude: number, groomMoonLongitude
   };
 }
 
-export { RASHIS };
+// Re-exported for the Avakhada Chakra and gemstone builders, which need the
+// same classical Varna/Vashya/Yoni/Gana/Nadi/rashi-lord groupings already
+// verified here — no reason to duplicate or re-derive them.
+export { RASHIS, VARNA_CLASS, VASHYA_GROUP, YONI_ANIMAL, GANA_GROUP, NADI_GROUP, RASHI_LORD };

@@ -332,6 +332,7 @@ interface AppContextValue {
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
   register: (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails) => Promise<AuthUser | null>;
+  saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
   logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
@@ -2700,6 +2701,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const saveBirthDetails = async (details: Required<RegisterBirthDetails>): Promise<boolean> => {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) return false;
+    try {
+      const user = await authService.updateBirthDetails(accessToken, details);
+      setCurrentUser(toAuthUser(user));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const logout = () => {
     const refreshToken = localStorage.getItem('auth_refresh_token');
     if (refreshToken) authService.logout(refreshToken).catch(() => { }); // best-effort server-side revoke
@@ -2972,7 +2985,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       selectedId, setSelectedId,
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
-      isLoggedIn, currentUser, authLoading, login, register, logout,
+      isLoggedIn, currentUser, authLoading, login, register, saveBirthDetails, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
       accounts, applications, applyToBecomeAstrologer, approveApplication, rejectApplication,

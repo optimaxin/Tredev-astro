@@ -45,6 +45,19 @@ export async function updatePasswordHash(userId: string, passwordHash: string) {
   await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
 }
 
+// Lets a returning user save their birth details once (e.g. from the Kundli
+// maker) instead of retyping them into every calculator forever — the same
+// columns registration optionally fills in, just writable after the fact.
+export async function updateBirthDetails(userId: string, params: {
+  birthDate: string; birthTime: string; birthPlace: string; birthLatitude: number; birthLongitude: number; birthTimezoneOffsetMinutes: number;
+}) {
+  await query(
+    `UPDATE users SET birth_date = $1, birth_time = $2, birth_place = $3, birth_latitude = $4, birth_longitude = $5, birth_timezone_offset_minutes = $6
+     WHERE id = $7`,
+    [params.birthDate, params.birthTime, params.birthPlace, params.birthLatitude, params.birthLongitude, params.birthTimezoneOffsetMinutes, userId]
+  );
+}
+
 // ── Admin operations ─────────────────────────────────────────────────────
 
 export function listAllUsers(): Promise<UserRow[]> {
