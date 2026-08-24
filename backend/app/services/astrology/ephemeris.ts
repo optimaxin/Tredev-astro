@@ -6,12 +6,17 @@
 // vector subtraction (Earth's position minus the planet's), skipping
 // light-time/aberration iteration. That costs at most a few arcminutes of
 // longitude — irrelevant next to a 30°-wide rashi or 13°20'-wide nakshatra,
-// so it's not worth the extra complexity. Anyone needing arcsecond precision
-// (nobody doing rashi/nakshatra placement is) should swap in Swiss Ephemeris.
+// so it's not worth the extra complexity.
+//
+// Pluto is the one exception: VSOP87 (and so astronomia) doesn't cover it
+// at all, so it comes from real Swiss Ephemeris instead (swissEphemeris.ts)
+// — verified against a commercial report to match exactly (sign, degree,
+// and retrograde status).
 import { planetposition, moonposition, julian, base, sidereal, nutation } from 'astronomia';
 import data from 'astronomia/data';
+import { getPluto } from './swissEphemeris.ts';
 
-export type PlanetId = 'sun' | 'moon' | 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn' | 'uranus' | 'neptune' | 'rahu' | 'ketu';
+export type PlanetId = 'sun' | 'moon' | 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'rahu' | 'ketu';
 
 export interface PlanetPosition {
   id: PlanetId;
@@ -165,6 +170,11 @@ export function getPlanetaryPositions({ utcDate }: EphemerisInput): PlanetPositi
     const next = geocentricEclipticLonLat(HELIOCENTRIC_PLANETS[id], earthPosNextDay, jdNextDay);
     results.push({ id, longitude: normalize360(now.lon - ayanamsa), retrograde: isRetrograde(now.lon, next.lon) });
   }
+
+  // Pluto — outside VSOP87's planet set, so it comes from real Swiss
+  // Ephemeris (already sidereal + retrograde-flagged there directly).
+  const pluto = getPluto(utcDate);
+  results.push({ id: 'pluto', longitude: pluto.longitude, retrograde: pluto.retrograde });
 
   // Rahu/Ketu: mean lunar node — a real, standard closed-form formula (not a
   // VSOP87 body), always retrograde by convention since the node itself

@@ -28,9 +28,9 @@ interface ChartPlanet {
 // degrees (they're the same underlying placements, just re-housed); the
 // D2-D60 varga charts only ever resolve to a final sign, so no degree is
 // shown for those rather than fabricating one.
-const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60', 'D2', 'D3'] as const;
+const CHART_KEYS = ['D1', 'BHAV_CHALIT', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60', 'D2', 'D3'] as const;
 const CHART_LABELS: Record<string, string> = {
-  D1: 'D1 — Rashi (Birth Chart)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
+  D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
 };
 
 const TABS = [
@@ -303,6 +303,7 @@ export default function KundliSection() {
               {activeTab === 'charts' && (() => {
                 const chartPlanetsForKey: ChartPlanet[] =
                   selectedChart === 'D1' ? chartPlanets :
+                  selectedChart === 'BHAV_CHALIT' ? toSimpleChartPlanets(fullResult.bhavChalit) :
                   selectedChart === 'CHANDRA' ? toChandraChartPlanets(fullResult.chandraChart) :
                   selectedChart === 'D9' ? toSimpleChartPlanets(fullResult.navamsaChart) :
                   fullResult.vargaCharts[selectedChart] ? toSimpleChartPlanets(fullResult.vargaCharts[selectedChart]) : [];
@@ -407,7 +408,7 @@ export default function KundliSection() {
               {activeTab === 'kp' && (
                 <div className={styles.overview}>
                   <h3 className={styles.overviewTitle}>KP Sub-Lord Table</h3>
-                  <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique. Based on the whole-sign Ascendant, not a full Bhav Chalit cuspal chart.</p>
+                  <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.</p>
                   <div className={styles.dataTable}>
                     <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
                       <span>Point</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
@@ -415,6 +416,22 @@ export default function KundliSection() {
                     {fullResult.kp.table.map(row => (
                       <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
                         <span className={styles.dataRowPlanet}>{row.id === 'asc' ? 'Ascendant' : (PLANET_META[row.id]?.name || row.id)}</span>
+                        <span>{row.rashi} ({cap(row.signLord)})</span>
+                        <span>{cap(row.starLord)}</span>
+                        <span>{cap(row.subLord)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <h3 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h3>
+                  <p className={styles.overviewText}>Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.</p>
+                  <div className={styles.dataTable}>
+                    <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
+                      <span>Cusp</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
+                    </div>
+                    {fullResult.kp.cusps.map(row => (
+                      <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
+                        <span className={styles.dataRowPlanet}>House {row.id.replace('cusp', '')}</span>
                         <span>{row.rashi} ({cap(row.signLord)})</span>
                         <span>{cap(row.starLord)}</span>
                         <span>{cap(row.subLord)}</span>

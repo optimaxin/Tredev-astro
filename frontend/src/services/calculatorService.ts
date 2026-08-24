@@ -314,6 +314,7 @@ export interface KpRow {
 
 export interface KpResult {
   table: KpRow[];
+  cusps: KpRow[];
   rulingPlanets: {
     lagnaSignLord: string;
     lagnaStarLord: string;
@@ -323,6 +324,12 @@ export interface KpResult {
     moonSubLord: string;
     dayLord: string;
   };
+}
+
+export interface BhavChalitChart {
+  ascendant: { rashi: string };
+  planets: { id: string; rashi: string; house: number }[];
+  cusps: { house: number; rashi: string; degreeInSign: number }[];
 }
 
 export const VARGA_LABELS: Record<string, string> = {
@@ -339,6 +346,7 @@ export interface KundliFullResult {
   kundli: KundliResult;
   navamsaChart: NavamsaChart;
   chandraChart: ChandraChart;
+  bhavChalit: BhavChalitChart;
   vargaCharts: Record<string, VargaChart>;
   mahadashaTimeline: MahadashaPeriod[];
   yoginiDashaTimeline: YoginiPeriod[];

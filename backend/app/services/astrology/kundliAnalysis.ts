@@ -16,6 +16,7 @@ export const PLANET_SIGNIFICATIONS: Record<PlanetId, string> = {
   saturn: 'discipline, responsibility, delays and long-term structure',
   uranus: 'sudden change, originality and rebellion against convention',
   neptune: 'imagination, illusion, spirituality and idealism',
+  pluto: 'deep transformation, hidden power and regeneration',
   rahu: 'ambition, obsession and unconventional drive',
   ketu: 'detachment, past karma and spiritual inclination',
 };

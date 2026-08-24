@@ -18,6 +18,7 @@ export const PLANET_META: Record<string, PlanetMeta> = {
   saturn: { name: 'Saturn', symbol: '♄', quality: 'Discipline · karma · structure · time' },
   uranus: { name: 'Uranus', symbol: '♅', quality: 'Sudden change · originality · rebellion' },
   neptune: { name: 'Neptune', symbol: '♆', quality: 'Imagination · illusion · idealism' },
+  pluto: { name: 'Pluto', symbol: '♇', quality: 'Deep transformation · hidden power · regeneration' },
   rahu: { name: 'Rahu', symbol: '☊', quality: 'Desire · ambition · future karma' },
   ketu: { name: 'Ketu', symbol: '☋', quality: 'Liberation · past karma · spirituality' },
   asc: { name: 'Ascendant', symbol: '↑', quality: 'Self · physical body · first impression · vitality' },

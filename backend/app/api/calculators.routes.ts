@@ -17,7 +17,8 @@ import { buildAvakhada, recommendGemstones, recommendRudraksha } from '../servic
 import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
 import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
-import { buildKpTable } from '../services/astrology/kpAstrology.ts';
+import { buildKpTable, getBhavChalitChart } from '../services/astrology/kpAstrology.ts';
+import { getSiderealHouseCusps } from '../services/astrology/swissEphemeris.ts';
 import { calculateShadbala } from '../services/astrology/shadbala.ts';
 import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
 import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
@@ -92,6 +93,7 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
     const vargaCharts = getAllVargaCharts(kundli);
     const [birthHourStr, birthMinuteStr] = birth.time.split(':');
     const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
+    const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude);
 
     return {
       kundli,
@@ -119,7 +121,8 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
       rudraksha: recommendRudraksha(kundli),
       panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
       ashtakavarga: calculateAshtakavarga(kundli),
-      kp: buildKpTable(kundli, utcDate),
+      kp: buildKpTable(kundli, utcDate, houseCusps),
+      bhavChalit: getBhavChalitChart(kundli, houseCusps),
     };
   });
 });
