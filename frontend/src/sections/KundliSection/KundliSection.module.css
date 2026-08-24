@@ -166,6 +166,7 @@
   grid-template-columns: 1fr 280px;
   gap: var(--space-8);
   align-items: start;
+  margin-top: var(--space-6);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
   border: 12px double #8D4F28; /* Beautiful ornate double border */
   border-radius: var(--radius-lg);
@@ -498,6 +499,92 @@
   color: var(--text-primary);
 }
 
+/* Tab bar — swaps the sections below instead of one long scroll */
+.tabBar {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-8);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border-bottom: 1px solid rgba(141, 79, 40, 0.15);
+}
+
+.tabButton {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(141, 79, 40, 0.2);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.tabButton:hover {
+  border-color: var(--gold-primary);
+  color: var(--text-primary);
+}
+
+.tabButtonActive {
+  background: var(--gold-primary);
+  border-color: var(--gold-primary);
+  color: var(--color-dark);
+}
+
+/* Aligned data tables (Shadbala / KP) — explicit grid columns so variable-
+   length text in each cell still lines up row to row, instead of the loose
+   flex reuse from .planetRow which only ever fit a fixed 4-slot shape. */
+.dataTable {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(141, 79, 40, 0.12);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.dataRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgba(141, 79, 40, 0.08);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.dataRow:last-child { border-bottom: none; }
+
+.dataRowHead {
+  background: rgba(141, 79, 40, 0.05);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.dataRowKp, .dataRowHeadKp {
+  grid-template-columns: 1.1fr 1.6fr 1fr 1fr;
+}
+
+.dataRowPlanet {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+}
+
 /* Ascendant Predictions */
 .predictionGrid {
   margin-top: var(--space-6);
@@ -649,10 +736,13 @@
   .container { padding: 0 var(--space-5); }
   .doshaYogaGrid { grid-template-columns: 1fr; }
   .infoGrid { grid-template-columns: repeat(2, 1fr); }
+  .dataRow, .dataRowKp, .dataRowHeadKp { grid-template-columns: 1.4fr 1fr 1fr; }
+  .dataRow span:nth-child(3) { display: none; } /* drop the least-critical column rather than crush all four */
 }
 
 @media (max-width: 480px) {
   .infoGrid { grid-template-columns: 1fr; }
+  .tabButton { height: 36px; padding: 0 var(--space-4); font-size: var(--text-xs); }
 }
 
 /* Light Theme High Contrast overrides for Planetary placements */
