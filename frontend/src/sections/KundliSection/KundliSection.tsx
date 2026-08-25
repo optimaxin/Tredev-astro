@@ -702,24 +702,31 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi }: { title: str
 // connecting the four edge midpoints. Together these create exactly 12
 // regions: 4 "kite" quadrilaterals at the cardinal points (houses 1/4/7/10,
 // the Kendras) and 8 corner triangles pairing up around each corner for the
-// rest. House 1 (Lagna) is always the top kite, and house numbers increase
-// clockwise — confirmed against multiple sources: "house 2 sits to the
-// right of house 1." (The previous version of this chart placed numbers at
-// arbitrary hand-picked pixel coordinates that didn't correspond to any
-// actual drawn boundary — this rewrite fixes that from the geometry up.)
+// rest. House 1 (Lagna) is always the top kite.
+//
+// MIRROR FIX: an earlier pass here got the rotational direction backwards,
+// placing house 2 clockwise (right) of house 1 based on an ambiguous
+// websearch claim. Checked directly against real charts, this is mirrored —
+// house 2 sits counter-clockwise (LEFT) of house 1, and house 12 to the
+// right. Fixed by reflecting every polygon's x-coordinate (x -> 400-x):
+// houses 1/7 are symmetric about that axis and land on themselves; houses
+// 4/10 (the other two kites) swap positions; and (2,12), (3,11), (5,9),
+// (6,8) each swap the same way. The decorative frame (both diagonals + the
+// edge-midpoint diamond) is already symmetric under this mirror, so only
+// this per-house coordinate table needed to change.
 const NORTH_HOUSE_POLYGONS: Record<number, [number, number][]> = {
-  1: [[100, 100], [200, 200], [300, 100], [200, 0]],
-  2: [[200, 0], [300, 100], [400, 0]],
-  3: [[300, 100], [400, 200], [400, 0]],
-  4: [[300, 100], [200, 200], [300, 300], [400, 200]],
-  5: [[300, 300], [400, 400], [400, 200]],
-  6: [[300, 300], [200, 400], [400, 400]],
-  7: [[100, 300], [200, 400], [300, 300], [200, 200]],
-  8: [[100, 300], [0, 400], [200, 400]],
-  9: [[0, 200], [0, 400], [100, 300]],
-  10: [[0, 200], [100, 300], [200, 200], [100, 100]],
-  11: [[0, 0], [0, 200], [100, 100]],
-  12: [[0, 0], [100, 100], [200, 0]],
+  1: [[300, 100], [200, 200], [100, 100], [200, 0]],
+  2: [[200, 0], [100, 100], [0, 0]],
+  3: [[100, 100], [0, 200], [0, 0]],
+  4: [[100, 100], [200, 200], [100, 300], [0, 200]],
+  5: [[100, 300], [0, 400], [0, 200]],
+  6: [[100, 300], [200, 400], [0, 400]],
+  7: [[300, 300], [200, 400], [100, 300], [200, 200]],
+  8: [[300, 300], [400, 400], [200, 400]],
+  9: [[400, 200], [400, 400], [300, 300]],
+  10: [[400, 200], [300, 300], [200, 200], [300, 100]],
+  11: [[400, 0], [400, 200], [300, 100]],
+  12: [[400, 0], [300, 100], [200, 0]],
 };
 const NORTH_CENTER: [number, number] = [200, 200];
 
