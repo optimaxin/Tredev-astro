@@ -55,6 +55,41 @@ export function toChartPlanets(result: KundliResult): ChartPlanet[] {
   return [asc, ...planets];
 }
 
+// Converts any divisional-chart shape (Navamsa or the D2-D60 varga charts —
+// which only carry a final sign + house, not the birth-degree D1 tracks)
+// into the same ChartPlanet shape the visual chart renders, so every
+// divisional chart gets an actual diagram, not just a text list.
+export function toSimpleChartPlanets(chart: { ascendant: { rashi: string }; planets: { id: string; rashi: string; house: number }[] }): ChartPlanet[] {
+  const asc: ChartPlanet = { id: 'asc', ...PLANET_META.asc, sign: chart.ascendant.rashi, house: 1 };
+  const planets: ChartPlanet[] = chart.planets.map(p => ({
+    id: p.id,
+    symbol: PLANET_META[p.id]?.symbol || '✦',
+    name: PLANET_META[p.id]?.name || p.id,
+    quality: PLANET_META[p.id]?.quality || '',
+    sign: p.rashi,
+    house: p.house,
+  }));
+  return [asc, ...planets];
+}
+
+// Chandra chart carries the same real degrees/retrograde as D1 (same
+// physical placements, just re-housed from the Moon) — no synthetic
+// Ascendant entry here, since "house 1" in this chart is the Moon's own
+// sign, not a separate rising point.
+export function toChandraChartPlanets(chandra: { moonRashi: string; planets: { id: string; rashi: string; degreeInSign: number; house: number; retrograde: boolean }[] }): ChartPlanet[] {
+  return chandra.planets.map(p => ({
+    id: p.id,
+    symbol: PLANET_META[p.id]?.symbol || '✦',
+    name: PLANET_META[p.id]?.name || p.id,
+    quality: PLANET_META[p.id]?.quality || '',
+    sign: p.rashi,
+    house: p.house,
+    degree: formatDegree(p.degreeInSign),
+    decimalDegree: formatDecimalDegree(p.degreeInSign),
+    retrograde: p.retrograde,
+  }));
+}
+
 // ---- North Indian chart geometry, verified against real chart topology ----
 // A square with both full corner-to-corner diagonals plus the diamond
 // connecting the four edge midpoints. Together these create exactly 12
@@ -105,6 +140,16 @@ function outerLabelPos(points: [number, number][]): [number, number] {
   return [best[0] + 0.2 * (NORTH_CENTER[0] - best[0]), best[1] + 0.2 * (NORTH_CENTER[1] - best[1])];
 }
 
+// Faint centered brand mark behind the chart lines/planets — shared by both
+// chart styles, and (since KundliPrintLayout reuses these same components)
+// automatically present in the downloaded PDF's chart too, with no separate
+// watermark logic needed there.
+function ChartWatermark({ box }: { box: number }) {
+  const size = box * 0.34;
+  const pos = (box - size) / 2;
+  return <image href="/logo.png" x={pos} y={pos} width={size} height={size} opacity={0.08} style={{ pointerEvents: 'none' }} />;
+}
+
 interface KundliChartProps {
   planets: ChartPlanet[];
   onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void;
@@ -121,6 +166,7 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
   return (
     <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" className={styles.kundliSvg}>
       <rect width={BOX} height={BOX} className={styles.svgBg} rx="12" />
+      <ChartWatermark box={BOX} />
       <rect x="2" y="2" width={BOX - 4} height={BOX - 4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
 
       {/* The real structural frame: both diagonals plus the edge-midpoint diamond */}
@@ -197,6 +243,7 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
   return (
     <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" className={styles.kundliSvg}>
       <rect width={BOX} height={BOX} className={styles.svgBg} rx="12" />
+      <ChartWatermark box={BOX} />
       <rect x="2" y="2" width={BOX - 4} height={BOX - 4} fill="none" className={styles.chartBorder} strokeWidth="1" rx="10" />
 
       {SOUTH_GRID.map((row, r) => row.map((rashi, c) => {

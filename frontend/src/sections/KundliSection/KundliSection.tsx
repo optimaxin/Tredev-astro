@@ -12,7 +12,7 @@ import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
-import { NorthIndianChart, SouthIndianChart, cap, ordinal, formatDegree, formatDecimalDegree, toChartPlanets } from './KundliCharts';
+import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
 import styles from './KundliSection.module.css';
@@ -61,37 +61,6 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
 // which only carry a final sign + house, not the birth-degree D1 tracks)
 // into the same ChartPlanet shape the visual chart renders, so every
 // divisional chart gets an actual diagram, not just a text list.
-function toSimpleChartPlanets(chart: { ascendant: { rashi: string }; planets: { id: string; rashi: string; house: number }[] }): ChartPlanet[] {
-  const asc: ChartPlanet = { id: 'asc', ...PLANET_META.asc, sign: chart.ascendant.rashi, house: 1 };
-  const planets: ChartPlanet[] = chart.planets.map(p => ({
-    id: p.id,
-    symbol: PLANET_META[p.id]?.symbol || '✦',
-    name: PLANET_META[p.id]?.name || p.id,
-    quality: PLANET_META[p.id]?.quality || '',
-    sign: p.rashi,
-    house: p.house,
-  }));
-  return [asc, ...planets];
-}
-
-// Chandra chart carries the same real degrees/retrograde as D1 (same
-// physical placements, just re-housed from the Moon) — no synthetic
-// Ascendant entry here, since "house 1" in this chart is the Moon's own
-// sign, not a separate rising point.
-function toChandraChartPlanets(chandra: { moonRashi: string; planets: { id: string; rashi: string; degreeInSign: number; house: number; retrograde: boolean }[] }): ChartPlanet[] {
-  return chandra.planets.map(p => ({
-    id: p.id,
-    symbol: PLANET_META[p.id]?.symbol || '✦',
-    name: PLANET_META[p.id]?.name || p.id,
-    quality: PLANET_META[p.id]?.quality || '',
-    sign: p.rashi,
-    house: p.house,
-    degree: formatDegree(p.degreeInSign),
-    decimalDegree: formatDecimalDegree(p.degreeInSign),
-    retrograde: p.retrograde,
-  }));
-}
-
 export default function KundliSection() {
   const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
