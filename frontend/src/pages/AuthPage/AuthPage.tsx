@@ -41,6 +41,7 @@ export default function AuthPage() {
   const resumePendingAction = (action: string | null) => {
     if (action === 'profile') setPage('profile');
     else if (action === 'free-kundli') setPage('free-kundli');
+    else if (action === 'kundli-pdf') setPage('free-kundli');
     else if (action === 'astrologers') setPage('astrologers');
     else if (action === 'calculator') setPage('astrology-tools');
     else setPage('home');

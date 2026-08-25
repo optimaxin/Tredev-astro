@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import { HOUSE_MEANINGS } from '../../data/mockData';
@@ -8,6 +8,8 @@ import { toSavedBirthDetails } from '../../utils/birthDetails';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { KundliFullResult, KundliResult } from '../../services/calculatorService';
 import { VARGA_LABELS } from '../../services/calculatorService';
+import { kundliHistoryService } from '../../services/kundliHistoryService';
+import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, formatDegree, formatDecimalDegree, toChartPlanets } from './KundliCharts';
@@ -91,7 +93,7 @@ function toChandraChartPlanets(chandra: { moonRashi: string; planets: { id: stri
 }
 
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage } = useAppContext();
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
@@ -99,6 +101,8 @@ export default function KundliSection() {
   const [selectedChart, setSelectedChart] = useState<string>('D1');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
+  const [autoDownloadPending, setAutoDownloadPending] = useState(false);
+  const [history, setHistory] = useState<KundliHistoryEntry[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   const kundliResult = fullResult?.kundli ?? null;
@@ -116,9 +120,80 @@ export default function KundliSection() {
       setBirthProfile({ ...birthProfile, name: details.name, dob: details.date, tob: details.time, place: details.placeName });
       setKundliGenerated(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Logged-in users get every generated kundli saved to their history
+      // automatically — only the birth-detail inputs, never the computed
+      // result (see kundliHistoryService.ts header comment for why).
+      // Fire-and-forget: a failed save shouldn't block showing the chart.
+      const accessToken = localStorage.getItem('auth_access_token');
+      if (accessToken) {
+        kundliHistoryService
+          .save(accessToken, { name: details.name, date: details.date, time: details.time, timezoneOffsetMinutes: details.timezoneOffsetMinutes, latitude: details.latitude, longitude: details.longitude, placeLabel: details.placeName })
+          .then(entry => setHistory(prev => [entry, ...prev]))
+          .catch(() => {});
+      }
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Could not generate your Kundli. Please try again.');
     }
+  };
+
+  // Load the logged-in user's saved kundlis for the "My Kundlis" picker on
+  // the form view.
+  useEffect(() => {
+    if (!isLoggedIn) { setHistory([]); return; }
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) return;
+    kundliHistoryService.list(accessToken).then(setHistory).catch(() => {});
+  }, [isLoggedIn]);
+
+  // Resume a PDF download after an anonymous user was sent to log in (see
+  // handleDownloadPdfClick below) — the exact submitted birth details are
+  // stashed in sessionStorage since AuthPage clears `pendingAction` in the
+  // same tick it navigates back here, before this component could read it.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const raw = sessionStorage.getItem('kundliPdfResume');
+    if (!raw) return;
+    sessionStorage.removeItem('kundliPdfResume');
+    try {
+      const details = JSON.parse(raw) as BirthDetailsSubmitValue;
+      setAutoDownloadPending(true);
+      handleSubmit(details);
+    } catch {
+      // Malformed/stale payload — nothing to resume.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
+  // Once the resumed generation lands, actually trigger the download.
+  useEffect(() => {
+    if (autoDownloadPending && fullResult) {
+      setAutoDownloadPending(false);
+      handleDownloadPdf();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDownloadPending, fullResult]);
+
+  const handleDownloadPdfClick = () => {
+    if (!isLoggedIn) {
+      if (submittedDetails) sessionStorage.setItem('kundliPdfResume', JSON.stringify(submittedDetails));
+      setPendingAction('kundli-pdf');
+      setShowLoginModal(true);
+      return;
+    }
+    handleDownloadPdf();
+  };
+
+  const handleHistorySelect = (entry: KundliHistoryEntry) => {
+    handleSubmit({
+      name: entry.name,
+      date: entry.date,
+      time: entry.time,
+      timezoneOffsetMinutes: entry.timezoneOffsetMinutes,
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      placeName: entry.placeLabel || '',
+    });
   };
 
   const handleSaveBirthDetails = async () => {
@@ -193,6 +268,20 @@ export default function KundliSection() {
                 </p>
               </div>
 
+              {isLoggedIn && history.length > 0 && (
+                <div className={styles.overview} style={{ maxWidth: 700, margin: '0 auto var(--space-8)', textAlign: 'left' }}>
+                  <h3 className={styles.overviewTitle}>My Kundlis</h3>
+                  <div className={styles.timelineList}>
+                    {history.slice(0, 5).map(entry => (
+                      <button key={entry.id} type="button" className={styles.timelineItem} style={{ width: '100%', cursor: 'pointer', textAlign: 'left', font: 'inherit' }} onClick={() => handleHistorySelect(entry)}>
+                        <span className={styles.timelineLord}>{entry.name}</span>
+                        <span className={styles.timelineDates}>{entry.date} · {entry.placeLabel || `${entry.latitude.toFixed(2)}, ${entry.longitude.toFixed(2)}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" initialValues={savedBirthDetails} />
               {savedBirthDetails && (
                 <p className={styles.privacy}>✦ Pre-filled from the birth details you gave at sign-up — edit any field if it's wrong.</p>
@@ -220,11 +309,11 @@ export default function KundliSection() {
                 <div style={{ display: 'flex', gap: 'var(--space-3)', flexShrink: 0 }}>
                   <button
                     className="btn btn-gold"
-                    onClick={handleDownloadPdf}
+                    onClick={handleDownloadPdfClick}
                     disabled={pdfState === 'generating'}
                     id="kundli-download-pdf-btn"
                   >
-                    {pdfState === 'generating' ? 'Preparing PDF…' : 'Download PDF'}
+                    {pdfState === 'generating' ? 'Preparing PDF…' : isLoggedIn ? 'Download PDF' : 'Download PDF (login required)'}
                   </button>
                   <button
                     className="btn btn-outline-gold"
