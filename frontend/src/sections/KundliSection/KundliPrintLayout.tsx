@@ -22,6 +22,14 @@ import chartStyles from './KundliSection.module.css';
 // picked-and-chosen highlights.
 const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', LINE = '#E8DEC8', TINT = '#F2EBD9';
 
+// A small, deliberate type scale for the whole document — TITLE for the
+// name heading, SECTION for each block's own heading, BODY for every real
+// sentence/table cell (never smaller: sub-12px body copy is hard to read),
+// and LABEL only for short uppercase micro-labels (field/column headers),
+// the one place a smaller size is an established, legible pattern already
+// used elsewhere on the site (e.g. .infoLabel/.dataRowHead).
+const FONT = { title: 26, section: 14, body: 12, label: 10 };
+
 export default function KundliPrintLayout({ name, dob, tob, place, result }: { name: string; dob: string; tob: string; place: string; result: KundliFullResult }) {
   const chartPlanets = toChartPlanets(result.kundli);
   const navamsaPlanets = toSimpleChartPlanets(result.navamsaChart);
@@ -48,10 +56,10 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
       <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${GOLD}`, paddingBottom: 16, marginBottom: 24 }}>
           <div>
-            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 28, color: INK }}>{name}&apos;s Janam Kundli</div>
-            <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{dob} · {tob} · {place}</div>
+            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.title, color: INK }}>{name}&apos;s Janam Kundli</div>
+            <div style={{ fontSize: FONT.body, color: MUTED, marginTop: 4 }}>{dob} · {tob} · {place}</div>
           </div>
-          <div style={{ fontSize: 12, color: GOLD, letterSpacing: '0.08em', textTransform: 'uppercase' }}>TredevAstro</div>
+          <div style={{ fontSize: FONT.body, color: GOLD, letterSpacing: '0.08em', textTransform: 'uppercase' }}>TredevAstro</div>
         </div>
 
         <div style={{ display: 'flex', gap: 24, marginBottom: 28 }}>
@@ -59,11 +67,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             <div className={chartStyles.svgWrap} style={{ maxWidth: 320 }}>
               <NorthIndianChart planets={chartPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
             </div>
-            <div style={{ fontSize: 10, color: FAINT, textAlign: 'center', marginTop: 4 }}>D1 — Rashi (Birth Chart)</div>
+            <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D1 — Rashi (Birth Chart)</div>
           </div>
           <div style={{ flex: 1 }}>
             <Section title="Ascendant &amp; Moon">
-              <p style={{ fontSize: 13, lineHeight: 1.7, margin: 0 }}>
+              <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: 0 }}>
                 Ascendant (Lagna): <b>{result.kundli.ascendant.rashi}</b> · Moon Sign: <b>{result.kundli.planets.find(p => p.id === 'moon')?.rashi}</b> · Moon Nakshatra: <b>{result.kundli.moonNakshatra.name}</b> (Pada {result.kundli.moonNakshatra.pada})
               </p>
             </Section>
@@ -84,7 +92,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             <div className={chartStyles.svgWrap} style={{ maxWidth: 200 }}>
               <NorthIndianChart planets={navamsaPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
             </div>
-            <div style={{ fontSize: 10, color: FAINT, textAlign: 'center', marginTop: 4 }}>D9 — Navamsa (Marriage)</div>
+            <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D9 — Navamsa (Marriage)</div>
           </div>
           <div style={{ flex: 1 }}>
             <Section title="Avakhada Chakra">
@@ -103,7 +111,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             </Section>
             {varga10 && (
               <Section title={VARGA_LABELS.D10}>
-                <p style={{ fontSize: 12, color: MUTED, margin: 0 }}>Ascendant: <b style={{ color: INK }}>{varga10.ascendant.rashi}</b></p>
+                <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Ascendant: <b style={{ color: INK }}>{varga10.ascendant.rashi}</b></p>
               </Section>
             )}
           </div>
@@ -124,7 +132,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </Section>
 
         <Section title="Ascendant Predictions">
-          <p style={{ fontSize: 12, lineHeight: 1.75, margin: '0 0 10px' }}>{result.ascendantPredictions.description}</p>
+          <p style={{ fontSize: FONT.body, lineHeight: 1.75, margin: '0 0 10px' }}>{result.ascendantPredictions.description}</p>
           {([
             ['Personality', result.ascendantPredictions.personality],
             ['Physical', result.ascendantPredictions.physical],
@@ -132,9 +140,9 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ['Career', result.ascendantPredictions.career],
             ['Relationships', result.ascendantPredictions.relationship],
           ] as const).map(([label, text]) => (
-            <p key={label} style={{ fontSize: 12, lineHeight: 1.7, margin: '0 0 8px' }}><b>{label}:</b> {teaser(text, 130)}</p>
+            <p key={label} style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 8px' }}><b>{label}:</b> {teaser(text, 130)}</p>
           ))}
-          <p style={{ fontSize: 11, lineHeight: 1.6, margin: '10px 0 0', padding: '8px 10px', background: TINT, borderRadius: 6, color: MUTED }}>
+          <p style={{ fontSize: FONT.body, lineHeight: 1.6, margin: '10px 0 0', padding: '8px 10px', background: TINT, borderRadius: 6, color: MUTED }}>
             This is a summary based on your chart, not the complete reading. For your full, personalized predictions, consult an expert astrologer on TredevAstro.
           </p>
         </Section>
@@ -142,13 +150,13 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <Section title="Vimshottari Mahadasha (Full Timeline)">
           {result.mahadashaTimeline.map((period, i) => (
             <div key={i} style={{ marginBottom: 6, breakInside: 'avoid' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 6px', background: period.active ? TINT : undefined, borderTop: `1px solid ${LINE}`, fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 6px', background: period.active ? TINT : undefined, borderTop: `1px solid ${LINE}`, fontSize: FONT.body }}>
                 <span style={{ fontWeight: period.active ? 700 : 500 }}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
                 <span style={{ color: MUTED }}>{period.startsAt} → {period.endsAt}</span>
               </div>
               <div style={{ paddingLeft: 14 }}>
                 {period.antardashas.map((sub, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 6px', fontSize: 10, color: MUTED, borderBottom: `1px dashed ${LINE}` }}>
+                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 6px', fontSize: FONT.body, color: MUTED, borderBottom: `1px dashed ${LINE}` }}>
                     <span>{cap(sub.lord)} Antardasha</span><span>{sub.startsAt} → {sub.endsAt}</span>
                   </div>
                 ))}
@@ -180,7 +188,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         {presentYogas.length > 0 && (
           <Section title="Yogas Present">
             {presentYogas.map(y => (
-              <p key={y.name} style={{ fontSize: 12, lineHeight: 1.6, margin: '0 0 6px' }}><b>{y.name}:</b> {y.description}</p>
+              <p key={y.name} style={{ fontSize: FONT.body, lineHeight: 1.6, margin: '0 0 6px' }}><b>{y.name}:</b> {y.description}</p>
             ))}
           </Section>
         )}
@@ -217,24 +225,24 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <Section title="Recommended Gemstones">
           {gems.map(g => (
             <div key={g.purpose} style={{ borderTop: `1px solid ${LINE}`, padding: '8px 0' }}>
-              <div style={{ fontSize: 10, color: FAINT, textTransform: 'uppercase', marginBottom: 2 }}>{g.purpose} — ruled by {cap(g.rulingPlanet)}</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{g.gemstone} ({g.sanskritName})</div>
-              <div style={{ fontSize: 11, color: MUTED, margin: '2px 0' }}>{g.metal} · {g.finger} finger · {g.color}</div>
-              <div style={{ fontSize: 11, fontStyle: 'italic', color: GOLD }}>{g.mantra}</div>
+              <div style={{ fontSize: FONT.label, color: FAINT, textTransform: 'uppercase', marginBottom: 2 }}>{g.purpose} — ruled by {cap(g.rulingPlanet)}</div>
+              <div style={{ fontSize: FONT.section, fontWeight: 600 }}>{g.gemstone} ({g.sanskritName})</div>
+              <div style={{ fontSize: FONT.body, color: MUTED, margin: '2px 0' }}>{g.metal} · {g.finger} finger · {g.color}</div>
+              <div style={{ fontSize: FONT.body, fontStyle: 'italic', color: GOLD }}>{g.mantra}</div>
             </div>
           ))}
         </Section>
 
         <Section title="Rudraksha">
-          <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 4px' }}>{result.rudraksha.mukhi} Mukhi Rudraksha — {result.rudraksha.deity}</p>
-          <p style={{ fontSize: 12, lineHeight: 1.7, margin: '0 0 8px' }}>{result.rudraksha.reason}</p>
-          <p style={{ fontSize: 11, color: MUTED, margin: '0 0 4px' }}><b>How to wear:</b> {result.rudraksha.howToWear}</p>
-          <ul style={{ fontSize: 11, color: MUTED, margin: '4px 0', paddingLeft: 18 }}>
+          <p style={{ fontSize: FONT.section, fontWeight: 600, margin: '0 0 4px' }}>{result.rudraksha.mukhi} Mukhi Rudraksha — {result.rudraksha.deity}</p>
+          <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 8px' }}>{result.rudraksha.reason}</p>
+          <p style={{ fontSize: FONT.body, color: MUTED, margin: '0 0 4px' }}><b>How to wear:</b> {result.rudraksha.howToWear}</p>
+          <ul style={{ fontSize: FONT.body, color: MUTED, margin: '4px 0', paddingLeft: 18 }}>
             {result.rudraksha.benefits.map((b, i) => <li key={i}>{b}</li>)}
           </ul>
         </Section>
 
-        <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${LINE}`, fontSize: 10, color: FAINT, textAlign: 'center' }}>
+        <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${LINE}`, fontSize: FONT.label, color: FAINT, textAlign: 'center' }}>
           Generated by TredevAstro — log in to your account to revisit this Kundli anytime.
         </div>
       </div>
@@ -245,7 +253,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 22, breakInside: 'avoid' }}>
-      <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 14, color: '#B58A3B', margin: '0 0 8px' }}>{title}</div>
+      <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.section, color: GOLD, margin: '0 0 8px' }}>{title}</div>
       {children}
     </div>
   );
@@ -253,9 +261,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+    <table style={{ width: '100%', fontSize: FONT.body, borderCollapse: 'collapse' }}>
       <thead>
-        <tr style={{ textAlign: 'left', color: FAINT, textTransform: 'uppercase', fontSize: 9 }}>
+        <tr style={{ textAlign: 'left', color: FAINT, textTransform: 'uppercase', fontSize: FONT.label }}>
           {head.map(h => <th key={h} style={{ padding: '3px 4px' }}>{h}</th>)}
         </tr>
       </thead>
@@ -274,9 +282,9 @@ function Grid({ cols, children }: { cols: number; children: ReactNode }) {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ background: '#F2EBD9', borderRadius: 6, padding: '6px 8px' }}>
-      <div style={{ fontSize: 9, color: FAINT, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 12, color: INK }}>{children}</div>
+    <div style={{ background: TINT, borderRadius: 6, padding: '6px 8px' }}>
+      <div style={{ fontSize: FONT.label, color: FAINT, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: FONT.body, color: INK }}>{children}</div>
     </div>
   );
 }

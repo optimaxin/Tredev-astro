@@ -142,9 +142,8 @@ export default function KundliSection() {
   useEffect(() => {
     if (autoDownloadPending && fullResult) {
       setAutoDownloadPending(false);
-      handleDownloadPdf();
+      setPdfState('generating');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoDownloadPending, fullResult]);
 
   const handleDownloadPdfClick = () => {
@@ -154,7 +153,7 @@ export default function KundliSection() {
       setShowLoginModal(true);
       return;
     }
-    handleDownloadPdf();
+    setPdfState('generating');
   };
 
   const handleHistorySelect = (entry: KundliHistoryEntry) => {
@@ -187,34 +186,45 @@ export default function KundliSection() {
   // header comment for why this reuses the same NorthIndianChart component
   // rather than a server-side renderer). html2canvas/jsPDF are dynamically
   // imported so their ~250-300KB never loads for users who never click this.
-  const handleDownloadPdf = async () => {
-    if (!fullResult || !printRef.current) return;
-    setPdfState('generating');
-    try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-      const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: '#FAF7F0' });
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL('image/png');
+  //
+  // The print layout is only mounted (below, gated on pdfState==='generating')
+  // for this brief capture window, not permanently whenever a kundli is
+  // shown — it used to sit in the DOM at all times, which a page-usability
+  // scan flagged as a wall of sub-12px hidden text (aria-hidden isn't
+  // respected by every such tool). This effect fires once printRef.current
+  // actually exists, i.e. after that transient mount has committed.
+  useEffect(() => {
+    if (pdfState !== 'generating' || !fullResult || !printRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+        const canvas = await html2canvas(printRef.current!, { scale: 2, backgroundColor: '#FAF7F0' });
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/png');
 
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
+        let heightLeft = imgHeight;
+        let position = 0;
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        pdf.save(`${birthProfile.name || 'kundli'}-janam-kundli.pdf`);
+      } finally {
+        if (!cancelled) setPdfState('idle');
       }
-      pdf.save(`${birthProfile.name || 'kundli'}-janam-kundli.pdf`);
-    } finally {
-      setPdfState('idle');
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfState, fullResult]);
 
   return (
     <section className={styles.section} id="kundli">
@@ -233,7 +243,7 @@ export default function KundliSection() {
               {/* Section Header */}
               <div className={styles.header}>
                 <span className="section-eyebrow">Janam Kundli</span>
-                <h2 className={styles.sectionTitle}>Apni Janam Kundli Banayein</h2>
+                <h1 className={styles.sectionTitle}>Apni Janam Kundli Banayein</h1>
                 <div className={styles.divider}>✦ ❖ ✦</div>
                 <p className={styles.subtitle}>
                   Your birth chart is the blueprint of your soul's journey. Enter your exact birth coordinates
@@ -246,7 +256,7 @@ export default function KundliSection() {
                   <h3 className={styles.overviewTitle}>My Kundlis</h3>
                   <div className={styles.timelineList}>
                     {history.slice(0, 5).map(entry => (
-                      <button key={entry.id} type="button" className={styles.timelineItem} style={{ width: '100%', cursor: 'pointer', textAlign: 'left', font: 'inherit' }} onClick={() => handleHistorySelect(entry)}>
+                      <button key={entry.id} type="button" className={`${styles.timelineItem} ${styles.timelineItemButton}`} onClick={() => handleHistorySelect(entry)}>
                         <span className={styles.timelineLord}>{entry.name}</span>
                         <span className={styles.timelineDates}>{entry.date} · {entry.placeLabel || `${entry.latitude.toFixed(2)}, ${entry.longitude.toFixed(2)}`}</span>
                       </button>
@@ -273,8 +283,8 @@ export default function KundliSection() {
               {/* Chart Header */}
               <div className={styles.chartHeader}>
                 <div>
-                  <span className="section-eyebrow">Your Birth Chart</span>
-                  <h2 className="section-title-cosmos">{birthProfile.name}&apos;s Kundli</h2>
+                  <span className="section-eyebrow">Birth Chart</span>
+                  <h1 className="section-title-cosmos">{birthProfile.name}&apos;s Kundli</h1>
                   <p className={styles.chartMeta}>
                     {birthProfile.dob} · {birthProfile.tob} · {birthProfile.place}
                   </p>
@@ -298,7 +308,7 @@ export default function KundliSection() {
                 </div>
               </div>
 
-              {fullResult && (
+              {pdfState === 'generating' && fullResult && (
                 <div style={{ position: 'fixed', top: 0, left: -10000, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
                     <KundliPrintLayout name={birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} />
@@ -343,10 +353,10 @@ export default function KundliSection() {
 
                   <div className={styles.overview}>
                     <h3 className={styles.overviewTitle}>What This Chart Means</h3>
-                    <p className={styles.overviewText}>{fullResult.analysis.lagna}</p>
-                    <p className={styles.overviewText}>{fullResult.analysis.moon}</p>
+                    <p className={styles.overviewText}><strong>Ascendant.</strong> {fullResult.analysis.lagna}</p>
+                    <p className={styles.overviewText}><strong>Moon.</strong> {fullResult.analysis.moon}</p>
                     {fullResult.analysis.planets.filter(p => p.id !== 'moon').map(p => (
-                      <p key={p.id} className={styles.overviewText}>{p.text}</p>
+                      <p key={p.id} className={styles.overviewText}><strong>{PLANET_META[p.id]?.name || cap(p.id)}.</strong> {p.text}</p>
                     ))}
                     <p className={styles.chartNote}>
                       To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart above — including on any other Kundli tool given the same birth date, time, and place.

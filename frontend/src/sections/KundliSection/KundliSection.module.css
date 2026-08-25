@@ -150,7 +150,10 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  /* flex-start (not space-between) keeps the action buttons grouped right
+     after the title instead of pushed to the far edge of a wide container,
+     which read as a disconnected header on large screens. */
+  justify-content: flex-start;
   margin-bottom: var(--space-10);
   gap: var(--space-6);
 }
@@ -320,7 +323,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid rgba(200, 169, 107, 0.06);
 }
 
@@ -409,6 +412,11 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.75;
+  /* Caps the reading measure so multi-paragraph blocks (e.g. "What This
+     Chart Means") don't stretch to the full ~1000px+ container width on
+     large screens — the eye loses the line otherwise. Harmless for the
+     many single-sentence uses of this class elsewhere. */
+  max-width: 700px;
   margin-bottom: var(--space-3);
 }
 
@@ -485,6 +493,21 @@
   border-radius: var(--radius-md);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
+}
+
+/* The "My Kundlis" history picker reuses .timelineItem's look as a clickable
+   row — this just resets it to act as a real <button> instead of the
+   previous one-off inline style override. */
+.timelineItemButton {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.timelineItemButton:hover {
+  border-color: var(--border-strong);
 }
 
 .timelineItemActive {
@@ -795,12 +818,14 @@
   margin-top: var(--space-3);
 }
 
-/* Save birth details */
+/* Save birth details (and reused for the Predictions consult-CTA note) —
+   flex-start keeps the message and its button grouped together instead of
+   split to the two far edges of a wide container. */
 .saveBar {
   margin-top: var(--space-8);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-4);
   flex-wrap: wrap;
   padding: var(--space-5);
