@@ -20,6 +20,17 @@ export interface ChartPlanet {
   retrograde?: boolean;
 }
 
+// Short, word-boundary-safe preview of a longer prediction paragraph. Used
+// to intentionally withhold the full written reading from the free
+// on-screen/PDF view — a "consult an astrologer" CTA is the path to the
+// complete text, rather than dumping every paragraph up front.
+export function teaser(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${cut.slice(0, lastSpace > maxLen * 0.4 ? lastSpace : maxLen)}…`;
+}
+
 export function formatDegree(degreeInSign: number): string {
   const deg = Math.floor(degreeInSign);
   const min = Math.round((degreeInSign - deg) * 60);

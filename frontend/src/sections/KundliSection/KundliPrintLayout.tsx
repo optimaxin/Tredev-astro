@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NorthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets } from './KundliCharts';
+import { NorthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets } from './KundliCharts';
 import { VARGA_LABELS } from '../../services/calculatorService';
 import type { KundliFullResult } from '../../services/calculatorService';
 import chartStyles from './KundliSection.module.css';
@@ -132,8 +132,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ['Career', result.ascendantPredictions.career],
             ['Relationships', result.ascendantPredictions.relationship],
           ] as const).map(([label, text]) => (
-            <p key={label} style={{ fontSize: 12, lineHeight: 1.7, margin: '0 0 8px' }}><b>{label}:</b> {text}</p>
+            <p key={label} style={{ fontSize: 12, lineHeight: 1.7, margin: '0 0 8px' }}><b>{label}:</b> {teaser(text, 130)}</p>
           ))}
+          <p style={{ fontSize: 11, lineHeight: 1.6, margin: '10px 0 0', padding: '8px 10px', background: TINT, borderRadius: 6, color: MUTED }}>
+            This is a summary based on your chart, not the complete reading. For your full, personalized predictions, consult an expert astrologer on TredevAstro.
+          </p>
         </Section>
 
         <Section title="Vimshottari Mahadasha (Full Timeline)">

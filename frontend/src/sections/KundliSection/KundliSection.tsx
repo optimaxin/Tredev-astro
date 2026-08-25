@@ -12,7 +12,7 @@ import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
-import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
+import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
 import styles from './KundliSection.module.css';
@@ -26,16 +26,20 @@ const CHART_LABELS: Record<string, string> = {
   D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
 };
 
+// Consolidated from an earlier 9-tab layout (Overview/Charts/Dasha/
+// Strength/KP/Ashtakvarga/Predictions/Remedies/Doshas) — 9 top-level tabs
+// read as overwhelming/confusing, and 3 of them (Strength/KP/Ashtakvarga)
+// are dense classical-scoring detail most casual users never need. Timeline
+// absorbs Dasha+Doshas (both are "what's happening/will happen in life");
+// Advanced absorbs the 3 technical tabs behind one clearly-labeled, opt-in
+// destination instead of competing for attention in the main tab bar.
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'charts', label: 'Charts' },
-  { key: 'dasha', label: 'Dasha' },
-  { key: 'strength', label: 'Strength' },
-  { key: 'kp', label: 'KP' },
-  { key: 'ashtakavarga', label: 'Ashtakvarga' },
+  { key: 'timeline', label: 'Timeline & Doshas' },
   { key: 'predictions', label: 'Predictions' },
   { key: 'remedies', label: 'Remedies' },
-  { key: 'doshas', label: 'Doshas' },
+  { key: 'advanced', label: 'Advanced' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
@@ -392,11 +396,11 @@ export default function KundliSection() {
                 );
               })()}
 
-              {activeTab === 'dasha' && (
+              {activeTab === 'timeline' && (
                 <>
                   <div className={styles.timelinePanel}>
                     <h3 className={styles.overviewTitle}>Your Vimshottari Mahadasha Timeline</h3>
-                    <p className={styles.overviewText}>The nine planetary periods of your life, starting from your Moon's nakshatra at birth.</p>
+                    <p className={styles.overviewText}>The nine planetary periods of your life, starting from your Moon's nakshatra at birth. Each period's summary below is a preview — see Predictions for the full note on your current period, or consult an astrologer for the complete picture.</p>
                     <div className={styles.timelineList}>
                       {fullResult.mahadashaTimeline.map((period, i) => (
                         <div key={i}>
@@ -405,7 +409,7 @@ export default function KundliSection() {
                             <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                           </div>
                           {fullResult.dashaPredictions.find(d => d.lord === period.lord) && (
-                            <p className={styles.dashaPredictionText}>{fullResult.dashaPredictions.find(d => d.lord === period.lord)!.text}</p>
+                            <p className={styles.dashaPredictionText}>{teaser(fullResult.dashaPredictions.find(d => d.lord === period.lord)!.text, 100)}</p>
                           )}
                           {period.active && (
                             <div className={styles.antardashaList}>
@@ -434,11 +438,99 @@ export default function KundliSection() {
                       ))}
                     </div>
                   </div>
+
+                  <div className={styles.overview}>
+                    <h3 className={styles.overviewTitle}>Doshas</h3>
+                    <div className={styles.doshaYogaGrid}>
+                      <div className={styles.doshaCard}>
+                        <div className={styles.doshaCardHead}>
+                          <span className={styles.doshaCardTitle}>Mangal Dosha</span>
+                          <span className={`${styles.statusBadge} ${fullResult.doshas.mangal.isManglik ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                            {fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'}
+                          </span>
+                        </div>
+                        <p className={styles.doshaCardText}>Mars sits in your {ordinal(fullResult.doshas.mangal.marsHouse)} house from the Ascendant.</p>
+                      </div>
+                      <div className={styles.doshaCard}>
+                        <div className={styles.doshaCardHead}>
+                          <span className={styles.doshaCardTitle}>Kaal Sarp Dosha</span>
+                          <span className={`${styles.statusBadge} ${fullResult.doshas.kaalSarp.isKaalSarp ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                            {fullResult.doshas.kaalSarp.isKaalSarp ? 'Present' : 'Clear'}
+                          </span>
+                        </div>
+                        <p className={styles.doshaCardText}>Rahu in {fullResult.doshas.kaalSarp.rahuRashi}, Ketu in {fullResult.doshas.kaalSarp.ketuRashi}.</p>
+                      </div>
+                      <div className={styles.doshaCard}>
+                        <div className={styles.doshaCardHead}>
+                          <span className={styles.doshaCardTitle}>Sade Sati</span>
+                          <span className={`${styles.statusBadge} ${fullResult.doshas.sadeSati.active ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
+                            {fullResult.doshas.sadeSati.active ? `Active · ${fullResult.doshas.sadeSati.phase}` : 'Not active'}
+                          </span>
+                        </div>
+                        <p className={styles.doshaCardText}>Saturn is currently transiting {fullResult.doshas.sadeSati.saturnTransitRashi}; your Moon sign is {fullResult.doshas.sadeSati.moonRashi}.</p>
+                      </div>
+                      <div className={styles.doshaCard}>
+                        <div className={styles.doshaCardHead}>
+                          <span className={styles.doshaCardTitle}>Rahu-Ketu Transit</span>
+                        </div>
+                        <p className={styles.doshaCardText}>Rahu transiting {fullResult.doshas.rahuKetuTransit.rahuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon)} from Moon), Ketu transiting {fullResult.doshas.rahuKetuTransit.ketuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon)} from Moon).</p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
 
-              {activeTab === 'strength' && (
+              {activeTab === 'predictions' && (
                 <>
+                  <div className={styles.overview}>
+                    <h3 className={styles.overviewTitle}>Ascendant Predictions</h3>
+                    <p className={styles.overviewText}>{fullResult.ascendantPredictions.description}</p>
+                    <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>Your Ascendant is {fullResult.ascendantPredictions.ascendant} — a quick preview of each area is below.</p>
+                    <div className={styles.predictionGrid}>
+                      {([
+                        ['Personality', fullResult.ascendantPredictions.personality],
+                        ['Physical', fullResult.ascendantPredictions.physical],
+                        ['Health', fullResult.ascendantPredictions.health],
+                        ['Career', fullResult.ascendantPredictions.career],
+                        ['Relationship', fullResult.ascendantPredictions.relationship],
+                      ] as const).map(([label, text]) => (
+                        <div key={label} className={styles.predictionCard}>
+                          <div className={styles.predictionCardTitle}>{label}</div>
+                          <p className={styles.doshaCardText}>{teaser(text, 110)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className={styles.saveBar} style={{ marginTop: 'var(--space-6)' }}>
+                      <span className={styles.saveText}>This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevAstro.</span>
+                      <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Consult an Astrologer</button>
+                    </div>
+                  </div>
+
+                  <div className={styles.overview}>
+                    <h3 className={styles.overviewTitle}>Yoga Combinations</h3>
+                    <div className={styles.doshaYogaGrid}>
+                      {fullResult.yogas.map(y => (
+                        <div key={y.name} className={styles.doshaCard}>
+                          <div className={styles.doshaCardHead}>
+                            <span className={styles.doshaCardTitle}>{y.name}</span>
+                            <span className={`${styles.statusBadge} ${y.present ? styles.statusBadgeClear : styles.statusBadgeActive}`}>
+                              {y.present ? 'Present' : 'Not formed'}
+                            </span>
+                          </div>
+                          <p className={styles.doshaCardText}>{y.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'advanced' && (
+                <>
+                  <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-2)' }}>
+                    Technical, classical scoring behind your chart — useful if you want to go deeper, not required to understand your reading.
+                  </p>
+
                   <div className={styles.overview}>
                     <h3 className={styles.overviewTitle}>Shadbala (Planetary Strength)</h3>
                     <p className={styles.overviewText}>Six-fold classical strength score per planet, in Rupas — a planet at or above its classical minimum is considered strong enough to deliver its significations well.</p>
@@ -469,101 +561,56 @@ export default function KundliSection() {
                       ))}
                     </div>
                   </div>
-                </>
-              )}
 
-              {activeTab === 'kp' && (
-                <div className={styles.overview}>
-                  <h3 className={styles.overviewTitle}>KP Sub-Lord Table</h3>
-                  <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.</p>
-                  <div className={styles.dataTable}>
-                    <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
-                      <span>Point</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
-                    </div>
-                    {fullResult.kp.table.map(row => (
-                      <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
-                        <span className={styles.dataRowPlanet}>{row.id === 'asc' ? 'Ascendant' : (PLANET_META[row.id]?.name || row.id)}</span>
-                        <span>{row.rashi} ({cap(row.signLord)})</span>
-                        <span>{cap(row.starLord)}</span>
-                        <span>{cap(row.subLord)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <h3 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h3>
-                  <p className={styles.overviewText}>Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.</p>
-                  <div className={styles.dataTable}>
-                    <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
-                      <span>Cusp</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
-                    </div>
-                    {fullResult.kp.cusps.map(row => (
-                      <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
-                        <span className={styles.dataRowPlanet}>House {row.id.replace('cusp', '')}</span>
-                        <span>{row.rashi} ({cap(row.signLord)})</span>
-                        <span>{cap(row.starLord)}</span>
-                        <span>{cap(row.subLord)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={styles.infoGrid}>
-                    <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaStarLord)}</div></div>
-                    <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaSubLord)}</div></div>
-                    <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonStarLord)}</div></div>
-                    <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonSubLord)}</div></div>
-                    <div className={styles.infoCard}><div className={styles.infoLabel}>Day Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.dayLord)}</div></div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'ashtakavarga' && (
-                <div className={styles.overview}>
-                  <h3 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h3>
-                  <p className={styles.overviewText}>Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.</p>
-                  <div className={styles.infoGrid}>
-                    {fullResult.ashtakavarga.sarva.map(s => (
-                      <div key={s.rashi} className={styles.infoCard}>
-                        <div className={styles.infoLabel}>{s.rashi}</div>
-                        <div className={styles.infoValue}>{s.bindus} bindus</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'predictions' && (
-                <>
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Ascendant Predictions</h3>
-                    <p className={styles.overviewText}>{fullResult.ascendantPredictions.description}</p>
-                    <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>Your Ascendant is {fullResult.ascendantPredictions.ascendant}</p>
-                    <div className={styles.predictionGrid}>
-                      {([
-                        ['Personality', fullResult.ascendantPredictions.personality],
-                        ['Physical', fullResult.ascendantPredictions.physical],
-                        ['Health', fullResult.ascendantPredictions.health],
-                        ['Career', fullResult.ascendantPredictions.career],
-                        ['Relationship', fullResult.ascendantPredictions.relationship],
-                      ] as const).map(([label, text]) => (
-                        <div key={label} className={styles.predictionCard}>
-                          <div className={styles.predictionCardTitle}>{label}</div>
-                          <p className={styles.doshaCardText}>{text}</p>
+                    <h3 className={styles.overviewTitle}>KP Sub-Lord Table</h3>
+                    <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.</p>
+                    <div className={styles.dataTable}>
+                      <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
+                        <span>Point</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
+                      </div>
+                      {fullResult.kp.table.map(row => (
+                        <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
+                          <span className={styles.dataRowPlanet}>{row.id === 'asc' ? 'Ascendant' : (PLANET_META[row.id]?.name || row.id)}</span>
+                          <span>{row.rashi} ({cap(row.signLord)})</span>
+                          <span>{cap(row.starLord)}</span>
+                          <span>{cap(row.subLord)}</span>
                         </div>
                       ))}
                     </div>
+
+                    <h3 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h3>
+                    <p className={styles.overviewText}>Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.</p>
+                    <div className={styles.dataTable}>
+                      <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
+                        <span>Cusp</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
+                      </div>
+                      {fullResult.kp.cusps.map(row => (
+                        <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
+                          <span className={styles.dataRowPlanet}>House {row.id.replace('cusp', '')}</span>
+                          <span>{row.rashi} ({cap(row.signLord)})</span>
+                          <span>{cap(row.starLord)}</span>
+                          <span>{cap(row.subLord)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaStarLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaSubLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonStarLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonSubLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>Day Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.dayLord)}</div></div>
+                    </div>
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Yoga Combinations</h3>
-                    <div className={styles.doshaYogaGrid}>
-                      {fullResult.yogas.map(y => (
-                        <div key={y.name} className={styles.doshaCard}>
-                          <div className={styles.doshaCardHead}>
-                            <span className={styles.doshaCardTitle}>{y.name}</span>
-                            <span className={`${styles.statusBadge} ${y.present ? styles.statusBadgeClear : styles.statusBadgeActive}`}>
-                              {y.present ? 'Present' : 'Not formed'}
-                            </span>
-                          </div>
-                          <p className={styles.doshaCardText}>{y.description}</p>
+                    <h3 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h3>
+                    <p className={styles.overviewText}>Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.</p>
+                    <div className={styles.infoGrid}>
+                      {fullResult.ashtakavarga.sarva.map(s => (
+                        <div key={s.rashi} className={styles.infoCard}>
+                          <div className={styles.infoLabel}>{s.rashi}</div>
+                          <div className={styles.infoValue}>{s.bindus} bindus</div>
                         </div>
                       ))}
                     </div>
@@ -624,47 +671,6 @@ export default function KundliSection() {
                   <button className="btn btn-gold" style={{ marginTop: 'var(--space-4)' }} onClick={() => setPage('astrologers')}>
                     Consult an Astrologer for Remedies
                   </button>
-                </div>
-              )}
-
-              {activeTab === 'doshas' && (
-                <div className={styles.overview}>
-                  <h3 className={styles.overviewTitle}>Doshas</h3>
-                  <div className={styles.doshaYogaGrid}>
-                    <div className={styles.doshaCard}>
-                      <div className={styles.doshaCardHead}>
-                        <span className={styles.doshaCardTitle}>Mangal Dosha</span>
-                        <span className={`${styles.statusBadge} ${fullResult.doshas.mangal.isManglik ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                          {fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'}
-                        </span>
-                      </div>
-                      <p className={styles.doshaCardText}>Mars sits in your {ordinal(fullResult.doshas.mangal.marsHouse)} house from the Ascendant.</p>
-                    </div>
-                    <div className={styles.doshaCard}>
-                      <div className={styles.doshaCardHead}>
-                        <span className={styles.doshaCardTitle}>Kaal Sarp Dosha</span>
-                        <span className={`${styles.statusBadge} ${fullResult.doshas.kaalSarp.isKaalSarp ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                          {fullResult.doshas.kaalSarp.isKaalSarp ? 'Present' : 'Clear'}
-                        </span>
-                      </div>
-                      <p className={styles.doshaCardText}>Rahu in {fullResult.doshas.kaalSarp.rahuRashi}, Ketu in {fullResult.doshas.kaalSarp.ketuRashi}.</p>
-                    </div>
-                    <div className={styles.doshaCard}>
-                      <div className={styles.doshaCardHead}>
-                        <span className={styles.doshaCardTitle}>Sade Sati</span>
-                        <span className={`${styles.statusBadge} ${fullResult.doshas.sadeSati.active ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                          {fullResult.doshas.sadeSati.active ? `Active · ${fullResult.doshas.sadeSati.phase}` : 'Not active'}
-                        </span>
-                      </div>
-                      <p className={styles.doshaCardText}>Saturn is currently transiting {fullResult.doshas.sadeSati.saturnTransitRashi}; your Moon sign is {fullResult.doshas.sadeSati.moonRashi}.</p>
-                    </div>
-                    <div className={styles.doshaCard}>
-                      <div className={styles.doshaCardHead}>
-                        <span className={styles.doshaCardTitle}>Rahu-Ketu Transit</span>
-                      </div>
-                      <p className={styles.doshaCardText}>Rahu transiting {fullResult.doshas.rahuKetuTransit.rahuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon)} from Moon), Ketu transiting {fullResult.doshas.rahuKetuTransit.ketuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon)} from Moon).</p>
-                    </div>
-                  </div>
                 </div>
               )}
 
