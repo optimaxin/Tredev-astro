@@ -236,11 +236,8 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               viewport={{ once: true }}
               transition={{ delay: ci * 0.06, duration: 0.5 }}
             >
-              <h3 className={styles.categoryHeader}>
-                <span
-                  className={styles.categoryHeaderIcon}
-                  style={{ color: category.color, background: `color-mix(in srgb, ${category.color} 16%, transparent)` }}
-                >
+              <h3 className={styles.categoryHeader} style={{ '--accent': category.color } as React.CSSProperties}>
+                <span className={styles.categoryHeaderIcon}>
                   <CategoryIcon size={20} />
                 </span>
                 <span className={styles.categoryHeaderLabel}>{category.label}</span>
@@ -250,12 +247,10 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                   <div
                     key={tool}
                     className={styles.toolCard}
+                    style={{ '--accent': category.color } as React.CSSProperties}
                     onClick={() => handleToolClick(tool)}
                   >
-                    <span
-                      className={styles.toolIconBadge}
-                      style={{ color: category.color, background: `color-mix(in srgb, ${category.color} 14%, transparent)` }}
-                    >
+                    <span className={styles.toolIconBadge}>
                       <CategoryIcon size={18} />
                     </span>
                     <span className={styles.toolName}>{tool}</span>

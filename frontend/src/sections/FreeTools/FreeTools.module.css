@@ -56,8 +56,14 @@
 
 .toolsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-4);
+  /* A fixed column size (not minmax(...,1fr)) instead of auto-fill+1fr —
+     that combination stretched leftover space in a row across whichever
+     cards happened to be in it, so a category with only 2-3 tools (leaving
+     empty tracks in the last row) rendered visibly wider cards than a
+     category with a full row of 5. Fixed width keeps every card identical
+     regardless of how many tools its category has. */
+  grid-template-columns: repeat(auto-fill, 240px);
+  gap: var(--space-5);
   min-height: 120px;
 }
 
@@ -66,8 +72,9 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--accent) 8%);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 60%, var(--accent) 40%);
+  border-top: 3px solid var(--accent);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   cursor: pointer;
@@ -80,7 +87,8 @@
 }
 
 .toolCard:hover {
-  border-color: var(--gold-primary);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--surface-elevated) 82%, var(--accent) 18%);
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-3px);
 }
@@ -93,11 +101,15 @@
   height: 38px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
   transition: transform var(--transition-base);
 }
 
 .toolCard:hover .toolIconBadge {
-  transform: scale(1.08);
+  background: var(--accent);
+  color: var(--bg-primary);
+  transform: scale(1.1);
 }
 
 .toolName {
@@ -109,7 +121,7 @@
   opacity: 0;
   transform: translateX(-4px);
   transition: all var(--transition-base);
-  color: var(--gold-primary);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -385,7 +397,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
   padding-bottom: var(--space-2);
   margin: 0;
   text-align: left;
@@ -399,6 +411,8 @@
   height: 34px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
 }
 
 .categoryHeaderLabel {
