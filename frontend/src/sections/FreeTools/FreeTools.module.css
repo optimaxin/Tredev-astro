@@ -72,9 +72,9 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--accent) 8%);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 60%, var(--accent) 40%);
-  border-top: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-elevated) 85%, var(--accent) 15%);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 45%, var(--accent) 55%);
+  border-top: 4px solid var(--accent);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   cursor: pointer;
@@ -88,7 +88,7 @@
 
 .toolCard:hover {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--surface-elevated) 82%, var(--accent) 18%);
+  background: color-mix(in srgb, var(--surface-elevated) 68%, var(--accent) 32%);
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-3px);
 }
@@ -101,14 +101,14 @@
   height: 38px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  color: #fff;
   transition: transform var(--transition-base);
 }
 
 .toolCard:hover .toolIconBadge {
   background: var(--accent);
-  color: var(--bg-primary);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 50%, transparent);
   transform: scale(1.1);
 }
 
@@ -397,7 +397,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   padding-bottom: var(--space-2);
   margin: 0;
   text-align: left;
@@ -411,8 +411,8 @@
   height: 34px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .categoryHeaderLabel {

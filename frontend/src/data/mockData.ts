@@ -111,41 +111,48 @@ export const ASTROLOGERS = [
 // already computes and shows the Ascendant); Numerology Match lives under
 // Numerology now, not Compatibility, since it's a numerology technique
 // applied to two people rather than a chart-compatibility technique.
+// Distinct, saturated jewel-tone colors — NOT the site's --color-cyan/gold/
+// terracotta tokens, which all alias down to shades of the same muted brown
+// (--sacred-accent #A85B2D, --subtle-maroon #4A2020, --gold-primary
+// #B58A3B) and, on top of that, were reused across two categories each
+// (cyan for both daily+compatibility, gold for both birth+numerology) — so
+// every category rendered as visually the same dull tan regardless of
+// which token it referenced. Each category now gets its own real hue.
 export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'daily',
     label: 'Daily Astrology',
     icon: '☀',
-    color: 'var(--color-cyan)',
+    color: '#E0873C', // sun amber
     tools: ['Daily Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
   },
   {
     id: 'birth',
     label: 'Birth',
     icon: '☽',
-    color: 'var(--color-gold)',
+    color: '#5C6BC0', // night-sky indigo
     tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder'],
   },
   {
     id: 'compatibility',
     label: 'Compatibility',
     icon: '♾',
-    color: 'var(--color-cyan)',
+    color: '#D1567F', // rose
     tools: ['Kundli Matching', 'Love Compatibility'],
   },
   {
     id: 'doshas',
     label: 'Doshas',
     icon: '◎',
-    color: 'var(--color-terracotta)',
+    color: '#C0392B', // crimson
     tools: ['Mangal Dosha', 'Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
   },
   {
     id: 'numerology',
     label: 'Numerology',
     icon: '∞',
-    color: 'var(--color-gold)',
-    tools: ['Numerology Report', 'Life Path Number', 'Name Numerology', 'Numerology Match'],
+    color: '#7C5CBF', // amethyst
+    tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match'],
   },
 ];
 
