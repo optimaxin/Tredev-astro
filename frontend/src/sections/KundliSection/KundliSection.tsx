@@ -12,6 +12,10 @@ import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
+import {
+  RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
+  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, ArrowIcon,
+} from '../../components/Icons/Icons';
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
@@ -45,7 +49,7 @@ const CHART_QUICK_LABELS: Record<string, string> = {
 // Advanced absorbs the 3 technical tabs behind one clearly-labeled, opt-in
 // destination instead of competing for attention in the main tab bar.
 const TABS = [
-  { key: 'overview', label: 'Overview' },
+  { key: 'overview', label: 'Kundli' },
   { key: 'charts', label: 'Charts' },
   { key: 'timeline', label: 'Timeline & Doshas' },
   { key: 'predictions', label: 'Predictions' },
@@ -53,6 +57,15 @@ const TABS = [
   { key: 'advanced', label: 'Advanced' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
+
+const TAB_ICONS: Record<TabKey, React.ComponentType<{ size?: number }>> = {
+  overview: RashiChakraIcon,
+  charts: ConstellationIcon,
+  timeline: ClockIcon,
+  predictions: AcharyaIcon,
+  remedies: WealthIcon,
+  advanced: VastuIcon,
+};
 
 // Fixed classical sign-lord assignments — same universal fact used
 // throughout Vedic astrology, safe to keep as a static lookup here (not
@@ -329,17 +342,21 @@ export default function KundliSection() {
 
               {/* Tab bar — swaps content below instead of one long continuous scroll */}
               <div className={styles.tabBar} role="tablist">
-                {TABS.map(t => (
-                  <button
-                    key={t.key}
-                    role="tab"
-                    aria-selected={activeTab === t.key}
-                    className={`${styles.tabButton} ${activeTab === t.key ? styles.tabButtonActive : ''}`}
-                    onClick={() => setActiveTab(t.key)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+                {TABS.map(t => {
+                  const TabIcon = TAB_ICONS[t.key];
+                  return (
+                    <button
+                      key={t.key}
+                      role="tab"
+                      aria-selected={activeTab === t.key}
+                      className={`${styles.tabButton} ${activeTab === t.key ? styles.tabButtonActive : ''}`}
+                      onClick={() => setActiveTab(t.key)}
+                    >
+                      <TabIcon size={16} />
+                      {t.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {activeTab === 'overview' && (
@@ -349,16 +366,20 @@ export default function KundliSection() {
                   <div className={styles.overview}>
                     <h3 className={styles.overviewTitle}>Panchang at Birth</h3>
                     <div className={styles.infoGrid}>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Tithi</div><div className={styles.infoValue}>{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Vara (Weekday)</div><div className={styles.infoValue}>{fullResult.panchang.vara}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Yoga</div><div className={styles.infoValue}>{fullResult.panchang.yoga}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Karana</div><div className={styles.infoValue}>{fullResult.panchang.karana}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra</div><div className={styles.infoValue}>{fullResult.panchang.nakshatra.name} (Pada {fullResult.panchang.nakshatra.pada})</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Nakshatra Lord</div><div className={styles.infoValue}>{cap(fullResult.panchang.nakshatra.lord)}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Rashi</div><div className={styles.infoValue}>{fullResult.panchang.moonRashi}</div></div>
-                      {kundliResult && <div className={styles.infoCard}><div className={styles.infoLabel}>Ascendant Lord</div><div className={styles.infoValue}>{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</div></div>}
-                      {fullResult.panchang.sunrise && <div className={styles.infoCard}><div className={styles.infoLabel}>Sunrise</div><div className={styles.infoValue}>{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</div></div>}
-                      {fullResult.panchang.sunset && <div className={styles.infoCard}><div className={styles.infoLabel}>Sunset</div><div className={styles.infoValue}>{formatLocalTime(fullResult.panchang.sunset, submittedDetails?.timezoneOffsetMinutes ?? 0)}</div></div>}
+                      <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{fullResult.panchang.nakshatra.name} (Pada {fullResult.panchang.nakshatra.pada})</InfoCard>
+                      <InfoCard icon={LotusIcon} label="Yoga">{fullResult.panchang.yoga}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Karana">{fullResult.panchang.karana}</InfoCard>
+                      {fullResult.panchang.sunrise && <InfoCard icon={SunIcon} label="Sunrise">{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      {fullResult.panchang.sunset && <InfoCard icon={SunsetIcon} label="Sunset">{formatLocalTime(fullResult.panchang.sunset, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      {fullResult.panchang.rahuKaal && <InfoCard icon={ClockIcon} label="Rahu Kalam">{formatLocalTime(fullResult.panchang.rahuKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.rahuKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      {fullResult.panchang.yamagandaKaal && <InfoCard icon={ClockIcon} label="Yamaganda">{formatLocalTime(fullResult.panchang.yamagandaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.yamagandaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      {fullResult.panchang.gulikaKaal && <InfoCard icon={ClockIcon} label="Gulika Kalam">{formatLocalTime(fullResult.panchang.gulikaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.gulikaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      {fullResult.panchang.abhijitMuhurat && <InfoCard icon={CheckCircleIcon} label="Abhijit Muhurat">{formatLocalTime(fullResult.panchang.abhijitMuhurat.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.abhijitMuhurat.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
+                      <InfoCard icon={ConstellationIcon} label="Vara (Weekday)">{fullResult.panchang.vara}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{cap(fullResult.panchang.nakshatra.lord)}</InfoCard>
+                      <InfoCard icon={MoonIcon} label="Moon Rashi">{fullResult.panchang.moonRashi}</InfoCard>
+                      {kundliResult && <InfoCard icon={RashiChakraIcon} label="Ascendant Lord">{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</InfoCard>}
                     </div>
                   </div>
 
@@ -732,6 +753,23 @@ export default function KundliSection() {
   );
 }
 
+// Icon-badge variant of the plain .infoCard grid cell — used where a small
+// visual cue per field (calendar/star/sun icon etc.) helps scanning, like
+// the Panchang grid. Plain .infoCard usages elsewhere (Avakhada,
+// Ashtakavarga, Bhavbala) are untouched — this doesn't replace that class,
+// just gives it an optional icon header.
+function InfoCard({ icon: Icon, label, children }: { icon: React.ComponentType<{ size?: number }>; label: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.infoCard}>
+      <div className={styles.infoCardIconRow}>
+        <span className={styles.infoCardIconBadge}><Icon size={15} /></span>
+        <span className={styles.infoLabel} style={{ marginBottom: 0 }}>{label}</span>
+      </div>
+      <div className={styles.infoValue}>{children}</div>
+    </div>
+  );
+}
+
 // ---- Chart + planet-list panel, reused for every chart in the Charts tab
 // (D1, Chandra, D9, and every D2-D60 varga chart) — each instance owns its
 // own tooltip state and North/South style toggle, so multiple charts can
@@ -795,10 +833,11 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi }: { title: str
         {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
         {planets.map(p => (
           <div key={p.id} className={styles.planetRow}>
-            <span className={styles.planetSymbol}>{p.symbol}</span>
+            <span className={styles.planetSymbolBadge}>{p.symbol}</span>
             <span className={styles.planetName}>{p.name}</span>
             <span className={styles.planetSign}>{p.sign}{p.decimalDegree ? ` ${p.decimalDegree}` : ''}{p.retrograde ? ' ℞' : ''}</span>
             <span className={styles.planetHouse}>{p.house}H</span>
+            <ArrowIcon size={13} className={styles.planetRowArrow} />
           </div>
         ))}
         <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet.</div>

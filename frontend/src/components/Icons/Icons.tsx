@@ -209,6 +209,54 @@ export function NumerologyGridIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
+// Panchang "Yoga" field — a lotus is the classical Vedic symbol for this
+// technique's auspiciousness-of-the-day reading.
+export function LotusIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 21c-5-1-7-4-7-8 3 1 5 3 7 6 2-3 4-5 7-6 0 4-2 7-7 8Z" />
+      <path d="M12 13V3" />
+      <path d="M8 8c1 2 2 3.5 4 5" />
+      <path d="M16 8c-1 2-2 3.5-4 5" />
+    </svg>
+  );
+}
+
+export function SunsetIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 3v6" />
+      <path d="m6.5 7.5 1.8 1.8" />
+      <path d="m17.5 7.5-1.8 1.8" />
+      <path d="M3 15h18" />
+      <path d="M6 15a6 6 0 0 1 12 0" />
+      <path d="M3 19h18" />
+    </svg>
+  );
+}
+
+// Shared by Rahu Kaal / Yamaganda / Gulika Kaal — a clock reads as "a
+// specific window of time" for any of the three inauspicious periods.
+export function ClockIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </svg>
+  );
+}
+
+// Abhijit Muhurat — the day's one auspicious window, a checkmark reads as
+// "favorable" the same way it does everywhere else in this UI.
+export function CheckCircleIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+
 export function LockIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
