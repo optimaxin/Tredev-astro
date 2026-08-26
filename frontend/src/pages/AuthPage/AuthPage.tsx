@@ -4,8 +4,10 @@ import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
+import LocationAutocomplete from '../../components/LocationAutocomplete/LocationAutocomplete';
 import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import type { GeocodeResult } from '../../services/calculatorService';
 import { authService } from '../../services/authService';
 import styles from './AuthPage.module.css';
 
@@ -34,6 +36,10 @@ export default function AuthPage() {
     timezoneOffset: TIMEZONES[0].offset,
     gender: 'Male',
   });
+  // Set only when the user picks an actual suggestion — carries its exact
+  // coordinates directly, so submit can skip a second (less precise) geocode
+  // guess entirely. Any further edit to the text invalidates it.
+  const [selectedGeo, setSelectedGeo] = useState<GeocodeResult | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
   // 'form' -> 'otp' (phone verification, right after account creation) -> 'done'
   const [registerStep, setRegisterStep] = useState<'form' | 'otp' | 'done'>('form');
@@ -86,7 +92,7 @@ export default function AuthPage() {
     setRegisterError('');
     setRegisterLoading(true);
     try {
-      const geo = await calculatorService.geocode(form.placeOfBirth.trim());
+      const geo = selectedGeo ?? await calculatorService.geocode(form.placeOfBirth.trim());
       const result = await register(form.fullName, form.email, form.password, form.phoneNumber.trim(), {
         birthDate: form.dob,
         birthTime: form.timeOfBirth,
@@ -402,12 +408,13 @@ export default function AuthPage() {
                     <label className={styles.inkLabel}>
                       <span className={styles.devanagariTag}>जन्म स्थान</span> {t('auth_label_pob')}
                     </label>
-                    <input
-                      type="text"
+                    <LocationAutocomplete
+                      id="auth-place-of-birth"
                       className={styles.inkInput}
                       placeholder={t('auth_placeholder_pob')}
                       value={form.placeOfBirth}
-                      onChange={e => setForm({ ...form, placeOfBirth: e.target.value })}
+                      onChange={v => { setForm(f => ({ ...f, placeOfBirth: v })); setSelectedGeo(null); }}
+                      onSelect={geo => { setForm(f => ({ ...f, placeOfBirth: geo.displayName })); setSelectedGeo(geo); }}
                       required
                     />
                   </div>

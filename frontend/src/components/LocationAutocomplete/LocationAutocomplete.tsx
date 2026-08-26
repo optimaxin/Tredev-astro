@@ -11,6 +11,7 @@ interface LocationAutocompleteProps {
   onSelect: (result: GeocodeResult) => void;
   placeholder?: string;
   className?: string;
+  required?: boolean;
 }
 
 // A plain free-text place field means the exact spelling/phrasing someone
@@ -21,7 +22,7 @@ interface LocationAutocompleteProps {
 // only carry a placeId (not coordinates), so picking one fires a quick
 // resolve call first — see calculatorService.resolvePlace / services/
 // geocoding.ts on the backend for why that's a separate step.
-export default function LocationAutocomplete({ id, value, onChange, onSelect, placeholder, className }: LocationAutocompleteProps) {
+export default function LocationAutocomplete({ id, value, onChange, onSelect, placeholder, className, required }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -116,6 +117,7 @@ export default function LocationAutocomplete({ id, value, onChange, onSelect, pl
           onChange={e => handleChange(e.target.value)}
           onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
           onKeyDown={handleKeyDown}
+          required={required}
           autoComplete="off"
           role="combobox"
           aria-expanded={open}
