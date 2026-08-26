@@ -44,6 +44,10 @@ import { calculatorService, CalculatorApiError } from '../services/calculatorSer
 import type { DailyHoroscopeResult, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
+import {
+  AriesIcon, TaurusIcon, GeminiIcon, CancerIcon, LeoIcon, VirgoIcon,
+  LibraIcon, ScorpioIcon, SagittariusIcon, CapricornIcon, AquariusIcon, PiscesIcon,
+} from '../components/Icons/Icons';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
 import type { Review, UiAstrologer } from '../services/astrologerService';
 import { consultationService, ConsultationApiError } from '../services/consultationService';
@@ -322,18 +326,18 @@ function HoroscopePage() {
   const [error, setError] = useState('');
 
   const RASHIS = [
-    { name: 'Mesha', eng: 'Aries', symbol: '♈', element: 'Fire', graha: 'Mars', index: 1 },
-    { name: 'Vrishabha', eng: 'Taurus', symbol: '♉', element: 'Earth', graha: 'Venus', index: 2 },
-    { name: 'Mithuna', eng: 'Gemini', symbol: '♊', element: 'Air', graha: 'Mercury', index: 3 },
-    { name: 'Karka', eng: 'Cancer', symbol: '♋', element: 'Water', graha: 'Moon', index: 4 },
-    { name: 'Simha', eng: 'Leo', symbol: '♌', element: 'Fire', graha: 'Sun', index: 5 },
-    { name: 'Kanya', eng: 'Virgo', symbol: '♍', element: 'Earth', graha: 'Mercury', index: 6 },
-    { name: 'Tula', eng: 'Libra', symbol: '♎', element: 'Air', graha: 'Venus', index: 7 },
-    { name: 'Vrischika', eng: 'Scorpio', symbol: '♏', element: 'Water', graha: 'Mars', index: 8 },
-    { name: 'Dhanu', eng: 'Sagittarius', symbol: '♐', element: 'Fire', graha: 'Jupiter', index: 9 },
-    { name: 'Makara', eng: 'Capricorn', symbol: '♑', element: 'Earth', graha: 'Saturn', index: 10 },
-    { name: 'Kumbha', eng: 'Aquarius', symbol: '♒', element: 'Air', graha: 'Saturn', index: 11 },
-    { name: 'Meena', eng: 'Pisces', symbol: '♓', element: 'Water', graha: 'Jupiter', index: 12 },
+    { name: 'Mesha', eng: 'Aries', icon: AriesIcon, element: 'Fire', graha: 'Mars', index: 1 },
+    { name: 'Vrishabha', eng: 'Taurus', icon: TaurusIcon, element: 'Earth', graha: 'Venus', index: 2 },
+    { name: 'Mithuna', eng: 'Gemini', icon: GeminiIcon, element: 'Air', graha: 'Mercury', index: 3 },
+    { name: 'Karka', eng: 'Cancer', icon: CancerIcon, element: 'Water', graha: 'Moon', index: 4 },
+    { name: 'Simha', eng: 'Leo', icon: LeoIcon, element: 'Fire', graha: 'Sun', index: 5 },
+    { name: 'Kanya', eng: 'Virgo', icon: VirgoIcon, element: 'Earth', graha: 'Mercury', index: 6 },
+    { name: 'Tula', eng: 'Libra', icon: LibraIcon, element: 'Air', graha: 'Venus', index: 7 },
+    { name: 'Vrischika', eng: 'Scorpio', icon: ScorpioIcon, element: 'Water', graha: 'Mars', index: 8 },
+    { name: 'Dhanu', eng: 'Sagittarius', icon: SagittariusIcon, element: 'Fire', graha: 'Jupiter', index: 9 },
+    { name: 'Makara', eng: 'Capricorn', icon: CapricornIcon, element: 'Earth', graha: 'Saturn', index: 10 },
+    { name: 'Kumbha', eng: 'Aquarius', icon: AquariusIcon, element: 'Air', graha: 'Saturn', index: 11 },
+    { name: 'Meena', eng: 'Pisces', icon: PiscesIcon, element: 'Water', graha: 'Jupiter', index: 12 },
   ];
 
   const current = RASHIS[activeRashi];
@@ -386,7 +390,7 @@ function HoroscopePage() {
                     onClick={() => setActiveRashi(i)}
                     title={`${r.name} (${r.eng})`}
                   >
-                    <span className={styles.nodeSymbol}>{r.symbol}</span>
+                    <r.icon size={24} className={styles.nodeSymbol} />
                   </button>
                 );
               })}
@@ -412,7 +416,9 @@ function HoroscopePage() {
               </div>
               <div className={styles.specBox}>
                 <span className={styles.specLabel}>Traditional Key</span>
-                <span className={styles.specVal}>{current.symbol} Rashi</span>
+                <span className={styles.specVal} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <current.icon size={16} /> Rashi
+                </span>
               </div>
             </div>
 

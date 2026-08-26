@@ -275,3 +275,135 @@ export function LockIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
+// ── Zodiac glyphs ──────────────────────────────────────────────────────
+// Redrawn as clean vector line-art (the industry-standard convention for
+// zodiac symbols) instead of relying on the Unicode astrological glyphs
+// (♈♉♊...), which render inconsistently — sometimes as thin unstyled
+// glyphs, sometimes as an unrelated colored emoji — depending on the
+// viewer's OS/browser font. Same 24x24 stroke-icon recipe as every other
+// icon in this file.
+export function AriesIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 7c0-2 1.5-3 3-3s2.5 1.5 2 3c-.5 1.5-2 1.5-2.5.5" />
+      <path d="M18 7c0-2-1.5-3-3-3s-2.5 1.5-2 3c.5 1.5 2 1.5 2.5.5" />
+      <line x1="12" y1="8" x2="12" y2="21" />
+    </svg>
+  );
+}
+
+export function TaurusIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="15" r="5" />
+      <path d="M7 10c-2-2-2-5 0-7" />
+      <path d="M17 10c2-2 2-5 0-7" />
+    </svg>
+  );
+}
+
+export function GeminiIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="7" y1="4" x2="7" y2="20" />
+      <line x1="17" y1="4" x2="17" y2="20" />
+      <line x1="4" y1="4" x2="10" y2="4" />
+      <line x1="14" y1="4" x2="20" y2="4" />
+      <line x1="4" y1="20" x2="10" y2="20" />
+      <line x1="14" y1="20" x2="20" y2="20" />
+    </svg>
+  );
+}
+
+export function CancerIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="8" cy="9" r="3" />
+      <path d="M8 12c0 4 4 4 6 2" />
+      <circle cx="16" cy="15" r="3" />
+      <path d="M16 12c0-4-4-4-6-2" />
+    </svg>
+  );
+}
+
+export function LeoIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="9" cy="15" r="4" />
+      <path d="M13 15c3 0 5-2 5-5 0-2-1-4-3-4-1.5 0-2.5 1-2.5 2.5" />
+    </svg>
+  );
+}
+
+export function VirgoIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 5v10c0 2 2 3 3 3" />
+      <path d="M9 5v10c0 2 2 3 3 3" />
+      <path d="M13 5v13" />
+      <path d="M13 15c2 0 4 1 4 3s-2 3-4 2" />
+    </svg>
+  );
+}
+
+export function LibraIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 9c1-3 4-5 6-3s2 5-1 5" />
+      <line x1="12" y1="11" x2="12" y2="18" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+    </svg>
+  );
+}
+
+export function ScorpioIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 5v10c0 2 2 3 3 3" />
+      <path d="M9 5v10c0 2 2 3 3 3" />
+      <path d="M13 5v13" />
+      <path d="M13 18l4-4" />
+      <path d="M14 14h3v3" />
+    </svg>
+  );
+}
+
+export function SagittariusIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="5" y1="19" x2="19" y2="5" />
+      <path d="M12 5h7v7" />
+      <line x1="10" y1="14" x2="14" y2="18" />
+    </svg>
+  );
+}
+
+export function CapricornIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 5v8c0 3 2 5 4 5s3-2 2-4" />
+      <path d="M9 5v6" />
+      <path d="M13 11c2 0 4 1 4 3.5s-2 3.5-4 2.5" />
+    </svg>
+  );
+}
+
+export function AquariusIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 10l3-2 3 2 3-2 3 2 3-2 3 2" />
+      <path d="M3 16l3-2 3 2 3-2 3 2 3-2 3 2" />
+    </svg>
+  );
+}
+
+export function PiscesIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M9 4c-3 3-3 13 0 16" />
+      <path d="M15 4c3 3 3 13 0 16" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+

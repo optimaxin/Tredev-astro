@@ -173,9 +173,13 @@
 }
 
 .nodeSymbol {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  line-height: 1;
+  flex-shrink: 0;
+  transition: transform var(--transition-base);
+}
+
+.rashiNode:hover .nodeSymbol,
+.rashiNodeActive .nodeSymbol {
+  transform: scale(1.08);
 }
 
 .horoscopeDetailsCard {
