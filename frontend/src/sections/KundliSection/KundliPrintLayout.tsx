@@ -39,23 +39,17 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
   const presentYogas = result.yogas.filter(y => y.present);
   const varga10 = result.vargaCharts['D10'];
 
+  // A page-level watermark drawn as an absolutely-positioned HTML overlay
+  // (the previous approach) only ever worked when the whole document was
+  // captured as one image — the PDF-generation effect in KundliSection.tsx
+  // now captures each [data-pdf-block] individually, so an overlay living
+  // outside every block's own DOM subtree is never included in any capture.
+  // The per-page watermark is drawn directly onto the PDF instead (see that
+  // effect) — genuinely one per page regardless of how blocks fall across
+  // pages, rather than depending on an HTML layer lining up with page
+  // boundaries it has no way to know about.
   return (
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
-      {/* One faint brand mark repeating only DOWN the page (not a dense
-          tiled grid) — roughly one per page's worth of height, so a
-          multi-page report still gets a watermark on every page without it
-          reading as "logo, logo, logo" wallpaper. Each chart also carries
-          its own small watermark (KundliCharts.tsx's ChartWatermark) —
-          deliberately not doubled up with a second overlapping mark here. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/logo.png')", backgroundRepeat: 'repeat-y', backgroundPosition: 'center top',
-          backgroundSize: '460px 460px', opacity: 0.025, zIndex: 0, pointerEvents: 'none',
-        }}
-      />
-
       <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
         <div data-pdf-block style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${GOLD}`, paddingBottom: 16, marginBottom: 24 }}>
           <div>
@@ -154,23 +148,32 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </p>
         </Section>
 
-        <Section title="Vimshottari Mahadasha (Full Timeline)">
-          {result.mahadashaTimeline.map((period, i) => (
-            <div key={i} style={{ marginBottom: 6, breakInside: 'avoid' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 6px', background: period.active ? TINT : undefined, borderTop: `1px solid ${LINE}`, fontSize: FONT.body }}>
-                <span style={{ fontWeight: period.active ? 700 : 500 }}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
-                <span style={{ color: MUTED }}>{period.startsAt} → {period.endsAt}</span>
-              </div>
-              <div style={{ paddingLeft: 14 }}>
-                {period.antardashas.map((sub, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 6px', fontSize: FONT.body, color: MUTED, borderBottom: `1px dashed ${LINE}` }}>
-                    <span>{cap(sub.lord)} Antardasha</span><span>{sub.startsAt} → {sub.endsAt}</span>
-                  </div>
-                ))}
-              </div>
+        {/* Not wrapped in <Section> — its 9 major periods (each with up to
+            10 antardashas) made this the one section reliably taller than a
+            whole page, which forced the oversized-block fallback (splitting
+            an image via a negative-offset repeat) and risked a visible cut
+            through the middle of a period's row. Each period is its own
+            data-pdf-block instead, so none of them is ever close to a full
+            page tall and the normal (never-split) placement path handles
+            all of them. */}
+        <div data-pdf-block style={{ marginBottom: 8 }}>
+          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.section, color: GOLD, margin: 0 }}>Vimshottari Mahadasha (Full Timeline)</div>
+        </div>
+        {result.mahadashaTimeline.map((period, i) => (
+          <div key={i} data-pdf-block style={{ marginBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 6px', background: period.active ? TINT : undefined, borderTop: `1px solid ${LINE}`, fontSize: FONT.body }}>
+              <span style={{ fontWeight: period.active ? 700 : 500 }}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
+              <span style={{ color: MUTED }}>{period.startsAt} → {period.endsAt}</span>
             </div>
-          ))}
-        </Section>
+            <div style={{ paddingLeft: 14 }}>
+              {period.antardashas.map((sub, j) => (
+                <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 6px', fontSize: FONT.body, color: MUTED, borderBottom: `1px dashed ${LINE}` }}>
+                  <span>{cap(sub.lord)} Antardasha</span><span>{sub.startsAt} → {sub.endsAt}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <Section title="Yogini Dasha">
           <Table head={['Period', 'Dates']}>

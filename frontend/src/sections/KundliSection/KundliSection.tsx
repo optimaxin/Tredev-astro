@@ -242,6 +242,22 @@ export default function KundliSection() {
     (async () => {
       try {
         const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+
+        // Loaded once and drawn directly by jsPDF on every page (rather than
+        // as an HTML overlay behind the content) — an HTML watermark only
+        // ever covered one page when the whole document was one big capture,
+        // and disappears entirely now that each section is captured on its
+        // own (see the block loop below): an absolutely-positioned overlay
+        // living outside a block's own DOM subtree is never included in
+        // that block's capture. Drawing it straight onto the PDF guarantees
+        // exactly one per page regardless of how sections fall across pages.
+        const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = '/logo.png';
+        }).catch(() => null);
+
         const root = printRef.current!;
         const blocks = Array.from(root.querySelectorAll<HTMLElement>('[data-pdf-block]'));
 
@@ -257,12 +273,26 @@ export default function KundliSection() {
         let cursorY = margin;
         let pageNum = 1;
 
+        // A faint mark anchored at the top of the page (a letterhead-style
+        // watermark, not a full-page tile) — drawn first, so every block
+        // placed afterward sits visually "on top of" it.
+        const drawWatermark = () => {
+          if (!logoImg) return;
+          const size = 210;
+          pdf.saveGraphicsState();
+          pdf.setGState(pdf.GState({ opacity: 0.055 }));
+          pdf.addImage(logoImg, 'PNG', (pageWidth - size) / 2, margin + 6, size, size);
+          pdf.restoreGraphicsState();
+        };
+
         const drawFooter = () => {
           pdf.setFontSize(8);
           pdf.setTextColor(150, 140, 120);
           pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 12);
           pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - margin + 12, { align: 'right' });
         };
+
+        drawWatermark();
 
         for (const el of blocks) {
           const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FAF7F0' });
@@ -277,6 +307,7 @@ export default function KundliSection() {
               pdf.addPage();
               pageNum += 1;
               cursorY = margin;
+              drawWatermark();
             }
             pdf.addImage(imgData, 'PNG', margin, cursorY, usableWidth, imgHeight);
             cursorY += imgHeight + blockGap;
@@ -290,6 +321,7 @@ export default function KundliSection() {
               pdf.addPage();
               pageNum += 1;
               cursorY = margin;
+              drawWatermark();
             }
             let heightLeft = imgHeight;
             let position = margin;
@@ -301,6 +333,7 @@ export default function KundliSection() {
               drawFooter();
               pdf.addPage();
               pageNum += 1;
+              drawWatermark();
               pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
               heightLeft -= pageContentHeight;
             }
