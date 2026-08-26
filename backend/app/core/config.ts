@@ -30,4 +30,12 @@ export const config = {
     accessTtl: process.env.JWT_EXPIRATION || '15m',
     refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 7,
   },
+  aws: {
+    // Genuinely optional (unlike jwt's secrets above) — geocoding.ts falls
+    // back to the free Nominatim provider when this isn't set, so local dev
+    // never needs an AWS account. Set both in backend/.env (local) and in
+    // Render's dashboard env vars (production) — never commit real values.
+    locationApiKey: process.env.AWS_LOCATION_API_KEY,
+    locationRegion: process.env.AWS_LOCATION_REGION || 'us-east-1',
+  },
 };

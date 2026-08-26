@@ -22,6 +22,7 @@ import { getSiderealHouseCusps } from '../services/astrology/swissEphemeris.ts';
 import { calculateShadbala } from '../services/astrology/shadbala.ts';
 import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
 import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
+import { geocodePlace, type GeocodeResult } from '../services/geocoding.ts';
 
 export const calculatorsRouter = Router();
 
@@ -297,11 +298,10 @@ calculatorsRouter.post('/ai-ask', aiLimiter, (req, res) => {
 // ── Place → coordinates ────────────────────────────────────────────────
 // A birth chart's Ascendant/houses depend on exact latitude/longitude, so
 // "City, Country" typed into a form is useless without geocoding it first.
-// Backed by OpenStreetMap Nominatim (free, no API key) — called server-side
-// so we can set the required User-Agent and cache repeat lookups (many users
-// search the same handful of cities), rather than every browser hitting
-// Nominatim directly with no rate control at all.
-const geocodeCache = new Map<string, { latitude: number; longitude: number; displayName: string }>();
+// See services/geocoding.ts for the actual provider (AWS Location Service
+// when configured, Nominatim fallback) — this route just caches repeat
+// lookups (many users search the same handful of cities) and rate-limits.
+const geocodeCache = new Map<string, GeocodeResult>();
 const geocodeLimiter = rateLimit({ windowMs: 60_000, max: 20 });
 
 calculatorsRouter.get('/geocode', geocodeLimiter, async (req, res) => {
@@ -313,12 +313,8 @@ calculatorsRouter.get('/geocode', geocodeLimiter, async (req, res) => {
   if (cached) return res.json({ success: true, data: cached });
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(place)}`;
-    const response = await fetch(url, { headers: { 'User-Agent': 'TredevAstro/1.0 (astrology calculator birth-place lookup)' } });
-    const results = (await response.json()) as Array<{ lat: string; lon: string; display_name: string }>;
-    if (!results.length) return fail(res, 404, 'NOT_FOUND', 'Could not find that place. Try a more specific city name.');
-
-    const data = { latitude: Number(results[0].lat), longitude: Number(results[0].lon), displayName: results[0].display_name };
+    const data = await geocodePlace(place);
+    if (!data) return fail(res, 404, 'NOT_FOUND', 'Could not find that place. Try a more specific city name.');
     geocodeCache.set(cacheKey, data);
     res.json({ success: true, data });
   } catch (e) {
