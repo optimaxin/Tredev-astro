@@ -185,24 +185,40 @@
   margin-top: var(--space-2);
 }
 
+/* Hand-drawn scalloped "cartouche" frame — a rounded badge outline with a
+   small petal-bump at the mid-point of each edge, double-stroked, built as
+   one SVG so it stays crisp and re-scales cleanly to any card size via
+   border-image (9-slice), instead of a plain rectangular border. */
 .chartLayout {
+  --frame-svg: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20200'%3E%3Cpath%20d='M36,12%20L70,12%20C85,12%2085,0%20100,0%20C115,0%20115,12%20130,12%20L164,12%20A24,24%200%200%201%20188,36%20L188,70%20C188,85%20200,85%20200,100%20C200,115%20188,115%20188,130%20L188,164%20A24,24%200%200%201%20164,188%20L130,188%20C115,188%20115,200%20100,200%20C85,200%2085,188%2070,188%20L36,188%20A24,24%200%200%201%2012,164%20L12,130%20C12,115%200,115%200,100%20C0,85%2012,85%2012,70%20L12,36%20A24,24%200%200%201%2036,12%20Z'%20fill='none'%20stroke='%238D4F28'%20stroke-width='7'/%3E%3Cpath%20d='M36,12%20L70,12%20C85,12%2085,0%20100,0%20C115,0%20115,12%20130,12%20L164,12%20A24,24%200%200%201%20188,36%20L188,70%20C188,85%20200,85%20200,100%20C200,115%20188,115%20188,130%20L188,164%20A24,24%200%200%201%20164,188%20L130,188%20C115,188%20115,200%20100,200%20C85,200%2085,188%2070,188%20L36,188%20A24,24%200%200%201%2012,164%20L12,130%20C12,115%200,115%200,100%20C0,85%2012,85%2012,70%20L12,36%20A24,24%200%200%201%2036,12%20Z'%20fill='none'%20stroke='%238D4F28'%20stroke-width='3'%20transform='translate(100%20100)%20scale(0.9)%20translate(-100%20-100)'/%3E%3C/svg%3E");
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: var(--space-8);
-  align-items: start;
+  align-items: stretch;
   margin-top: var(--space-6);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
-  border: 12px double #8D4F28; /* Beautiful ornate double border */
-  border-radius: 8px 56px 8px 56px; /* hand-carved corner, not a machined rectangle */
+  background-clip: padding-box;
+  border: 26px solid transparent;
+  border-image-source: var(--frame-svg);
+  border-image-slice: 70;
+  border-image-width: 26px;
+  border-image-repeat: stretch;
+  border-radius: var(--radius-lg); /* fallback if border-image fails to load */
   padding: var(--space-8);
   position: relative;
   box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
 }
 
 :global([data-theme='dark']) .chartLayout {
+  --frame-svg: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20200'%3E%3Cpath%20d='M36,12%20L70,12%20C85,12%2085,0%20100,0%20C115,0%20115,12%20130,12%20L164,12%20A24,24%200%200%201%20188,36%20L188,70%20C188,85%20200,85%20200,100%20C200,115%20188,115%20188,130%20L188,164%20A24,24%200%200%201%20164,188%20L130,188%20C115,188%20115,200%20100,200%20C85,200%2085,188%2070,188%20L36,188%20A24,24%200%200%201%2012,164%20L12,130%20C12,115%200,115%200,100%20C0,85%2012,85%2012,70%20L12,36%20A24,24%200%200%201%2036,12%20Z'%20fill='none'%20stroke='%23C7A15A'%20stroke-width='7'/%3E%3Cpath%20d='M36,12%20L70,12%20C85,12%2085,0%20100,0%20C115,0%20115,12%20130,12%20L164,12%20A24,24%200%200%201%20188,36%20L188,70%20C188,85%20200,85%20200,100%20C200,115%20188,115%20188,130%20L188,164%20A24,24%200%200%201%20164,188%20L130,188%20C115,188%20115,200%20100,200%20C85,200%2085,188%2070,188%20L36,188%20A24,24%200%200%201%2012,164%20L12,130%20C12,115%200,115%200,100%20C0,85%2012,85%2012,70%20L12,36%20A24,24%200%200%201%2036,12%20Z'%20fill='none'%20stroke='%23C7A15A'%20stroke-width='3'%20transform='translate(100%20100)%20scale(0.9)%20translate(-100%20-100)'/%3E%3C/svg%3E");
   background: radial-gradient(circle, #251B17 0%, #150E0C 100%) !important;
-  border-color: var(--gold-primary) !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(181, 138, 59, 0.08) !important;
+}
+
+.chartColumn {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .chartStyleToggle {
@@ -392,7 +408,9 @@
 .chartHighlights {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
+  align-content: center;
+  gap: var(--space-4);
+  flex: 1;
   margin-top: var(--space-6);
   padding-top: var(--space-5);
   border-top: 1px dashed rgba(141, 79, 40, 0.3);

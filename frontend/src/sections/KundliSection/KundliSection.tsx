@@ -369,7 +369,9 @@ export default function KundliSection() {
                       <>
                         <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult?.ascendant.rashi ?? '—'} />
                         <HighlightChip icon={MoonIcon} label="Moon Sign" value={fullResult.panchang.moonRashi} />
+                        <HighlightChip icon={SunIcon} label="Sun Sign" value={chartPlanets.find(p => p.id === 'sun')?.sign ?? '—'} />
                         <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={fullResult.panchang.nakshatra.name} />
+                        <HighlightChip icon={LotusIcon} label="Tithi" value={`${fullResult.panchang.tithi.paksha} ${fullResult.panchang.tithi.name}`} />
                         <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'} />
                       </>
                     }
@@ -813,7 +815,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
 
   return (
     <div className={styles.chartLayout}>
-      <div>
+      <div className={styles.chartColumn}>
         <div className={styles.chartStyleToggle}>
           <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>North Indian</button>
           <button className={`${styles.chartStyleBtn} ${style === 'south' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('south')}>South Indian</button>
