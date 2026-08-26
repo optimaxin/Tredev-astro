@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import AncientDatePicker from '../AncientDatePicker/AncientDatePicker';
 import AncientTimePicker from '../AncientTimePicker/AncientTimePicker';
+import LocationAutocomplete from '../LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BirthDetailsInput } from '../../services/calculatorService';
+import type { BirthDetailsInput, PlaceSuggestion } from '../../services/calculatorService';
 import styles from './BirthDetailsForm.module.css';
 
 // Common timezones only — full IANA-zone coverage isn't worth the added
@@ -47,11 +48,26 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
   const [dob, setDob] = useState(initialValues?.date || '');
   const [tob, setTob] = useState(initialValues?.time || '');
   const [place, setPlace] = useState(initialValues?.place || '');
+  // Set only when the user picks an actual suggestion — carries its exact
+  // coordinates directly, so submit can skip a second (less precise) geocode
+  // guess entirely. Any further edit to the text invalidates it, since it no
+  // longer necessarily matches what's in the box.
+  const [selectedGeo, setSelectedGeo] = useState<PlaceSuggestion | null>(null);
   const [timezoneOffset, setTimezoneOffset] = useState(initialValues?.timezoneOffsetMinutes ?? TIMEZONES[0].offset);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const canSubmit = (!showNameField || name.trim()) && dob && tob && place.trim() && !loading;
+
+  const handlePlaceChange = (v: string) => {
+    setPlace(v);
+    setSelectedGeo(null);
+  };
+
+  const handlePlaceSelect = (s: PlaceSuggestion) => {
+    setPlace(s.label);
+    setSelectedGeo(s);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +75,9 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
     setError('');
     setLoading(true);
     try {
-      const geo = await calculatorService.geocode(place.trim());
+      const geo = selectedGeo
+        ? { latitude: selectedGeo.latitude, longitude: selectedGeo.longitude, displayName: selectedGeo.label }
+        : await calculatorService.geocode(place.trim());
       onSubmit({
         name: name.trim(),
         placeName: geo.displayName,
@@ -102,13 +120,13 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
         </div>
         <div className={styles.field}>
           <label className={styles.label} htmlFor={`${idPrefix}-place`}>Place of Birth</label>
-          <input
+          <LocationAutocomplete
             id={`${idPrefix}-place`}
-            type="text"
             className={`${styles.input} input-field`}
-            placeholder="City, Country"
+            placeholder="Start typing a city..."
             value={place}
-            onChange={e => setPlace(e.target.value)}
+            onChange={handlePlaceChange}
+            onSelect={handlePlaceSelect}
           />
         </div>
         <div className={styles.field}>

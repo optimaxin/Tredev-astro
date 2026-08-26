@@ -54,3 +54,59 @@ export async function geocodePlace(place: string): Promise<GeocodeResult | null>
   }
   return geocodeWithNominatim(place);
 }
+
+// ── Live "as you type" suggestions ──────────────────────────────────────
+// A free-text field lets someone type "Bombay" and get nothing, or a vague
+// "Springfield" and get the wrong one of 30 — geocoding only runs once, at
+// submit, so there's no chance to correct course. Suggest resolves this by
+// returning real, disambiguated candidates (each already carrying its own
+// exact coordinates) as the user types, so they pick a specific place
+// instead of hoping their spelling/phrasing resolves correctly later.
+export interface PlaceSuggestion {
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
+async function suggestWithAws(query: string, maxResults: number): Promise<PlaceSuggestion[]> {
+  const url = `https://places.geo.${config.aws.locationRegion}.api.aws/v2/suggest?key=${encodeURIComponent(config.aws.locationApiKey!)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ QueryText: query, MaxResults: maxResults }),
+  });
+  if (!response.ok) throw new Error(`AWS Location suggest failed: ${response.status}`);
+  const body = (await response.json()) as {
+    ResultItems?: Array<{
+      Title?: string;
+      Place?: { Position?: [number, number]; Address?: { Label?: string } };
+    }>;
+  };
+  // Suggest also returns bare "query refinement" items (e.g. a corrected
+  // search term with no place attached) alongside real place candidates —
+  // only the latter carry a Place/Position and are selectable here.
+  return (body.ResultItems || [])
+    .filter((item): item is { Title?: string; Place: { Position: [number, number]; Address?: { Label?: string } } } => !!item.Place?.Position)
+    .map(item => {
+      const [longitude, latitude] = item.Place.Position;
+      return { label: item.Place.Address?.Label || item.Title || query, latitude, longitude };
+    });
+}
+
+async function suggestWithNominatim(query: string, limit: number): Promise<PlaceSuggestion[]> {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&q=${encodeURIComponent(query)}`;
+  const response = await fetch(url, { headers: { 'User-Agent': 'TredevAstro/1.0 (astrology calculator birth-place lookup)' } });
+  const results = (await response.json()) as Array<{ lat: string; lon: string; display_name: string }>;
+  return results.map(r => ({ latitude: Number(r.lat), longitude: Number(r.lon), label: r.display_name }));
+}
+
+export async function suggestPlaces(query: string): Promise<PlaceSuggestion[]> {
+  if (config.aws.locationApiKey) {
+    try {
+      return await suggestWithAws(query, 6);
+    } catch (e) {
+      console.error('AWS Location suggest failed, falling back to Nominatim:', e);
+    }
+  }
+  return suggestWithNominatim(query, 6);
+}

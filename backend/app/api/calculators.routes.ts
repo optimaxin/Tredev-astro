@@ -22,7 +22,7 @@ import { getSiderealHouseCusps } from '../services/astrology/swissEphemeris.ts';
 import { calculateShadbala } from '../services/astrology/shadbala.ts';
 import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
 import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
-import { geocodePlace, type GeocodeResult } from '../services/geocoding.ts';
+import { geocodePlace, suggestPlaces, type GeocodeResult } from '../services/geocoding.ts';
 
 export const calculatorsRouter = Router();
 
@@ -320,5 +320,22 @@ calculatorsRouter.get('/geocode', geocodeLimiter, async (req, res) => {
   } catch (e) {
     console.error(e);
     fail(res, 502, 'GEOCODE_ERROR', 'Could not look up that place right now. Please try again.');
+  }
+});
+
+// Live suggestions as the user types (see services/geocoding.ts for why this
+// beats a single geocode-on-submit). Never hard-fails — an empty list just
+// means the field falls back to plain free-text + submit-time geocoding, so
+// a flaky suggest call never blocks someone from finishing the form.
+const suggestLimiter = rateLimit({ windowMs: 60_000, max: 60 });
+
+calculatorsRouter.get('/place-suggest', suggestLimiter, async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json({ success: true, data: [] });
+  try {
+    res.json({ success: true, data: await suggestPlaces(q) });
+  } catch (e) {
+    console.error(e);
+    res.json({ success: true, data: [] });
   }
 });

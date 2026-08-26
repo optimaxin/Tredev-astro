@@ -1,0 +1,71 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* Matches the ivory/brown "ancient" palette already used by this form's
+   own AncientDatePicker/AncientTimePicker popups, so this reads as part of
+   the same picker family rather than a bolted-on generic dropdown. */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin: 8px 0 0;
+  padding: 6px;
+  list-style: none;
+  background: #FAF6EE;
+  border: 3px double #8c4c20;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(42, 21, 11, 0.25);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: #3e2723;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.item:hover,
+.itemActive {
+  background: rgba(140, 76, 32, 0.1);
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  color: #8c4c20;
+}
+
+:global([data-theme='dark']) .dropdown {
+  background: #1A120B;
+  border-color: var(--gold-primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+:global([data-theme='dark']) .item {
+  color: var(--text-primary);
+}
+
+:global([data-theme='dark']) .item:hover,
+:global([data-theme='dark']) .itemActive {
+  background: rgba(199, 161, 90, 0.12);
+}
+
+:global([data-theme='dark']) .itemIcon {
+  color: var(--gold-primary);
+}

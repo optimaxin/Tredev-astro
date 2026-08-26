@@ -40,6 +40,12 @@ export interface GeocodeResult {
   displayName: string;
 }
 
+export interface PlaceSuggestion {
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface PlanetChartEntry {
   id: string;
   longitude: number;
@@ -383,6 +389,7 @@ export interface MySkyResult {
 
 export const calculatorService = {
   geocode: (place: string) => request<GeocodeResult>(`/api/calculators/geocode?place=${encodeURIComponent(place)}`),
+  placeSuggest: (query: string) => request<PlaceSuggestion[]>(`/api/calculators/place-suggest?q=${encodeURIComponent(query)}`),
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
   kundliFull: (birth: BirthDetailsInput) => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify(birth) }),
   nakshatra: (birth: BirthDetailsInput) => request<NakshatraResult>('/api/calculators/nakshatra', { method: 'POST', body: JSON.stringify(birth) }),
