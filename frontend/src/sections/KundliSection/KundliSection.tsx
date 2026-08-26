@@ -237,7 +237,7 @@ export default function KundliSection() {
       settled = true;
       setPdfState('idle');
       setError('PDF generation took too long — please try again.');
-    }, 30000);
+    }, 60000);
 
     (async () => {
       try {
@@ -275,14 +275,21 @@ export default function KundliSection() {
 
         // A faint mark anchored at the top of the page (a letterhead-style
         // watermark, not a full-page tile) — drawn first, so every block
-        // placed afterward sits visually "on top of" it.
+        // placed afterward sits visually "on top of" it. Wrapped in its own
+        // try/catch: this is a cosmetic nice-to-have, and it must never be
+        // able to take down PDF generation as a whole if the opacity/GState
+        // call or the image draw fails for any reason.
         const drawWatermark = () => {
           if (!logoImg) return;
-          const size = 210;
-          pdf.saveGraphicsState();
-          pdf.setGState(pdf.GState({ opacity: 0.055 }));
-          pdf.addImage(logoImg, 'PNG', (pageWidth - size) / 2, margin + 6, size, size);
-          pdf.restoreGraphicsState();
+          try {
+            const size = 210;
+            pdf.saveGraphicsState();
+            pdf.setGState(pdf.GState({ opacity: 0.055 }));
+            pdf.addImage(logoImg, 'PNG', (pageWidth - size) / 2, margin + 6, size, size);
+            pdf.restoreGraphicsState();
+          } catch (e) {
+            console.error('Watermark draw failed, continuing without it:', e);
+          }
         };
 
         const drawFooter = () => {
