@@ -21,9 +21,20 @@ import styles from './KundliSection.module.css';
 // degrees (they're the same underlying placements, just re-housed); the
 // D2-D60 varga charts only ever resolve to a final sign, so no degree is
 // shown for those rather than fabricating one.
-const CHART_KEYS = ['D1', 'BHAV_CHALIT', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60', 'D2', 'D3'] as const;
+// Main 8 first (this exact order is the highlighted quick-pick row below),
+// then the rest of the divisional charts in ascending order, with the
+// alternate Bhav Chalit chart last — gives the full dropdown a clean,
+// deliberate sequence instead of the arbitrary order it used to be in.
+const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
 const CHART_LABELS: Record<string, string> = {
   D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
+};
+
+// The 8 charts most people actually want, highlighted as one-click pills
+// above the full "more charts" dropdown — same order as CHART_KEYS' head.
+const MAIN_CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60'] as const;
+const CHART_QUICK_LABELS: Record<string, string> = {
+  D1: 'D1 Lagna', CHANDRA: 'Chandra', D9: 'D9 Navamsa', D4: 'D4', D6: 'D6', D7: 'D7', D10: 'D10', D60: 'D60',
 };
 
 // Consolidated from an earlier 9-tab layout (Overview/Charts/Dasha/
@@ -393,9 +404,25 @@ export default function KundliSection() {
                   chartPlanetsForKey.find(p => p.id === 'asc')?.sign ?? kundliResult?.ascendant.rashi ?? '';
                 return (
                   <div className={styles.overview}>
+                    {/* The 8 charts most people actually want, as one-click highlighted
+                        pills — everything else (Bhav Chalit, D2/D3/D12+...) stays reachable
+                        via the "more charts" dropdown below instead of competing for
+                        attention as 19 equally-weighted options. */}
+                    <div className={styles.chartQuickPicks}>
+                      {MAIN_CHART_KEYS.map(key => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`${styles.chartQuickPickBtn} ${selectedChart === key ? styles.chartQuickPickBtnActive : ''}`}
+                          onClick={() => setSelectedChart(key)}
+                        >
+                          {CHART_QUICK_LABELS[key]}
+                        </button>
+                      ))}
+                    </div>
                     <div className={styles.overviewTitleRow}>
                       <h3 className={styles.overviewTitle}>{CHART_LABELS[selectedChart] || VARGA_LABELS[selectedChart] || selectedChart}</h3>
-                      <select className={styles.vargaSelect} value={selectedChart} onChange={e => setSelectedChart(e.target.value)}>
+                      <select className={styles.vargaSelect} value={selectedChart} onChange={e => setSelectedChart(e.target.value)} aria-label="More divisional charts">
                         {CHART_KEYS.map(key => (
                           <option key={key} value={key}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</option>
                         ))}
