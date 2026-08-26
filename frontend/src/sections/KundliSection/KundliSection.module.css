@@ -193,7 +193,7 @@
   margin-top: var(--space-6);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
   border: 12px double #8D4F28; /* Beautiful ornate double border */
-  border-radius: var(--radius-lg);
+  border-radius: 8px 56px 8px 56px; /* hand-carved corner, not a machined rectangle */
   padding: var(--space-8);
   position: relative;
   box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
@@ -303,7 +303,7 @@
 .planetList {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 6px 40px 6px 40px;
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
   display: flex;
@@ -387,12 +387,60 @@
   line-height: 1.5;
 }
 
+/* Quick Highlights strip — fills the space below the chart SVG, which is
+   otherwise noticeably shorter than the planet-list column beside it. */
+.chartHighlights {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px dashed rgba(141, 79, 40, 0.3);
+  position: relative;
+}
+
+.chartHighlights::before {
+  content: '✦';
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FAF1DF;
+  color: #8D4F28;
+  font-size: var(--text-sm);
+  padding: 0 var(--space-2);
+}
+
+:global([data-theme='dark']) .chartHighlights::before {
+  background: #251B17;
+  color: var(--gold-primary);
+}
+
+.highlightChip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.highlightChipLabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.highlightChipValue {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-light);
+}
+
 /* Plain-language overview */
 .overview {
   margin-top: var(--space-8);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 6px 40px 6px 40px;
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
 }
@@ -492,7 +540,7 @@
 .doshaCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 4px 28px 4px 28px;
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
 }
@@ -622,7 +670,7 @@
 .infoCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 4px 24px 4px 24px;
   box-shadow: var(--shadow-card);
   padding: var(--space-4);
 }
@@ -781,7 +829,7 @@
 .predictionCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 4px 28px 4px 28px;
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
 }
@@ -817,7 +865,7 @@
 .gemCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 4px 28px 4px 28px;
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
   display: flex;

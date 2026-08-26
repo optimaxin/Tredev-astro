@@ -14,7 +14,7 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import { PLANET_META } from '../../data/planetMeta';
 import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
-  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, ArrowIcon,
+  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, ArrowIcon, DoshaShieldIcon,
 } from '../../components/Icons/Icons';
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
@@ -361,7 +361,19 @@ export default function KundliSection() {
 
               {activeTab === 'overview' && (
                 <>
-                  <ChartDisplay title="Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
+                  <ChartDisplay
+                    title="Planetary Placements"
+                    planets={chartPlanets}
+                    ascendantRashi={kundliResult?.ascendant.rashi ?? ''}
+                    footer={
+                      <>
+                        <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult?.ascendant.rashi ?? '—'} />
+                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={fullResult.panchang.moonRashi} />
+                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={fullResult.panchang.nakshatra.name} />
+                        <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'} />
+                      </>
+                    }
+                  />
 
                   <div className={styles.overview}>
                     <h3 className={styles.overviewTitle}>Panchang at Birth</h3>
@@ -770,11 +782,23 @@ function InfoCard({ icon: Icon, label, children }: { icon: React.ComponentType<{
   );
 }
 
+function HighlightChip({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number }>; label: string; value: string }) {
+  return (
+    <div className={styles.highlightChip}>
+      <span className={styles.infoCardIconBadge}><Icon size={14} /></span>
+      <div>
+        <div className={styles.highlightChipLabel}>{label}</div>
+        <div className={styles.highlightChipValue}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Chart + planet-list panel, reused for every chart in the Charts tab
 // (D1, Chandra, D9, and every D2-D60 varga chart) — each instance owns its
 // own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
-function ChartDisplay({ title, subtitle, planets, ascendantRashi }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string }) {
+function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode }) {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
@@ -826,6 +850,8 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi }: { title: str
             </div>
           )}
         </div>
+
+        {footer && <div className={styles.chartHighlights}>{footer}</div>}
       </div>
 
       <div className={styles.planetList}>
