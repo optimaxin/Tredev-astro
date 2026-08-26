@@ -106,20 +106,32 @@ export const ASTROLOGERS = [
   },
 ];
 
+// Daily Astrology listed first (the most reached-for, lowest-commitment
+// tools) — Lagna/Ascendant removed (redundant with Free Kundli, which
+// already computes and shows the Ascendant); Numerology Match lives under
+// Numerology now, not Compatibility, since it's a numerology technique
+// applied to two people rather than a chart-compatibility technique.
 export const FREE_TOOLS_CATEGORIES = [
+  {
+    id: 'daily',
+    label: 'Daily Astrology',
+    icon: '☀',
+    color: 'var(--color-cyan)',
+    tools: ['Daily Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
+  },
   {
     id: 'birth',
     label: 'Birth',
     icon: '☽',
     color: 'var(--color-gold)',
-    tools: ['Free Kundli', 'Moon Sign Calculator', 'Lagna / Ascendant', 'Nakshatra Finder'],
+    tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder'],
   },
   {
     id: 'compatibility',
     label: 'Compatibility',
     icon: '♾',
     color: 'var(--color-cyan)',
-    tools: ['Kundli Matching', 'Love Compatibility', 'Numerology Match'],
+    tools: ['Kundli Matching', 'Love Compatibility'],
   },
   {
     id: 'doshas',
@@ -133,14 +145,7 @@ export const FREE_TOOLS_CATEGORIES = [
     label: 'Numerology',
     icon: '∞',
     color: 'var(--color-gold)',
-    tools: ['Numerology Report', 'Life Path Number', 'Name Numerology'],
-  },
-  {
-    id: 'daily',
-    label: 'Daily Astrology',
-    icon: '☀',
-    color: 'var(--color-cyan)',
-    tools: ['Daily Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
+    tools: ['Numerology Report', 'Life Path Number', 'Name Numerology', 'Numerology Match'],
   },
 ];
 

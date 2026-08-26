@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon } from '../../components/Icons/Icons';
+import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon } from '../../components/Icons/Icons';
+import type { IconProps } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './FreeTools.module.css';
@@ -17,7 +18,6 @@ interface FreeToolsProps {
 const TOOL_ROUTES: Record<string, string> = {
   'Free Kundli': 'free-kundli',
   'Moon Sign Calculator': 'moon-sign',
-  'Lagna / Ascendant': 'ascendant',
   'Nakshatra Finder': 'nakshatra-finder',
   'Nakshatra': 'nakshatra-finder',
   'Kundli Matching': 'kundli-matching',
@@ -37,6 +37,19 @@ const TOOL_ROUTES: Record<string, string> = {
   'Muhurat Finder': 'muhurat-finder',
   'Choghadiya': 'choghadiya',
   'Abhijit Muhurat': 'abhijit-muhurat',
+};
+
+// Real vector icons per category, replacing the plain Unicode glyphs
+// (☀ ☽ ♾ ◎ ∞) that used to render here — those vary in optical size/weight
+// across symbols even at the same font-size, which is what made the
+// category header row look inconsistent/"cheap" and misaligned between
+// sections. Same 24x24-viewBox icon set already used by the featured grid.
+const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
+  daily: SunIcon,
+  birth: MoonIcon,
+  compatibility: MarriageIcon,
+  doshas: DoshaShieldIcon,
+  numerology: NumerologyGridIcon,
 };
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {
@@ -213,7 +226,9 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
 
         {/* Grouped Layout Showing All Calculators and Tools without tabs */}
         <div className={styles.allToolsContainer}>
-          {FREE_TOOLS_CATEGORIES.map((category, ci) => (
+          {FREE_TOOLS_CATEGORIES.map((category, ci) => {
+            const CategoryIcon = CATEGORY_ICONS[category.id];
+            return (
             <motion.div
               key={category.id}
               className={styles.categorySection}
@@ -224,7 +239,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <h3 className={styles.categoryHeader}>
                 <span className={styles.categoryHeaderIcon} style={{ color: category.color }}>
-                  {category.icon}
+                  <CategoryIcon size={24} />
                 </span>
                 <span className={styles.categoryHeaderLabel}>{category.label}</span>
               </h3>
@@ -242,7 +257,8 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                 ))}
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

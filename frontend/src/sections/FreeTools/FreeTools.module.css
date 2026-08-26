@@ -243,8 +243,13 @@
 
 .cardSmall {
   grid-column: span 2;
-  min-height: 190px;
-  justify-content: flex-start;
+  /* Was 190px + justify-content: flex-start, while Large/Medium both use
+     220px + the inherited space-between — that third rhythm is what read
+     as "three different card layouts" for what's otherwise one card
+     component. Matching Large/Medium here keeps the intentional width
+     asymmetry (1 large + 2 medium + 3 small) but gives every card the same
+     internal proportions. */
+  min-height: 220px;
   gap: var(--space-4);
 }
 
@@ -388,8 +393,9 @@
 }
 
 .categoryHeaderIcon {
-  font-size: 1.5rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .categoryHeaderLabel {

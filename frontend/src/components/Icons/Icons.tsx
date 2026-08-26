@@ -179,6 +179,36 @@ export function MoonIcon({ size = 26, ...props }: IconProps) {
   );
 }
  
+// Doshas category — a shield marks a classical "affliction" the chart is
+// checked against, the exclamation reading as the flag/warning itself.
+export function DoshaShieldIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 2 L20 6 V12 C20 17 16.5 20.5 12 22 C7.5 20.5 4 17 4 12 V6 L12 2 Z" />
+      <line x1="12" y1="8" x2="12" y2="13" />
+      <circle cx="12" cy="16.5" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Numerology category — a 3x3 keypad grid reads as "numbers" at a glance
+// without needing to render actual digit glyphs.
+export function NumerologyGridIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="3" width="5" height="5" rx="1" />
+      <rect x="9.5" y="3" width="5" height="5" rx="1" />
+      <rect x="16" y="3" width="5" height="5" rx="1" />
+      <rect x="3" y="9.5" width="5" height="5" rx="1" />
+      <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+      <rect x="16" y="9.5" width="5" height="5" rx="1" />
+      <rect x="3" y="16" width="5" height="5" rx="1" />
+      <rect x="9.5" y="16" width="5" height="5" rx="1" />
+      <rect x="16" y="16" width="5" height="5" rx="1" />
+    </svg>
+  );
+}
+
 export function LockIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
