@@ -2,7 +2,7 @@
 // Every call requires a real ADMIN-role JWT — the backend verifies this
 // server-side, this file just attaches whatever token is currently stored.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export class AdminApiError extends Error {
   code: string;

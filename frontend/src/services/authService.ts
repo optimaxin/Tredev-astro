@@ -2,7 +2,7 @@
 // Nothing else in the frontend should call fetch() against /api/auth directly —
 // this is the one place that knows the request/response shape.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export type Role = 'USER' | 'ASTROLOGIST' | 'ADMIN';
 

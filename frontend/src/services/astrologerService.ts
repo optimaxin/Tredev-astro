@@ -3,7 +3,7 @@
 // shape into the field names the existing astrologer-display components
 // already use, so those components didn't need to change at all.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 interface ApiAstrologerProfile {
   id: number;

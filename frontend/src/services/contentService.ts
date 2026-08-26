@@ -2,7 +2,7 @@
 // journal posts, testimonials, and the paid-report catalog. Same fetch
 // pattern as calculatorService.ts.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export class ContentApiError extends Error {
   code: string;

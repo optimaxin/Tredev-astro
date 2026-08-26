@@ -1,6 +1,6 @@
 // Thin client for consultation chat messages
 // (backend/app/api/chat.routes.ts's GET/POST /api/consultations/:id/messages).
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export class ChatApiError extends Error {
   code: string;

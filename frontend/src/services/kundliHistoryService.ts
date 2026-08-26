@@ -4,7 +4,7 @@
 // calculatorService.kundliFull when a saved entry is opened, so a saved
 // entry always reflects the current, most-accurate calculation engine.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export interface KundliHistoryEntry {
   id: number;

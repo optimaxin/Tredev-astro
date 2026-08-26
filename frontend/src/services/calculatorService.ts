@@ -2,7 +2,7 @@
 // (backend/app/api/calculators.routes.ts). Every real calculator on the
 // site goes through here — nothing computes astrology client-side.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export class CalculatorApiError extends Error {
   code: string;

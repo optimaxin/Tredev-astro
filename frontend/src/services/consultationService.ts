@@ -1,6 +1,6 @@
 // Thin client for the user's own consultation history
 // (backend/app/api/chat.routes.ts's GET /api/consultations/mine).
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from './apiUrl';
 
 export class ConsultationApiError extends Error {
   code: string;
