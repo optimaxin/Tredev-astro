@@ -215,8 +215,8 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
         const planetsInHouse = planetsByHouse[planet.house] || [];
         const idx = planetsInHouse.indexOf(planet);
         const cols = planetsInHouse.length > 2 ? 2 : 1;
-        const px = cx + (idx % cols) * 32 - ((cols - 1) * 16);
-        const py = cy + Math.floor(idx / cols) * 22 - (Math.ceil(planetsInHouse.length / cols) > 1 ? 11 : 0);
+        const px = cx + (idx % cols) * 26 - ((cols - 1) * 13);
+        const py = cy + Math.floor(idx / cols) * 18 - (Math.ceil(planetsInHouse.length / cols) > 1 ? 9 : 0);
 
         return (
           <g key={planet.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(planet, e)} onMouseLeave={onPlanetLeave}>
@@ -269,8 +269,8 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
             {isAscendant && <line x1={x} y1={y} x2={x + 22} y2={y + 22} className={styles.chartLine} strokeWidth="1.4" />}
             {inHouse.map((p, i) => {
               const cols = inHouse.length > 2 ? 2 : 1;
-              const px = x + 30 + (i % cols) * 32;
-              const py = y + 45 + Math.floor(i / cols) * 26;
+              const px = x + 30 + (i % cols) * 28;
+              const py = y + 45 + Math.floor(i / cols) * 22;
               return (
                 <g key={p.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(p, e)} onMouseLeave={onPlanetLeave}>
                   <text x={px} y={py} textAnchor="middle" fontSize="11" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{p.symbol}</text>

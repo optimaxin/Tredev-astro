@@ -1094,6 +1094,28 @@
   stroke: rgba(141, 79, 40, 0.3) !important;
 }
 
+/* A house's own diagonal/frame lines run right through where its planet
+   labels and house number sit — unavoidable, since houses are triangles and
+   kites meeting at those exact lines, and 2-3+ conjunct planets are a real,
+   common chart. A stroked halo behind the text (paint-order: stroke) masks
+   whatever line crosses underneath instead of visibly cutting through the
+   digits, so degree numbers stay legible regardless of how many planets
+   land in one house. */
+.planetSymbolText,
+.planetNameText,
+.houseNumberText {
+  paint-order: stroke;
+  stroke: #1c140f;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+:global([data-theme='light']) .planetSymbolText,
+:global([data-theme='light']) .planetNameText,
+:global([data-theme='light']) .houseNumberText {
+  stroke: #f2e6ce !important;
+}
+
 .planetSymbolText {
   fill: var(--gold-primary);
 }
@@ -1103,7 +1125,7 @@
 }
 
 .planetNameText {
-  fill: rgba(245, 241, 232, 0.65);
+  fill: rgba(245, 241, 232, 0.85);
 }
 
 :global([data-theme='light']) .planetNameText {
@@ -1111,9 +1133,9 @@
 }
 
 .houseNumberText {
-  fill: rgba(200, 169, 107, 0.35);
+  fill: rgba(200, 169, 107, 0.55);
 }
 
 :global([data-theme='light']) .houseNumberText {
-  fill: rgba(141, 79, 40, 0.5) !important;
+  fill: rgba(141, 79, 40, 0.65) !important;
 }
