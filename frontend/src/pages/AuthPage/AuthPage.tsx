@@ -6,6 +6,7 @@ import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePic
 import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
 import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
+import { authService } from '../../services/authService';
 import styles from './AuthPage.module.css';
 
 type TabType = 'login' | 'register';
@@ -26,6 +27,7 @@ export default function AuthPage() {
     fullName: '',
     email: '',
     password: '',
+    phoneNumber: '',
     dob: '',
     timeOfBirth: '',
     placeOfBirth: '',
@@ -33,7 +35,16 @@ export default function AuthPage() {
     gender: 'Male',
   });
   const [registerLoading, setRegisterLoading] = useState(false);
-  const [registered, setRegistered] = useState(false);
+  // 'form' -> 'otp' (phone verification, right after account creation) -> 'done'
+  const [registerStep, setRegisterStep] = useState<'form' | 'otp' | 'done'>('form');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpResendLoading, setOtpResendLoading] = useState(false);
+  // Only ever set from a non-production API response (see authService.ts /
+  // backend authService.ts's sendPhoneOtp) — lets registration be tested
+  // end-to-end before real AWS SNS credentials are configured.
+  const [devOtpCode, setDevOtpCode] = useState<string | undefined>();
 
   // Mirrors the resume behaviour the old LoginModal popup used to do —
   // some gated actions (ai-chat, panchang-location) don't map to a page of
@@ -76,7 +87,7 @@ export default function AuthPage() {
     setRegisterLoading(true);
     try {
       const geo = await calculatorService.geocode(form.placeOfBirth.trim());
-      const user = await register(form.fullName, form.email, form.password, {
+      const result = await register(form.fullName, form.email, form.password, form.phoneNumber.trim(), {
         birthDate: form.dob,
         birthTime: form.timeOfBirth,
         birthPlace: geo.displayName,
@@ -84,15 +95,47 @@ export default function AuthPage() {
         birthLongitude: geo.longitude,
         birthTimezoneOffsetMinutes: form.timezoneOffset,
       });
-      if (!user) {
+      if (!result) {
         setRegisterError('An account with this email already exists, the password is too short, or the server could not be reached. Please try again.');
         return;
       }
-      setRegistered(true);
+      setDevOtpCode(result.devOtpCode);
+      setRegisterStep('otp');
     } catch (err) {
       setRegisterError(err instanceof CalculatorApiError ? `Place of birth: ${err.message}` : 'Something went wrong. Please try again.');
     } finally {
       setRegisterLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError('');
+    setOtpLoading(true);
+    try {
+      const accessToken = localStorage.getItem('auth_access_token');
+      if (!accessToken) { setOtpError('Session expired — please register again.'); return; }
+      await authService.verifyOtp(accessToken, otpCode.trim());
+      setRegisterStep('done');
+    } catch {
+      setOtpError('Incorrect or expired code. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpError('');
+    setOtpResendLoading(true);
+    try {
+      const accessToken = localStorage.getItem('auth_access_token');
+      if (!accessToken) { setOtpError('Session expired — please register again.'); return; }
+      const { devOtpCode: resent } = await authService.resendOtp(accessToken);
+      setDevOtpCode(resent);
+    } catch {
+      setOtpError('Could not resend the code — please wait a moment and try again.');
+    } finally {
+      setOtpResendLoading(false);
     }
   };
 
@@ -246,7 +289,7 @@ export default function AuthPage() {
 
           <AnimatePresence mode="wait">
             {/* REGISTRATION INSCRIPTION FORM */}
-            {tab === 'register' && !registered && (
+            {tab === 'register' && registerStep === 'form' && (
               <motion.form
                 key="register-script"
                 initial={{ opacity: 0, y: 8 }}
@@ -300,6 +343,22 @@ export default function AuthPage() {
                       minLength={8}
                     />
                   </div>
+                </div>
+
+                {/* Phone Number — verified by OTP right after the account is created */}
+                <div className={styles.inkField}>
+                  <label className={styles.inkLabel}>
+                    <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    className={styles.inkInput}
+                    placeholder="+91 98765 43210"
+                    value={form.phoneNumber}
+                    onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
+                    required
+                    minLength={8}
+                  />
                 </div>
 
                 {/* Celestial Inscription Separator */}
@@ -461,8 +520,63 @@ export default function AuthPage() {
               </motion.form>
             )}
 
+            {/* PHONE OTP VERIFICATION STEP — shown right after account creation */}
+            {tab === 'register' && registerStep === 'otp' && (
+              <motion.form
+                key="otp-script"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleVerifyOtp}
+                className={styles.scriptForm}
+              >
+                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
+                  We sent a 6-digit code to {form.phoneNumber}. Enter it below to verify your number.
+                </p>
+                {devOtpCode && (
+                  <p style={{ color: '#8a6d3b', fontSize: '0.85rem', margin: '0 0 8px' }}>
+                    Dev mode (no SMS provider configured yet): your code is <strong>{devOtpCode}</strong>
+                  </p>
+                )}
+                <div className={styles.inkField}>
+                  <label className={styles.inkLabel}>Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    className={styles.inkInput}
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    required
+                  />
+                </div>
+                {otpError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{otpError}</p>
+                )}
+                <button
+                  type="submit"
+                  className={styles.waxSealBtn}
+                  disabled={otpLoading || otpCode.length !== 6}
+                  id="auth-otp-verify-btn"
+                >
+                  <span>{otpLoading ? 'Verifying…' : 'Verify Phone Number'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={otpResendLoading}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
+                >
+                  {otpResendLoading ? 'Resending…' : "Didn't get a code? Resend"}
+                </button>
+              </motion.form>
+            )}
+
             {/* REGISTRATION SUCCESS STATE */}
-            {tab === 'register' && registered && (
+            {tab === 'register' && registerStep === 'done' && (
               <motion.div
                 key="success-script"
                 initial={{ opacity: 0, scale: 0.95 }}

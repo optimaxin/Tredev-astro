@@ -54,6 +54,8 @@ export interface AuthUser {
   birthLatitude?: number | null;
   birthLongitude?: number | null;
   birthTimezoneOffsetMinutes?: number | null;
+  phoneNumber?: string | null;
+  phoneVerified?: boolean;
 }
 
 export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -331,7 +333,7 @@ interface AppContextValue {
   currentUser: AuthUser | null;
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
-  register: (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails) => Promise<AuthUser | null>;
+  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser; devOtpCode?: string } | null>;
   saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
   logout: () => void;
   pendingAction: string | null;
@@ -505,6 +507,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_astrology: 'Astrology',
     cat_numerology: 'Numerology',
     cat_tarot: 'Tarot',
+    cat_vastu: 'Vastu Shastra',
 
     // Reports translations
     report_1_title: 'Career Intelligence',
@@ -1073,6 +1076,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_astrology: 'ज्योतिष',
     cat_numerology: 'अंकशास्त्र',
     cat_tarot: 'टैरो',
+    cat_vastu: 'वास्तु शास्त्र',
 
     report_1_title: 'करियर इंटेलिजेंस',
     report_1_sub: 'आपका व्यावसायिक मार्ग, डिकोड किया गया',
@@ -2619,6 +2623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     id: u.id, name: u.name, email: u.email, role: u.role, status: u.status,
     birthDate: u.birth_date, birthTime: u.birth_time, birthPlace: u.birth_place,
     birthLatitude: u.birth_latitude, birthLongitude: u.birth_longitude, birthTimezoneOffsetMinutes: u.birth_timezone_offset_minutes,
+    phoneNumber: u.phone_number, phoneVerified: u.phone_verified,
   });
 
   // Restore session on load: an access token is short-lived (15 min), so a
@@ -2689,13 +2694,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails): Promise<AuthUser | null> => {
+  const register = async (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails): Promise<{ user: AuthUser; devOtpCode?: string } | null> => {
     try {
-      const { user, accessToken, refreshToken } = await authService.register(name, email, password, birthDetails);
+      const { user, accessToken, refreshToken, devOtpCode } = await authService.register(name, email, password, phoneNumber, birthDetails);
       persistTokens(accessToken, refreshToken);
       const authUser = toAuthUser(user);
       setCurrentUser(authUser);
-      return authUser;
+      return { user: authUser, devOtpCode };
     } catch {
       return null;
     }

@@ -18,6 +18,8 @@ export interface ApiUser {
   birth_latitude: number | null;
   birth_longitude: number | null;
   birth_timezone_offset_minutes: number | null;
+  phone_number: string | null;
+  phone_verified: boolean;
 }
 
 export interface RegisterBirthDetails {
@@ -60,8 +62,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const authService = {
-  register: (name: string, email: string, password: string, birthDetails?: RegisterBirthDetails) =>
-    request<{ user: ApiUser } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password, ...birthDetails }) }),
+  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) =>
+    request<{ user: ApiUser; devOtpCode?: string } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password, phoneNumber, ...birthDetails }) }),
 
   login: (email: string, password: string) =>
     request<{ user: ApiUser } & AuthTokens>('/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -83,4 +85,10 @@ export const authService = {
 
   resetPassword: (token: string, newPassword: string) =>
     request<{ ok: boolean }>('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
+
+  verifyOtp: (accessToken: string, code: string) =>
+    request<ApiUser>('/me/verify-otp', { method: 'POST', body: JSON.stringify({ code }), headers: { Authorization: `Bearer ${accessToken}` } }),
+
+  resendOtp: (accessToken: string) =>
+    request<{ devOtpCode?: string }>('/me/resend-otp', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }),
 };
