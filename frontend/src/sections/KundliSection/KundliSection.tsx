@@ -277,7 +277,7 @@ export default function KundliSection() {
 
               {isLoggedIn && history.length > 0 && (
                 <div className={styles.overview} style={{ maxWidth: 700, margin: '0 auto var(--space-8)', textAlign: 'left' }}>
-                  <h3 className={styles.overviewTitle}>My Kundlis</h3>
+                  <h2 className={styles.overviewTitle}>My Kundlis</h2>
                   <div className={styles.timelineList}>
                     {history.slice(0, 5).map(entry => (
                       <button key={entry.id} type="button" className={`${styles.timelineItem} ${styles.timelineItemButton}`} onClick={() => handleHistorySelect(entry)}>
@@ -307,7 +307,7 @@ export default function KundliSection() {
               {/* Chart Header */}
               <div className={styles.chartHeader}>
                 <div>
-                  <span className="section-eyebrow">Birth Chart</span>
+                  <span className={`section-eyebrow ${styles.chartHeaderEyebrow}`}>Birth Chart</span>
                   <h1 className="section-title-cosmos">{birthProfile.name}&apos;s Kundli</h1>
                   <p className={styles.chartMeta}>
                     {birthProfile.dob} · {birthProfile.tob} · {birthProfile.place}
@@ -378,7 +378,7 @@ export default function KundliSection() {
                   />
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Panchang at Birth</h3>
+                    <h2 className={styles.overviewTitle}>Panchang at Birth</h2>
                     <div className={styles.infoGrid}>
                       <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
                       <InfoCard icon={ConstellationIcon} label="Nakshatra">{fullResult.panchang.nakshatra.name} (Pada {fullResult.panchang.nakshatra.pada})</InfoCard>
@@ -398,7 +398,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>What This Chart Means</h3>
+                    <h2 className={styles.overviewTitle}>What This Chart Means</h2>
                     <p className={styles.overviewText}><strong>Ascendant.</strong> {fullResult.analysis.lagna}</p>
                     <p className={styles.overviewText}><strong>Moon.</strong> {fullResult.analysis.moon}</p>
                     {fullResult.analysis.planets.filter(p => p.id !== 'moon').map(p => (
@@ -410,7 +410,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Avakhada Chakra</h3>
+                    <h2 className={styles.overviewTitle}>Avakhada Chakra</h2>
                     <div className={styles.infoGrid}>
                       <div className={styles.infoCard}><div className={styles.infoLabel}>Varna</div><div className={styles.infoValue}>{fullResult.avakhada.varna}</div></div>
                       <div className={styles.infoCard}><div className={styles.infoLabel}>Vashya</div><div className={styles.infoValue}>{fullResult.avakhada.vashya}</div></div>
@@ -456,7 +456,7 @@ export default function KundliSection() {
                       ))}
                     </div>
                     <div className={styles.overviewTitleRow}>
-                      <h3 className={styles.overviewTitle}>{CHART_LABELS[selectedChart] || VARGA_LABELS[selectedChart] || selectedChart}</h3>
+                      <h2 className={styles.overviewTitle}>{CHART_LABELS[selectedChart] || VARGA_LABELS[selectedChart] || selectedChart}</h2>
                       <select className={styles.vargaSelect} value={selectedChart} onChange={e => setSelectedChart(e.target.value)} aria-label="More divisional charts">
                         {CHART_KEYS.map(key => (
                           <option key={key} value={key}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</option>
@@ -471,7 +471,7 @@ export default function KundliSection() {
               {activeTab === 'timeline' && (
                 <>
                   <div className={styles.timelinePanel}>
-                    <h3 className={styles.overviewTitle}>Your Vimshottari Mahadasha Timeline</h3>
+                    <h2 className={styles.overviewTitle}>Your Vimshottari Mahadasha Timeline</h2>
                     <p className={styles.overviewText}>The nine planetary periods of your life, starting from your Moon's nakshatra at birth. Each period's summary below is a preview — see Predictions for the full note on your current period, or consult an astrologer for the complete picture.</p>
                     <div className={styles.timelineList}>
                       {fullResult.mahadashaTimeline.map((period, i) => (
@@ -499,7 +499,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.timelinePanel}>
-                    <h3 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h3>
+                    <h2 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h2>
                     <p className={styles.overviewText}>An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.</p>
                     <div className={styles.timelineList}>
                       {fullResult.yoginiDashaTimeline.map((period, i) => (
@@ -512,7 +512,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Doshas</h3>
+                    <h2 className={styles.overviewTitle}>Doshas</h2>
                     <div className={styles.doshaYogaGrid}>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
@@ -555,7 +555,7 @@ export default function KundliSection() {
               {activeTab === 'predictions' && (
                 <>
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Ascendant Predictions</h3>
+                    <h2 className={styles.overviewTitle}>Ascendant Predictions</h2>
                     <p className={styles.overviewText}>{fullResult.ascendantPredictions.description}</p>
                     <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>Your Ascendant is {fullResult.ascendantPredictions.ascendant} — a quick preview of each area is below.</p>
                     <div className={styles.predictionGrid}>
@@ -579,7 +579,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Yoga Combinations</h3>
+                    <h2 className={styles.overviewTitle}>Yoga Combinations</h2>
                     <div className={styles.doshaYogaGrid}>
                       {fullResult.yogas.map(y => (
                         <div key={y.name} className={styles.doshaCard}>
@@ -604,7 +604,7 @@ export default function KundliSection() {
                   </p>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Shadbala (Planetary Strength)</h3>
+                    <h2 className={styles.overviewTitle}>Shadbala (Planetary Strength)</h2>
                     <p className={styles.overviewText}>Six-fold classical strength score per planet, in Rupas — a planet at or above its classical minimum is considered strong enough to deliver its significations well.</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHead}`}>
@@ -623,7 +623,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Bhavbala (House Strength)</h3>
+                    <h2 className={styles.overviewTitle}>Bhavbala (House Strength)</h2>
                     <div className={styles.infoGrid}>
                       {fullResult.shadbala.houses.map(h => (
                         <div key={h.house} className={styles.infoCard}>
@@ -635,7 +635,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>KP Sub-Lord Table</h3>
+                    <h2 className={styles.overviewTitle}>KP Sub-Lord Table</h2>
                     <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
@@ -651,7 +651,7 @@ export default function KundliSection() {
                       ))}
                     </div>
 
-                    <h3 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h3>
+                    <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h2>
                     <p className={styles.overviewText}>Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
@@ -676,7 +676,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h3 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h3>
+                    <h2 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h2>
                     <p className={styles.overviewText}>Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.</p>
                     <div className={styles.infoGrid}>
                       {fullResult.ashtakavarga.sarva.map(s => (
@@ -698,7 +698,7 @@ export default function KundliSection() {
                    matching how the reference report itself only ever links to
                    "Chat with Astrologer" rather than any third-party seller. */
                 <div className={styles.overview}>
-                  <h3 className={styles.overviewTitle}>Gemstone &amp; Rudraksha Remedies</h3>
+                  <h2 className={styles.overviewTitle}>Gemstone &amp; Rudraksha Remedies</h2>
                   <p className={styles.overviewText}>Three classical gemstone picks — Life (Ascendant lord), Lucky (5th house/Purva Punya lord), and Fortune (9th house/Bhagya lord) — plus the Rudraksha ruled by your birth Nakshatra's lord.</p>
                   <div className={styles.gemGrid}>
                     {[fullResult.gemstones.life, fullResult.gemstones.lucky, fullResult.gemstones.fortune].map(g => (

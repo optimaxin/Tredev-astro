@@ -85,9 +85,13 @@
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  /* Sentence case instead of full uppercase — "JYOTISH GUIDANCE" is long
+     enough as a run of caps to slow reading; heavy letter-spacing (right
+     for all-caps) is dialed back too, since it reads as loose in mixed
+     case. */
+  letter-spacing: 0.06em;
   color: var(--gold-primary);
-  text-transform: uppercase;
+  text-transform: capitalize;
   margin-bottom: 14px;
   display: block;
 }

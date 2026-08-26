@@ -28,25 +28,17 @@ export default function MonkWidget() {
     }, 6000);
   };
 
+  // Notifications used to also fire on a timer (5s after load, then every
+  // 45s) as unsolicited "social proof" nudges. Removed — they stacked with
+  // the FAB in the bottom-right corner and popped up uninvited while
+  // someone was reading a data-dense page (e.g. mid-table on the Kundli
+  // result), obscuring content. The message is still available on demand
+  // via the click handler below.
   useEffect(() => {
-    // Show first notification after 5 seconds
-    const initialTimeout = setTimeout(() => {
-      triggerNotification();
-    }, 5000);
-
-    // Set up recurring notification interval (every 22 seconds)
-    const interval = setInterval(() => {
-      if (!visible) {
-        triggerNotification();
-      }
-    }, 22000);
-
     return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [visible]);
+  }, []);
 
   return (
     <div className={styles.widgetContainer}>
@@ -55,6 +47,8 @@ export default function MonkWidget() {
           <motion.div
             key={currentMsg}
             className={styles.speechBubble}
+            role="status"
+            aria-live="polite"
             initial={{ opacity: 0, scale: 0.8, x: 20, y: 10 }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, x: 20, y: 10 }}

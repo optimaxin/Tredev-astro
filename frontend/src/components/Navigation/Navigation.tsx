@@ -193,12 +193,14 @@ export default function Navigation() {
           {/* Notifications */}
           <NotificationBell />
 
-          {/* Language Selector Dropdown */}
+          {/* Language + Theme — grouped into one dropdown instead of two
+              separate always-visible buttons, so the header carries one
+              utility control here instead of two. */}
           <div className={styles.langWrapper} ref={langRef}>
             <button
               className={styles.langBtn}
               onClick={() => setLangDropdownOpen(v => !v)}
-              aria-label="Select Language"
+              aria-label="Language and theme settings"
             >
               <span className={styles.langGlobe}>🌐</span>
               <span className={styles.langText}>{currentLangLabel}</span>
@@ -217,6 +219,14 @@ export default function Navigation() {
                     {lang.name}
                   </button>
                 ))}
+                <div className={styles.langDropdownDivider} />
+                <button
+                  className={styles.langDropdownItem}
+                  onClick={() => { toggleTheme(); setLangDropdownOpen(false); }}
+                >
+                  {theme === 'dark' ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
               </div>
             )}
           </div>
@@ -266,15 +276,6 @@ export default function Navigation() {
               <span className={styles.loginTextLabel}>{t('nav_login')}</span>
             </button>
           )}
-
-          {/* Theme Toggle */}
-          <button
-            className={styles.themeToggleBtn}
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          >
-            {theme === 'dark' ? <SunIcon size={28} /> : <MoonIcon size={28} />}
-          </button>
         </div>
 
         {/* Mobile Hamburger */}

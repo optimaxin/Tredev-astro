@@ -146,6 +146,16 @@
 /* Chart View */
 .chartWrap { width: 100%; }
 
+/* This eyebrow is the only label telling the user which report they're
+   looking at, sitting right beside a large name heading — give it more
+   weight than the shared .section-eyebrow default (used sitewide for much
+   shorter, lower-stakes contexts) without changing that shared class. */
+.chartHeaderEyebrow {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
 .chartHeader {
   position: relative;
   display: flex;
@@ -778,6 +788,13 @@
 .dataRow:last-child { border-bottom: none; }
 
 .dataRow:hover { background: rgba(199, 161, 90, 0.05); }
+
+/* Zebra striping — wide tables (KP Sub-Lord, cusps) put 3-4 columns far
+   apart horizontally; a faint alternating tint lets the eye stay on one
+   row across that distance instead of drifting to a neighboring row. */
+.dataRow:nth-child(even):not(.dataRowHead):not(.dataRowHeadKp) {
+  background: rgba(199, 161, 90, 0.035);
+}
 
 .dataRowHead {
   background: rgba(199, 161, 90, 0.08);

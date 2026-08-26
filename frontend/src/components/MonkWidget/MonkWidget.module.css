@@ -1,7 +1,7 @@
 .widgetContainer {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 36px;
+  right: 36px;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -60,8 +60,12 @@
 
 /* Speech bubble */
 .speechBubble {
+  /* Resting gap to the avatar was only ~17px, but the enter/exit spring
+     transition in MonkWidget.tsx translates the bubble by x:20px — during
+     that transition it briefly overlaps the avatar's corner. Widening the
+     gap absorbs the transient offset instead of just the resting position. */
   position: absolute;
-  right: 102px;
+  right: 125px;
   bottom: 12px;
   width: 280px;
   background: rgba(255, 253, 249, 0.90);
@@ -152,7 +156,7 @@
     height: 70px;
   }
   .speechBubble {
-    right: 84px;
+    right: 105px;
     width: 230px;
     padding: var(--space-3) var(--space-4);
   }

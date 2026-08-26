@@ -1,4 +1,13 @@
 .nav {
+  /* Named once here instead of repeating the raw hex on every CTA/icon/
+     badge below — this brighter gold is deliberately distinct from the
+     sitewide --gold-primary token (needs more pop against a fixed,
+     always-on-top translucent header), so it gets its own named token
+     rather than being folded into --gold-primary. */
+  --nav-gold: #E7A51A;
+  --nav-gold-hover: #F5B72A;
+  --nav-ink: #120704;
+
   position: fixed;
   top: 24px;
   left: 50%;
@@ -104,12 +113,12 @@
 
 .link:hover {
   opacity: 1;
-  color: #E7A51A;
+  color: var(--nav-gold);
 }
 
 .active {
   opacity: 1 !important;
-  color: #E7A51A !important;
+  color: var(--nav-gold) !important;
   font-weight: 600;
 }
 
@@ -119,7 +128,7 @@
   left: 0;
   right: 0;
   height: 1.5px;
-  background-color: #E7A51A;
+  background-color: var(--nav-gold);
   border-radius: var(--radius-full);
 }
 
@@ -134,8 +143,8 @@
 
 /* CTAs */
 .ctaBtn {
-  background: #E7A51A;
-  color: #120704;
+  background: var(--nav-gold);
+  color: var(--nav-ink);
   border: none;
   font-family: var(--font-sans);
   font-size: var(--nav-cta-size);
@@ -150,17 +159,17 @@
 }
 
 :global([data-theme='light']) .ctaBtn {
-  color: #120704;
+  color: var(--nav-ink);
 }
 
 .ctaBtn:hover {
-  background: #F5B72A;
+  background: var(--nav-gold-hover);
   transform: translateY(-1px);
 }
 
 .ctaBtnSecondary {
   background: transparent;
-  border: 1.5px solid #E7A51A;
+  border: 1.5px solid var(--nav-gold);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--nav-cta-size);
@@ -180,7 +189,7 @@
 }
 
 /* Cart & icons */
-.cartBtn, .themeToggleBtn {
+.cartBtn {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -195,18 +204,18 @@
   border-radius: 50%;
 }
 
-.cartBtn:hover, .themeToggleBtn:hover {
+.cartBtn:hover {
   opacity: 1;
   background: rgba(231, 165, 26, 0.08);
-  color: #E7A51A;
+  color: var(--nav-gold);
 }
 
 .cartBadge {
   position: absolute;
   top: -2px;
   right: -2px;
-  background: #E7A51A;
-  color: #120704;
+  background: var(--nav-gold);
+  color: var(--nav-ink);
   font-size: 9px;
   font-weight: bold;
   min-width: 14px;
@@ -299,7 +308,7 @@
 }
 
 .notifItemDismiss:hover {
-  color: #E7A51A;
+  color: var(--nav-gold);
 }
 
 /* Language selector */
@@ -325,7 +334,7 @@
 }
 
 .langBtn:hover {
-  border-color: #E7A51A;
+  border-color: var(--nav-gold);
   background: rgba(231, 165, 26, 0.06);
 }
 
@@ -371,6 +380,16 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.langDropdownDivider {
+  height: 1px;
+  margin: 4px 4px;
+  background: var(--border-subtle);
 }
 
 .langDropdownItem:hover {
@@ -402,7 +421,7 @@
 }
 
 .loginBtn:hover {
-  border-color: #E7A51A;
+  border-color: var(--nav-gold);
   background: rgba(231, 165, 26, 0.06);
 }
 
@@ -428,7 +447,7 @@
 }
 
 .profileSelectorBtn:hover {
-  border-color: #E7A51A;
+  border-color: var(--nav-gold);
   background: rgba(231, 165, 26, 0.06);
 }
 
@@ -436,8 +455,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #E7A51A;
-  color: #120704;
+  background: var(--nav-gold);
+  color: var(--nav-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -447,8 +466,8 @@
 
 :global([data-theme='light']) .avatarCircle,
 :global([data-theme='dark']) .avatarCircle {
-  color: #120704;
-  background: #E7A51A;
+  color: var(--nav-ink);
+  background: var(--nav-gold);
 }
 
 .profileNameText {
@@ -499,7 +518,7 @@
 
 .profileDropdown button:hover {
   background: rgba(231, 165, 26, 0.08);
-  color: #E7A51A;
+  color: var(--nav-gold);
 }
 
 /* Mobile hamburger */
