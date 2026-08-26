@@ -193,10 +193,7 @@
   margin-top: var(--space-6);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
   border: 12px double #8D4F28; /* Beautiful ornate double border */
-  /* Alternating large/small corners read as an organic, hand-carved
-     "cartouche" outline instead of a machined rectangle — plain CSS, no
-     image asset, so it always renders correctly at any size. */
-  border-radius: 110px 26px 110px 26px / 26px 110px 26px 110px;
+  border-radius: var(--radius-lg);
   padding: var(--space-8);
   position: relative;
   box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
