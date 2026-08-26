@@ -189,7 +189,7 @@
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: var(--space-8);
-  align-items: stretch;
+  align-items: start;
   margin-top: var(--space-6);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
   border: 12px double #8D4F28; /* Beautiful ornate double border */
@@ -203,12 +203,6 @@
   background: radial-gradient(circle, #251B17 0%, #150E0C 100%) !important;
   border-color: var(--gold-primary) !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(181, 138, 59, 0.08) !important;
-}
-
-.chartColumn {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
 }
 
 .chartStyleToggle {
@@ -309,7 +303,7 @@
 .planetList {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px 40px 6px 40px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
   display: flex;
@@ -325,12 +319,22 @@
   margin-bottom: var(--space-2);
 }
 
-.planetRow {
+/* Compact 2-column grid instead of a long single-column list — keeps this
+   panel roughly the same height as the chart beside it instead of towering
+   over it (13 planets in one column was ~2x taller than the chart). */
+.planetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-1) var(--space-3);
+}
+
+.planetCard {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid rgba(200, 169, 107, 0.06);
+  min-width: 0;
 }
 
 .planetSymbol {
@@ -345,43 +349,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
   background: rgba(199, 161, 90, 0.12);
   color: var(--gold-primary);
-  font-size: var(--text-base);
-}
-
-.planetRowArrow {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.planetName {
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
+}
+
+.planetCardText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.planetCardName {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-text-light);
-  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.planetSign {
+.planetCardMeta {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  font-size: 10px;
   color: var(--color-text-muted);
-}
-
-.planetHouse {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--color-cyan);
-  background: rgba(115, 217, 212, 0.08);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chartNote {
@@ -393,35 +392,13 @@
   line-height: 1.5;
 }
 
-/* Quick Highlights strip — fills the space below the chart SVG, which is
-   otherwise noticeably shorter than the planet-list column beside it. */
 .chartHighlights {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  align-content: start;
   gap: var(--space-4);
-  flex: 1;
   margin-top: var(--space-6);
   padding-top: var(--space-5);
-  border-top: 1px dashed rgba(141, 79, 40, 0.3);
-  position: relative;
-}
-
-.chartHighlights::before {
-  content: '✦';
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #FAF1DF;
-  color: #8D4F28;
-  font-size: var(--text-sm);
-  padding: 0 var(--space-2);
-}
-
-:global([data-theme='dark']) .chartHighlights::before {
-  background: #251B17;
-  color: var(--gold-primary);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .highlightChip {
@@ -448,7 +425,7 @@
   margin-top: var(--space-8);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px 40px 6px 40px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
 }
@@ -548,7 +525,7 @@
 .doshaCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px 28px 4px 28px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
 }
@@ -678,7 +655,7 @@
 .infoCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px 24px 4px 24px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-4);
 }
@@ -837,7 +814,7 @@
 .predictionCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px 28px 4px 28px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
 }
@@ -873,7 +850,7 @@
 .gemCard {
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px 28px 4px 28px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
   display: flex;

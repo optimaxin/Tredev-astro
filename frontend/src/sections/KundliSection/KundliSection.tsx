@@ -14,7 +14,7 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import { PLANET_META } from '../../data/planetMeta';
 import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
-  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, ArrowIcon, DoshaShieldIcon,
+  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, DoshaShieldIcon,
 } from '../../components/Icons/Icons';
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
@@ -815,7 +815,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
 
   return (
     <div className={styles.chartLayout}>
-      <div className={styles.chartColumn}>
+      <div>
         <div className={styles.chartStyleToggle}>
           <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>North Indian</button>
           <button className={`${styles.chartStyleBtn} ${style === 'south' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('south')}>South Indian</button>
@@ -859,15 +859,17 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
       <div className={styles.planetList}>
         <h3 className={styles.planetListTitle}>{title}</h3>
         {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
-        {planets.map(p => (
-          <div key={p.id} className={styles.planetRow}>
-            <span className={styles.planetSymbolBadge}>{p.symbol}</span>
-            <span className={styles.planetName}>{p.name}</span>
-            <span className={styles.planetSign}>{p.sign}{p.decimalDegree ? ` ${p.decimalDegree}` : ''}{p.retrograde ? ' ℞' : ''}</span>
-            <span className={styles.planetHouse}>{p.house}H</span>
-            <ArrowIcon size={13} className={styles.planetRowArrow} />
-          </div>
-        ))}
+        <div className={styles.planetGrid}>
+          {planets.map(p => (
+            <div key={p.id} className={styles.planetCard}>
+              <span className={styles.planetSymbolBadge}>{p.symbol}</span>
+              <div className={styles.planetCardText}>
+                <div className={styles.planetCardName}>{p.name}</div>
+                <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
+              </div>
+            </div>
+          ))}
+        </div>
         <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet.</div>
       </div>
     </div>
