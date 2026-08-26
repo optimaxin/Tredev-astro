@@ -41,20 +41,23 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
 
   return (
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
-      {/* Repeating brand watermark behind every page this document gets sliced
-          into (see handleDownloadPdf's pagination) — a single centered mark
-          would only ever land on one page of a multi-page report. */}
+      {/* One faint brand mark repeating only DOWN the page (not a dense
+          tiled grid) — roughly one per page's worth of height, so a
+          multi-page report still gets a watermark on every page without it
+          reading as "logo, logo, logo" wallpaper. Each chart also carries
+          its own small watermark (KundliCharts.tsx's ChartWatermark) —
+          deliberately not doubled up with a second overlapping mark here. */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/logo.png')", backgroundRepeat: 'repeat', backgroundSize: '150px 150px',
-          opacity: 0.05, zIndex: 0, pointerEvents: 'none',
+          backgroundImage: "url('/logo.png')", backgroundRepeat: 'repeat-y', backgroundPosition: 'center top',
+          backgroundSize: '460px 460px', opacity: 0.025, zIndex: 0, pointerEvents: 'none',
         }}
       />
 
       <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${GOLD}`, paddingBottom: 16, marginBottom: 24 }}>
+        <div data-pdf-block style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${GOLD}`, paddingBottom: 16, marginBottom: 24 }}>
           <div>
             <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.title, color: INK }}>{name}&apos;s Janam Kundli</div>
             <div style={{ fontSize: FONT.body, color: MUTED, marginTop: 4 }}>{dob} · {tob} · {place}</div>
@@ -62,7 +65,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           <div style={{ fontSize: FONT.body, color: GOLD, letterSpacing: '0.08em', textTransform: 'uppercase' }}>TredevAstro</div>
         </div>
 
-        <div style={{ display: 'flex', gap: 24, marginBottom: 28 }}>
+        {/* Each row is captured as ONE block (chart + its paired text stay
+            together) — the two Sections nested inside opt out of also being
+            their own block (noPdfBlock) so they aren't captured a second
+            time on top of the row that already contains them. */}
+        <div data-pdf-block style={{ display: 'flex', gap: 24, marginBottom: 28 }}>
           <div style={{ width: 320, flexShrink: 0 }}>
             <div className={chartStyles.svgWrap} style={{ maxWidth: 320 }}>
               <NorthIndianChart planets={chartPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
@@ -70,16 +77,16 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D1 — Rashi (Birth Chart)</div>
           </div>
           <div style={{ flex: 1 }}>
-            <Section title="Ascendant &amp; Moon">
+            <Section title="Ascendant &amp; Moon" noPdfBlock>
               <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: 0 }}>
                 Ascendant (Lagna): <b>{result.kundli.ascendant.rashi}</b> · Moon Sign: <b>{result.kundli.planets.find(p => p.id === 'moon')?.rashi}</b> · Moon Nakshatra: <b>{result.kundli.moonNakshatra.name}</b> (Pada {result.kundli.moonNakshatra.pada})
               </p>
             </Section>
-            <Section title="Planetary Positions">
+            <Section title="Planetary Positions" noPdfBlock>
               <Table head={['Planet', 'Sign', 'Degree', 'House']}>
                 {chartPlanets.map(p => (
                   <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
-                    <Td>{p.symbol} {p.name}</Td><Td>{p.sign}</Td><Td>{p.degree}{p.retrograde ? ' ℞' : ''}</Td><Td>{ordinal(p.house)}</Td>
+                    <Td>{p.name}</Td><Td>{p.sign}</Td><Td>{p.degree}{p.retrograde ? ' ℞' : ''}</Td><Td>{ordinal(p.house)}</Td>
                   </tr>
                 ))}
               </Table>
@@ -87,7 +94,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 24, marginBottom: 4 }}>
+        <div data-pdf-block style={{ display: 'flex', gap: 24, marginBottom: 4 }}>
           <div style={{ width: 200, flexShrink: 0 }}>
             <div className={chartStyles.svgWrap} style={{ maxWidth: 200 }}>
               <NorthIndianChart planets={navamsaPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
@@ -95,7 +102,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D9 — Navamsa (Marriage)</div>
           </div>
           <div style={{ flex: 1 }}>
-            <Section title="Avakhada Chakra">
+            <Section title="Avakhada Chakra" noPdfBlock>
               <Grid cols={2}>
                 <Field label="Varna">{result.avakhada.varna}</Field>
                 <Field label="Vashya">{result.avakhada.vashya}</Field>
@@ -110,7 +117,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               </Grid>
             </Section>
             {varga10 && (
-              <Section title={VARGA_LABELS.D10}>
+              <Section title={VARGA_LABELS.D10} noPdfBlock>
                 <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Ascendant: <b style={{ color: INK }}>{varga10.ascendant.rashi}</b></p>
               </Section>
             )}
@@ -242,7 +249,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </ul>
         </Section>
 
-        <div style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${LINE}`, fontSize: FONT.label, color: FAINT, textAlign: 'center' }}>
+        <div data-pdf-block style={{ marginTop: 24, paddingTop: 12, borderTop: `1px solid ${LINE}`, fontSize: FONT.label, color: FAINT, textAlign: 'center' }}>
           Generated by TredevAstro — log in to your account to revisit this Kundli anytime.
         </div>
       </div>
@@ -250,9 +257,15 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+// Every Section is its own capture block by default — the PDF-generation
+// effect in KundliSection.tsx captures each [data-pdf-block] element
+// separately and never splits one across a page boundary, which is what
+// stops content being cut off mid-table/mid-paragraph. Pass noPdfBlock for
+// a Section nested inside a row that's already its own block (the two chart
+// rows above), so it isn't captured a second time.
+function Section({ title, children, noPdfBlock }: { title: string; children: ReactNode; noPdfBlock?: boolean }) {
   return (
-    <div style={{ marginBottom: 22, breakInside: 'avoid' }}>
+    <div {...(noPdfBlock ? {} : { 'data-pdf-block': true })} style={{ marginBottom: 22 }}>
       <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.section, color: GOLD, margin: '0 0 8px' }}>{title}</div>
       {children}
     </div>

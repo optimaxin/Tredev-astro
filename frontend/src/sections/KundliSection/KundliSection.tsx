@@ -171,6 +171,7 @@ export default function KundliSection() {
   }, [autoDownloadPending, fullResult]);
 
   const handleDownloadPdfClick = () => {
+    setError('');
     if (!isLoggedIn) {
       if (submittedDetails) sessionStorage.setItem('kundliPdfResume', JSON.stringify(submittedDetails));
       setPendingAction('kundli-pdf');
@@ -217,38 +218,108 @@ export default function KundliSection() {
   // scan flagged as a wall of sub-12px hidden text (aria-hidden isn't
   // respected by every such tool). This effect fires once printRef.current
   // actually exists, i.e. after that transient mount has committed.
+  //
+  // Captures each top-level block (marked data-pdf-block in
+  // KundliPrintLayout) as its OWN canvas and places each as a whole onto the
+  // PDF, starting a fresh page whenever the next block wouldn't fit in what's
+  // left of the current one. The previous version captured the entire
+  // flowing document as ONE giant image and mechanically sliced it into
+  // fixed-height page chunks — with zero awareness of where a table row or
+  // paragraph actually was, so content routinely got cut in half right at
+  // the slice boundary. Also adds a hard timeout: if generation ever hangs
+  // (whatever the cause), the button unstucks itself instead of needing a
+  // manual page refresh.
   useEffect(() => {
     if (pdfState !== 'generating' || !fullResult || !printRef.current) return;
-    let cancelled = false;
+    let settled = false;
+    const safetyTimer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setPdfState('idle');
+      setError('PDF generation took too long — please try again.');
+    }, 30000);
+
     (async () => {
       try {
         const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-        const canvas = await html2canvas(printRef.current!, { scale: 2, backgroundColor: '#FAF7F0' });
+        const root = printRef.current!;
+        const blocks = Array.from(root.querySelectorAll<HTMLElement>('[data-pdf-block]'));
+
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const imgData = canvas.toDataURL('image/png');
+        const margin = 28;
+        const footerSpace = 24;
+        const usableWidth = pageWidth - margin * 2;
+        const contentBottom = pageHeight - margin - footerSpace;
+        const blockGap = 14;
 
-        let heightLeft = imgHeight;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        while (heightLeft > 0) {
-          position -= pageHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
+        let cursorY = margin;
+        let pageNum = 1;
+
+        const drawFooter = () => {
+          pdf.setFontSize(8);
+          pdf.setTextColor(150, 140, 120);
+          pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 12);
+          pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - margin + 12, { align: 'right' });
+        };
+
+        for (const el of blocks) {
+          const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FAF7F0' });
+          const imgHeight = (canvas.height * usableWidth) / canvas.width;
+          const imgData = canvas.toDataURL('image/png');
+
+          if (imgHeight <= contentBottom - margin) {
+            // Normal case: the whole block goes on one page, whole — this is
+            // what guarantees nothing is ever cut mid-way through.
+            if (cursorY !== margin && cursorY + imgHeight > contentBottom) {
+              drawFooter();
+              pdf.addPage();
+              pageNum += 1;
+              cursorY = margin;
+            }
+            pdf.addImage(imgData, 'PNG', margin, cursorY, usableWidth, imgHeight);
+            cursorY += imgHeight + blockGap;
+          } else {
+            // Rare oversized block (e.g. the full Mahadasha timeline is
+            // taller than one whole page on its own) — the one case allowed
+            // to split across pages, via jsPDF's own negative-offset
+            // repeated-image technique, rather than silently overflowing.
+            if (cursorY !== margin) {
+              drawFooter();
+              pdf.addPage();
+              pageNum += 1;
+              cursorY = margin;
+            }
+            let heightLeft = imgHeight;
+            let position = margin;
+            const pageContentHeight = contentBottom - margin;
+            pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+            heightLeft -= pageContentHeight;
+            while (heightLeft > 0) {
+              position -= pageContentHeight;
+              drawFooter();
+              pdf.addPage();
+              pageNum += 1;
+              pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+              heightLeft -= pageContentHeight;
+            }
+            cursorY = contentBottom; // force the next block onto a fresh page
+          }
         }
+        drawFooter();
         pdf.save(`${birthProfile.name || 'kundli'}-janam-kundli.pdf`);
+      } catch (e) {
+        console.error('PDF generation failed:', e);
+        setError('Could not generate the PDF — please try again.');
       } finally {
-        if (!cancelled) setPdfState('idle');
+        window.clearTimeout(safetyTimer);
+        if (!settled) { settled = true; setPdfState('idle'); }
       }
     })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfState, fullResult]);
+
+    return () => window.clearTimeout(safetyTimer);
+  }, [pdfState, fullResult, birthProfile.name]);
 
   return (
     <section className={styles.section} id="kundli">
@@ -332,8 +403,18 @@ export default function KundliSection() {
                 </div>
               </div>
 
+              {error && pdfState === 'idle' && <p className={styles.chartNote} style={{ color: '#d64545', marginTop: 'calc(-1 * var(--space-6))', marginBottom: 'var(--space-6)' }}>{error}</p>}
+
               {pdfState === 'generating' && fullResult && (
-                <div style={{ position: 'fixed', top: 0, left: -10000, pointerEvents: 'none' }} aria-hidden="true">
+                // A large negative left offset (the old approach) is a known
+                // trouble spot for html2canvas — some browsers report a huge
+                // scrollable viewport when a captured ancestor sits far
+                // outside normal page bounds, which can distort or hang the
+                // capture. This keeps the content at normal (0,0) coordinates
+                // — fully laid out, just visually clipped to nothing by the
+                // zero-size overflow:hidden wrapper — instead of pushed off
+                // into extreme negative space.
+                <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
                     <KundliPrintLayout name={birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} />
                   </div>

@@ -20,6 +20,17 @@ export interface ChartPlanet {
   retrograde?: boolean;
 }
 
+// Standard 2-letter Vedic-astrology abbreviations — the convention real
+// astrologers already use on printed charts — shown on the chart itself
+// instead of the Unicode planet glyphs (☉☽♂...), which look identical to a
+// layperson and don't tell either a user or an astrologer which planet is
+// which at a glance.
+const PLANET_SHORT: Record<string, string> = {
+  sun: 'Su', moon: 'Mo', mercury: 'Me', venus: 'Ve', mars: 'Ma',
+  jupiter: 'Ju', saturn: 'Sa', uranus: 'Ur', neptune: 'Ne', pluto: 'Pl',
+  rahu: 'Ra', ketu: 'Ke', asc: 'As',
+};
+
 // Short, word-boundary-safe preview of a longer prediction paragraph. Used
 // to intentionally withhold the full written reading from the free
 // on-screen/PDF view — a "consult an astrologer" CTA is the path to the
@@ -139,16 +150,31 @@ function polygonCentroid(points: [number, number][]): [number, number] {
   return [points.reduce((s, p) => s + p[0], 0) / n, points.reduce((s, p) => s + p[1], 0) / n];
 }
 
-// House-number label sits near the polygon's own outermost vertex (pulled
-// 20% back toward center), matching how printed charts keep the number in
-// a corner of the cell rather than overlapping the planets in its middle.
+// House-number label sits near the polygon's own outermost vertex, pulled
+// back toward THIS HOUSE'S OWN centroid (not the chart's shared global
+// center) — matching how printed charts keep the number in a corner of the
+// cell rather than overlapping the planets in its middle.
+//
+// BUG FIXED: pulling toward the shared global center instead of each
+// house's own centroid put two houses' numbers at the EXACT same pixel
+// whenever they picked the same outermost vertex — which happens for every
+// pair of triangular houses that shares a chart corner (e.g. houses 2 & 3
+// both reach for (0,0); every point on the straight line from that shared
+// corner to the shared global center is identical for both houses, so the
+// pulled-back point was identical too). House 3's number then painted
+// directly on top of house 2's (drawn later in same-key order), making
+// house 2 look like it had no number at all — and whichever one WAS
+// visible sat exactly on the diagonal line, since (0,0) and the global
+// center are themselves both on that diagonal. Each house's own centroid is
+// never shared with its neighbor, so this can't recur.
 function outerLabelPos(points: [number, number][]): [number, number] {
   let best = points[0], bestDist = -1;
   for (const p of points) {
     const d = (p[0] - NORTH_CENTER[0]) ** 2 + (p[1] - NORTH_CENTER[1]) ** 2;
     if (d > bestDist) { bestDist = d; best = p; }
   }
-  return [best[0] + 0.2 * (NORTH_CENTER[0] - best[0]), best[1] + 0.2 * (NORTH_CENTER[1] - best[1])];
+  const [cx, cy] = polygonCentroid(points);
+  return [best[0] + 0.6 * (cx - best[0]), best[1] + 0.6 * (cy - best[1])];
 }
 
 // Faint centered brand mark behind the chart lines/planets — shared by both
@@ -215,15 +241,15 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
         const planetsInHouse = planetsByHouse[planet.house] || [];
         const idx = planetsInHouse.indexOf(planet);
         const cols = planetsInHouse.length > 2 ? 2 : 1;
-        const px = cx + (idx % cols) * 26 - ((cols - 1) * 13);
-        const py = cy + Math.floor(idx / cols) * 18 - (Math.ceil(planetsInHouse.length / cols) > 1 ? 9 : 0);
+        const px = cx + (idx % cols) * 32 - ((cols - 1) * 16);
+        const py = cy + Math.floor(idx / cols) * 24 - (Math.ceil(planetsInHouse.length / cols) > 1 ? 12 : 0);
 
         return (
           <g key={planet.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(planet, e)} onMouseLeave={onPlanetLeave}>
-            <text x={px} y={py} textAnchor="middle" fontSize="11" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
-              {planet.symbol}
+            <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
+              {PLANET_SHORT[planet.id] || planet.name.slice(0, 2)}
             </text>
-            <text x={px} y={py + 10} textAnchor="middle" fontSize="6" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+            <text x={px} y={py + 12} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
             </text>
           </g>
@@ -273,8 +299,8 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
               const py = y + 45 + Math.floor(i / cols) * 22;
               return (
                 <g key={p.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(p, e)} onMouseLeave={onPlanetLeave}>
-                  <text x={px} y={py} textAnchor="middle" fontSize="11" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{p.symbol}</text>
-                  <text x={px} y={py + 10} textAnchor="middle" fontSize="6" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+                  <text x={px} y={py} textAnchor="middle" fontSize="10" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
+                  <text x={px} y={py + 11} textAnchor="middle" fontSize="8" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
                   </text>
                 </g>
