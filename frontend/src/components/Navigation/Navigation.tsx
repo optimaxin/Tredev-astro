@@ -98,18 +98,11 @@ export default function Navigation() {
   };
 
   const handleFreeKundliClick = () => {
+    // Free Kundli needs no login to use — only "severe" actions inside it
+    // (downloading the PDF, see KundliSection.tsx) prompt for login.
     setMenuOpen(false);
-    if (!isLoggedIn) {
-      setPendingAction('free-kundli');
-      setShowLoginModal(true);
-    } else {
-      if (kundliGenerated) {
-        setPage('kundli-result');
-      } else {
-        setPage('free-kundli');
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    setPage(kundliGenerated ? 'kundli-result' : 'free-kundli');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleConsultClick = () => {

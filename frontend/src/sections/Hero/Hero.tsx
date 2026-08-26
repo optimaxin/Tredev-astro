@@ -17,7 +17,7 @@ export default function Hero() {
   // to play smoothly within a few seconds, drop to the static image.
   const [useVideo, setUseVideo] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { t, isLoggedIn, kundliGenerated, setPage, setPendingAction, setShowLoginModal } = useAppContext();
+  const { t, kundliGenerated, setPage } = useAppContext();
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -51,11 +51,8 @@ export default function Hero() {
   // bar's "Free Kundli" link), not scroll to an anchor that doesn't exist
   // on this page.
   const goToFreeKundli = () => {
-    if (!isLoggedIn) {
-      setPendingAction('free-kundli');
-      setShowLoginModal(true);
-      return;
-    }
+    // No login required to use Free Kundli — only "severe" actions inside
+    // it (downloading the PDF) prompt for login.
     setPage(kundliGenerated ? 'kundli-result' : 'free-kundli');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -221,7 +218,7 @@ export default function Hero() {
           <div className={styles.scrollMouse}>
             <div className={styles.scrollDot} />
           </div>
-          <span className={styles.scrollText}>SCROLL TO EXPLORE</span>
+          <span className={styles.scrollText}>Scroll to explore</span>
           <span className={styles.scrollChevron}>⌄</span>
         </motion.div>
       </div>

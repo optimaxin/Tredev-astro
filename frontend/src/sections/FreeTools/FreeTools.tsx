@@ -53,14 +53,13 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
 };
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {
-  const { setPage, isLoggedIn, setShowLoginModal, setPendingAction, t, tOr } = useAppContext();
+  const { setPage, t, tOr } = useAppContext();
 
+  // These are the FREE tools — no login required to use any of them. Only
+  // genuinely "severe" actions inside a tool (like downloading a Kundli PDF,
+  // see KundliSection.tsx's own gate) prompt for login, not opening the
+  // tool itself.
   const handleToolClick = (toolName: string) => {
-    if (!isLoggedIn) {
-      setPendingAction('calculator');
-      setShowLoginModal(true);
-      return;
-    }
     setPage(TOOL_ROUTES[toolName] || 'astrology-tools');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
