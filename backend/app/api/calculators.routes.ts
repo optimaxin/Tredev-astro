@@ -22,7 +22,7 @@ import { getSiderealHouseCusps } from '../services/astrology/swissEphemeris.ts';
 import { calculateShadbala } from '../services/astrology/shadbala.ts';
 import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
 import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
-import { geocodePlace, suggestPlaces, type GeocodeResult } from '../services/geocoding.ts';
+import { geocodePlace, suggestPlaces, resolvePlaceId, type GeocodeResult } from '../services/geocoding.ts';
 
 export const calculatorsRouter = Router();
 
@@ -337,5 +337,21 @@ calculatorsRouter.get('/place-suggest', suggestLimiter, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.json({ success: true, data: [] });
+  }
+});
+
+// Resolves one AWS-sourced suggestion (PlaceId) to real coordinates —
+// separate from /place-suggest so this (billed, slower) call only happens
+// once, for the single suggestion someone actually picks.
+calculatorsRouter.get('/place-resolve', geocodeLimiter, async (req, res) => {
+  const placeId = String(req.query.placeId || '').trim();
+  if (!placeId) return fail(res, 422, 'VALIDATION_ERROR', 'placeId is required');
+  try {
+    const data = await resolvePlaceId(placeId);
+    if (!data) return fail(res, 404, 'NOT_FOUND', 'Could not resolve that place.');
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error(e);
+    fail(res, 502, 'GEOCODE_ERROR', 'Could not resolve that place right now.');
   }
 });

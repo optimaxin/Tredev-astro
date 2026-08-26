@@ -3,6 +3,33 @@
   width: 100%;
 }
 
+.inputRow {
+  position: relative;
+}
+
+.spinner {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(140, 76, 32, 0.25);
+  border-top-color: #8c4c20;
+  border-radius: 50%;
+  animation: locationSpin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+:global([data-theme='dark']) .spinner {
+  border-color: rgba(199, 161, 90, 0.25);
+  border-top-color: var(--gold-primary);
+}
+
+@keyframes locationSpin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
 /* Matches the ivory/brown "ancient" palette already used by this form's
    own AncientDatePicker/AncientTimePicker popups, so this reads as part of
    the same picker family rather than a bolted-on generic dropdown. */

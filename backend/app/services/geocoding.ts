@@ -59,38 +59,53 @@ export async function geocodePlace(place: string): Promise<GeocodeResult | null>
 // A free-text field lets someone type "Bombay" and get nothing, or a vague
 // "Springfield" and get the wrong one of 30 — geocoding only runs once, at
 // submit, so there's no chance to correct course. Suggest resolves this by
-// returning real, disambiguated candidates (each already carrying its own
-// exact coordinates) as the user types, so they pick a specific place
-// instead of hoping their spelling/phrasing resolves correctly later.
+// returning real, disambiguated candidates as the user types, so they pick
+// a specific place instead of hoping their spelling/phrasing resolves
+// correctly later.
+//
+// AWS's Suggest results carry a PlaceId but NOT coordinates (confirmed by
+// calling it directly — its response has no Position field at all); a
+// second GetPlace(placeId) call is required to resolve one to a lat/lng.
+// Only doing that on actual selection (not for all 6 suggestions on every
+// keystroke) is also just the cheaper/faster design. Nominatim has no such
+// two-step API, so its suggestions carry coordinates directly.
 export interface PlaceSuggestion {
   label: string;
-  latitude: number;
-  longitude: number;
+  placeId?: string; // present for AWS results — resolve via resolvePlaceId()
+  latitude?: number; // present for Nominatim results — already final
+  longitude?: number;
 }
+
+// AWS requires exactly one of BiasPosition/Filter.BoundingBox/Filter.Circle
+// on every Suggest call (a 400 otherwise) — this site's users are
+// overwhelmingly asking about Indian birth places (IST is the default
+// timezone, "New Delhi, India" is the default Panchang place), so biasing
+// toward India's geographic center improves ranking for short/ambiguous
+// queries without excluding anywhere else (bias only re-ranks, unlike a
+// bounding-box filter which would actually exclude results outside it).
+const INDIA_CENTER: [number, number] = [78.9629, 20.5937];
 
 async function suggestWithAws(query: string, maxResults: number): Promise<PlaceSuggestion[]> {
   const url = `https://places.geo.${config.aws.locationRegion}.api.aws/v2/suggest?key=${encodeURIComponent(config.aws.locationApiKey!)}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ QueryText: query, MaxResults: maxResults }),
+    body: JSON.stringify({ QueryText: query, MaxResults: maxResults, BiasPosition: INDIA_CENTER }),
   });
-  if (!response.ok) throw new Error(`AWS Location suggest failed: ${response.status}`);
+  if (!response.ok) throw new Error(`AWS Location suggest failed: ${response.status} ${await response.text()}`);
   const body = (await response.json()) as {
     ResultItems?: Array<{
       Title?: string;
-      Place?: { Position?: [number, number]; Address?: { Label?: string } };
+      SuggestResultItemType?: string;
+      Place?: { PlaceId?: string; Address?: { Label?: string } };
     }>;
   };
   // Suggest also returns bare "query refinement" items (e.g. a corrected
   // search term with no place attached) alongside real place candidates —
-  // only the latter carry a Place/Position and are selectable here.
+  // only the latter (type "Place", with a PlaceId) are selectable here.
   return (body.ResultItems || [])
-    .filter((item): item is { Title?: string; Place: { Position: [number, number]; Address?: { Label?: string } } } => !!item.Place?.Position)
-    .map(item => {
-      const [longitude, latitude] = item.Place.Position;
-      return { label: item.Place.Address?.Label || item.Title || query, latitude, longitude };
-    });
+    .filter(item => item.SuggestResultItemType === 'Place' && item.Place?.PlaceId)
+    .map(item => ({ label: item.Place!.Address?.Label || item.Title || query, placeId: item.Place!.PlaceId }));
 }
 
 async function suggestWithNominatim(query: string, limit: number): Promise<PlaceSuggestion[]> {
@@ -109,4 +124,15 @@ export async function suggestPlaces(query: string): Promise<PlaceSuggestion[]> {
     }
   }
   return suggestWithNominatim(query, 6);
+}
+
+export async function resolvePlaceId(placeId: string): Promise<GeocodeResult | null> {
+  if (!config.aws.locationApiKey) return null; // placeId only ever comes from an AWS-sourced suggestion
+  const url = `https://places.geo.${config.aws.locationRegion}.api.aws/v2/place/${encodeURIComponent(placeId)}?key=${encodeURIComponent(config.aws.locationApiKey)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`AWS Location GetPlace failed: ${response.status} ${await response.text()}`);
+  const body = (await response.json()) as { Position?: [number, number]; Address?: { Label?: string }; Title?: string };
+  if (!body.Position) return null;
+  const [longitude, latitude] = body.Position;
+  return { latitude, longitude, displayName: body.Address?.Label || body.Title || '' };
 }

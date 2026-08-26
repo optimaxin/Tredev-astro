@@ -3,7 +3,7 @@ import AncientDatePicker from '../AncientDatePicker/AncientDatePicker';
 import AncientTimePicker from '../AncientTimePicker/AncientTimePicker';
 import LocationAutocomplete from '../LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BirthDetailsInput, PlaceSuggestion } from '../../services/calculatorService';
+import type { BirthDetailsInput, GeocodeResult } from '../../services/calculatorService';
 import styles from './BirthDetailsForm.module.css';
 
 // Common timezones only — full IANA-zone coverage isn't worth the added
@@ -52,7 +52,7 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
   // coordinates directly, so submit can skip a second (less precise) geocode
   // guess entirely. Any further edit to the text invalidates it, since it no
   // longer necessarily matches what's in the box.
-  const [selectedGeo, setSelectedGeo] = useState<PlaceSuggestion | null>(null);
+  const [selectedGeo, setSelectedGeo] = useState<GeocodeResult | null>(null);
   const [timezoneOffset, setTimezoneOffset] = useState(initialValues?.timezoneOffsetMinutes ?? TIMEZONES[0].offset);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -64,9 +64,9 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
     setSelectedGeo(null);
   };
 
-  const handlePlaceSelect = (s: PlaceSuggestion) => {
-    setPlace(s.label);
-    setSelectedGeo(s);
+  const handlePlaceSelect = (geo: GeocodeResult) => {
+    setPlace(geo.displayName);
+    setSelectedGeo(geo);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,9 +75,7 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
     setError('');
     setLoading(true);
     try {
-      const geo = selectedGeo
-        ? { latitude: selectedGeo.latitude, longitude: selectedGeo.longitude, displayName: selectedGeo.label }
-        : await calculatorService.geocode(place.trim());
+      const geo = selectedGeo ?? await calculatorService.geocode(place.trim());
       onSubmit({
         name: name.trim(),
         placeName: geo.displayName,

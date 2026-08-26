@@ -42,8 +42,9 @@ export interface GeocodeResult {
 
 export interface PlaceSuggestion {
   label: string;
-  latitude: number;
-  longitude: number;
+  placeId?: string; // AWS-sourced — resolve via calculatorService.resolvePlace()
+  latitude?: number; // Nominatim-sourced — already final, no resolve needed
+  longitude?: number;
 }
 
 export interface PlanetChartEntry {
@@ -390,6 +391,7 @@ export interface MySkyResult {
 export const calculatorService = {
   geocode: (place: string) => request<GeocodeResult>(`/api/calculators/geocode?place=${encodeURIComponent(place)}`),
   placeSuggest: (query: string) => request<PlaceSuggestion[]>(`/api/calculators/place-suggest?q=${encodeURIComponent(query)}`),
+  resolvePlace: (placeId: string) => request<GeocodeResult>(`/api/calculators/place-resolve?placeId=${encodeURIComponent(placeId)}`),
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
   kundliFull: (birth: BirthDetailsInput) => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify(birth) }),
   nakshatra: (birth: BirthDetailsInput) => request<NakshatraResult>('/api/calculators/nakshatra', { method: 'POST', body: JSON.stringify(birth) }),

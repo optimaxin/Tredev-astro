@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { calculatorService } from '../../services/calculatorService';
-import type { PlaceSuggestion } from '../../services/calculatorService';
+import type { PlaceSuggestion, GeocodeResult } from '../../services/calculatorService';
 import { MapPinIcon } from '../Icons/Icons';
 import styles from './LocationAutocomplete.module.css';
 
@@ -8,7 +8,7 @@ interface LocationAutocompleteProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
-  onSelect: (suggestion: PlaceSuggestion) => void;
+  onSelect: (result: GeocodeResult) => void;
   placeholder?: string;
   className?: string;
 }
@@ -16,13 +16,16 @@ interface LocationAutocompleteProps {
 // A plain free-text place field means the exact spelling/phrasing someone
 // types has to survive a single geocode guess at submit time — get it
 // wrong and the chart silently uses the wrong coordinates. Suggesting real,
-// disambiguated places as they type (each already carrying its own exact
-// lat/lng) lets them pick a specific place instead of hoping their typing
-// resolves correctly later.
+// disambiguated places as they type lets them pick a specific place instead
+// of hoping their typing resolves correctly later. AWS-sourced suggestions
+// only carry a placeId (not coordinates), so picking one fires a quick
+// resolve call first — see calculatorService.resolvePlace / services/
+// geocoding.ts on the backend for why that's a separate step.
 export default function LocationAutocomplete({ id, value, onChange, onSelect, placeholder, className }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [resolving, setResolving] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
   const requestIdRef = useRef(0);
@@ -64,10 +67,25 @@ export default function LocationAutocomplete({ id, value, onChange, onSelect, pl
     }, 300);
   };
 
-  const selectSuggestion = (s: PlaceSuggestion) => {
-    onSelect(s);
+  const selectSuggestion = async (s: PlaceSuggestion) => {
+    onChange(s.label);
     setOpen(false);
     setSuggestions([]);
+
+    if (s.latitude != null && s.longitude != null) {
+      onSelect({ latitude: s.latitude, longitude: s.longitude, displayName: s.label });
+      return;
+    }
+    if (!s.placeId) return;
+    setResolving(true);
+    try {
+      onSelect(await calculatorService.resolvePlace(s.placeId));
+    } catch {
+      // Leave the typed label in place — the parent form's submit-time
+      // geocode fallback still resolves it from plain text if this fails.
+    } finally {
+      setResolving(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -88,21 +106,24 @@ export default function LocationAutocomplete({ id, value, onChange, onSelect, pl
 
   return (
     <div className={styles.wrap} ref={wrapRef}>
-      <input
-        id={id}
-        type="text"
-        className={className}
-        placeholder={placeholder}
-        value={value}
-        onChange={e => handleChange(e.target.value)}
-        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
-        onKeyDown={handleKeyDown}
-        autoComplete="off"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={`${id}-suggestions`}
-        aria-autocomplete="list"
-      />
+      <div className={styles.inputRow}>
+        <input
+          id={id}
+          type="text"
+          className={className}
+          placeholder={placeholder}
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={`${id}-suggestions`}
+          aria-autocomplete="list"
+        />
+        {resolving && <span className={styles.spinner} aria-label="Locating…" />}
+      </div>
       {open && (
         <ul className={styles.dropdown} id={`${id}-suggestions`} role="listbox">
           {suggestions.map((s, i) => (

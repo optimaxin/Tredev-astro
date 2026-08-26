@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AncientDatePicker from '../AncientDatePicker/AncientDatePicker';
 import LocationAutocomplete from '../LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { PlaceSuggestion } from '../../services/calculatorService';
+import type { GeocodeResult } from '../../services/calculatorService';
 // Reuses BirthDetailsForm's styling — same field/grid/button look, just a
 // different (shorter) field set: Panchang-family tools need a date and a
 // place, not a time of birth.
@@ -26,7 +26,7 @@ interface PanchangDetailsFormProps {
 export default function PanchangDetailsForm({ onSubmit, submitLabel, idPrefix, defaultDate, defaultPlace = 'New Delhi, India' }: PanchangDetailsFormProps) {
   const [date, setDate] = useState(defaultDate || new Date().toISOString().slice(0, 10));
   const [place, setPlace] = useState(defaultPlace);
-  const [selectedGeo, setSelectedGeo] = useState<PlaceSuggestion | null>(null);
+  const [selectedGeo, setSelectedGeo] = useState<GeocodeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,9 +37,9 @@ export default function PanchangDetailsForm({ onSubmit, submitLabel, idPrefix, d
     setSelectedGeo(null);
   };
 
-  const handlePlaceSelect = (s: PlaceSuggestion) => {
-    setPlace(s.label);
-    setSelectedGeo(s);
+  const handlePlaceSelect = (geo: GeocodeResult) => {
+    setPlace(geo.displayName);
+    setSelectedGeo(geo);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,9 +48,7 @@ export default function PanchangDetailsForm({ onSubmit, submitLabel, idPrefix, d
     setError('');
     setLoading(true);
     try {
-      const geo = selectedGeo
-        ? { latitude: selectedGeo.latitude, longitude: selectedGeo.longitude, displayName: selectedGeo.label }
-        : await calculatorService.geocode(place.trim());
+      const geo = selectedGeo ?? await calculatorService.geocode(place.trim());
       onSubmit({ date, latitude: geo.latitude, longitude: geo.longitude, placeName: geo.displayName });
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Something went wrong. Please try again.');
