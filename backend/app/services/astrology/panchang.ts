@@ -30,9 +30,16 @@ function karanaName(halfTithiIndex: number): string {
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Rahu Kaal falls in a fixed 1-of-8 segment of daylight hours depending on
-// the weekday — a standard, widely-published Vedic convention.
+// Rahu Kaal, Yamaganda Kaal, and Gulika Kaal all use the same mechanic —
+// one fixed 1-of-8 segment of daylight hours depending on the weekday —
+// just with three different, independently standard weekday tables.
+// Cross-checked across 3 independent published sources for this session
+// (two direct weekday->segment tables, one time-window example that
+// resolves to the same segments once its own prose mislabeling is
+// corrected against its own stated clock times).
 const RAHU_KAAL_SEGMENT: Record<number, number> = { 0: 8, 1: 2, 2: 7, 3: 5, 4: 6, 5: 4, 6: 3 }; // 0=Sunday..6=Saturday, 1-indexed segment of 8
+const YAMAGANDA_SEGMENT: Record<number, number> = { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1, 5: 7, 6: 6 };
+const GULIKA_SEGMENT: Record<number, number> = { 0: 7, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1 };
 
 // Choghadiya — 8 day segments (sunrise-sunset) + 8 night segments
 // (sunset-next sunrise), each one of 7 named types cycling through a fixed
@@ -73,6 +80,8 @@ export interface PanchangResult {
   sunrise: string | null; // ISO instant
   sunset: string | null;
   rahuKaal: { start: string; end: string } | null;
+  yamagandaKaal: { start: string; end: string } | null;
+  gulikaKaal: { start: string; end: string } | null;
   abhijitMuhurat: { start: string; end: string } | null;
   choghadiya: { day: ChoghadiyaSegment[]; night: ChoghadiyaSegment[] } | null;
 }
@@ -113,15 +122,21 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   const nakshatra = getNakshatra(moon.longitude);
 
   let rahuKaal: PanchangResult['rahuKaal'] = null;
+  let yamagandaKaal: PanchangResult['yamagandaKaal'] = null;
+  let gulikaKaal: PanchangResult['gulikaKaal'] = null;
   let abhijitMuhurat: PanchangResult['abhijitMuhurat'] = null;
   let choghadiya: PanchangResult['choghadiya'] = null;
   if (sunriseDate && sunsetDate) {
     const dayLengthMs = sunsetDate.getTime() - sunriseDate.getTime();
-
-    const segment = RAHU_KAAL_SEGMENT[weekday];
     const segmentLengthMs = dayLengthMs / 8;
-    const rahuStart = new Date(sunriseDate.getTime() + (segment - 1) * segmentLengthMs);
-    rahuKaal = { start: rahuStart.toISOString(), end: new Date(rahuStart.getTime() + segmentLengthMs).toISOString() };
+    const segmentWindow = (segment: number) => {
+      const start = new Date(sunriseDate.getTime() + (segment - 1) * segmentLengthMs);
+      return { start: start.toISOString(), end: new Date(start.getTime() + segmentLengthMs).toISOString() };
+    };
+
+    rahuKaal = segmentWindow(RAHU_KAAL_SEGMENT[weekday]);
+    yamagandaKaal = segmentWindow(YAMAGANDA_SEGMENT[weekday]);
+    gulikaKaal = segmentWindow(GULIKA_SEGMENT[weekday]);
 
     // Abhijit Muhurat: the 8th of 15 equal divisions of daylight, centered on solar noon.
     const muhurtaLengthMs = dayLengthMs / 15;
@@ -154,6 +169,8 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
     sunrise: sunriseDate?.toISOString() ?? null,
     sunset: sunsetDate?.toISOString() ?? null,
     rahuKaal,
+    yamagandaKaal,
+    gulikaKaal,
     abhijitMuhurat,
     choghadiya,
   };

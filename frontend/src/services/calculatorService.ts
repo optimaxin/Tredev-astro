@@ -147,6 +147,8 @@ export interface PanchangResult {
   sunrise: string | null;
   sunset: string | null;
   rahuKaal: { start: string; end: string } | null;
+  yamagandaKaal: { start: string; end: string } | null;
+  gulikaKaal: { start: string; end: string } | null;
   abhijitMuhurat: { start: string; end: string } | null;
   choghadiya: { day: ChoghadiyaSegment[]; night: ChoghadiyaSegment[] } | null;
 }
