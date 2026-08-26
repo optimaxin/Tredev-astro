@@ -237,8 +237,11 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               transition={{ delay: ci * 0.06, duration: 0.5 }}
             >
               <h3 className={styles.categoryHeader}>
-                <span className={styles.categoryHeaderIcon} style={{ color: category.color }}>
-                  <CategoryIcon size={24} />
+                <span
+                  className={styles.categoryHeaderIcon}
+                  style={{ color: category.color, background: `color-mix(in srgb, ${category.color} 16%, transparent)` }}
+                >
+                  <CategoryIcon size={20} />
                 </span>
                 <span className={styles.categoryHeaderLabel}>{category.label}</span>
               </h3>
@@ -249,7 +252,12 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                     className={styles.toolCard}
                     onClick={() => handleToolClick(tool)}
                   >
-                    <div className={styles.toolIcon}>✦</div>
+                    <span
+                      className={styles.toolIconBadge}
+                      style={{ color: category.color, background: `color-mix(in srgb, ${category.color} 14%, transparent)` }}
+                    >
+                      <CategoryIcon size={18} />
+                    </span>
                     <span className={styles.toolName}>{tool}</span>
                     <span className={styles.toolArrow}>→</span>
                   </div>

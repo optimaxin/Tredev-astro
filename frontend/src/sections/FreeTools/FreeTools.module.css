@@ -56,7 +56,7 @@
 
 .toolsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-4);
   min-height: 120px;
 }
@@ -66,10 +66,10 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  background: rgba(12, 17, 37, 0.6);
-  backdrop-filter: blur(12px) saturate(120%);
-  border: 1px solid rgba(199, 161, 90, 0.15);
-  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -79,27 +79,25 @@
   position: relative;
 }
 
-:global([data-theme='light']) .toolCard {
-  background: rgba(250, 247, 240, 0.7) !important;
-  border-color: rgba(199, 161, 90, 0.15) !important;
-}
-
 .toolCard:hover {
   border-color: var(--gold-primary);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(199, 161, 90, 0.2);
-  transform: translateY(-2px) scale(1.02);
-  background: rgba(18, 26, 54, 0.75);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
 }
 
-:global([data-theme='light']) .toolCard:hover {
-  background: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 8px 24px rgba(181, 138, 59, 0.12) !important;
-}
-
-.toolIcon {
-  font-size: 1.25rem;
+.toolIconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
-  color: var(--gold-primary);
+  border-radius: var(--radius-full);
+  transition: transform var(--transition-base);
+}
+
+.toolCard:hover .toolIconBadge {
+  transform: scale(1.08);
 }
 
 .toolName {
@@ -112,6 +110,7 @@
   transform: translateX(-4px);
   transition: all var(--transition-base);
   color: var(--gold-primary);
+  flex-shrink: 0;
 }
 
 .toolCard:hover .toolArrow {
@@ -395,7 +394,11 @@
 .categoryHeaderIcon {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
+  border-radius: var(--radius-full);
 }
 
 .categoryHeaderLabel {
