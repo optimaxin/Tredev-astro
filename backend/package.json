@@ -11,6 +11,7 @@
     "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.1118.0",
     "astronomia": "^4.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",

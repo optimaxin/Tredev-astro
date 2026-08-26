@@ -13,7 +13,7 @@ export function findUserById(id: string): Promise<UserRow | undefined> {
 }
 
 export async function createUser(params: {
-  name: string; email: string; passwordHash: string; role?: Role;
+  name: string; email: string; passwordHash: string; role?: Role; phoneNumber?: string;
   birthDate?: string; birthTime?: string; birthPlace?: string;
   birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
 }): Promise<UserRow> {
@@ -31,12 +31,15 @@ export async function createUser(params: {
     birth_latitude: params.birthLatitude ?? null,
     birth_longitude: params.birthLongitude ?? null,
     birth_timezone_offset_minutes: params.birthTimezoneOffsetMinutes ?? null,
+    phone_number: params.phoneNumber ?? null,
+    phone_verified: false,
   };
   await query(
-    `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes, phone_number, phone_verified)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
     [row.id, row.name, row.email, row.password_hash, row.role, row.status, row.created_at,
-      row.birth_date, row.birth_time, row.birth_place, row.birth_latitude, row.birth_longitude, row.birth_timezone_offset_minutes]
+      row.birth_date, row.birth_time, row.birth_place, row.birth_latitude, row.birth_longitude, row.birth_timezone_offset_minutes,
+      row.phone_number, row.phone_verified]
   );
   return row;
 }
@@ -118,4 +121,36 @@ export function findActivePasswordResetToken(tokenHash: string) {
 
 export async function markPasswordResetTokenUsed(id: string) {
   await query('UPDATE password_reset_tokens SET used_at = $1 WHERE id = $2', [Date.now(), id]);
+}
+
+// ── Phone OTP verification ──────────────────────────────────────────────
+
+export async function markPhoneVerified(userId: string) {
+  await query('UPDATE users SET phone_verified = TRUE WHERE id = $1', [userId]);
+}
+
+export async function insertPhoneOtp(params: { userId: string; codeHash: string; expiresAt: number }) {
+  const id = randomUUID();
+  await query(
+    'INSERT INTO phone_otp_codes (id, user_id, code_hash, expires_at, attempts, created_at) VALUES ($1, $2, $3, $4, 0, $5)',
+    [id, params.userId, params.codeHash, params.expiresAt, Date.now()]
+  );
+  return id;
+}
+
+// Only the most recent unused, unexpired code counts — a resend should
+// invalidate any earlier code rather than leave multiple valid ones around.
+export function findActivePhoneOtp(userId: string) {
+  return queryOne<{ id: string; code_hash: string; attempts: number }>(
+    'SELECT id, code_hash, attempts FROM phone_otp_codes WHERE user_id = $1 AND used_at IS NULL AND expires_at > $2 ORDER BY created_at DESC LIMIT 1',
+    [userId, Date.now()]
+  );
+}
+
+export async function incrementPhoneOtpAttempts(id: string) {
+  await query('UPDATE phone_otp_codes SET attempts = attempts + 1 WHERE id = $1', [id]);
+}
+
+export async function markPhoneOtpUsed(id: string) {
+  await query('UPDATE phone_otp_codes SET used_at = $1 WHERE id = $2', [Date.now(), id]);
 }

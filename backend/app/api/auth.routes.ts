@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AuthError, getPublicUser, login, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
+import { AuthError, getPublicUser, login, logout, refresh, register, requestPasswordReset, resetPassword, sendPhoneOtp, verifyPhoneOtp } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { updateBirthDetails } from '../repositories/userRepository.ts';
@@ -24,6 +24,7 @@ const registerSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
+  phoneNumber: z.string().trim().min(8).max(20),
   birthDate: z.string().optional(),
   birthTime: z.string().optional(),
   birthPlace: z.string().optional(),
@@ -99,6 +100,33 @@ authRouter.patch('/me/birth-details', requireAuth, async (req, res) => {
   await updateBirthDetails(req.user!.id, parsed.data);
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
+});
+
+// ── Phone OTP verification (post-registration) ──────────────────────────
+const otpLimiter = rateLimit({ windowMs: 15 * 60_000, max: 5 }); // tighter than authLimiter — each hit sends a real SMS
+const verifyOtpSchema = z.object({ code: z.string().trim().length(6) });
+
+authRouter.post('/me/verify-otp', requireAuth, async (req, res) => {
+  try {
+    const { code } = verifyOtpSchema.parse(req.body);
+    await verifyPhoneOtp(req.user!.id, code);
+    const user = await getPublicUser(req.user!.id);
+    res.json({ success: true, data: user });
+  } catch (e) {
+    handleAuthError(e, res);
+  }
+});
+
+authRouter.post('/me/resend-otp', otpLimiter, requireAuth, async (req, res) => {
+  try {
+    const user = await getPublicUser(req.user!.id);
+    if (!user?.phone_number) return fail(res, 400, 'VALIDATION_ERROR', 'No phone number on file');
+    if (user.phone_verified) return fail(res, 400, 'ALREADY_VERIFIED', 'Phone is already verified');
+    const { devOtpCode } = await sendPhoneOtp(user.id, user.phone_number);
+    res.json({ success: true, data: { devOtpCode } });
+  } catch (e) {
+    handleAuthError(e, res);
+  }
 });
 
 const forgotSchema = z.object({ email: z.string().trim().email() });

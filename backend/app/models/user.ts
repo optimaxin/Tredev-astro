@@ -18,6 +18,8 @@ export interface UserRow extends BirthDetails {
   role: Role;
   status: AccountStatus;
   created_at: number;
+  phone_number: string | null;
+  phone_verified: boolean;
 }
 
 // Safe-to-expose shape — never send password_hash to a client.
@@ -27,6 +29,8 @@ export interface PublicUser extends BirthDetails {
   email: string;
   role: Role;
   status: AccountStatus;
+  phone_number: string | null;
+  phone_verified: boolean;
 }
 
 export function toPublicUser(row: UserRow): PublicUser {
@@ -35,5 +39,6 @@ export function toPublicUser(row: UserRow): PublicUser {
     birth_date: row.birth_date, birth_time: row.birth_time, birth_place: row.birth_place,
     birth_latitude: row.birth_latitude, birth_longitude: row.birth_longitude,
     birth_timezone_offset_minutes: row.birth_timezone_offset_minutes,
+    phone_number: row.phone_number, phone_verified: row.phone_verified,
   };
 }

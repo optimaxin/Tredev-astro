@@ -37,5 +37,13 @@ export const config = {
     // Render's dashboard env vars (production) — never commit real values.
     locationApiKey: process.env.AWS_LOCATION_API_KEY,
     locationRegion: process.env.AWS_LOCATION_REGION || 'us-east-1',
+    // SNS (used by smsService.ts for OTP texts) needs real IAM credentials
+    // with sns:Publish permission — NOT the Location API key above, that
+    // key only works for Location's Places/Routes/Maps APIs. Set
+    // AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY as standard AWS SDK env vars
+    // (the SDK's default credential chain picks them up automatically —
+    // nothing in this codebase reads them directly); this region field is
+    // just where SNSClient is told to send the Publish call.
+    snsRegion: process.env.AWS_SNS_REGION || process.env.AWS_LOCATION_REGION || 'us-east-1',
   },
 };
