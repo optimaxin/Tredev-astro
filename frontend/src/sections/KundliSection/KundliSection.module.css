@@ -571,6 +571,9 @@
   padding: 3px 10px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
+  /* Center the pill itself within its grid column, rather than stretching
+     the badge box (which text-align alone can't control on a background). */
+  justify-self: center;
 }
 
 .statusBadgeActive { background: rgba(231, 165, 26, 0.15); color: #D0A020; }
@@ -708,6 +711,7 @@
 /* Tab bar — swaps the sections below instead of one long scroll */
 .tabBar {
   display: flex;
+  justify-content: center;
   gap: var(--space-2);
   margin-top: var(--space-8);
   padding: var(--space-2);
@@ -786,6 +790,12 @@
 }
 
 .dataRow:last-child { border-bottom: none; }
+
+/* Every column but the first (planet/point name, which reads left-to-right
+   with its icon) centers its content — numbers and status badges were
+   hugging the left edge of wide grid columns, leaving the right half of
+   the table looking like dead space. */
+.dataRow > span:not(:first-child) { text-align: center; }
 
 .dataRow:hover { background: rgba(199, 161, 90, 0.05); }
 
