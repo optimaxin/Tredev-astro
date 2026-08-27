@@ -24,11 +24,31 @@ function countsFor(name: string) {
 }
 
 export default function UsersPage() {
-  const { t, accounts, suspendAccount, restoreAccount } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AuthUser | null>(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [roleError, setRoleError] = useState('');
+  // Only an ADMIN can grant Staff or Admin — STAFF only ever sees the
+  // "Make Astrologer" action. Mirrors the server-side check in
+  // admin.routes.ts's PATCH /users/:id/role handler.
+  const isAdmin = currentUser?.role === 'ADMIN';
+
+  const assignRole = async (role: 'ASTROLOGIST' | 'STAFF' | 'ADMIN') => {
+    if (!selected) return;
+    setRoleError('');
+    setRoleBusy(true);
+    try {
+      await updateAccountRole(selected.email, role);
+      setSelected(null);
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : 'Could not update this account\'s role.');
+    } finally {
+      setRoleBusy(false);
+    }
+  };
 
   const users = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -88,9 +108,14 @@ export default function UsersPage() {
         onClose={() => setSelected(null)}
         title={selected?.name || ''}
         footer={selected ? (
-          accountStatus(selected.status) === 'ACTIVE'
-            ? <AdminButton variant="danger" onClick={() => { suspendAccount(selected.email); setSelected(null); }}>{t('admin_action_suspend')}</AdminButton>
-            : <AdminButton variant="gold" onClick={() => { restoreAccount(selected.email); setSelected(null); }}>{t('admin_action_restore')}</AdminButton>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <AdminButton variant="gold" disabled={roleBusy} onClick={() => assignRole('ASTROLOGIST')}>Make Astrologer</AdminButton>
+            {isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('STAFF')}>Make Staff</AdminButton>}
+            {isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('ADMIN')}>Make Admin</AdminButton>}
+            {accountStatus(selected.status) === 'ACTIVE'
+              ? <AdminButton variant="danger" onClick={() => { suspendAccount(selected.email); setSelected(null); }}>{t('admin_action_suspend')}</AdminButton>
+              : <AdminButton variant="gold" onClick={() => { restoreAccount(selected.email); setSelected(null); }}>{t('admin_action_restore')}</AdminButton>}
+          </div>
         ) : undefined}
       >
         {selected && (
@@ -101,6 +126,7 @@ export default function UsersPage() {
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_consultations')}</span><span className={styles.drawerFieldValue}>{countsFor(selected.name).consultations}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_orders')}</span><span className={styles.drawerFieldValue}>{countsFor(selected.name).orders}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_status')}</span><span className={styles.drawerFieldValue}>{(() => { const s = accountStatus(selected.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; })()}</span></div>
+            {roleError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{roleError}</p>}
           </>
         )}
       </Drawer>

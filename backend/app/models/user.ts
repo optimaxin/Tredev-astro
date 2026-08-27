@@ -1,4 +1,4 @@
-export type Role = 'USER' | 'ASTROLOGIST' | 'ADMIN';
+export type Role = 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
 export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
 
 export interface BirthDetails {

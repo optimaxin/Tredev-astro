@@ -5,6 +5,14 @@ import AdminHeader from './components/AdminHeader';
 import type { AdminSection } from './adminTypes';
 import styles from './AdminConsole.module.css';
 
+// STAFF gets a narrow slice of the console — just enough to review/approve
+// astrologer applications and assign the Astrologer role from the user
+// list (see backend/app/api/admin.routes.ts's staffOk-gated routes for the
+// matching server-side scope). Everything else (broadcasts, blog, audit
+// log, financials, suspending accounts, granting Staff/Admin) stays
+// ADMIN-only, both here and enforced again server-side.
+const STAFF_SECTIONS: AdminSection[] = ['overview', 'applications', 'astrologers', 'users'];
+
 import OverviewPage from './pages/OverviewPage';
 
 const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'));
@@ -24,16 +32,23 @@ export default function AdminConsole() {
   const [section, setSection] = useState<AdminSection>('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (currentUser?.role !== 'ADMIN') return null;
+  const isStaff = currentUser?.role === 'STAFF';
+  if (currentUser?.role !== 'ADMIN' && !isStaff) return null;
 
   const pendingApplications = applications.filter(a => a.status === 'PENDING').length;
 
   const navigate = (next: AdminSection) => {
+    if (isStaff && !STAFF_SECTIONS.includes(next)) return;
     setSection(next);
     setMobileOpen(false);
   };
 
   const renderSection = () => {
+    // Defense in depth — real enforcement is server-side (staffOk-gated
+    // routes in admin.routes.ts); this just stops a STAFF session from
+    // rendering an admin-only page it could otherwise reach by calling
+    // navigate() with an unlisted section key.
+    if (isStaff && !STAFF_SECTIONS.includes(section)) return <OverviewPage onNavigate={navigate} />;
     switch (section) {
       case 'overview': return <OverviewPage onNavigate={navigate} />;
       case 'applications': return <ApplicationsPage />;
@@ -60,6 +75,7 @@ export default function AdminConsole() {
           onNavigate={navigate}
           mobileOpen={mobileOpen}
           pendingApplications={pendingApplications}
+          allowedSections={isStaff ? STAFF_SECTIONS : undefined}
         />
         <div className={styles.main}>
           <AdminHeader onMenuClick={() => setMobileOpen(true)} />

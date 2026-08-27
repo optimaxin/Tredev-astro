@@ -22,10 +22,15 @@ interface Props {
   onNavigate: (section: AdminSection) => void;
   mobileOpen: boolean;
   pendingApplications: number;
+  // Restricts which nav items render at all — used for STAFF, who only get
+  // a narrow slice of the console (see AdminConsole.tsx's STAFF_SECTIONS).
+  // Undefined/omitted means no restriction (the ADMIN case).
+  allowedSections?: AdminSection[];
 }
 
-export default function AdminSidebar({ active, onNavigate, mobileOpen, pendingApplications }: Props) {
+export default function AdminSidebar({ active, onNavigate, mobileOpen, pendingApplications, allowedSections }: Props) {
   const { t } = useAppContext();
+  const items = allowedSections ? NAV_ITEMS.filter(item => allowedSections.includes(item.key)) : NAV_ITEMS;
 
   return (
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ''}`}>
@@ -38,7 +43,7 @@ export default function AdminSidebar({ active, onNavigate, mobileOpen, pendingAp
       </div>
 
       <nav className={styles.nav}>
-        {NAV_ITEMS.map(item => (
+        {items.map(item => (
           <button
             key={item.key}
             className={`${styles.navItem} ${active === item.key ? styles.navItemActive : ''}`}

@@ -16,10 +16,16 @@ import { listAllPurchases } from '../repositories/reportPurchaseRepository.ts';
 
 export const adminRouter = Router();
 
-// Every route here requires a real, JWT-verified ADMIN account — unlike the
-// older mock-trust realtime routes in routes.ts, there is no client-supplied
-// identity trusted anywhere in this file.
-adminRouter.use(requireAuth, requireRole('ADMIN'));
+// Every route here requires a real, JWT-verified account — unlike the older
+// mock-trust realtime routes in routes.ts, there is no client-supplied
+// identity trusted anywhere in this file. Most of the console (broadcasts,
+// blog, audit log, financials, suspending accounts) stays ADMIN-only; STAFF
+// is scoped narrowly to the astrologer-assignment workflow (see staffOk
+// below) — assigning ADMIN or STAFF itself is never available to STAFF,
+// enforced inside the /role handler, not just by route gating.
+adminRouter.use(requireAuth);
+const adminOnly = requireRole('ADMIN');
+const staffOk = requireRole('ADMIN', 'STAFF');
 
 async function audit(req: import('express').Request, action: string, target: string) {
   const actor = await findUserById(req.user!.id);
@@ -32,29 +38,36 @@ function fail(res: import('express').Response, status: number, code: string, mes
 
 // ── Users ────────────────────────────────────────────────────────────────
 
-adminRouter.get('/users', async (_req, res) => {
+adminRouter.get('/users', staffOk, async (_req, res) => {
   const rows = await listAllUsers();
   res.json({ success: true, data: rows.map(toPublicUser) });
 });
 
 const statusSchema = z.object({ status: z.enum(['ACTIVE', 'SUSPENDED']) });
 
-adminRouter.patch('/users/:id/status', async (req, res) => {
+adminRouter.patch('/users/:id/status', adminOnly, async (req, res) => {
   const parsed = statusSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  const target = await findUserById(req.params.id);
+  const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
   await updateUserStatus(target.id, parsed.data.status);
   await audit(req, `user.status.${parsed.data.status.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
 });
 
-const roleSchema = z.object({ role: z.enum(['USER', 'ASTROLOGIST', 'ADMIN']) });
+const roleSchema = z.object({ role: z.enum(['USER', 'ASTROLOGIST', 'STAFF', 'ADMIN']) });
 
-adminRouter.patch('/users/:id/role', async (req, res) => {
+// STAFF can reach this route (staffOk) but only to assign USER/ASTROLOGIST —
+// granting STAFF or ADMIN itself is an ADMIN-exclusive privilege, checked
+// here rather than at the route level since the permitted target roles
+// depend on who's asking, not just whether they're allowed to hit the route.
+adminRouter.patch('/users/:id/role', staffOk, async (req, res) => {
   const parsed = roleSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  const target = await findUserById(req.params.id);
+  if (req.user!.role === 'STAFF' && (parsed.data.role === 'ADMIN' || parsed.data.role === 'STAFF')) {
+    return fail(res, 403, 'FORBIDDEN', 'Only an admin can grant Staff or Admin access');
+  }
+  const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
   await updateUserRole(target.id, parsed.data.role);
   await audit(req, `user.role.${parsed.data.role.toLowerCase()}`, target.email);
@@ -70,7 +83,7 @@ const addAstrologerSchema = z.object({
   password: z.string().min(8).max(200),
 });
 
-adminRouter.post('/astrologers', async (req, res) => {
+adminRouter.post('/astrologers', staffOk, async (req, res) => {
   const parsed = addAstrologerSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   try {
@@ -86,12 +99,12 @@ adminRouter.post('/astrologers', async (req, res) => {
 
 // ── Astrologer applications ─────────────────────────────────────────────
 
-adminRouter.get('/astrologer-applications', async (_req, res) => {
+adminRouter.get('/astrologer-applications', staffOk, async (_req, res) => {
   res.json({ success: true, data: await listApplicationsWithUsers() });
 });
 
-adminRouter.post('/astrologer-applications/:id/approve', async (req, res) => {
-  const application = await findApplicationById(req.params.id);
+adminRouter.post('/astrologer-applications/:id/approve', staffOk, async (req, res) => {
+  const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
   if (application.status !== 'PENDING') return fail(res, 400, 'ALREADY_DECIDED', 'This application was already decided');
   const applicant = await findUserById(application.user_id);
@@ -104,8 +117,8 @@ adminRouter.post('/astrologer-applications/:id/approve', async (req, res) => {
   res.json({ success: true, data: { ok: true } });
 });
 
-adminRouter.post('/astrologer-applications/:id/reject', async (req, res) => {
-  const application = await findApplicationById(req.params.id);
+adminRouter.post('/astrologer-applications/:id/reject', staffOk, async (req, res) => {
+  const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
   if (application.status !== 'PENDING') return fail(res, 400, 'ALREADY_DECIDED', 'This application was already decided');
   await decideApplication(application.id, 'REJECTED');
@@ -121,7 +134,7 @@ const pageSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-adminRouter.get('/consultations', async (req, res) => {
+adminRouter.get('/consultations', adminOnly, async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllConsultations(parsed.data.page, parsed.data.limit);
@@ -130,7 +143,7 @@ adminRouter.get('/consultations', async (req, res) => {
 
 // ── Report purchases (real, replacing the old fake SAMPLE_PURCHASED_REPORTS) ──
 
-adminRouter.get('/report-purchases', async (req, res) => {
+adminRouter.get('/report-purchases', adminOnly, async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllPurchases(parsed.data.page, parsed.data.limit);
@@ -143,7 +156,7 @@ adminRouter.get('/report-purchases', async (req, res) => {
 
 // ── Audit log ────────────────────────────────────────────────────────────
 
-adminRouter.get('/audit-log', async (req, res) => {
+adminRouter.get('/audit-log', adminOnly, async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   res.json({ success: true, data: await listAuditLog(parsed.data.page, parsed.data.limit) });
@@ -153,7 +166,7 @@ adminRouter.get('/audit-log', async (req, res) => {
 // an applicant") that isn't tied to any other state-changing action here.
 const auditNoteSchema = z.object({ action: z.string().trim().min(1).max(100), target: z.string().trim().min(1).max(200) });
 
-adminRouter.post('/audit-log', async (req, res) => {
+adminRouter.post('/audit-log', adminOnly, async (req, res) => {
   const parsed = auditNoteSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await audit(req, parsed.data.action, parsed.data.target);
@@ -162,17 +175,21 @@ adminRouter.post('/audit-log', async (req, res) => {
 
 // ── Blog posts (add/remove — editing the journal shown on the homepage) ──
 
+// Minimums raised past a single test word (e.g. "Xyz") — not a content
+// moderation system, just a floor against an obviously-unfinished post
+// reaching the live homepage (see listBlogPosts' featured-first ordering
+// for the other half of this fix).
 const blogPostSchema = z.object({
-  title: z.string().trim().min(2).max(200),
+  title: z.string().trim().min(8).max(200),
   category: z.string().trim().min(1).max(50),
   readTime: z.string().trim().min(1).max(30),
-  excerpt: z.string().trim().min(1).max(500),
+  excerpt: z.string().trim().min(30).max(500),
   content: z.string().trim().min(1).max(20000),
   tag: z.string().trim().min(1).max(50),
   featured: z.boolean().default(false),
 });
 
-adminRouter.post('/blog', async (req, res) => {
+adminRouter.post('/blog', adminOnly, async (req, res) => {
   const parsed = blogPostSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const row = await createBlogPost(parsed.data);
@@ -180,7 +197,7 @@ adminRouter.post('/blog', async (req, res) => {
   res.status(201).json({ success: true, data: toPublicBlogPost(row) });
 });
 
-adminRouter.delete('/blog/:id', async (req, res) => {
+adminRouter.delete('/blog/:id', adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deleteBlogPost(id);
@@ -190,13 +207,13 @@ adminRouter.delete('/blog/:id', async (req, res) => {
 
 // ── Broadcasts (site-wide admin announcements) ──────────────────────────
 
-adminRouter.get('/broadcasts', async (_req, res) => {
+adminRouter.get('/broadcasts', adminOnly, async (_req, res) => {
   res.json({ success: true, data: (await listAllBroadcasts()).map(toPublicBroadcast) });
 });
 
 const broadcastSchema = z.object({ message: z.string().trim().min(1).max(500) });
 
-adminRouter.post('/broadcasts', async (req, res) => {
+adminRouter.post('/broadcasts', adminOnly, async (req, res) => {
   const parsed = broadcastSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const row = await createBroadcast(parsed.data.message, req.user!.id);
@@ -204,7 +221,7 @@ adminRouter.post('/broadcasts', async (req, res) => {
   res.status(201).json({ success: true, data: toPublicBroadcast(row) });
 });
 
-adminRouter.delete('/broadcasts/:id', async (req, res) => {
+adminRouter.delete('/broadcasts/:id', adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deactivateBroadcast(id);

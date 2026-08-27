@@ -122,64 +122,93 @@
   pointer-events: none;
 }
 
-.wheelCenter {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border-strong);
-  background: var(--surface-elevated);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  box-shadow: var(--shadow-card);
+/* Zodiac ring — a real 12-wedge horoscope wheel (own class, not sharing
+   .rashiWheelWrap, which the Product Detail page also uses for a plain
+   decorative circle unrelated to this). */
+.zodiacWheelWrap {
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1;
+  margin-bottom: var(--space-8);
+  filter: drop-shadow(0 8px 30px rgba(181, 138, 59, 0.12));
 }
 
-.centerGlyph {
-  color: var(--gold-primary);
-  font-size: 1.8rem;
-  animation: rotateSlow 40s linear infinite;
+.zodiacWheelSvg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.rashiNode {
-  position: absolute;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1.5px solid var(--border-strong);
-  color: var(--gold-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.wheelRimOuter {
+  fill: none;
+  stroke: var(--gold-primary);
+  stroke-width: 2;
+  opacity: 0.55;
+}
+
+.wheelRimInner {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.wheelTick {
+  stroke: var(--gold-primary);
+  stroke-width: 1;
+  opacity: 0.3;
+}
+
+.wheelWedge {
   cursor: pointer;
-  transition: all var(--transition-base);
-  z-index: 5;
-  box-shadow: 0 4px 12px rgba(181, 138, 59, 0.08);
 }
 
-.rashiNode:hover,
-.rashiNodeActive {
-  background: var(--gold-primary);
-  border-color: var(--gold-primary);
-  color: #fff;
-  box-shadow: 0 0 20px rgba(181, 138, 59, 0.4);
-  transform: scale(1.18);
+.wedgeFill {
+  fill: var(--surface);
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  transition: fill var(--transition-base);
 }
 
-:global([data-theme='light']) .rashiNodeActive {
-  color: #fff;
+.wheelWedge:hover .wedgeFill {
+  fill: rgba(181, 138, 59, 0.12);
 }
 
-.nodeSymbol {
-  flex-shrink: 0;
+.wheelWedgeActive .wedgeFill {
+  fill: var(--gold-primary);
+  opacity: 0.85;
+}
+
+.wedgeIcon {
+  pointer-events: none;
   transition: transform var(--transition-base);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.rashiNode:hover .nodeSymbol,
-.rashiNodeActive .nodeSymbol {
-  transform: scale(1.08);
+.wheelWedge:hover .wedgeIcon,
+.wheelWedgeActive .wedgeIcon {
+  transform: scale(1.15);
+}
+
+.wheelHub {
+  fill: var(--surface-elevated);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+.wheelHubName {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  fill: var(--gold-primary);
+}
+
+.wheelHubEng {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .horoscopeDetailsCard {

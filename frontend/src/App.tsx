@@ -28,7 +28,7 @@ function AppContent() {
   // with their own layout — they never show the public site's navbar/footer
   // chrome (the astrologer workspace renders its own header internally).
   const isWorkspaceConsole =
-    (currentUser?.role === 'ADMIN' || currentUser?.role === 'ASTROLOGIST') &&
+    (currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'ASTROLOGIST') &&
     ['dashboard', 'profile', 'my-jyotish'].includes(page);
 
   if (isWorkspaceConsole) {

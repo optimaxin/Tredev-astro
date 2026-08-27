@@ -34,7 +34,7 @@ export interface ApiUserRecord {
   id: string;
   name: string;
   email: string;
-  role: 'USER' | 'ASTROLOGIST' | 'ADMIN';
+  role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED';
   created_at: string;
 }
@@ -117,7 +117,7 @@ export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
     request<{ ok: boolean }>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  updateUserRole: (id: string, role: 'USER' | 'ASTROLOGIST' | 'ADMIN') =>
+  updateUserRole: (id: string, role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') =>
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   addAstrologer: (name: string, email: string, password: string) =>
     request<ApiUserRecord>('/astrologers', { method: 'POST', body: JSON.stringify({ name, email, password }) }),

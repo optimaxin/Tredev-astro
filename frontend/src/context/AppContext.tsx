@@ -38,7 +38,7 @@ export interface CartItem {
 
 // ── Role-based auth (mock/frontend-only prototype — no real backend exists in
 // this project, so "backend authority" is simulated via localStorage) ──
-export type Role = 'USER' | 'ASTROLOGIST' | 'ADMIN';
+export type Role = 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
 
 export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
 
@@ -354,6 +354,10 @@ interface AppContextValue {
   suspendAccount: (email: string) => Promise<void>;
   restoreAccount: (email: string) => Promise<void>;
   createAstrologerAccount: (name: string, email: string, password: string) => Promise<AuthUser | null>;
+  // Server enforces who can assign what (see admin.routes.ts's staffOk /
+  // in-handler STAFF-vs-ADMIN check) — this just calls the endpoint; a 403
+  // for an over-reaching STAFF caller surfaces as a thrown ApiError.
+  updateAccountRole: (email: string, role: Role) => Promise<void>; // throws AdminApiError on 403 (e.g. STAFF trying to grant Staff/Admin)
   // Astrologist practice-management (mock prototype, scoped to currentUser.email)
   consultationRequests: ConsultationRequest[];
   consultations: Consultation[];
@@ -646,7 +650,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     auth_placeholder_fullname: 'e.g. Sparsh Sharma',
     auth_label_email: 'Email Address *',
     auth_placeholder_email: 'name@example.com',
-    auth_label_password: 'Secret Password *',
+    auth_label_password: 'Password *',
     auth_label_login_email: 'Registered Email Address *',
     auth_label_login_password: 'Password *',
     auth_separator_birth_coords: 'Birth Coordinates',
@@ -2662,24 +2666,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshAdminData = async () => {
     try {
-      const [users, apps, logs] = await Promise.all([
-        adminService.listUsers(), adminService.listApplications(), adminService.listAuditLog(),
-      ]);
+      const [users, apps] = await Promise.all([adminService.listUsers(), adminService.listApplications()]);
       setAccounts(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status })));
       setApplications(apps.map(a => ({
         id: a.id, userEmail: a.userEmail, userName: a.userName, expertise: a.expertise, experience: a.experience,
         status: a.status, submittedAt: new Date(Number(a.submittedAt)).toISOString(),
       })));
-      setAuditLog(logs.map(l => ({ id: l.id, action: l.action, actor: l.actor_label, target: l.target, at: new Date(Number(l.created_at)).toISOString() })));
     } catch (e) {
       console.error('Failed to load admin data', e);
     }
+    // Audit log is ADMIN-only server-side now (STAFF has no access) — fetched
+    // separately so a 403 here can never block the users/applications load
+    // above, which STAFF genuinely needs (they used to be one Promise.all,
+    // where one rejection failed the whole batch).
+    if (currentUser?.role === 'ADMIN') {
+      try {
+        const logs = await adminService.listAuditLog();
+        setAuditLog(logs.map(l => ({ id: l.id, action: l.action, actor: l.actor_label, target: l.target, at: new Date(Number(l.created_at)).toISOString() })));
+      } catch (e) {
+        console.error('Failed to load audit log', e);
+      }
+    }
   };
 
-  // Admin data is only meaningful (and only authorized) for an ADMIN session —
-  // fetch it once whenever one starts, rather than on every render.
+  // Admin data is only meaningful (and only authorized) for an ADMIN/STAFF
+  // session — fetch it once whenever one starts, rather than on every render.
   React.useEffect(() => {
-    if (currentUser?.role === 'ADMIN') refreshAdminData();
+    if (currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF') refreshAdminData();
   }, [currentUser?.role]);
 
   const login = async (email: string, password: string): Promise<AuthUser | null> => {
@@ -2762,6 +2775,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const acc = accounts.find(a => normalizeEmail(a.email) === normalizeEmail(email));
     if (!acc) return;
     await adminService.updateUserStatus(acc.id, 'ACTIVE');
+    await refreshAdminData();
+  };
+
+  const updateAccountRole = async (email: string, role: Role) => {
+    const acc = accounts.find(a => normalizeEmail(a.email) === normalizeEmail(email));
+    if (!acc) return;
+    await adminService.updateUserRole(acc.id, role);
     await refreshAdminData();
   };
 
@@ -2996,7 +3016,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       accounts, applications, applyToBecomeAstrologer, approveApplication, rejectApplication,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
-      suspendAccount, restoreAccount, createAstrologerAccount,
+      suspendAccount, restoreAccount, createAstrologerAccount, updateAccountRole,
       consultationRequests, consultations,
       acceptConsultationRequest, declineConsultationRequest, completeConsultation, cancelConsultation, saveConsultationNotes,
       blockedSlots, addBlockedSlot, removeBlockedSlot,

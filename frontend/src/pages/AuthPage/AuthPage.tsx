@@ -65,7 +65,7 @@ export default function AuthPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const redirectByRole = (role: 'USER' | 'ASTROLOGIST' | 'ADMIN') => {
+  const redirectByRole = (role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') => {
     if (role === 'USER') {
       resumePendingAction(pendingAction);
     } else {
@@ -359,7 +359,7 @@ export default function AuthPage() {
                   <input
                     type="tel"
                     className={styles.inkInput}
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 12345 67890"
                     value={form.phoneNumber}
                     onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
                     required

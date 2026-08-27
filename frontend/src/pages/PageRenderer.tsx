@@ -44,10 +44,6 @@ import { calculatorService, CalculatorApiError } from '../services/calculatorSer
 import type { DailyHoroscopeResult, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
-import {
-  AriesIcon, TaurusIcon, GeminiIcon, CancerIcon, LeoIcon, VirgoIcon,
-  LibraIcon, ScorpioIcon, SagittariusIcon, CapricornIcon, AquariusIcon, PiscesIcon,
-} from '../components/Icons/Icons';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
 import type { Review, UiAstrologer } from '../services/astrologerService';
 import { consultationService, ConsultationApiError } from '../services/consultationService';
@@ -326,18 +322,18 @@ function HoroscopePage() {
   const [error, setError] = useState('');
 
   const RASHIS = [
-    { name: 'Mesha', eng: 'Aries', icon: AriesIcon, element: 'Fire', graha: 'Mars', index: 1 },
-    { name: 'Vrishabha', eng: 'Taurus', icon: TaurusIcon, element: 'Earth', graha: 'Venus', index: 2 },
-    { name: 'Mithuna', eng: 'Gemini', icon: GeminiIcon, element: 'Air', graha: 'Mercury', index: 3 },
-    { name: 'Karka', eng: 'Cancer', icon: CancerIcon, element: 'Water', graha: 'Moon', index: 4 },
-    { name: 'Simha', eng: 'Leo', icon: LeoIcon, element: 'Fire', graha: 'Sun', index: 5 },
-    { name: 'Kanya', eng: 'Virgo', icon: VirgoIcon, element: 'Earth', graha: 'Mercury', index: 6 },
-    { name: 'Tula', eng: 'Libra', icon: LibraIcon, element: 'Air', graha: 'Venus', index: 7 },
-    { name: 'Vrischika', eng: 'Scorpio', icon: ScorpioIcon, element: 'Water', graha: 'Mars', index: 8 },
-    { name: 'Dhanu', eng: 'Sagittarius', icon: SagittariusIcon, element: 'Fire', graha: 'Jupiter', index: 9 },
-    { name: 'Makara', eng: 'Capricorn', icon: CapricornIcon, element: 'Earth', graha: 'Saturn', index: 10 },
-    { name: 'Kumbha', eng: 'Aquarius', icon: AquariusIcon, element: 'Air', graha: 'Saturn', index: 11 },
-    { name: 'Meena', eng: 'Pisces', icon: PiscesIcon, element: 'Water', graha: 'Jupiter', index: 12 },
+    { name: 'Mesha', eng: 'Aries', element: 'Fire', graha: 'Mars', index: 1 },
+    { name: 'Vrishabha', eng: 'Taurus', element: 'Earth', graha: 'Venus', index: 2 },
+    { name: 'Mithuna', eng: 'Gemini', element: 'Air', graha: 'Mercury', index: 3 },
+    { name: 'Karka', eng: 'Cancer', element: 'Water', graha: 'Moon', index: 4 },
+    { name: 'Simha', eng: 'Leo', element: 'Fire', graha: 'Sun', index: 5 },
+    { name: 'Kanya', eng: 'Virgo', element: 'Earth', graha: 'Mercury', index: 6 },
+    { name: 'Tula', eng: 'Libra', element: 'Air', graha: 'Venus', index: 7 },
+    { name: 'Vrischika', eng: 'Scorpio', element: 'Water', graha: 'Mars', index: 8 },
+    { name: 'Dhanu', eng: 'Sagittarius', element: 'Fire', graha: 'Jupiter', index: 9 },
+    { name: 'Makara', eng: 'Capricorn', element: 'Earth', graha: 'Saturn', index: 10 },
+    { name: 'Kumbha', eng: 'Aquarius', element: 'Air', graha: 'Saturn', index: 11 },
+    { name: 'Meena', eng: 'Pisces', element: 'Water', graha: 'Jupiter', index: 12 },
   ];
 
   const current = RASHIS[activeRashi];
@@ -367,35 +363,65 @@ function HoroscopePage() {
         </div>
 
         <div className={styles.horoscopeLayout}>
-          {/* Wheel Selector */}
+          {/* Wheel Selector — a real 12-segment zodiac ring (wedges radiating
+              from a center hub, like a printed horoscope wheel) instead of
+              12 loose circles floating around a rim, which read as a rotary
+              phone dial rather than an astrological chart. */}
           <div className={styles.wheelColumn}>
-            <div className={styles.rashiWheelWrap}>
-              <div className={styles.wheelCenter}>
-                <span className={styles.centerGlyph}>❂</span>
-              </div>
-              {RASHIS.map((r, i) => {
-                const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-                const radius = 160; // radius of circle layout
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
+            <div className={styles.zodiacWheelWrap}>
+              <svg viewBox="0 0 400 400" className={styles.zodiacWheelSvg}>
+                <circle cx="200" cy="200" r="190" className={styles.wheelRimOuter} />
+                <circle cx="200" cy="200" r="106" className={styles.wheelRimInner} />
+                {/* Degree tick marks — 3 per sign (every 10°), the fine
+                    graduated-rim detail a real horoscope wheel has. */}
+                {Array.from({ length: 36 }, (_, t) => {
+                  const deg = t * 10 - 90;
+                  const rad = (deg * Math.PI) / 180;
+                  const long = t % 3 === 0;
+                  const r1 = long ? 178 : 184;
+                  return (
+                    <line
+                      key={t}
+                      x1={200 + Math.cos(rad) * r1} y1={200 + Math.sin(rad) * r1}
+                      x2={200 + Math.cos(rad) * 190} y2={200 + Math.sin(rad) * 190}
+                      className={styles.wheelTick}
+                    />
+                  );
+                })}
+                {RASHIS.map((r, i) => {
+                  const startDeg = i * 30 - 90;
+                  const endDeg = startDeg + 30;
+                  const midRad = ((startDeg + 15) * Math.PI) / 180;
+                  const p = (deg: number, radius: number) => {
+                    const rad = (deg * Math.PI) / 180;
+                    return [200 + Math.cos(rad) * radius, 200 + Math.sin(rad) * radius];
+                  };
+                  const [x1, y1] = p(startDeg, 190);
+                  const [x2, y2] = p(endDeg, 190);
+                  const [x3, y3] = p(endDeg, 106);
+                  const [x4, y4] = p(startDeg, 106);
+                  const wedgePath = `M${x1},${y1} A190,190 0 0 1 ${x2},${y2} L${x3},${y3} A106,106 0 0 0 ${x4},${y4} Z`;
+                  const iconX = 200 + Math.cos(midRad) * 148;
+                  const iconY = 200 + Math.sin(midRad) * 148;
 
-                return (
-                  <button
-                    key={r.name}
-                    className={`${styles.rashiNode} ${activeRashi === i ? styles.rashiNodeActive : ''}`}
-                    style={{
-                      left: `calc(50% + ${x}px - 28px)`,
-                      top: `calc(50% + ${y}px - 28px)`,
-                    }}
-                    onClick={() => setActiveRashi(i)}
-                    title={`${r.name} (${r.eng})`}
-                  >
-                    <r.icon size={24} className={styles.nodeSymbol} />
-                  </button>
-                );
-              })}
+                  return (
+                    <g
+                      key={r.name}
+                      className={`${styles.wheelWedge} ${activeRashi === i ? styles.wheelWedgeActive : ''}`}
+                      onClick={() => setActiveRashi(i)}
+                    >
+                      <title>{`${r.name} (${r.eng})`}</title>
+                      <path d={wedgePath} className={styles.wedgeFill} />
+                      <image href={`/images/zodiac/${r.eng}.png`} x={iconX - 17} y={iconY - 17} width="34" height="34" className={styles.wedgeIcon} />
+                    </g>
+                  );
+                })}
+                <circle cx="200" cy="200" r="104" className={styles.wheelHub} />
+                <text x="200" y="196" textAnchor="middle" className={styles.wheelHubName}>{current.name}</text>
+                <text x="200" y="214" textAnchor="middle" className={styles.wheelHubEng}>{current.eng}</text>
+              </svg>
             </div>
-            <p className={styles.reviewText}>✦ Select a Moon Sign Node to view forecast ✦</p>
+            <p className={styles.reviewText}>✦ Select a sign on the ring to view its forecast ✦</p>
           </div>
 
           {/* Details Column */}
@@ -417,7 +443,7 @@ function HoroscopePage() {
               <div className={styles.specBox}>
                 <span className={styles.specLabel}>Traditional Key</span>
                 <span className={styles.specVal} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <current.icon size={16} /> Rashi
+                  <img src={`/images/zodiac/${current.eng}.png`} alt="" width={16} height={16} /> Rashi
                 </span>
               </div>
             </div>
@@ -2571,7 +2597,7 @@ function AboutPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 function DashboardEntry() {
   const { currentUser } = useAppContext();
-  if (currentUser?.role === 'ADMIN') return <AdminDashboardPage />;
+  if (currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF') return <AdminDashboardPage />;
   if (currentUser?.role === 'ASTROLOGIST') return <AstrologistDashboard />;
   return <ProfileDashboardPage />;
 }
@@ -2635,13 +2661,9 @@ function SavedAstrologersPanel({ onView }: { onView: (id: number) => void }) {
 function ProfileDashboardPage() {
   const {
     birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated,
-    currentUser, applyToBecomeAstrologer,
+    currentUser,
   } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
-  const [expertise, setExpertise] = React.useState('');
-  const [experience, setExperience] = React.useState('');
-  const [myApplication, setMyApplication] = React.useState<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>(null);
-  const [applyError, setApplyError] = React.useState('');
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -2650,11 +2672,9 @@ function ProfileDashboardPage() {
     }
   }, [isLoggedIn]);
 
-  const refreshMyApplication = () => {
-    if (isLoggedIn) astrologerService.myApplication().then(setMyApplication).catch(() => {});
-  };
-  React.useEffect(refreshMyApplication, [isLoggedIn]);
-
+  // Self-service "Become an Astrologer" was removed from here — assigning
+  // the Astrologer role is now an admin/staff-only action (see UsersPage in
+  // the admin console), not something a user requests for themselves.
   const SIDEBAR_ITEMS = [
     { key: 'my-jyotish', label: 'My Jyotish', icon: '✦' },
     { key: 'my-kundli', label: 'My Kundli', icon: '☉' },
@@ -2663,7 +2683,6 @@ function ProfileDashboardPage() {
     { key: 'my-orders', label: 'My Orders', icon: '◈' },
     { key: 'saved-astrologers', label: 'Saved Astrologers', icon: '♃' },
     { key: 'my-courses', label: 'My Courses', icon: '◉' },
-    { key: 'become-astrologer', label: 'Become an Astrologer', icon: '🪐' },
     { key: 'settings', label: 'Account Settings', icon: '⚙' },
   ];
 
@@ -2846,57 +2865,6 @@ function ProfileDashboardPage() {
           {activeTab === 'my-consultations' && <MyConsultationsPage nested />}
           {activeTab === 'my-orders' && <MyOrdersPage nested />}
           {activeTab === 'settings' && <ProfilePage />}
-
-          {activeTab === 'become-astrologer' && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8)' }}>
-              <span className="section-eyebrow">Join Our Acharya Panel</span>
-              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)', marginBottom: 'var(--space-6)' }}>Become an Astrologer</h1>
-
-              {myApplication?.status === 'PENDING' && (
-                <p style={{ color: 'var(--gold-primary)', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
-                  Your application is under review. You'll be notified once an admin has responded.
-                </p>
-              )}
-              {myApplication?.status === 'APPROVED' && (
-                <p style={{ color: 'var(--gold-primary)', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
-                  Congratulations — your application was approved! Sign out and sign back in to access your Astrologist Dashboard.
-                </p>
-              )}
-              {(!myApplication || myApplication.status === 'REJECTED') && (
-                <form
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    setApplyError('');
-                    try {
-                      await applyToBecomeAstrologer({ expertise, experience });
-                      setExpertise('');
-                      setExperience('');
-                      refreshMyApplication();
-                    } catch (err) {
-                      setApplyError(err instanceof AstrologerApiError ? err.message : 'Could not submit your application. Please try again.');
-                    }
-                  }}
-                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '420px' }}
-                >
-                  {myApplication?.status === 'REJECTED' && (
-                    <p style={{ color: '#c0392b', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>
-                      Your previous application was rejected. You may submit a new one below.
-                    </p>
-                  )}
-                  {applyError && <p style={{ color: '#c0392b', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>{applyError}</p>}
-                  <div className="form-group">
-                    <label className="form-label">Area of Expertise</label>
-                    <input className="input-field" required value={expertise} onChange={e => setExpertise(e.target.value)} placeholder="e.g. Vedic Astrology, Numerology" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Years of Experience</label>
-                    <input className="input-field" required value={experience} onChange={e => setExperience(e.target.value)} placeholder="e.g. 6 years" />
-                  </div>
-                  <button type="submit" className="btn btn-gold" style={{ width: 'fit-content' }}>Submit Application</button>
-                </form>
-              )}
-            </div>
-          )}
 
           {activeTab === 'saved-astrologers' && (
             <SavedAstrologersPanel onView={id => { setSelectedId(id); setPage('astrologer-profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />

@@ -4,7 +4,7 @@
 
 import { API_URL } from './apiUrl';
 
-export type Role = 'USER' | 'ASTROLOGIST' | 'ADMIN';
+export type Role = 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
 
 export interface ApiUser {
   id: string;
