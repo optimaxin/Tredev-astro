@@ -412,7 +412,13 @@ function HoroscopePage() {
                     >
                       <title>{`${r.name} (${r.eng})`}</title>
                       <path d={wedgePath} className={styles.wedgeFill} />
-                      <image href={`/images/zodiac/${r.eng}.png`} x={iconX - 17} y={iconY - 17} width="34" height="34" className={styles.wedgeIcon} />
+                      {/* The icons are plain black line-art (background just
+                          stripped from opaque white) — a light medallion
+                          backing keeps them visible against a dark-theme
+                          wedge, which pure black on a dark surface wouldn't
+                          be. */}
+                      <circle cx={iconX} cy={iconY} r="19" className={styles.wedgeIconBacking} />
+                      <image href={`/images/zodiac/${r.eng}.png`} x={iconX - 15} y={iconY - 15} width="30" height="30" className={styles.wedgeIcon} />
                     </g>
                   );
                 })}
@@ -474,15 +480,23 @@ function HoroscopePage() {
                       const meta = PLANET_META[t.id];
                       const dotColor = NATURAL_BENEFIC.has(t.id) ? '#4caf7d' : NATURAL_MALEFIC.has(t.id) ? '#c85a5a' : '#9a9a9a';
                       return (
-                        <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '8px 1fr 160px', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} title={NATURAL_BENEFIC.has(t.id) ? 'Naturally benefic' : NATURAL_MALEFIC.has(t.id) ? 'Naturally malefic' : 'Naturally neutral'} />
-                          <span>
-                            {meta?.symbol} {meta?.name || t.id} in {t.rashi}
-                            {t.retrograde && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(200,90,90,0.15)', color: '#c85a5a' }}>℞ Retrograde</span>}
-                          </span>
-                          <span style={{ textAlign: 'right', color: 'var(--color-text-muted, #999)', fontSize: '13px' }}>
-                            {t.house}{ordinal(t.house)} house — {HOUSE_MEANINGS[t.house]?.split('—')[1]?.trim()}
-                          </span>
+                        // A fixed 160px third column used to hold the house-meaning
+                        // text — on a narrower details card (or a longer meaning
+                        // string) that guessed width either overflowed the card or
+                        // wrapped and threw the row's vertical alignment off relative
+                        // to its neighbors. Stacking the meaning as a second line
+                        // under the planet name instead can't misalign at any width.
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: '6px' }} title={NATURAL_BENEFIC.has(t.id) ? 'Naturally benefic' : NATURAL_MALEFIC.has(t.id) ? 'Naturally malefic' : 'Naturally neutral'} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div>
+                              {meta?.symbol} {meta?.name || t.id} in {t.rashi}
+                              {t.retrograde && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(200,90,90,0.15)', color: '#c85a5a' }}>℞ Retrograde</span>}
+                            </div>
+                            <div style={{ color: 'var(--color-text-muted, #999)', fontSize: '13px', marginTop: '2px' }}>
+                              {t.house}{ordinal(t.house)} house — {HOUSE_MEANINGS[t.house]?.split('—')[1]?.trim()}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}

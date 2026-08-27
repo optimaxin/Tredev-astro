@@ -178,6 +178,15 @@
   opacity: 0.85;
 }
 
+.wedgeIconBacking {
+  fill: #FAF3E4;
+  stroke: rgba(181, 138, 59, 0.3);
+  stroke-width: 1;
+  transition: transform var(--transition-base);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 .wedgeIcon {
   pointer-events: none;
   transition: transform var(--transition-base);
@@ -185,6 +194,8 @@
   transform-origin: center;
 }
 
+.wheelWedge:hover .wedgeIconBacking,
+.wheelWedgeActive .wedgeIconBacking,
 .wheelWedge:hover .wedgeIcon,
 .wheelWedgeActive .wedgeIcon {
   transform: scale(1.15);
@@ -230,8 +241,9 @@
 
 .rashiHeader {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-4);
   margin-bottom: var(--space-5);

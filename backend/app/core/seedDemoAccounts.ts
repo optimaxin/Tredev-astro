@@ -9,6 +9,7 @@ import { findAstrologerByUserId, insertAstrologerForUser } from '../repositories
 const DEMO_ACCOUNTS = [
   { name: 'Arjun Sharma', email: 'demo.user@tredevastro.local', password: 'DevUser@123', role: 'USER' as const },
   { name: 'Astrologist Rahul Shastri', email: 'demo.astrologer@tredevastro.local', password: 'DevAstro@123', role: 'ASTROLOGIST' as const },
+  { name: 'Staff Kavya Iyer', email: 'demo.staff@tredevastro.local', password: 'DevStaff@123', role: 'STAFF' as const },
   { name: 'Admin Priya Verma', email: 'demo.admin@tredevastro.local', password: 'DevAdmin@123', role: 'ADMIN' as const },
 ];
 
