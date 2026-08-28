@@ -49,8 +49,10 @@
 }
 
 .arcWrap {
+  /* Was capped at 200px inside a 320px column, leaving ~60px of dead
+     padding on each side that read as disconnected from the main card. */
   width: 100%;
-  max-width: 200px;
+  max-width: 260px;
   margin-bottom: var(--space-2);
 }
 

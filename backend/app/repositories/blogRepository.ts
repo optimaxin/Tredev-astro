@@ -1,8 +1,12 @@
 import { query, queryOne } from '../core/db.ts';
 import type { BlogPostRow } from '../models/blogPost.ts';
 
+// The frontend takes the first row as the homepage hero article — sorting
+// featured-first means only a deliberately-curated post can ever win that
+// slot, instead of whichever post happens to be newest (including a test
+// post created while trying out the admin CMS).
 export function listBlogPosts(): Promise<BlogPostRow[]> {
-  return query<BlogPostRow>('SELECT * FROM blog_posts ORDER BY published_at DESC');
+  return query<BlogPostRow>('SELECT * FROM blog_posts ORDER BY featured DESC, published_at DESC');
 }
 
 export function findBlogPostById(id: number): Promise<BlogPostRow | undefined> {

@@ -76,9 +76,13 @@ export default function Store({ featured = false }: { featured?: boolean }) {
         </div>
 
         {featured ? (
-          /* Featured mode: show 4 recommended products in grid */
+          /* Featured mode: show 4 recommended products in grid. There's no
+             intermediate heading between the section's h2 above and each
+             card's h4 in this mode (unlike the full store page, which has
+             "Chart-Recommended Upay" as an h3) — an sr-only h3 keeps the
+             outline H2→H3→H4 without changing the visual design. */
           <div className={`${styles.productsGrid} ${styles.productsGridFeatured}`}>
-
+            <h3 className="sr-only">Recommended Products</h3>
             {filtered.map((product, i) => (
               <motion.div
                 key={product.id}

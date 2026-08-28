@@ -206,7 +206,7 @@
 
 .legalNote {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-dark-2);
   opacity: 0.8;
   max-width: 400px;
@@ -228,8 +228,9 @@
   .legalNote { text-align: left; }
 }
 
-/* Devanagari legibility — see src/styles/globals.css typography system */
-html[lang='hi'] .legalNote, html[lang='mr'] .legalNote { font-size: var(--text-xs); }
+/* Devanagari legibility now falls out of --text-xs itself (redefined larger
+   under html[lang='hi'/'mr'] in globals.css) since .legalNote uses the token
+   directly — no per-component override needed here anymore. */
 
 @media (max-width: 480px) {
   .mainInner { grid-template-columns: 1fr; }

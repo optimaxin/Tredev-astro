@@ -97,7 +97,7 @@
 
 .cardCta {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--gold-primary);
   text-transform: uppercase;
@@ -128,16 +128,20 @@
 }
 
 .large .cardHeader {
-  flex: 1;
+  /* Was flex: 1 — grew this box (icon + short title) wider than its content
+     needed, leaving a dead gap before the description started. The
+     description is the only part with genuinely variable length, so it
+     should be the one absorbing the row's extra width, not this one. */
+  flex: 0 0 auto;
 }
 
 .large .cardDesc {
-  flex: 1.5;
+  flex: 1;
   margin: 0;
 }
 
 .large .cardCta {
-  flex: 0.8;
+  flex: 0 0 auto;
   text-align: right;
   align-self: center;
 }

@@ -152,20 +152,29 @@
 }
 
 .readLink {
+  /* Was a bare text link (no border/padding) next to the featured article's
+     real btn-outline-gold button — same "Read" action styled two different
+     ways on one section. Giving it the same outline-button treatment at a
+     smaller size keeps the CTA visually consistent across all cards. */
   background: none;
-  border: none;
+  border: 1px solid var(--color-gold-dark);
+  border-radius: var(--radius-full);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-gold-dark);
   cursor: pointer;
-  padding: 0;
+  padding: 4px 12px;
   letter-spacing: 0.03em;
   transition: all var(--transition-base);
   text-align: left;
 }
 
-.readLink:hover { color: var(--color-gold); letter-spacing: 0.05em; }
+.readLink:hover {
+  color: var(--bg-primary);
+  background: var(--color-gold-dark);
+  letter-spacing: 0.05em;
+}
 
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .container { padding: 0 var(--space-5); } }

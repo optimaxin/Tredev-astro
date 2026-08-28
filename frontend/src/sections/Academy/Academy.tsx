@@ -97,7 +97,7 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
                     )}
                   </div>
                   <button
-                    className="btn btn-gold btn-sm"
+                    className="btn btn-gold"
                     id={`course-enroll-${course.id}`}
                     onClick={(e) => {
                       e.stopPropagation();

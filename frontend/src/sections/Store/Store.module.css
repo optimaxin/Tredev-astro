@@ -328,7 +328,7 @@
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 500;
   letter-spacing: 0.05em;
   padding: 4px 10px;
@@ -336,6 +336,20 @@
   cursor: pointer;
   pointer-events: auto;
   transition: all var(--transition-fast);
+}
+
+/* Was permanently visible, sitting over the product photo/3D view even
+   when the shopper isn't interacting with the card — matches the
+   hover-reveal treatment already used for .toolArrow elsewhere in this
+   file instead of a constant overlay. Scoped to devices that actually
+   support hover so touch users (who can't hover to reveal it) still see
+   the toggle. */
+@media (hover: hover) {
+  .toggle3DBtn { opacity: 0; }
+  .productCard:hover .toggle3DBtn,
+  .toggle3DBtn:focus-visible {
+    opacity: 1;
+  }
 }
 
 .toggle3DBtn:hover {
