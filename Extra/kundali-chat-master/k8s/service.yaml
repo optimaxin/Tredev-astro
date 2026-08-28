@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kundali-chat
+  namespace: kundali-chat
+  labels:
+    app.kubernetes.io/name: kundali-chat
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kundali-chat
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

@@ -1,0 +1,65 @@
+# One-shot Alembic migration. Run BEFORE applying the Deployment so the
+# schema is current. The init container blocks until Postgres is accepting
+# connections at "postgres:5432" — update the hostname if yours differs.
+#
+# Re-running on a fresh cluster: `kubectl delete job kundali-chat-migrate -n kundali-chat`
+# then re-apply (Jobs are immutable).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kundali-chat-migrate
+  namespace: kundali-chat
+  labels:
+    app.kubernetes.io/name: kundali-chat-migrate
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kundali-chat-migrate
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres 5432; do
+                echo "waiting for postgres..."; sleep 2;
+              done
+      containers:
+        - name: migrate
+          image: kundali-chat:latest
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          env:
+            - name: POSTGRES__DSN
+              valueFrom:
+                secretKeyRef:
+                  name: kundali-chat-secrets
+                  key: POSTGRES__DSN
+            - name: REDIS__URL
+              valueFrom:
+                secretKeyRef:
+                  name: kundali-chat-secrets
+                  key: REDIS__URL
+            - name: TABLES__SESSIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: kundali-chat-config
+                  key: TABLES__SESSIONS
+            - name: TABLES__MESSAGES
+              valueFrom:
+                configMapKeyRef:
+                  name: kundali-chat-config
+                  key: TABLES__MESSAGES
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

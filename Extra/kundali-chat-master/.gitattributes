@@ -1,0 +1,4 @@
+# Shell scripts MUST keep LF endings, or the shebang breaks on Linux builds
+# (e.g. Render) with "bad interpreter". Force it regardless of core.autocrlf.
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf

@@ -1,0 +1,53 @@
+# Render Blueprint — one-click deploy of kundali-chat with free Postgres +
+# Redis. Deploy: push this repo to GitHub, then in Render: New > Blueprint >
+# pick the repo > Apply. Set the one secret (LLM__OPENROUTER_API_KEY) when
+# prompted. Docs: https://render.com/docs/blueprint-spec
+#
+# Everything else (DB DSN, Redis URL) is wired automatically by Render.
+
+databases:
+  - name: kundali-chat-db
+    plan: free
+    databaseName: kundali_chat
+    user: kundali_chat
+
+services:
+  # Redis (cache + processing stream). Free, internal-only (no external access).
+  - type: keyvalue
+    name: kundali-chat-redis
+    plan: free
+    ipAllowList: []
+
+  # The API (also runs the in-process stream workers + reaper via its lifespan).
+  - type: web
+    name: kundali-chat
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    # No dockerCommand override — the image's CMD (docker-entrypoint.sh) runs
+    # migrations then starts the app. Overriding with a shell string here is
+    # fragile (Render mis-parses the quotes -> "not found").
+    envVars:
+      - key: POSTGRES__DSN
+        fromDatabase:
+          name: kundali-chat-db
+          property: connectionString
+      - key: REDIS__URL
+        fromService:
+          type: keyvalue
+          name: kundali-chat-redis
+          property: connectionString
+      - key: LLM__PROVIDER
+        value: openrouter
+      - key: LLM__MODEL
+        value: google/gemini-2.5-flash
+      # Secret — set this in the Render dashboard (not committed to git).
+      - key: LLM__OPENROUTER_API_KEY
+        sync: false
+      - key: KUNDALI_API__BASE_URL
+        value: https://kundali.astroarunpandit.org/api
+      - key: KUNDALI_API__APP_ID
+        value: kundali-chat
+      - key: ENV
+        value: staging

@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kundali-chat
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - migrate-job.yaml
+  - deployment.yaml
+  - service.yaml
+
+# secret.example.yaml is a template only — apply the real Secret out-of-band,
+# never through this kustomization.
+
+images:
+  - name: kundali-chat
+    newTag: latest

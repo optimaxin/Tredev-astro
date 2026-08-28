@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kundali-chat-config
+  namespace: kundali-chat
+data:
+  ENV: "production"
+
+  POSTGRES__POOL_MIN: "5"
+  POSTGRES__POOL_MAX: "20"
+
+  # TABLES__* is the single source of truth resolve_table_names() reads —
+  # see src/kundali_chat/models/tables.py.
+  TABLES__SESSIONS: "kundali_sessions"
+  TABLES__MESSAGES: "kundali_messages"
+
+  LLM__PROVIDER: "gemini"
+  LLM__MODEL: "gemini-2.5-flash"
+  LLM__MAX_TOKENS: "700"
+
+  REDIS__KUNDALI_TTL_S: "86400"
+
+  PROCESSING__WORKER_CONCURRENCY: "4"
+  PROCESSING__STUCK_THRESHOLD_S: "45"
+  PROCESSING__REAPER_INTERVAL_S: "30"
+
+  # Placeholder client is used until this is set — see
+  # src/kundali_chat/kundali/placeholder_client.py and real_client.py.
+  KUNDALI_API__BASE_URL: ""

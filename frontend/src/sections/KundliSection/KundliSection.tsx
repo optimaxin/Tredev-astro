@@ -19,6 +19,7 @@ import {
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
+import KundliChatWidget from './KundliChatWidget';
 import styles from './KundliSection.module.css';
 
 // Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
@@ -884,6 +885,17 @@ export default function KundliSection() {
           )}
         </AnimatePresence>
       </div>
+      {fullResult && submittedDetails && (
+        <KundliChatWidget
+          name={birthProfile.name}
+          dob={submittedDetails.date}
+          tob={submittedDetails.time}
+          latitude={submittedDetails.latitude}
+          longitude={submittedDetails.longitude}
+          place={submittedDetails.placeName}
+          timezoneOffsetMinutes={submittedDetails.timezoneOffsetMinutes}
+        />
+      )}
     </section>
   );
 }
