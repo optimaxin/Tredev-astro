@@ -260,6 +260,9 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
             </text>
             <text x={px} y={py + 12} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
+              {planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house && (
+                <tspan fill="var(--gold-primary)" fontWeight="700"> B{planet.bhavHouse}</tspan>
+              )}
             </text>
           </g>
         );
@@ -311,6 +314,9 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py} textAnchor="middle" fontSize="10" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="8" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
+                    {p.bhavHouse !== undefined && p.bhavHouse !== p.house && (
+                      <tspan fill="var(--gold-primary)" fontWeight="700"> B{p.bhavHouse}</tspan>
+                    )}
                   </text>
                 </g>
               );

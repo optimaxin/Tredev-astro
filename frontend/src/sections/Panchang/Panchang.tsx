@@ -13,74 +13,93 @@ function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Sun position arc — animated based on current time
+// Sun/moon position arc spanning the FULL 24-hour day-night cycle (not just
+// daylight) — during the day the Sun moves left-to-right along the arc,
+// Rise-to-Set; after sunset the Moon takes over the SAME arc, moving
+// Set-to-(next)Rise, so the marker always reflects the real current time
+// instead of parking at one end all night. Also names the current Prahar —
+// each of day and night classically divides into 4 equal Prahars.
 function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; sunsetHour: number; moonPhase: number }) {
   const currentHour = istHourFraction(new Date().toISOString());
-  const daylightHours = Math.max(0.01, sunsetHour - sunriseHour);
-  const elapsed = Math.max(0, Math.min(daylightHours, currentHour - sunriseHour));
-  const sunProgress = Math.min(1, elapsed / daylightHours);
+  const dayLength = Math.max(0.01, sunsetHour - sunriseHour);
+  const nightLength = Math.max(0.01, 24 - dayLength);
+  const isDay = currentHour >= sunriseHour && currentHour < sunsetHour;
 
-  // Sun position on arc
-  const angle = Math.PI * sunProgress; // 0 to PI
+  const progress = isDay
+    ? (currentHour - sunriseHour) / dayLength
+    : (((currentHour >= sunsetHour ? currentHour - sunsetHour : currentHour + 24 - sunsetHour)) / nightLength);
+  const praharNumber = Math.min(4, Math.floor(progress * 4) + 1);
+  const praharLabel = isDay ? `दिन का ${praharNumber} प्रहर` : `रात्रि का ${praharNumber} प्रहर`;
+
+  const angle = Math.PI * Math.min(1, Math.max(0, progress));
   const cx = 20 + Math.cos(Math.PI - angle) * 80;
   const cy = 105 - Math.sin(angle) * 70;
 
-  // Moon phase visualization
   const moonX = 170;
   const moonY = 30;
 
   return (
-    <svg viewBox="0 0 200 120" className={styles.arc}>
-      <defs>
-        <linearGradient id="sunArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--gold-primary)" stopOpacity="0.15" />
-          <stop offset="50%" stopColor="var(--gold-primary)" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="var(--sacred-accent)" stopOpacity="0.15" />
-        </linearGradient>
-        <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#F1E9DC" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#B9B3A8" stopOpacity="0.3" />
-        </linearGradient>
-        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="var(--gold-primary)" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="var(--gold-primary)" stopOpacity="0" />
-        </radialGradient>
-      </defs>
+      <svg viewBox="0 0 200 120" className={styles.arc}>
+        <defs>
+          <linearGradient id="sunArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--gold-primary)" stopOpacity="0.15" />
+            <stop offset="50%" stopColor="var(--gold-primary)" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="var(--sacred-accent)" stopOpacity="0.15" />
+          </linearGradient>
+          <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#F1E9DC" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#B9B3A8" stopOpacity="0.3" />
+          </linearGradient>
+          <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="var(--gold-primary)" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="var(--gold-primary)" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#F1E9DC" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#F1E9DC" stopOpacity="0" />
+          </radialGradient>
+        </defs>
 
-      {/* Ground line */}
-      <line x1="10" y1="108" x2="190" y2="108" stroke="rgba(181,138,59,0.18)" strokeWidth="1" />
+        {/* Ground line */}
+        <line x1="10" y1="108" x2="190" y2="108" stroke="rgba(181,138,59,0.18)" strokeWidth="1" />
 
-      {/* Sun arc */}
-      <path
-        d="M 20 108 Q 100 20 180 108"
-        fill="none"
-        stroke="url(#sunArcGrad)"
-        strokeWidth="1.5"
-        strokeDasharray="3 2"
-      />
+        {/* Day/night arc — same path, walked by Sun by day and Moon by night */}
+        <path
+          d="M 20 108 Q 100 20 180 108"
+          fill="none"
+          stroke="url(#sunArcGrad)"
+          strokeWidth="1.5"
+          strokeDasharray="3 2"
+        />
 
-      {/* Sun glow */}
-      <ellipse cx={cx} cy={cy} rx="12" ry="12" fill="url(#sunGlow)" />
+        {isDay ? (
+          <>
+            <ellipse cx={cx} cy={cy} rx="12" ry="12" fill="url(#sunGlow)" />
+            <circle cx={cx} cy={cy} r="5" fill="none" stroke="var(--gold-primary)" strokeWidth="1.2" />
+            <circle cx={cx} cy={cy} r="2.5" fill="var(--gold-primary)" opacity="0.85" />
+          </>
+        ) : (
+          <>
+            <ellipse cx={cx} cy={cy} rx="12" ry="12" fill="url(#moonGlow)" />
+            <circle cx={cx} cy={cy} r="4.5" fill="#F1E9DC" opacity="0.9" />
+          </>
+        )}
 
-      {/* Sun circle */}
-      <circle cx={cx} cy={cy} r="5" fill="none" stroke="var(--gold-primary)" strokeWidth="1.2" />
-      <circle cx={cx} cy={cy} r="2.5" fill="var(--gold-primary)" opacity="0.85" />
+        {/* Rise/Set labels */}
+        <text x="18" y="119" fontSize="7" fill="rgba(181,138,59,0.5)" fontFamily="DM Sans, sans-serif">Rise</text>
+        <text x="170" y="119" fontSize="7" fill="rgba(181,138,59,0.5)" fontFamily="DM Sans, sans-serif">Set</text>
 
-      {/* Sunrise/Sunset labels */}
-      <text x="18" y="119" fontSize="7" fill="rgba(181,138,59,0.5)" fontFamily="DM Sans, sans-serif">Rise</text>
-      <text x="170" y="119" fontSize="7" fill="rgba(181,138,59,0.5)" fontFamily="DM Sans, sans-serif">Set</text>
+        {/* Prahar label */}
+        <text x="100" y="14" textAnchor="middle" fontSize="8" fill="var(--gold-primary)" fontFamily="DM Sans, sans-serif" fontWeight="600">{praharLabel}</text>
 
-      {/* Moon */}
-      <circle cx={moonX} cy={moonY} r="10" fill="rgba(241, 233, 220, 0.08)" stroke="rgba(241,233,220,0.25)" strokeWidth="0.75" />
-      {/* Moon phase crescent */}
-      <path
-        d={`M ${moonX} ${moonY - 10} A 10 10 0 0 1 ${moonX} ${moonY + 10} A ${10 * (0.5 - moonPhase) * 2} 10 0 0 0 ${moonX} ${moonY - 10}`}
-        fill="rgba(241, 233, 220, 0.55)"
-      />
-
-      {/* Moon label */}
-      <text x={moonX} y={moonY + 18} fontSize="7" fill="rgba(241,233,220,0.35)" fontFamily="DM Sans, sans-serif" textAnchor="middle">☽</text>
-    </svg>
+        {/* Tithi-based moon phase (independent of time of day/night) */}
+        <circle cx={moonX} cy={moonY} r="10" fill="rgba(241, 233, 220, 0.08)" stroke="rgba(241,233,220,0.25)" strokeWidth="0.75" />
+        <path
+          d={`M ${moonX} ${moonY - 10} A 10 10 0 0 1 ${moonX} ${moonY + 10} A ${10 * (0.5 - moonPhase) * 2} 10 0 0 0 ${moonX} ${moonY - 10}`}
+          fill="rgba(241, 233, 220, 0.55)"
+        />
+        <text x={moonX} y={moonY + 18} fontSize="7" fill="rgba(241,233,220,0.35)" fontFamily="DM Sans, sans-serif" textAnchor="middle">☽</text>
+      </svg>
   );
 }
 
