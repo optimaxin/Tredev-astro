@@ -261,7 +261,13 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
             <text x={px} y={py + 12} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
               {planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house && (
-                <tspan fill="var(--gold-primary)" fontWeight="700"> B{planet.bhavHouse}</tspan>
+                cols === 1
+                  ? <tspan fill="var(--gold-primary)" fontWeight="700"> B{planet.bhavHouse}</tspan>
+                  // 2-column houses (3+ planets) pack columns only 32px apart —
+                  // the full " B<n>" suffix overflows into the neighbour
+                  // column's text there, so fall back to a plain marker (exact
+                  // Bhav number is still in the hover tooltip).
+                  : <tspan fill="var(--gold-primary)" fontWeight="700">*</tspan>
               )}
             </text>
           </g>
@@ -315,7 +321,9 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="8" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
                     {p.bhavHouse !== undefined && p.bhavHouse !== p.house && (
-                      <tspan fill="var(--gold-primary)" fontWeight="700"> B{p.bhavHouse}</tspan>
+                      cols === 1
+                        ? <tspan fill="var(--gold-primary)" fontWeight="700"> B{p.bhavHouse}</tspan>
+                        : <tspan fill="var(--gold-primary)" fontWeight="700">*</tspan>
                     )}
                   </text>
                 </g>

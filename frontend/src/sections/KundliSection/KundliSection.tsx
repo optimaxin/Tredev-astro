@@ -1017,7 +1017,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
             </div>
           ))}
         </div>
-        <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet.</div>
+        <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. A gold "B&lt;n&gt;" (or * in a crowded house — hover for the number) marks a planet whose real Bhav Chalit house differs from the whole-sign one shown.</div>
       </div>
     </div>
   );
