@@ -398,7 +398,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {
     // Navigation
     nav_astrology: 'Astrology',
-    nav_kundli: 'Kundli',
+    nav_kundli: 'Free Kundli',
     nav_calculators: 'Calculators',
     nav_reports: 'Reports',
     nav_panchang: 'Panchang',
@@ -971,7 +971,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
   },
   hi: {
     nav_astrology: 'ज्योतिष',
-    nav_kundli: 'कुंडली',
+    nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कैलकुलेटर',
     nav_reports: 'रिपोर्ट्स',
     nav_panchang: 'पंचांग',
@@ -1527,7 +1527,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
   },
   mr: {
     nav_astrology: 'ज्योतिष',
-    nav_kundli: 'कुंडली',
+    nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कॅल्क्युलेटर',
     nav_reports: 'अहवाल',
     nav_panchang: 'पंचांग',

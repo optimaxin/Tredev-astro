@@ -118,40 +118,45 @@ export const ASTROLOGERS = [
 // (cyan for both daily+compatibility, gold for both birth+numerology) — so
 // every category rendered as visually the same dull tan regardless of
 // which token it referenced. Each category now gets its own real hue.
+// All 5 categories share the same sun-amber accent (matching "Daily
+// Astrology") instead of each having its own color — a deliberate,
+// requested unification, not an oversight.
+const FREE_TOOLS_ACCENT = '#E0873C'; // sun amber
+
 export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'daily',
     label: 'Daily Astrology',
     icon: '☀',
-    color: '#E0873C', // sun amber
+    color: FREE_TOOLS_ACCENT,
     tools: ['Daily Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
   },
   {
     id: 'birth',
     label: 'Birth',
     icon: '☽',
-    color: '#5C6BC0', // night-sky indigo
+    color: FREE_TOOLS_ACCENT,
     tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder'],
   },
   {
     id: 'compatibility',
     label: 'Compatibility',
     icon: '♾',
-    color: '#D1567F', // rose
+    color: FREE_TOOLS_ACCENT,
     tools: ['Kundli Matching', 'Love Compatibility'],
   },
   {
     id: 'doshas',
     label: 'Doshas',
     icon: '◎',
-    color: '#C0392B', // crimson
+    color: FREE_TOOLS_ACCENT,
     tools: ['Mangal Dosha', 'Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
   },
   {
     id: 'numerology',
     label: 'Numerology',
     icon: '∞',
-    color: '#7C5CBF', // amethyst
+    color: FREE_TOOLS_ACCENT,
     tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match'],
   },
 ];
