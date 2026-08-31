@@ -1,14 +1,21 @@
 // The remaining Shodasavarga (16 divisional-chart) set beyond D1 (Rasi,
 // kundli.ts) and D9 (Navamsa, zodiac.ts/kundli.ts): D2, D3, D4, D7, D10,
-// D12, D16, D20, D24, D27, D30, D40, D45, D60 — plus D6 (Shashthamsa),
-// which isn't part of the classical 16 but follows the exact same
-// odd-same/even-7th-from shape as D7 and D10. Every starting-sign rule
-// below was cross-checked against the open-source `jyotishganit` Python
-// library (northtara/jyotishganit, MIT) AND independent published sources
-// — EXCEPT Trimsamsa's (D30) even-sign boundaries, where jyotishganit's
-// own even-sign branch contradicts the classical "exact reverse of the
-// odd-sign order" rule quoted by multiple sources; the classical reversed
-// order is used here instead (see trimsamsaSignIndex).
+// D12, D16, D20, D24, D27, D30, D40, D45, D60 — plus D5, D6, D8, D11, which
+// aren't part of the classical 16 (jyotishganit doesn't implement them
+// either) but are commonly requested alongside it in wider "20-chart" varga
+// lists. D6 (Shashthamsa) follows the exact same odd-same/even-7th-from
+// shape as D7 and D10; D8 (Ashtamsa) follows the exact same movable/fixed/
+// dual triplicity-base shape as D16/D20/D45; D5 (Panchamsa) and D11
+// (Rudramsa) each use their own distinct classical rule (see
+// panchamsaSignIndex's and D11's own comments below). Every starting-sign
+// rule below was cross-checked against the open-source `jyotishganit`
+// Python library (northtara/jyotishganit, MIT) AND independent published
+// sources — EXCEPT Trimsamsa's (D30) even-sign boundaries, where
+// jyotishganit's own even-sign branch contradicts the classical "exact
+// reverse of the odd-sign order" rule quoted by multiple sources (the
+// classical reversed order is used here instead, see trimsamsaSignIndex),
+// and D5/D8/D11 themselves, which jyotishganit doesn't implement at all —
+// each is cross-checked against 2 independent published sources instead.
 import type { Kundli } from './kundli.ts';
 import type { PlanetId } from './ephemeris.ts';
 import { getHouseFromAscendant, RASHIS } from './zodiac.ts';
@@ -67,13 +74,31 @@ function trimsamsaSignIndex(signIndex: number, degreeInSign: number): number {
   return 7; // Scorpio — Mars
 }
 
+// Panchamsa (D5) — 5 unequal-rulership-order-but-equal-degree (6° each)
+// divisions, classically ruled by Mars/Saturn/Jupiter/Mercury/Venus in that
+// order for odd signs; even signs take each of those same 5 planets' OTHER
+// ruled sign, in the same planet order (Venus/Mercury/Jupiter/Saturn/Mars
+// reading the sequence in reverse only swaps which of a planet's two signs
+// is used, not the planet order itself). Verified against two independent
+// published sources giving the identical explicit sign lists below.
+const D5_ODD_SIGNS = [0, 10, 8, 2, 6]; // Aries, Aquarius, Sagittarius, Gemini, Libra
+const D5_EVEN_SIGNS = [1, 5, 11, 9, 7]; // Taurus, Virgo, Pisces, Capricorn, Scorpio
+function panchamsaSignIndex(signIndex: number, degreeInSign: number): number {
+  const partIndex = Math.floor(degreeInSign / 6) % 5;
+  const isOddSign = signIndex % 2 === 0;
+  return isOddSign ? D5_ODD_SIGNS[partIndex] : D5_EVEN_SIGNS[partIndex];
+}
+
 const VARGA_SIGN_FNS: Record<string, SignFn> = {
   D2: horaSignIndex,
   D3: (signIndex, deg) => dividedSign(deg, 3, signIndex, 4), // same sign, then +5th, +9th
   D4: (signIndex, deg) => dividedSign(deg, 4, signIndex, 3), // same, +4th, +7th, +10th
+  D5: panchamsaSignIndex,
   D6: (signIndex, deg) => dividedSign(deg, 6, signIndex % 2 === 0 ? signIndex : (signIndex + 6) % 12), // odd sign, even 7th-from — same odd/even shape as D7/D10
   D7: (signIndex, deg) => dividedSign(deg, 7, signIndex % 2 === 0 ? signIndex : (signIndex + 6) % 12),
+  D8: (signIndex, deg) => dividedSign(deg, 8, triplicityBase(signIndex, 0, 8, 4)), // movable->Aries, fixed->Sagittarius, dual->Leo
   D10: (signIndex, deg) => dividedSign(deg, 10, signIndex % 2 === 0 ? signIndex : (signIndex + 8) % 12),
+  D11: (signIndex, deg) => dividedSign(deg, 11, (12 - signIndex) % 12), // base = as many signs counted anti-zodiacally from Aries as the placement's sign is counted zodiacally from Aries
   D12: (signIndex, deg) => dividedSign(deg, 12, signIndex),
   D16: (signIndex, deg) => dividedSign(deg, 16, triplicityBase(signIndex, 0, 4, 8)), // movable->Aries, fixed->Leo, dual->Sagittarius
   D20: (signIndex, deg) => dividedSign(deg, 20, triplicityBase(signIndex, 0, 8, 4)), // movable->Aries, fixed->Sagittarius, dual->Leo

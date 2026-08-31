@@ -71,6 +71,42 @@ export function getPluto(utcDate: Date): PlutoPosition {
   return { longitude: ((longitude % 360) + 360) % 360, retrograde: speedInLongitude < 0 };
 }
 
+// Moonrise/moonset within a given window — astronomia (used for the Sun's
+// rise/set in panchang.ts) has no Moon-specific rise-time module, so this
+// uses sweph's own purpose-built rise_trans instead of hand-rolling Meeus
+// interpolation. Standard atmospheric refraction (1013.25 mbar, 15°C),
+// matching the same convention already verified accurate for sunrise/sunset.
+//
+// The window should be the Hindu civil day (today's sunrise to tomorrow's
+// sunrise), NOT the midnight-to-midnight calendar day — a real Panchang's
+// "today" runs sunrise-to-sunrise, and the lunar day (~24h50m) being longer
+// than the solar day means a given day can genuinely have zero (or,
+// occasionally, two) moonrise/moonset events in that window. Verified
+// against a real published Panchang (28 Aug 2026, Delhi): using the
+// sunrise-to-sunrise window correctly reproduces its "no moonset today"
+// (the moon's one moonset that UTC calendar day falls just BEFORE that
+// day's sunrise, i.e. still within the PREVIOUS Hindu day).
+export interface RiseSetTimes {
+  rise: Date | null;
+  set: Date | null;
+}
+
+export function getMoonRiseSet(windowStart: Date, windowEnd: Date, latitude: number, longitude: number): RiseSetTimes {
+  const jd = toJulianDayUT(windowStart);
+  const geopos: [number, number, number] = [longitude, latitude, 0];
+  const jdToDate = (jdUt: number) => new Date(Math.round((jdUt - 2440587.5) * 86400000));
+  const withinWindow = (d: Date) => d.getTime() >= windowStart.getTime() && d.getTime() < windowEnd.getTime();
+
+  const find = (rsmi: number): Date | null => {
+    const result = sweph.rise_trans(jd, sweph.constants.SE_MOON, null, sweph.constants.SEFLG_SWIEPH, rsmi, geopos, 1013.25, 15);
+    if (result.flag !== sweph.constants.OK) return null;
+    const date = jdToDate(result.data as unknown as number);
+    return withinWindow(date) ? date : null;
+  };
+
+  return { rise: find(sweph.constants.SE_CALC_RISE), set: find(sweph.constants.SE_CALC_SET) };
+}
+
 // Which of the 12 real (unequal) Bhav Chalit houses a longitude falls in —
 // unlike whole-sign houses, each house here spans however many degrees the
 // Placidus cusps actually give it, not a fixed 30°.

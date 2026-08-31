@@ -151,12 +151,18 @@ export interface PanchangResult {
   yoga: string;
   karana: string;
   moonRashi: string;
+  sunRashi: string;
   sunrise: string | null;
   sunset: string | null;
+  moonrise: string | null;
+  moonset: string | null;
   rahuKaal: { start: string; end: string } | null;
   yamagandaKaal: { start: string; end: string } | null;
   gulikaKaal: { start: string; end: string } | null;
   abhijitMuhurat: { start: string; end: string } | null;
+  vijayaMuhurat: { start: string; end: string } | null;
+  amritKaal: { start: string; end: string } | null;
+  sarvarthaSiddhiYoga: boolean;
   choghadiya: { day: ChoghadiyaSegment[]; night: ChoghadiyaSegment[] } | null;
 }
 
@@ -343,8 +349,9 @@ export interface BhavChalitChart {
 
 export const VARGA_LABELS: Record<string, string> = {
   D2: 'Hora (D2) — Wealth', D3: 'Drekkana (D3) — Siblings & Courage', D4: 'Chaturthamsa (D4) — Home & Property',
-  D6: 'Shashthamsa (D6) — Health & Enemies',
-  D7: 'Saptamsa (D7) — Children', D10: 'Dasamsa (D10) — Career', D12: 'Dwadasamsa (D12) — Parents',
+  D5: 'Panchamsa (D5) — Fame & Authority', D6: 'Shashthamsa (D6) — Health & Enemies',
+  D7: 'Saptamsa (D7) — Children', D8: 'Ashtamsa (D8) — Longevity & Sudden Events',
+  D10: 'Dasamsa (D10) — Career', D11: 'Rudramsa (D11) — Gains', D12: 'Dwadasamsa (D12) — Parents',
   D16: 'Shodasamsa (D16) — Vehicles & Comforts', D20: 'Vimsamsa (D20) — Spiritual Progress',
   D24: 'Chaturvimsamsa (D24) — Education', D27: 'Saptavimsamsa (D27) — Strengths & Weaknesses',
   D30: 'Trimsamsa (D30) — Misfortunes', D40: 'Khavedamsa (D40) — General Effects',
