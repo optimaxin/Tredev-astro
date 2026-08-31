@@ -587,7 +587,7 @@ export default function KundliSection() {
                     </div>
                     {selectedChart === 'D1' && chartPlanetsForKey.some(p => p.bhavHouse !== undefined && p.bhavHouse !== p.house) && (
                       <p className={styles.chartNote}>
-                        House numbers below use whole-sign counting (same for anyone with your Ascendant sign). A gold "Bhav X" tag marks a planet whose REAL cuspal house — computed from your exact birth time via Placidus Bhav Chalit, and genuinely different person-to-person even with the same Ascendant sign — differs from the whole-sign one.
+                        House numbers below use whole-sign counting (same for anyone with your Ascendant sign). Hover a planet on the chart above — where its REAL cuspal house (computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person) differs from the whole-sign one, the tooltip shows both.
                       </p>
                     )}
                     {selectedChart === 'D2' && (
@@ -1014,7 +1014,6 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
                 <div className={styles.planetCardName}>{p.name}</div>
                 <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
               </div>
-              {p.bhavHouse !== undefined && p.bhavHouse !== p.house && <span className={styles.bhavBadge} title="Real Bhav Chalit (cuspal) house">Bhav {p.bhavHouse}</span>}
             </div>
           ))}
         </div>
