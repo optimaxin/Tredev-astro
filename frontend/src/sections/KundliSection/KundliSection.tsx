@@ -30,7 +30,7 @@ import styles from './KundliSection.module.css';
 // then the rest of the divisional charts in ascending order, with the
 // alternate Bhav Chalit chart last — gives the full dropdown a clean,
 // deliberate sequence instead of the arbitrary order it used to be in.
-const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
+const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
 const CHART_LABELS: Record<string, string> = {
   D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
 };
@@ -104,7 +104,7 @@ export default function KundliSection() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const kundliResult = fullResult?.kundli ?? null;
-  const chartPlanets = kundliResult ? toChartPlanets(kundliResult) : [];
+  const chartPlanets = kundliResult ? toChartPlanets(kundliResult, fullResult?.bhavChalit) : [];
   const savedBirthDetails = toSavedBirthDetails(currentUser);
   const alreadySavedThisProfile = !!(currentUser?.birthDate && submittedDetails && currentUser.birthDate === submittedDetails.date);
 
@@ -585,6 +585,17 @@ export default function KundliSection() {
                         ))}
                       </select>
                     </div>
+                    {selectedChart === 'D1' && chartPlanetsForKey.some(p => p.bhavHouse !== undefined && p.bhavHouse !== p.house) && (
+                      <p className={styles.chartNote}>
+                        House numbers below use whole-sign counting (same for anyone with your Ascendant sign). A gold "Bhav X" tag marks a planet whose REAL cuspal house — computed from your exact birth time via Placidus Bhav Chalit, and genuinely different person-to-person even with the same Ascendant sign — differs from the whole-sign one.
+                      </p>
+                    )}
+                    {selectedChart === 'D2' && (
+                      <p className={styles.chartNote}>
+                        Hora (D2) is classically defined so every placement falls in ONLY Cancer or Leo (Moon's Hora / Sun's Hora) — never any other sign.
+                        That's why houses here cluster into just 1 and 7 (or 12, depending on your D2 Ascendant) instead of spreading across all 12 — it's the correct classical result for this chart, not a computation error.
+                      </p>
+                    )}
                     <ChartDisplay title="Placements" planets={chartPlanetsForKey} ascendantRashi={ascendantRashiForKey} />
                   </div>
                 );
@@ -942,7 +953,10 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
     if (!containerRect) return;
-    const lines = [`${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`, planet.degree, planet.retrograde ? 'Retrograde (℞)' : null, planet.quality].filter(Boolean);
+    const houseLine = planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house
+      ? `${planet.name} · ${planet.sign} · House ${planet.house} (Rashi) / Bhav ${planet.bhavHouse} (Chalit)`
+      : `${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`;
+    const lines = [houseLine, planet.degree, planet.retrograde ? 'Retrograde (℞)' : null, planet.quality].filter(Boolean);
     setTooltip({ text: lines.join('\n'), x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top - 10 });
   };
 
@@ -1000,6 +1014,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
                 <div className={styles.planetCardName}>{p.name}</div>
                 <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
               </div>
+              {p.bhavHouse !== undefined && p.bhavHouse !== p.house && <span className={styles.bhavBadge} title="Real Bhav Chalit (cuspal) house">Bhav {p.bhavHouse}</span>}
             </div>
           ))}
         </div>

@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { PanchangResult } from '../../services/calculatorService';
-import { formatIst, istHourFraction } from '../../utils/istTime';
+import { istHourFraction } from '../../utils/istTime';
+import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime24 } from '../../utils/panchangHindi';
 import styles from './Panchang.module.css';
 
 function todayDateString(): string {
@@ -84,7 +85,7 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; s
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser } = useAppContext();
   const [location, setLocation] = useState('New Delhi, India');
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
@@ -92,6 +93,35 @@ export default function Panchang() {
   const [data, setData] = useState<PanchangResult | null>(null);
   const [error, setError] = useState('');
   const [changing, setChanging] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const shareCard = useCallback(async () => {
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
+      const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) return;
+      const file = new File([blob], 'panchang.png', { type: 'image/png' });
+      const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[]; title?: string }) => Promise<void> };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title: 'पावन पंचांग' });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `panchang-${data?.date ?? todayDateString()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError('Could not create the shareable image. Please try again.');
+    } finally {
+      setSharing(false);
+    }
+  }, [data]);
 
   const loadFor = useCallback((place: string, date: string) => {
     setChanging(true);
@@ -145,17 +175,34 @@ export default function Panchang() {
   const fullTithiNumber = data ? (data.tithi.paksha === 'Shukla' ? data.tithi.number : data.tithi.number + 15) : 1;
   const moonPhase = ((fullTithiNumber - 0.5) * 12) / 360; // 0 = new moon, 0.5 = full moon — derived from the real tithi, not hardcoded
 
-  const FIELDS = data ? [
-    { label: 'Tithi', icon: '☽', value: `${data.tithi.name} (${data.tithi.paksha})` },
-    { label: 'Nakshatra', icon: '✦', value: `${data.nakshatra.name} (Pada ${data.nakshatra.pada})` },
-    { label: 'Yoga', icon: '◎', value: data.yoga },
-    { label: 'Karana', icon: '◈', value: data.karana },
-    { label: 'Sunrise', icon: '☀', value: `${formatIst(data.sunrise)} IST` },
-    { label: 'Sunset', icon: '◑', value: `${formatIst(data.sunset)} IST` },
-    { label: 'Rahu Kaal', icon: '△', value: data.rahuKaal ? `${formatIst(data.rahuKaal.start)} – ${formatIst(data.rahuKaal.end)} IST` : 'Unavailable' },
-    { label: 'Abhijit Muhurat', icon: '⭐', value: data.abhijitMuhurat ? `${formatIst(data.abhijitMuhurat.start)} – ${formatIst(data.abhijitMuhurat.end)} IST` : 'Unavailable' },
-    { label: 'Moon Sign', icon: '♃', value: data.moonRashi },
+  const paksha = data ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : '';
+  // The 3 fields people glance at first, called out as bigger hero chips
+  // above the denser field grid instead of competing equally with everything else.
+  const HERO_FIELDS = data ? [
+    { icon: '☽', label: 'तिथि', value: `${HINDI_TITHI[data.tithi.name] || data.tithi.name} (${paksha})` },
+    { icon: '✦', label: 'नक्षत्र', value: HINDI_NAKSHATRA[data.nakshatra.name] || data.nakshatra.name },
+    { icon: '☾', label: 'चंद्र राशि', value: HINDI_RASHI[data.moonRashi] || data.moonRashi },
   ] : [];
+  const HINDI_FIELDS = data ? [
+    { icon: '◈', label: 'वार', value: HINDI_WEEKDAY[data.vara] || data.vara },
+    { icon: '◎', label: 'योग', value: HINDI_YOGA[data.yoga] || data.yoga },
+    { icon: '✧', label: 'करण', value: HINDI_KARANA[data.karana] || data.karana },
+    { icon: '☀', label: 'सूर्योदय', value: hindiTime24(data.sunrise) },
+    { icon: '◑', label: 'सूर्यास्त', value: hindiTime24(data.sunset) },
+    { icon: '☾', label: 'चंद्रोदय', value: hindiTime24(data.moonrise) },
+    { icon: '◐', label: 'चंद्रास्त', value: data.moonset ? hindiTime24(data.moonset) : 'चंद्रास्त नहीं' },
+    { icon: '☉', label: 'सूर्य राशि', value: HINDI_RASHI[data.sunRashi] || data.sunRashi },
+  ] : [];
+  const SHUBH_FIELDS = data ? [
+    { label: 'अभिजीत मुहूर्त', value: data.abhijitMuhurat ? `${hindiTime24(data.abhijitMuhurat.start)} से ${hindiTime24(data.abhijitMuhurat.end)}` : null },
+    { label: 'विजय मुहूर्त', value: data.vijayaMuhurat ? `${hindiTime24(data.vijayaMuhurat.start)} से ${hindiTime24(data.vijayaMuhurat.end)}` : null },
+    { label: 'अमृत काल', value: data.amritKaal ? `${hindiTime24(data.amritKaal.start)} से ${hindiTime24(data.amritKaal.end)}` : null },
+    { label: 'सर्वार्थ सिद्धि योग', value: data.sarvarthaSiddhiYoga ? 'आज है' : null },
+  ].filter(f => f.value) : [];
+  const ASHUBH_FIELDS = data ? [
+    { label: 'राहु काल', value: data.rahuKaal ? `${hindiTime24(data.rahuKaal.start)} से ${hindiTime24(data.rahuKaal.end)}` : null },
+    { label: 'यमगंड काल', value: data.yamagandaKaal ? `${hindiTime24(data.yamagandaKaal.start)} से ${hindiTime24(data.yamagandaKaal.end)}` : null },
+  ].filter(f => f.value) : [];
 
   return (
     <section className={styles.section} id="panchang" aria-label="Today's Panchang">
@@ -256,7 +303,8 @@ export default function Panchang() {
             {error && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
           </div>
 
-          {/* Right: Panchang Fields */}
+          {/* Right: Panchang card — always Hindi, brand-headered, matching a
+              printed/shared "Paavan Panchang" card layout. */}
           <AnimatePresence mode="wait">
             <motion.div
               key={location}
@@ -265,17 +313,65 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.fieldsGrid}>
-                {FIELDS.map(f => (
-                  <div key={f.label} className={styles.field}>
-                    <span className={styles.fieldIcon}>{f.icon}</span>
-                    <div className={styles.fieldContent}>
-                      <span className={styles.fieldLabel}>{f.label}</span>
-                      <span className={styles.fieldValue}>{f.value}</span>
-                    </div>
+              <div className={styles.panchangCard} ref={cardRef}>
+                <div className={styles.panchangCardHeader}>
+                  <div>
+                    <p className={styles.panchangCardBrand}>Tredev Astro</p>
+                    <p className={styles.panchangCardSubtitle}>{currentUser ? `${currentUser.name} के लिए पावन पंचांग` : 'पावन पंचांग'}</p>
                   </div>
-                ))}
+                  <img src="/logo.png" alt="Tredev Astro" className={styles.panchangCardLogo} />
+                </div>
+
+                <div className={styles.panchangCardHero}>
+                  {HERO_FIELDS.map(f => (
+                    <div key={f.label} className={styles.panchangHeroChip}>
+                      <span className={styles.panchangHeroIcon}>{f.icon}</span>
+                      <div>
+                        <span className={styles.panchangHeroLabel}>{f.label}</span>
+                        <span className={styles.panchangHeroValue}>{f.value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.panchangCardFields}>
+                  {HINDI_FIELDS.map(f => (
+                    <div key={f.label} className={styles.panchangCardRow}>
+                      <span className={styles.panchangCardLabel}><span className={styles.panchangCardIcon}>{f.icon}</span>{f.label}</span>
+                      <span className={styles.panchangCardValue}>{f.value}</span>
+                    </div>
+                  ))}
+                  <div className={styles.panchangCardRow}>
+                    <span className={styles.panchangCardLabel}><span className={styles.panchangCardIcon}>◈</span>समय</span>
+                    <span className={styles.panchangCardValue}>भारतीय समयानुसार (IST)</span>
+                  </div>
+                </div>
+
+                <div className={styles.panchangCardKaalGrid}>
+                  <div className={`${styles.panchangKaalBox} ${styles.panchangKaalShubh}`}>
+                    <p className={styles.panchangKaalTitle}>✓ शुभ</p>
+                    {SHUBH_FIELDS.map(f => (
+                      <div key={f.label} className={styles.panchangKaalRow}>
+                        <span>{f.label}</span><span>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`${styles.panchangKaalBox} ${styles.panchangKaalAshubh}`}>
+                    <p className={styles.panchangKaalTitle}>⚠ अशुभ</p>
+                    {ASHUBH_FIELDS.map(f => (
+                      <div key={f.label} className={styles.panchangKaalRow}>
+                        <span>{f.label}</span><span>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <p className={styles.panchangCardFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro</p>
               </div>
+
+              <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>
+                <span aria-hidden="true">↗</span> {sharing ? 'तैयार हो रहा है...' : 'पंचांग शेयर करें'}
+              </button>
             </motion.div>
           </AnimatePresence>
         </motion.div>

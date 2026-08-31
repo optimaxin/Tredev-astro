@@ -14,6 +14,13 @@ export interface ChartPlanet {
   name: string;
   sign: string;
   house: number;
+  // Real Bhav Chalit (Placidus cuspal) house — genuinely varies with exact
+  // birth time/place, unlike `house` above (whole-sign, the same for anyone
+  // sharing the same Ascendant+placement sign). Only populated for the D1
+  // chart, where Bhav Chalit is meaningful; shown alongside `house` when the
+  // two differ, so the real cuspal placement isn't hidden inside the
+  // separate Bhav Chalit tab.
+  bhavHouse?: number;
   degree?: string;
   decimalDegree?: string;
   quality?: string;
@@ -54,7 +61,8 @@ export function formatDecimalDegree(degreeInSign: number): string {
   return `${degreeInSign.toFixed(2)}°`;
 }
 
-export function toChartPlanets(result: KundliResult): ChartPlanet[] {
+export function toChartPlanets(result: KundliResult, bhavChalit?: { planets: { id: string; house: number }[] }): ChartPlanet[] {
+  const bhavHouseById = new Map((bhavChalit?.planets ?? []).map(p => [p.id, p.house]));
   const asc: ChartPlanet = {
     id: 'asc',
     ...PLANET_META.asc,
@@ -70,6 +78,7 @@ export function toChartPlanets(result: KundliResult): ChartPlanet[] {
     quality: PLANET_META[p.id]?.quality || '',
     sign: p.rashi,
     house: p.house,
+    bhavHouse: bhavHouseById.get(p.id),
     degree: formatDegree(p.degreeInSign),
     decimalDegree: formatDecimalDegree(p.degreeInSign),
     retrograde: p.retrograde,

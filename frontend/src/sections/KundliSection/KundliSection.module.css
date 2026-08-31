@@ -393,6 +393,23 @@
   text-overflow: ellipsis;
 }
 
+/* Real Bhav Chalit (cuspal) house, shown only when it differs from the
+   whole-sign house above — a genuine per-birth-time variation, not a typo.
+   A standalone pill (not just inline text) so it doesn't read as a typo or
+   get missed next to the whole-sign house. */
+.bhavBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--gold-primary);
+  color: #1A1108;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .chartNote {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
