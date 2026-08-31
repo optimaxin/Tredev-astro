@@ -332,7 +332,7 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.panchangCard} ref={cardRef}>
+              <div className={styles.panchangCard} ref={cardRef} lang="hi">
                 <div className={styles.panchangCardHeader}>
                   <div>
                     <p className={styles.panchangCardBrand}>Tredev Astro</p>

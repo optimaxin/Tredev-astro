@@ -237,6 +237,13 @@
    layered shadow — the same premium treatment already used for the main
    Kundli chart's .chartLayout, so this doesn't read as a plain field grid). */
 .panchangCard {
+  /* WCAG 2.2 AA (1.4.3): the site's usual --text-muted/--gold-primary
+     don't reach 4.5:1 against this card's cream/gold background at small
+     text sizes — verified against the card's actual rendered background
+     (including the hero-chip and shubh/ashubh tints), not just eyeballed. */
+  --panchang-label: #665A46; /* 5.85:1+ on every tinted surface in this card */
+  --panchang-footer: #6E5322; /* 5.76:1 on the card background */
+
   border: 6px double var(--gold-primary);
   border-radius: var(--radius-lg);
   background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
@@ -245,6 +252,9 @@
 }
 
 :global([data-theme='dark']) .panchangCard {
+  --panchang-label: var(--text-secondary); /* 7.8:1+ on this card's dark background */
+  --panchang-footer: var(--gold-primary); /* 7.4:1 on this card's dark background */
+
   background: radial-gradient(circle, #251B17 0%, #150E0C 100%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(181, 138, 59, 0.08);
 }
@@ -270,7 +280,7 @@
 .panchangCardSubtitle {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  color: rgba(26, 17, 8, 0.75);
+  color: #1A1108; /* solid, not the previous 0.75-alpha version — that fell to 4.06:1 on the gold header, below AA's 4.5:1 */
   margin: 2px 0 0;
 }
 
@@ -313,9 +323,9 @@
 .panchangHeroLabel {
   display: block;
   font-family: var(--font-sans);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--panchang-label);
 }
 
 .panchangHeroValue {
@@ -350,7 +360,7 @@
 }
 
 .panchangCardLabel {
-  color: var(--text-muted);
+  color: var(--panchang-label);
 }
 
 .panchangCardValue {
@@ -384,7 +394,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   margin: 0 0 var(--space-2);
-  color: var(--text-secondary);
+  color: var(--panchang-label);
 }
 
 .panchangKaalRow {
@@ -402,8 +412,7 @@
   font-family: var(--font-serif);
   font-size: var(--text-xs);
   font-style: italic;
-  color: var(--gold-primary);
-  opacity: 0.85;
+  color: var(--panchang-footer); /* was gold-primary at opacity:0.85 -> 2.53:1 on light theme, well under AA */
   padding: var(--space-3) var(--space-5) var(--space-4);
   margin: 0;
   border-top: 1px dashed rgba(141, 79, 40, 0.25);
