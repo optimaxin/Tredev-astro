@@ -207,12 +207,24 @@
   padding: var(--space-8);
   position: relative;
   box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
+  /* This same component now also renders at HALF page width (D1/D9 side by
+     side) — the fixed 280px list column ate half that width and squeezed
+     the actual diagram down to a barely-legible ~250px square. A container
+     query (keyed to this element's own rendered width, not the viewport)
+     stacks chart-on-top/list-below below ~700px so the diagram always gets
+     the full available width, while the zoom modal (rendered near 1100px)
+     keeps the original side-by-side layout untouched. */
+  container-type: inline-size;
 }
 
 :global([data-theme='dark']) .chartLayout {
   background: radial-gradient(circle, #251B17 0%, #150E0C 100%) !important;
   border-color: var(--gold-primary) !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(181, 138, 59, 0.08) !important;
+}
+
+@container (max-width: 700px) {
+  .chartLayout { grid-template-columns: 1fr; }
 }
 
 .chartStyleToggle {

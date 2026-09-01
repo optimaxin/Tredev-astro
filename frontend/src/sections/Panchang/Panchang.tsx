@@ -336,6 +336,8 @@ export default function Panchang() {
               transition={{ duration: 0.4 }}
             >
               <div className={styles.panchangDash} ref={cardRef} lang="hi">
+                <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
+                <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashHeader}>
                   <img src="/images/acharya.png" alt="Tredev Astro Acharya" className={styles.panchangDashPortrait} />
                   <div>
@@ -376,6 +378,7 @@ export default function Panchang() {
                 </div>
 
                 <p className={styles.panchangDashFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)</p>
+                </div>
               </div>
 
               <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>
