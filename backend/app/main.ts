@@ -19,7 +19,16 @@ import { attachSockets } from './websocket/sockets.ts';
 import { runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+// Vite bumps to the next free port (5174, 5175, 5176...) whenever a stale
+// dev-server process is still holding an earlier one, which kept breaking
+// CORS every time that happened — the old allowlist only covered exactly
+// 5173/5174. In local dev (no CLIENT_ORIGIN configured), allow any
+// localhost/127.0.0.1 origin regardless of port instead of hardcoding one.
+// Once CLIENT_ORIGIN IS set (Render), origin stays locked to that exact one.
+const corsOrigin: cors.CorsOptions['origin'] = CLIENT_ORIGIN
+  ? CLIENT_ORIGIN
+  : (origin, callback) => callback(null, !origin || /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
 
 // Order matters: tables must exist before anything seeds into them, and the
 // catalog must be seeded before the realtime store reads it.
@@ -30,7 +39,7 @@ await seedContent();
 await seedRealtimeStore();
 
 const app = express();
-app.use(cors({ origin: [CLIENT_ORIGIN, 'http://localhost:5174'] }));
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
@@ -53,7 +62,7 @@ app.get('/health', (_req, res) => {
 });
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: [CLIENT_ORIGIN, 'http://localhost:5174'] } });
+const io = new Server(httpServer, { cors: { origin: corsOrigin } });
 attachSockets(io);
 
 // Auto-away + queue-timeout scan. This is the one place a naive setInterval
