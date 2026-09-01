@@ -14,7 +14,7 @@ import { getCurrentMahadasha, getMahadashaTimeline } from '../services/astrology
 import { answerAstrologyQuestion } from '../services/astrology/aiGuidance.ts';
 import { checkYogas } from '../services/astrology/yogas.ts';
 import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
-import { buildAvakhada, recommendGemstones, recommendRudraksha } from '../services/astrology/avakhada.ts';
+import { buildAvakhada, recommendGemstones, recommendRudraksha, getLuckyAttributes } from '../services/astrology/avakhada.ts';
 import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
 import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
@@ -169,6 +169,14 @@ calculatorsRouter.post('/rahu-ketu-transit', limiter, (req, res) => {
     const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
     const moonRashiIndex = Math.floor(kundli.planets.find(p => p.id === 'moon')!.longitude / 30);
     return checkRahuKetuTransit(moonRashiIndex, new Date());
+  });
+});
+
+calculatorsRouter.post('/lucky', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+    return getLuckyAttributes(kundli);
   });
 });
 

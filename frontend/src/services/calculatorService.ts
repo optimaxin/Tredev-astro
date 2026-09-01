@@ -109,6 +109,15 @@ export interface RahuKetuTransitResult {
   ketuHouseFromMoon: number;
 }
 
+export interface LuckyAttributes {
+  rulingPlanet: string;
+  color: string;
+  colorHex: string;
+  number: number;
+  luckyDates: number[];
+  reason: string;
+}
+
 export type FlamesResult = 'Friends' | 'Love' | 'Affection' | 'Marriage' | 'Enemies' | 'Siblings';
 
 export interface FlamesOutcome {
@@ -421,6 +430,7 @@ export const calculatorService = {
     request<NumerologyMatchResult>('/api/calculators/numerology-match', { method: 'POST', body: JSON.stringify({ person1, person2 }) }),
   flames: (name1: string, name2: string) =>
     request<FlamesOutcome>('/api/calculators/flames', { method: 'POST', body: JSON.stringify({ name1, name2 }) }),
+  lucky: (birth: BirthDetailsInput) => request<LuckyAttributes>('/api/calculators/lucky', { method: 'POST', body: JSON.stringify(birth) }),
   panchang: (date: string, latitude: number, longitude: number) =>
     request<PanchangResult>('/api/calculators/panchang', { method: 'POST', body: JSON.stringify({ date, latitude, longitude }) }),
   dailyHoroscope: (rashi: string) =>

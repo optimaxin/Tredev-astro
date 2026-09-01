@@ -25,6 +25,7 @@ const TOOL_ROUTES: Record<string, string> = {
   'Love Compatibility': 'kundli-matching',
   'Numerology Match': 'numerology-match',
   'FLAMES': 'flames',
+  'Lucky Color & Date': 'lucky',
   'Mangal Dosha': 'mangal-dosha',
   'Kaal Sarp Dosha': 'kaal-sarp-dosha',
   'Sade Sati': 'sade-sati',

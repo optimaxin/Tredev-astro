@@ -41,7 +41,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { DailyHoroscopeResult, FlamesOutcome, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { DailyHoroscopeResult, FlamesOutcome, GunMilanResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -180,6 +180,9 @@ export default function PageRenderer() {
 
     case 'flames':
       return <FlamesPage />;
+
+    case 'lucky':
+      return <LuckyPage />;
 
     case 'astrology-tools':
       return (
@@ -898,6 +901,42 @@ function SadeSatiPage() {
             Your natal Moon is in {result.moonRashi}. Saturn is currently transiting {result.saturnTransitRashi}.
             {result.active && result.phase ? ` This is your ${phaseLabel[result.phase]}.` : ' Saturn is not in the 12th, 1st, or 2nd sign from your Moon right now.'}
           </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function LuckyPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<LuckyAttributes | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.lucky(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Lucky Color & Date" title="Lucky Color & Date Calculator" description="Your ruling planet — the same lord your Ascendant (and Life Stone) is based on — gives a classical lucky color, number, and the dates in a month favorable to it.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find My Lucky Color & Date" idPrefix="lucky" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center', marginBottom: '16px' }}>
+            <span style={{ width: '48px', height: '48px', borderRadius: '50%', background: result.colorHex, border: '2px solid rgba(0,0,0,0.15)', flexShrink: 0 }} />
+            <div>
+              <h3 className={styles.partnerTitle} style={{ border: 'none', margin: 0 }}>{result.color}</h3>
+              <p className={styles.reviewText} style={{ margin: 0 }}>Lucky Number: {result.number} · Ruling Planet: {result.rulingPlanet.charAt(0).toUpperCase() + result.rulingPlanet.slice(1)}</p>
+            </div>
+          </div>
+          <p className={styles.reviewText} style={{ textAlign: 'center' }}>Lucky Dates This Month: {result.luckyDates.join(', ')}</p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>{result.reason}</p>
         </ResultCard>
       )}
     </CalculatorPageShell>

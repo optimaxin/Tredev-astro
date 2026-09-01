@@ -136,7 +136,7 @@ export const FREE_TOOLS_CATEGORIES = [
     label: 'Birth',
     icon: '☽',
     color: FREE_TOOLS_ACCENT,
-    tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder'],
+    tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder', 'Lucky Color & Date'],
   },
   {
     id: 'compatibility',

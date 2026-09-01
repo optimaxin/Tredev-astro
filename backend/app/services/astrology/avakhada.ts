@@ -161,3 +161,50 @@ export function recommendRudraksha(kundli: Kundli): RudrakshaResult {
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// Classical planet -> color name and planet -> number (Chaldean numerology,
+// the standard Sun=1/Moon=2/.../Ketu=7/Saturn=8/Mars=9 mapping used
+// wherever "ruling number" of a planet comes up). RASHI_LORD only ever
+// returns one of these 7 (a sign is never ruled by Rahu/Ketu in classical
+// Parashari astrology), but the table is kept complete for Rahu/Ketu too
+// since other callers (Nakshatra lord, which CAN be Rahu/Ketu) may want it.
+const COLOR_BY_PLANET: Record<string, string> = {
+  sun: 'Red / Orange', moon: 'White', mars: 'Red', mercury: 'Green',
+  jupiter: 'Yellow', venus: 'White / Pastel Pink', saturn: 'Blue / Black',
+  rahu: 'Smoky Grey', ketu: 'Brown / Multicolor',
+};
+const NUMBER_BY_PLANET: Record<string, number> = {
+  sun: 1, moon: 2, jupiter: 3, rahu: 4, mercury: 5, venus: 6, ketu: 7, saturn: 8, mars: 9,
+};
+
+export interface LuckyAttributes {
+  rulingPlanet: string;
+  color: string;
+  colorHex: string;
+  number: number;
+  luckyDates: number[];
+  reason: string;
+}
+
+// Ruling planet = Ascendant lord — the same "Life Stone" convention
+// recommendGemstones already uses, so Lucky Color/Number stays consistent
+// with the rest of this person's own remedial recommendations rather than
+// being a second, disconnected rule.
+export function getLuckyAttributes(kundli: Kundli): LuckyAttributes {
+  const ascendantIndex = RASHIS.indexOf(kundli.ascendant.rashi as (typeof RASHIS)[number]);
+  const rulingPlanet = RASHI_LORD[ascendantIndex];
+  const number = NUMBER_BY_PLANET[rulingPlanet];
+  // Digital root of each date-of-month (1-31) — dates 1..31 whose digits
+  // reduce to the ruling number, the standard numerology convention
+  // (e.g. number 1 -> dates 1, 10, 19, 28).
+  const luckyDates = Array.from({ length: 31 }, (_, i) => i + 1).filter(d => ((d - 1) % 9) + 1 === number);
+
+  return {
+    rulingPlanet,
+    color: COLOR_BY_PLANET[rulingPlanet],
+    colorHex: GEMSTONE_BY_PLANET[rulingPlanet].color,
+    number,
+    luckyDates,
+    reason: `${cap(rulingPlanet)} rules your Ascendant (${kundli.ascendant.rashi}) — the same ruling planet your Life Stone is based on. Classical numerology assigns ${cap(rulingPlanet)} the number ${number}; dates in a month whose digits reduce to ${number} are considered favorable for that planet.`,
+  };
+}
