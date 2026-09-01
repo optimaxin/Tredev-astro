@@ -41,7 +41,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -183,6 +183,9 @@ export default function PageRenderer() {
 
     case 'lucky':
       return <LuckyPage />;
+
+    case 'baby-name':
+      return <BabyNamePage />;
 
     case 'chinese-zodiac':
       return <ChineseZodiacPage />;
@@ -998,6 +1001,40 @@ function LuckyPage() {
           </div>
           <p className={styles.reviewText} style={{ textAlign: 'center' }}>Lucky Dates This Month: {result.luckyDates.join(', ')}</p>
           <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>{result.reason}</p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function BabyNamePage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<BabyNameResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.babyName(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Baby Name Calculator" title="Find Your Baby's Naming Syllable" description="The classical Namakaran system assigns one of 108 syllables to a baby's exact birth Nakshatra and Pada (quarter) — the traditional starting sound for an auspicious name.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Find Naming Syllable" idPrefix="babyname" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>{result.syllable}</h3>
+          <p className={styles.reviewText} style={{ textAlign: 'center' }}>
+            Moon Nakshatra: {result.nakshatra}, Pada {result.pada}
+          </p>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center' }}>
+            All 4 padas of {result.nakshatra} use: {result.allSyllablesInNakshatra.join(', ')} — yours falls in Pada {result.pada}, so a name starting with "{result.syllable}" is the classical first choice.
+          </p>
         </ResultCard>
       )}
     </CalculatorPageShell>

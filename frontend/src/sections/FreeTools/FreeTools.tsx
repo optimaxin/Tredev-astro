@@ -26,6 +26,7 @@ const TOOL_ROUTES: Record<string, string> = {
   'Numerology Match': 'numerology-match',
   'FLAMES': 'flames',
   'Lucky Color & Date': 'lucky',
+  'Baby Name Calculator': 'baby-name',
   'Mangal Dosha': 'mangal-dosha',
   'Kaal Sarp Dosha': 'kaal-sarp-dosha',
   'Sade Sati': 'sade-sati',
