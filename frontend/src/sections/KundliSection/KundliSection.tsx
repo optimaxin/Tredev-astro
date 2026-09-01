@@ -35,13 +35,6 @@ const CHART_LABELS: Record<string, string> = {
   D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
 };
 
-// The 8 charts most people actually want, highlighted as one-click pills
-// above the full "more charts" dropdown — same order as CHART_KEYS' head.
-const MAIN_CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60'] as const;
-const CHART_QUICK_LABELS: Record<string, string> = {
-  D1: 'D1 Lagna', CHANDRA: 'Chandra', D9: 'D9 Navamsa', D4: 'D4', D6: 'D6', D7: 'D7', D10: 'D10', D60: 'D60',
-};
-
 // Consolidated from an earlier 9-tab layout (Overview/Charts/Dasha/
 // Strength/KP/Ashtakvarga/Predictions/Remedies/Doshas) — 9 top-level tabs
 // read as overwhelming/confusing, and 3 of them (Strength/KP/Ashtakvarga)
@@ -98,7 +91,7 @@ export default function KundliSection() {
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [selectedChart, setSelectedChart] = useState<string>('D1');
+  const [zoomedChart, setZoomedChart] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
   const [autoDownloadPending, setAutoDownloadPending] = useState(false);
@@ -110,6 +103,24 @@ export default function KundliSection() {
 
   const kundliResult = fullResult?.kundli ?? null;
   const chartPlanets = kundliResult ? toChartPlanets(kundliResult, fullResult?.bhavChalit) : [];
+
+  // Shared by the D1/D9 featured row, the "all charts" tile grid, and the
+  // zoom modal — one place that knows how to turn any chart key into
+  // {planets, ascendantRashi}, instead of duplicating that branch 3 times.
+  function resolveChart(key: string): { planets: ChartPlanet[]; ascendantRashi: string } {
+    if (!fullResult) return { planets: [], ascendantRashi: '' };
+    if (key === 'D1') return { planets: chartPlanets, ascendantRashi: kundliResult?.ascendant.rashi ?? '' };
+    if (key === 'CHANDRA') return { planets: toChandraChartPlanets(fullResult.chandraChart), ascendantRashi: fullResult.chandraChart.moonRashi };
+    if (key === 'BHAV_CHALIT') {
+      const planets = toSimpleChartPlanets(fullResult.bhavChalit);
+      return { planets, ascendantRashi: planets.find(p => p.id === 'asc')?.sign ?? '' };
+    }
+    if (key === 'D9') return { planets: toSimpleChartPlanets(fullResult.navamsaChart), ascendantRashi: fullResult.navamsaChart.ascendant.rashi };
+    const varga = fullResult.vargaCharts[key];
+    if (varga) return { planets: toSimpleChartPlanets(varga), ascendantRashi: varga.ascendant.rashi };
+    return { planets: [], ascendantRashi: '' };
+  }
+
   const savedBirthDetails = toSavedBirthDetails(currentUser);
   const alreadySavedThisProfile = !!(currentUser?.birthDate && submittedDetails && currentUser.birthDate === submittedDetails.date);
 
@@ -573,54 +584,58 @@ export default function KundliSection() {
                 </>
               )}
 
-              {activeTab === 'charts' && (() => {
-                const chartPlanetsForKey: ChartPlanet[] =
-                  selectedChart === 'D1' ? chartPlanets :
-                  selectedChart === 'BHAV_CHALIT' ? toSimpleChartPlanets(fullResult.bhavChalit) :
-                  selectedChart === 'CHANDRA' ? toChandraChartPlanets(fullResult.chandraChart) :
-                  selectedChart === 'D9' ? toSimpleChartPlanets(fullResult.navamsaChart) :
-                  fullResult.vargaCharts[selectedChart] ? toSimpleChartPlanets(fullResult.vargaCharts[selectedChart]) : [];
-                const ascendantRashiForKey =
-                  selectedChart === 'CHANDRA' ? fullResult.chandraChart.moonRashi :
-                  chartPlanetsForKey.find(p => p.id === 'asc')?.sign ?? kundliResult?.ascendant.rashi ?? '';
-                return (
-                  <div className={styles.overview}>
-                    {/* The 8 charts most people actually want, as one-click highlighted
-                        pills — everything else (Bhav Chalit, D2/D3/D12+...) stays reachable
-                        via the "more charts" dropdown below instead of competing for
-                        attention as 19 equally-weighted options. */}
-                    <div className={styles.chartQuickPicks}>
-                      {MAIN_CHART_KEYS.map(key => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`${styles.chartQuickPickBtn} ${selectedChart === key ? styles.chartQuickPickBtnActive : ''}`}
-                          onClick={() => setSelectedChart(key)}
-                        >
-                          {CHART_QUICK_LABELS[key]}
+              {activeTab === 'charts' && (
+                <div className={styles.overview}>
+                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too; click any of them to open it full-screen.</p>
+
+                  {/* D1 + D9, side by side, full detail (diagram + planet list) — no dropdown needed to see either. */}
+                  <div className={styles.featuredChartsRow}>
+                    <div onClick={() => setZoomedChart('D1')} className={styles.featuredChartClickable}>
+                      <ChartDisplay title="D1 — Rashi (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
+                    </div>
+                    <div onClick={() => setZoomedChart('D9')} className={styles.featuredChartClickable}>
+                      <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} />
+                    </div>
+                  </div>
+                  {chartPlanets.some(p => p.bhavHouse !== undefined && p.bhavHouse !== p.house) && (
+                    <p className={styles.chartNote}>
+                      House numbers on D1 use whole-sign counting (same for anyone with your Ascendant sign). Hover a planet on the D1 chart above — where its REAL cuspal house (computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person) differs from the whole-sign one, the tooltip shows both.
+                    </p>
+                  )}
+
+                  {/* Every other chart — click any tile to open it full-screen. */}
+                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>All Divisional Charts</h2>
+                  <div className={styles.chartTileGrid}>
+                    {CHART_KEYS.filter(k => k !== 'D1' && k !== 'D9').map(key => {
+                      const { planets } = resolveChart(key);
+                      return (
+                        <button key={key} type="button" className={styles.chartTile} onClick={() => setZoomedChart(key)}>
+                          <div className={styles.chartTilePreview}>
+                            <NorthIndianChart planets={planets} onPlanetHover={() => {}} onPlanetLeave={() => {}} onHouseHover={() => {}} onHouseLeave={() => {}} />
+                          </div>
+                          <span className={styles.chartTileLabel}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</span>
                         </button>
-                      ))}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {zoomedChart && (() => {
+                const { planets, ascendantRashi } = resolveChart(zoomedChart);
+                return (
+                  <div className={styles.chartZoomOverlay} onClick={() => setZoomedChart(null)}>
+                    <div className={styles.chartZoomPanel} onClick={e => e.stopPropagation()}>
+                      <button type="button" className={styles.chartZoomClose} onClick={() => setZoomedChart(null)} aria-label="Close">✕</button>
+                      <h2 className={styles.overviewTitle}>{CHART_LABELS[zoomedChart] || VARGA_LABELS[zoomedChart] || zoomedChart}</h2>
+                      {zoomedChart === 'D2' && (
+                        <p className={styles.chartNote}>
+                          Hora (D2) is classically defined so every placement falls in ONLY Cancer or Leo (Moon's Hora / Sun's Hora) — never any other sign.
+                          That's why houses here cluster into just 1 and 7 (or 12, depending on your D2 Ascendant) instead of spreading across all 12 — it's the correct classical result for this chart, not a computation error.
+                        </p>
+                      )}
+                      <ChartDisplay title="Placements" planets={planets} ascendantRashi={ascendantRashi} />
                     </div>
-                    <div className={styles.overviewTitleRow}>
-                      <h2 className={styles.overviewTitle}>{CHART_LABELS[selectedChart] || VARGA_LABELS[selectedChart] || selectedChart}</h2>
-                      <select className={styles.vargaSelect} value={selectedChart} onChange={e => setSelectedChart(e.target.value)} aria-label="More divisional charts">
-                        {CHART_KEYS.map(key => (
-                          <option key={key} value={key}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {selectedChart === 'D1' && chartPlanetsForKey.some(p => p.bhavHouse !== undefined && p.bhavHouse !== p.house) && (
-                      <p className={styles.chartNote}>
-                        House numbers below use whole-sign counting (same for anyone with your Ascendant sign). Hover a planet on the chart above — where its REAL cuspal house (computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person) differs from the whole-sign one, the tooltip shows both.
-                      </p>
-                    )}
-                    {selectedChart === 'D2' && (
-                      <p className={styles.chartNote}>
-                        Hora (D2) is classically defined so every placement falls in ONLY Cancer or Leo (Moon's Hora / Sun's Hora) — never any other sign.
-                        That's why houses here cluster into just 1 and 7 (or 12, depending on your D2 Ascendant) instead of spreading across all 12 — it's the correct classical result for this chart, not a computation error.
-                      </p>
-                    )}
-                    <ChartDisplay title="Placements" planets={chartPlanetsForKey} ascendantRashi={ascendantRashiForKey} />
                   </div>
                 );
               })()}

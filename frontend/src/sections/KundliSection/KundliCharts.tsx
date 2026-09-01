@@ -236,7 +236,7 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
       {Object.entries(NORTH_HOUSE_POLYGONS).map(([hStr, points]) => {
         const [lx, ly] = outerLabelPos(points);
         return (
-          <text key={`num-${hStr}`} x={lx} y={ly + 3} textAnchor="middle" fontSize="9" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">
+          <text key={`num-${hStr}`} x={lx} y={ly + 3} textAnchor="middle" fontSize="10" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">
             {hStr}
           </text>
         );
@@ -255,10 +255,10 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
 
         return (
           <g key={planet.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(planet, e)} onMouseLeave={onPlanetLeave}>
-            <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
+            <text x={px} y={py} textAnchor="middle" fontSize="12" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
               {PLANET_SHORT[planet.id] || planet.name.slice(0, 2)}
             </text>
-            <text x={px} y={py + 12} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+            <text x={px} y={py + 12} textAnchor="middle" fontSize="10" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
               {planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house && (
                 cols === 1
@@ -309,7 +309,7 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
         return (
           <g key={rashi}>
             <rect x={x} y={y} width={CELL} height={CELL} fill="none" className={styles.chartBorder} strokeWidth="0.8" />
-            <text x={x + 6} y={y + 13} fontSize="8" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{rashi.slice(0, 3)}</text>
+            <text x={x + 6} y={y + 13} fontSize="9" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{rashi.slice(0, 3)}</text>
             {isAscendant && <line x1={x} y1={y} x2={x + 22} y2={y + 22} className={styles.chartLine} strokeWidth="1.4" />}
             {inHouse.map((p, i) => {
               const cols = inHouse.length > 2 ? 2 : 1;
@@ -317,8 +317,8 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
               const py = y + 45 + Math.floor(i / cols) * 22;
               return (
                 <g key={p.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(p, e)} onMouseLeave={onPlanetLeave}>
-                  <text x={px} y={py} textAnchor="middle" fontSize="10" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
-                  <text x={px} y={py + 11} textAnchor="middle" fontSize="8" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
+                  <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
+                  <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
                     {p.bhavHouse !== undefined && p.bhavHouse !== p.house && (
                       cols === 1

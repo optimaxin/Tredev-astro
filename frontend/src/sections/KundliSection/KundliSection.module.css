@@ -449,68 +449,106 @@
   margin-bottom: var(--space-3);
 }
 
-.overviewTitleRow {
+/* D1 + D9 side by side, each the full ChartDisplay (diagram + planet
+   list) — stacks to one column below the point .chartLayout itself
+   already stacks at (900px), so neither chart gets squeezed first. */
+.featuredChartsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 1100px) {
+  .featuredChartsRow { grid-template-columns: 1fr; }
+}
+
+.featuredChartClickable {
+  cursor: zoom-in;
+}
+
+/* Every other divisional chart, as small clickable preview tiles — no
+   dropdown, everything is on-screen and one click opens it full-size. */
+.chartTileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.chartTile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.overviewTitleRow .overviewTitle { margin-bottom: 0; }
-
-/* The 8 highlighted "main" charts (D1/Chandra/D9/D4/D6/D7/D10/D60) — same
-   gradient-pill treatment as the tab bar's active state, so this reads as
-   the primary way to switch charts and the dropdown below reads as the
-   secondary "more" option. */
-.chartQuickPicks {
-  display: flex;
-  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-5);
-}
-
-.chartQuickPickBtn {
-  height: 36px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-full);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   background: var(--surface-elevated);
+  cursor: zoom-in;
+  transition: border-color var(--transition-base), transform var(--transition-base);
+  font-family: inherit;
+}
+
+.chartTile:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+}
+
+.chartTilePreview {
+  width: 100%;
+  aspect-ratio: 1;
+  pointer-events: none; /* the tile itself is the click target, not individual planets inside the preview */
+}
+
+.chartTileLabel {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-base);
+  text-align: center;
 }
 
-.chartQuickPickBtn:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+/* Full-screen zoom — click any chart (featured or tile) to see it big. */
+.chartZoomOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  overflow-y: auto;
+  cursor: zoom-out;
 }
 
-.chartQuickPickBtnActive {
-  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-soft) 100%);
-  border-color: var(--gold-primary);
-  color: var(--bg-primary);
-  box-shadow: var(--shadow-gold);
-}
-
-.chartQuickPickBtnActive:hover {
-  border-color: var(--gold-primary);
-  color: var(--bg-primary);
-}
-
-.vargaSelect {
-  height: 36px;
+.chartZoomPanel {
+  position: relative;
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-3);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-width: 1100px;
+  width: 100%;
+  cursor: default;
+  box-shadow: var(--shadow-elevated);
 }
+
+.chartZoomClose {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  z-index: 1;
+}
+.chartZoomClose:hover { border-color: var(--gold-primary); color: var(--gold-primary); }
 
 .overviewText {
   font-family: var(--font-sans);
