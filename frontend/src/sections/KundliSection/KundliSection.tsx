@@ -6,7 +6,7 @@ import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm
 import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { KundliFullResult, KundliResult } from '../../services/calculatorService';
+import type { KundliFullResult, KundliResult, DailyHoroscopeResult } from '../../services/calculatorService';
 import { VARGA_LABELS } from '../../services/calculatorService';
 import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
@@ -52,6 +52,7 @@ const CHART_QUICK_LABELS: Record<string, string> = {
 const TABS = [
   { key: 'overview', label: 'Kundli' },
   { key: 'charts', label: 'Charts' },
+  { key: 'gochar', label: 'Gochar' },
   { key: 'timeline', label: 'Timeline & Doshas' },
   { key: 'predictions', label: 'Predictions' },
   { key: 'remedies', label: 'Remedies' },
@@ -61,6 +62,7 @@ type TabKey = (typeof TABS)[number]['key'];
 
 const TAB_ICONS: Record<TabKey, React.ComponentType<{ size?: number }>> = {
   overview: RashiChakraIcon,
+  gochar: ConstellationIcon,
   charts: ConstellationIcon,
   timeline: ClockIcon,
   predictions: AcharyaIcon,
@@ -101,6 +103,9 @@ export default function KundliSection() {
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
   const [autoDownloadPending, setAutoDownloadPending] = useState(false);
   const [history, setHistory] = useState<KundliHistoryEntry[]>([]);
+  const [gocharLagna, setGocharLagna] = useState<DailyHoroscopeResult | null>(null);
+  const [gocharMoon, setGocharMoon] = useState<DailyHoroscopeResult | null>(null);
+  const [gocharError, setGocharError] = useState('');
   const printRef = useRef<HTMLDivElement>(null);
 
   const kundliResult = fullResult?.kundli ?? null;
@@ -170,6 +175,25 @@ export default function KundliSection() {
       setPdfState('generating');
     }
   }, [autoDownloadPending, fullResult]);
+
+  // Gochar tab — real current transits for THIS person's own chart, read
+  // both ways classical Gochar predictions are conventionally done: from
+  // the natal Lagna and from the natal Moon. Reuses the same real,
+  // already-verified daily-transit endpoint the Horoscope page uses —
+  // no new computation, just anchored to this person's actual placements
+  // instead of a manually-picked rashi. Fetched lazily on first visit to
+  // the tab, not on every kundli generation.
+  useEffect(() => {
+    if (activeTab !== 'gochar' || !kundliResult || gocharLagna) return;
+    setGocharError('');
+    const moonRashi = kundliResult.planets.find(p => p.id === 'moon')?.rashi;
+    Promise.all([
+      calculatorService.dailyHoroscope(kundliResult.ascendant.rashi),
+      moonRashi ? calculatorService.dailyHoroscope(moonRashi) : Promise.resolve(null),
+    ])
+      .then(([lagna, moon]) => { setGocharLagna(lagna); setGocharMoon(moon); })
+      .catch(err => setGocharError(err instanceof CalculatorApiError ? err.message : 'Could not load today\'s Gochar.'));
+  }, [activeTab, kundliResult, gocharLagna]);
 
   const handleDownloadPdfClick = () => {
     setError('');
@@ -490,9 +514,9 @@ export default function KundliSection() {
                     footer={
                       <>
                         <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult?.ascendant.rashi ?? '—'} />
-                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={fullResult.panchang.moonRashi} />
+                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={chartPlanets.find(p => p.id === 'moon')?.sign ?? '—'} />
                         <HighlightChip icon={SunIcon} label="Sun Sign" value={chartPlanets.find(p => p.id === 'sun')?.sign ?? '—'} />
-                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={fullResult.panchang.nakshatra.name} />
+                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult?.moonNakshatra.name ?? '—'} />
                         <HighlightChip icon={LotusIcon} label="Tithi" value={`${fullResult.panchang.tithi.paksha} ${fullResult.panchang.tithi.name}`} />
                         <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'} />
                       </>
@@ -503,7 +527,7 @@ export default function KundliSection() {
                     <h2 className={styles.overviewTitle}>Panchang at Birth</h2>
                     <div className={styles.infoGrid}>
                       <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{fullResult.panchang.nakshatra.name} (Pada {fullResult.panchang.nakshatra.pada})</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult?.moonNakshatra.name} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
                       <InfoCard icon={LotusIcon} label="Yoga">{fullResult.panchang.yoga}</InfoCard>
                       <InfoCard icon={ConstellationIcon} label="Karana">{fullResult.panchang.karana}</InfoCard>
                       {fullResult.panchang.sunrise && <InfoCard icon={SunIcon} label="Sunrise">{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
@@ -513,8 +537,8 @@ export default function KundliSection() {
                       {fullResult.panchang.gulikaKaal && <InfoCard icon={ClockIcon} label="Gulika Kalam">{formatLocalTime(fullResult.panchang.gulikaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.gulikaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.abhijitMuhurat && <InfoCard icon={CheckCircleIcon} label="Abhijit Muhurat">{formatLocalTime(fullResult.panchang.abhijitMuhurat.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.abhijitMuhurat.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       <InfoCard icon={ConstellationIcon} label="Vara (Weekday)">{fullResult.panchang.vara}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{cap(fullResult.panchang.nakshatra.lord)}</InfoCard>
-                      <InfoCard icon={MoonIcon} label="Moon Rashi">{fullResult.panchang.moonRashi}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{cap(kundliResult?.moonNakshatra.lord ?? '')}</InfoCard>
+                      <InfoCard icon={MoonIcon} label="Moon Rashi">{chartPlanets.find(p => p.id === 'moon')?.sign ?? '—'}</InfoCard>
                       {kundliResult && <InfoCard icon={RashiChakraIcon} label="Ascendant Lord">{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</InfoCard>}
                     </div>
                   </div>
@@ -600,6 +624,42 @@ export default function KundliSection() {
                   </div>
                 );
               })()}
+
+              {activeTab === 'gochar' && (
+                <div className={styles.overview}>
+                  <h2 className={styles.overviewTitle}>Gochar — Today's Real Transits on Your Chart</h2>
+                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>
+                    Where every planet is actually transiting right now, counted as houses from your own natal Lagna and from your own natal Moon — the two classical reference points Gochar is read from — compared against where it sits in your birth chart.
+                  </p>
+                  {gocharError && <p style={{ color: '#d64545' }}>{gocharError}</p>}
+                  {!gocharLagna && !gocharError && <p className={styles.chartNote} style={{ textAlign: 'left' }}>Loading today's transits...</p>}
+                  {fullResult.doshas.sadeSati.active && (
+                    <div className={styles.doshaCard}>
+                      <h3 className={styles.doshaCardTitle}>Sade Sati is currently active</h3>
+                      <p className={styles.doshaCardText}>Saturn is transiting {fullResult.doshas.sadeSati.saturnTransitRashi} — your {fullResult.doshas.sadeSati.phase === 'rising' ? 'rising' : fullResult.doshas.sadeSati.phase === 'peak' ? 'peak' : 'setting'} phase, counted from your natal Moon in {fullResult.doshas.sadeSati.moonRashi}.</p>
+                    </div>
+                  )}
+                  <div className={styles.doshaCard}>
+                    <h3 className={styles.doshaCardTitle}>Rahu-Ketu Transit</h3>
+                    <p className={styles.doshaCardText}>Rahu is transiting {fullResult.doshas.rahuKetuTransit.rahuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon)} house from your Moon), Ketu is transiting {fullResult.doshas.rahuKetuTransit.ketuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon)} house from your Moon).</p>
+                  </div>
+                  {gocharLagna && (
+                    <div className={styles.infoGrid} style={{ marginTop: 'var(--space-4)' }}>
+                      {chartPlanets.filter(p => p.id !== 'asc').map(natal => {
+                        const fromLagna = gocharLagna.transits.find(t => t.id === natal.id);
+                        const fromMoon = gocharMoon?.transits.find(t => t.id === natal.id);
+                        if (!fromLagna) return null;
+                        return (
+                          <InfoCard key={natal.id} icon={ConstellationIcon} label={natal.name}>
+                            Natal: {natal.sign} ({natal.house}H)<br />
+                            Transit: {fromLagna.rashi}{fromLagna.retrograde ? ' ℞' : ''} — {ordinal(fromLagna.house)}H from Lagna{fromMoon ? `, ${ordinal(fromMoon.house)}H from Moon` : ''}
+                          </InfoCard>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {activeTab === 'timeline' && (
                 <>

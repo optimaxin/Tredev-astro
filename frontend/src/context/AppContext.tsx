@@ -397,7 +397,7 @@ interface AppContextValue {
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {
     // Navigation
-    nav_astrology: 'Astrology',
+    nav_astrology: 'Gochar',
     nav_kundli: 'Free Kundli',
     nav_calculators: 'Calculators',
     nav_reports: 'Reports',
@@ -970,7 +970,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     astro_empty_notifications_desc: "You're all caught up.",
   },
   hi: {
-    nav_astrology: 'ज्योतिष',
+    nav_astrology: 'गोचर',
     nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कैलकुलेटर',
     nav_reports: 'रिपोर्ट्स',
@@ -1526,7 +1526,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     astro_empty_notifications_desc: 'आप पूरी तरह अद्यतित हैं।',
   },
   mr: {
-    nav_astrology: 'ज्योतिष',
+    nav_astrology: 'गोचर',
     nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कॅल्क्युलेटर',
     nav_reports: 'अहवाल',

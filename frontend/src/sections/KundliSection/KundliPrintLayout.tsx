@@ -124,8 +124,8 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             <Field label="Vara (Weekday)">{result.panchang.vara}</Field>
             <Field label="Yoga">{result.panchang.yoga}</Field>
             <Field label="Karana">{result.panchang.karana}</Field>
-            <Field label="Nakshatra">{result.panchang.nakshatra.name} (Pada {result.panchang.nakshatra.pada})</Field>
-            <Field label="Nakshatra Lord">{cap(result.panchang.nakshatra.lord)}</Field>
+            <Field label="Nakshatra">{result.kundli.moonNakshatra.name} (Pada {result.kundli.moonNakshatra.pada})</Field>
+            <Field label="Nakshatra Lord">{cap(result.kundli.moonNakshatra.lord)}</Field>
             {result.panchang.sunrise && <Field label="Sunrise">{result.panchang.sunrise}</Field>}
             {result.panchang.sunset && <Field label="Sunset">{result.panchang.sunset}</Field>}
             {result.panchang.rahuKaal && <Field label="Rahu Kaal">{result.panchang.rahuKaal.start} – {result.panchang.rahuKaal.end}</Field>}
