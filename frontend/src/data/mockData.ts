@@ -129,7 +129,7 @@ export const FREE_TOOLS_CATEGORIES = [
     label: 'Daily Astrology',
     icon: '☀',
     color: FREE_TOOLS_ACCENT,
-    tools: ['Daily Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
+    tools: ['Daily Horoscope', 'Weekly Horoscope', 'Monthly Horoscope', 'Weekly Love Horoscope', 'Half-Yearly Horoscope', 'Yearly Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
   },
   {
     id: 'birth',
@@ -157,7 +157,7 @@ export const FREE_TOOLS_CATEGORIES = [
     label: 'Numerology',
     icon: '∞',
     color: FREE_TOOLS_ACCENT,
-    tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match'],
+    tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match', 'Numerology Horoscope', 'Chinese Zodiac'],
   },
 ];
 

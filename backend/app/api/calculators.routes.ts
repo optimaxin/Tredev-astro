@@ -5,7 +5,10 @@ import { generateKundli, getNavamsaChart, getChandraChart } from '../services/as
 import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
-import { calculateNumerology, calculateNumerologyMatch } from '../services/astrology/numerology.ts';
+import type { PlanetId } from '../services/astrology/ephemeris.ts';
+import { calculateNumerology, calculateNumerologyMatch, calculatePersonalCycle } from '../services/astrology/numerology.ts';
+import { getUpcomingTransits } from '../services/astrology/upcomingTransits.ts';
+import { getChineseZodiac } from '../services/astrology/chineseZodiac.ts';
 import { calculateFlames } from '../services/astrology/flames.ts';
 import { calculateGunMilan } from '../services/astrology/gunMilan.ts';
 import { calculatePanchang } from '../services/astrology/panchang.ts';
@@ -256,6 +259,60 @@ calculatorsRouter.post('/daily-horoscope', limiter, (req, res) => {
   handle(res, () => {
     const body = horoscopeSchema.parse(req.body);
     return getDailyHoroscope(body.rashi, new Date());
+  });
+});
+
+// Weekly/Monthly/Half-Year/Full-Year "horoscope" — the current transit
+// snapshot (reused from Daily) plus REAL upcoming sign-change events within
+// that window, not a written prediction. Longer windows drop the Sun/
+// Mercury/Venus (which just cycle back through every sign every ~year
+// anyway — not meaningful "upcoming" news over 6-12 months) and the Moon
+// entirely (it changes sign every ~2.25 days; even a week would list 2-3
+// changes that add noise without insight — its current position is already
+// in the snapshot above).
+const PERIOD_WINDOW_DAYS: Record<string, number> = { weekly: 7, monthly: 30, 'half-year': 182, 'full-year': 365 };
+const PERIOD_PLANETS: Record<string, PlanetId[]> = {
+  weekly: ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  monthly: ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  'half-year': ['mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  'full-year': ['mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+};
+
+const horoscopePeriodSchema = z.object({
+  rashi: z.enum(RASHIS),
+  period: z.enum(['weekly', 'monthly', 'half-year', 'full-year']),
+});
+
+calculatorsRouter.post('/horoscope-period', limiter, (req, res) => {
+  handle(res, () => {
+    const body = horoscopePeriodSchema.parse(req.body);
+    const now = new Date();
+    const current = getDailyHoroscope(body.rashi, now);
+    const upcomingTransits = getUpcomingTransits(now, PERIOD_WINDOW_DAYS[body.period], PERIOD_PLANETS[body.period]);
+    return { ...current, period: body.period, upcomingTransits };
+  });
+});
+
+const chineseZodiacSchema = z.object({
+  year: z.coerce.number().int().min(1900).max(2100),
+});
+
+calculatorsRouter.post('/chinese-zodiac', limiter, (req, res) => {
+  handle(res, () => {
+    const body = chineseZodiacSchema.parse(req.body);
+    return getChineseZodiac(body.year);
+  });
+});
+
+const numerologyHoroscopeSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+});
+
+calculatorsRouter.post('/numerology-horoscope', limiter, (req, res) => {
+  handle(res, () => {
+    const body = numerologyHoroscopeSchema.parse(req.body);
+    const [year, month, day] = body.date.split('-').map(Number);
+    return calculatePersonalCycle(new Date(Date.UTC(year, month - 1, day)), new Date());
   });
 });
 

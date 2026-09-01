@@ -41,7 +41,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { DailyHoroscopeResult, FlamesOutcome, GunMilanResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -184,6 +184,12 @@ export default function PageRenderer() {
     case 'lucky':
       return <LuckyPage />;
 
+    case 'chinese-zodiac':
+      return <ChineseZodiacPage />;
+
+    case 'numerology-horoscope':
+      return <NumerologyHoroscopePage />;
+
     case 'astrology-tools':
       return (
         <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
@@ -321,9 +327,19 @@ export default function PageRenderer() {
 const NATURAL_BENEFIC = new Set(['jupiter', 'venus', 'moon']);
 const NATURAL_MALEFIC = new Set(['saturn', 'mars', 'sun', 'rahu', 'ketu']);
 
+const HOROSCOPE_PERIODS: { key: 'daily' | 'weekly' | 'weekly-love' | 'monthly' | 'half-year' | 'full-year'; label: string }[] = [
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'weekly-love', label: 'Weekly Love' },
+  { key: 'monthly', label: 'Monthly' },
+  { key: 'half-year', label: 'Half-Year' },
+  { key: 'full-year', label: 'Full Year' },
+];
+
 function HoroscopePage() {
   const [activeRashi, setActiveRashi] = useState(0);
-  const [transitData, setTransitData] = useState<DailyHoroscopeResult | null>(null);
+  const [period, setPeriod] = useState<typeof HOROSCOPE_PERIODS[number]['key']>('daily');
+  const [transitData, setTransitData] = useState<DailyHoroscopeResult | HoroscopePeriodResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -347,14 +363,19 @@ function HoroscopePage() {
   useEffect(() => {
     setError('');
     setLoading(true);
-    calculatorService.dailyHoroscope(current.eng)
+    const request = period === 'daily'
+      ? calculatorService.dailyHoroscope(current.eng)
+      : calculatorService.horoscopePeriod(current.eng, period === 'weekly-love' ? 'weekly' : period);
+    request
       .then(setTransitData)
-      .catch(err => setError(err instanceof CalculatorApiError ? err.message : 'Could not load today\'s transits. Please try again.'))
+      .catch(err => setError(err instanceof CalculatorApiError ? err.message : 'Could not load transits. Please try again.'))
       .finally(() => setLoading(false));
-  }, [current.eng]);
+  }, [current.eng, period]);
 
   const sortedTransits = transitData ? [...transitData.transits].sort((a, b) => a.house - b.house) : [];
   const focusPlanet = sortedTransits.find(t => t.house === 1);
+  const upcomingTransits = transitData && 'upcomingTransits' in transitData ? transitData.upcomingTransits : [];
+  const venusTransit = sortedTransits.find(t => t.id === 'venus');
 
   return (
     <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -364,8 +385,26 @@ function HoroscopePage() {
           <h1 className={styles.pageTitle}>Free Horoscopes</h1>
           <div className={styles.divider}>✦ ❖ ✦</div>
           <p className={styles.pageSubtitle}>
-            Real, freshly-computed planetary transits for today, read against your Moon Sign — not a canned prediction.
+            Real, freshly-computed planetary transits, read against your Moon Sign — not a canned prediction.
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '18px' }}>
+            {HOROSCOPE_PERIODS.map(p => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setPeriod(p.key)}
+                className="btn"
+                style={{
+                  padding: '6px 16px', borderRadius: '999px', fontSize: '13px',
+                  background: period === p.key ? 'var(--gold-primary)' : 'transparent',
+                  color: period === p.key ? '#1a1108' : 'var(--color-text-dark-2)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={styles.horoscopeLayout}>
@@ -471,6 +510,16 @@ function HoroscopePage() {
                     Real planetary transits for {transitData.date}, counted as houses from {current.eng} (treated as your Moon Sign) — the standard Vedic approach for rashi-based predictions.
                   </p>
 
+                  {period === 'weekly-love' && venusTransit && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '1.3rem' }}>{PLANET_META['venus']?.symbol}</span>
+                      <span>
+                        <strong style={{ color: 'var(--gold-primary)' }}>Love & Relationships this week:</strong>{' '}
+                        Venus, the natural significator of love, is transiting your {venusTransit.house}{ordinal(venusTransit.house)} house in {venusTransit.rashi}{venusTransit.retrograde ? ' — Retrograde' : ''}.
+                      </span>
+                    </div>
+                  )}
+
                   {focusPlanet && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
                       <span style={{ fontSize: '1.3rem' }}>{PLANET_META[focusPlanet.id]?.symbol}</span>
@@ -507,6 +556,18 @@ function HoroscopePage() {
                       );
                     })}
                   </div>
+
+                  {upcomingTransits.length > 0 && (
+                    <div style={{ marginTop: '18px' }}>
+                      <h4 style={{ color: 'var(--gold-primary)', fontSize: '14px', marginBottom: '8px' }}>Upcoming Sign Changes This Period</h4>
+                      {upcomingTransits.map((ev, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '13px' }}>
+                          <span>{PLANET_META[ev.planetId]?.symbol} {PLANET_META[ev.planetId]?.name || ev.planetId}: {ev.fromRashi} → {ev.toRashi}</span>
+                          <span style={{ color: 'var(--color-text-muted)' }}>{new Date(ev.date).toLocaleDateString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '14px' }}>
                     Dot colors show each planet's classical natural temperament (green = benefic, red = malefic, grey = neutral) — a fixed classical property of the planet itself, not a verdict on today specifically.
@@ -1368,6 +1429,107 @@ function FlamesPage() {
           <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center' }}>
             {name1.trim()} + {name2.trim()} → {result.remainingCount} letter{result.remainingCount === 1 ? '' : 's'} left after crossing out shared letters, landing on "{result.letter}".
           </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function ChineseZodiacPage() {
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+  const [result, setResult] = useState<ChineseZodiacResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.chineseZodiac(year));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Chinese Zodiac" title="Chinese Zodiac Calculator" description="A completely different, calendar-based system — a 12-animal cycle crossed with a 5-element 10-year cycle, no ephemeris involved.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '360px', margin: '0 auto' }}>
+        <div className="form-group">
+          <label className="form-label">Birth Year</label>
+          <input type="number" className="input-field input-cosmos" value={year} min={1900} max={2100} onChange={e => setYear(Number(e.target.value))} />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', margin: '16px 0 0' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%', marginTop: '20px' }} disabled={loading}>
+          {loading ? 'Calculating...' : 'Find My Chinese Zodiac'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>{result.label}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center' }}>
+            Born in {result.year}, you're a {result.element} {result.animal} in the Chinese zodiac's 60-year cycle (12 animals × 5 elements).
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function NumerologyHoroscopePage() {
+  const { currentUser } = useAppContext();
+  const [dob, setDob] = useState(currentUser?.birthDate || '');
+  const [result, setResult] = useState<PersonalNumerologyCycle | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dob) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.numerologyHoroscope(dob));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Numerology Horoscope" title="Your Personal Year, Month & Day" description="Your Life Path number is fixed for life — but your Personal Year, Month, and Day numbers cycle every year, giving numerology's own version of a horoscope.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '420px', margin: '0 auto' }}>
+        <div className="form-group" style={{ marginBottom: '20px' }}>
+          <label className="form-label">Date of Birth</label>
+          <AncientDatePicker className="input-field input-cosmos" value={dob} onChange={setDob} placeholder="Select Date of Birth" />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', marginBottom: '12px' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%' }} disabled={loading || !dob}>
+          {loading ? 'Calculating...' : 'Find My Numerology Horoscope'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '2rem', color: 'var(--gold-primary)' }}>{result.personalYear}</div>
+              <div className={styles.reviewText}>Personal Year</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '2rem', color: 'var(--gold-primary)' }}>{result.personalMonth}</div>
+              <div className={styles.reviewText}>Personal Month</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '2rem', color: 'var(--gold-primary)' }}>{result.personalDay}</div>
+              <div className={styles.reviewText}>Personal Day</div>
+            </div>
+          </div>
         </ResultCard>
       )}
     </CalculatorPageShell>

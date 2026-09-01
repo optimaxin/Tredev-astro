@@ -196,6 +196,31 @@ export interface DailyHoroscopeResult {
   transits: DailyTransitEntry[];
 }
 
+export interface UpcomingTransitEvent {
+  planetId: string;
+  fromRashi: string;
+  toRashi: string;
+  date: string;
+}
+
+export interface HoroscopePeriodResult extends DailyHoroscopeResult {
+  period: 'weekly' | 'monthly' | 'half-year' | 'full-year';
+  upcomingTransits: UpcomingTransitEvent[];
+}
+
+export interface ChineseZodiacResult {
+  year: number;
+  animal: string;
+  element: string;
+  label: string;
+}
+
+export interface PersonalNumerologyCycle {
+  personalYear: number;
+  personalMonth: number;
+  personalDay: number;
+}
+
 export interface AntardashaPeriod {
   lord: string;
   startsAt: string;
@@ -435,6 +460,12 @@ export const calculatorService = {
     request<PanchangResult>('/api/calculators/panchang', { method: 'POST', body: JSON.stringify({ date, latitude, longitude }) }),
   dailyHoroscope: (rashi: string) =>
     request<DailyHoroscopeResult>('/api/calculators/daily-horoscope', { method: 'POST', body: JSON.stringify({ rashi }) }),
+  horoscopePeriod: (rashi: string, period: 'weekly' | 'monthly' | 'half-year' | 'full-year') =>
+    request<HoroscopePeriodResult>('/api/calculators/horoscope-period', { method: 'POST', body: JSON.stringify({ rashi, period }) }),
+  chineseZodiac: (year: number) =>
+    request<ChineseZodiacResult>('/api/calculators/chinese-zodiac', { method: 'POST', body: JSON.stringify({ year }) }),
+  numerologyHoroscope: (date: string) =>
+    request<PersonalNumerologyCycle>('/api/calculators/numerology-horoscope', { method: 'POST', body: JSON.stringify({ date }) }),
   mySky: (birth: BirthDetailsInput) => request<MySkyResult>('/api/calculators/my-sky', { method: 'POST', body: JSON.stringify(birth) }),
   aiAsk: (birth: BirthDetailsInput, question: string) =>
     request<{ answer: string }>('/api/calculators/ai-ask', { method: 'POST', body: JSON.stringify({ ...birth, question }) }),

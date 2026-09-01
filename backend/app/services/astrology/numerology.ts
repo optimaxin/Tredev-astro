@@ -32,6 +32,25 @@ export interface NumerologyProfile {
   personalityNumber: number;
 }
 
+// Personal Year/Month/Day numbers — the standard numerology "horoscope"
+// cycle, distinct from the fixed lifelong numbers above: Personal Year =
+// reduce(birth day + birth month + the given year), Personal Month =
+// reduce(Personal Year + the given month), Personal Day = reduce(Personal
+// Month + the given day-of-month). Real arithmetic on the actual current
+// date, not a canned per-number blurb.
+export interface PersonalNumerologyCycle {
+  personalYear: number;
+  personalMonth: number;
+  personalDay: number;
+}
+
+export function calculatePersonalCycle(dateOfBirth: Date, atDate: Date): PersonalNumerologyCycle {
+  const personalYear = reduceToSingleDigit(dateOfBirth.getUTCDate() + (dateOfBirth.getUTCMonth() + 1) + atDate.getUTCFullYear());
+  const personalMonth = reduceToSingleDigit(personalYear + (atDate.getUTCMonth() + 1));
+  const personalDay = reduceToSingleDigit(personalMonth + atDate.getUTCDate());
+  return { personalYear, personalMonth, personalDay };
+}
+
 export function calculateNumerology(dateOfBirth: Date, fullName: string): NumerologyProfile {
   const digitsOfDob = `${dateOfBirth.getUTCDate()}${dateOfBirth.getUTCMonth() + 1}${dateOfBirth.getUTCFullYear()}`
     .split('')
