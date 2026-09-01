@@ -333,12 +333,15 @@ export default function Panchang() {
               transition={{ duration: 0.4 }}
             >
               <div className={styles.panchangCard} ref={cardRef} lang="hi">
+                <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangCardWatermark} />
+
+                <div className={styles.panchangCardContent}>
                 <div className={styles.panchangCardHeader}>
                   <div>
                     <p className={styles.panchangCardBrand}>Tredev Astro</p>
                     <p className={styles.panchangCardSubtitle}>{currentUser ? `${currentUser.name} के लिए पावन पंचांग` : 'पावन पंचांग'}</p>
                   </div>
-                  <img src="/logo.png" alt="Tredev Astro" className={styles.panchangCardLogo} />
+                  <img src="/images/acharya.png" alt="Tredev Astro Acharya" className={styles.panchangCardPortrait} />
                 </div>
 
                 <div className={styles.panchangCardHero}>
@@ -360,10 +363,6 @@ export default function Panchang() {
                       <span className={styles.panchangCardValue}>{f.value}</span>
                     </div>
                   ))}
-                  <div className={styles.panchangCardRow}>
-                    <span className={styles.panchangCardLabel}><span className={styles.panchangCardIcon}>◈</span>समय</span>
-                    <span className={styles.panchangCardValue}>भारतीय समयानुसार (IST)</span>
-                  </div>
                 </div>
 
                 <div className={styles.panchangCardKaalGrid}>
@@ -385,7 +384,8 @@ export default function Panchang() {
                   </div>
                 </div>
 
-                <p className={styles.panchangCardFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro</p>
+                <p className={styles.panchangCardFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)</p>
+                </div>
               </div>
 
               <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>
