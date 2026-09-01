@@ -322,8 +322,11 @@ export default function Panchang() {
             {error && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
           </div>
 
-          {/* Right: Panchang card — always Hindi, brand-headered, matching a
-              printed/shared "Paavan Panchang" card layout. */}
+          {/* Right: Panchang dashboard — a dark glass/glow "cosmic dashboard"
+              instead of a bordered paper card: borderless stat tiles floating
+              over the section's own starfield backdrop, gold glow instead of
+              an ornate frame. Deliberately a different visual language from
+              the printed-card look used before. */}
           <AnimatePresence mode="wait">
             <motion.div
               key={location}
@@ -332,60 +335,47 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.panchangCard} ref={cardRef} lang="hi">
-                <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangCardWatermark} />
-
-                <div className={styles.panchangCardContent}>
-                <div className={styles.panchangCardHeader}>
+              <div className={styles.panchangDash} ref={cardRef} lang="hi">
+                <div className={styles.panchangDashHeader}>
+                  <img src="/images/acharya.png" alt="Tredev Astro Acharya" className={styles.panchangDashPortrait} />
                   <div>
-                    <p className={styles.panchangCardBrand}>Tredev Astro</p>
-                    <p className={styles.panchangCardSubtitle}>{currentUser ? `${currentUser.name} के लिए पावन पंचांग` : 'पावन पंचांग'}</p>
+                    <p className={styles.panchangDashDate}>{data ? `${HINDI_WEEKDAY[data.vara] || data.vara}` : '...'}</p>
+                    <p className={styles.panchangDashBrand}>Tredev Astro · पावन पंचांग{currentUser ? ` · ${currentUser.name}` : ''}</p>
                   </div>
-                  <img src="/images/acharya.png" alt="Tredev Astro Acharya" className={styles.panchangCardPortrait} />
                 </div>
 
-                <div className={styles.panchangCardHero}>
+                <div className={styles.panchangDashHeroRow}>
                   {HERO_FIELDS.map(f => (
-                    <div key={f.label} className={styles.panchangHeroChip}>
-                      <span className={styles.panchangHeroIcon}>{f.icon}</span>
-                      <div>
-                        <span className={styles.panchangHeroLabel}>{f.label}</span>
-                        <span className={styles.panchangHeroValue}>{f.value}</span>
-                      </div>
+                    <div key={f.label} className={styles.panchangDashHeroTile}>
+                      <span className={styles.panchangDashHeroIcon}>{f.icon}</span>
+                      <span className={styles.panchangDashHeroLabel}>{f.label}</span>
+                      <span className={styles.panchangDashHeroValue}>{f.value}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className={styles.panchangCardFields}>
+                <div className={styles.panchangDashDetailGrid}>
                   {HINDI_FIELDS.map(f => (
-                    <div key={f.label} className={styles.panchangCardRow}>
-                      <span className={styles.panchangCardLabel}><span className={styles.panchangCardIcon}>{f.icon}</span>{f.label}</span>
-                      <span className={styles.panchangCardValue}>{f.value}</span>
+                    <div key={f.label} className={styles.panchangDashDetailTile}>
+                      <span className={styles.panchangDashDetailIcon}>{f.icon}</span>
+                      <div>
+                        <span className={styles.panchangDashDetailLabel}>{f.label}</span>
+                        <span className={styles.panchangDashDetailValue}>{f.value}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div className={styles.panchangCardKaalGrid}>
-                  <div className={`${styles.panchangKaalBox} ${styles.panchangKaalShubh}`}>
-                    <p className={styles.panchangKaalTitle}>✓ शुभ</p>
-                    {SHUBH_FIELDS.map(f => (
-                      <div key={f.label} className={styles.panchangKaalRow}>
-                        <span>{f.label}</span><span>{f.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={`${styles.panchangKaalBox} ${styles.panchangKaalAshubh}`}>
-                    <p className={styles.panchangKaalTitle}>⚠ अशुभ</p>
-                    {ASHUBH_FIELDS.map(f => (
-                      <div key={f.label} className={styles.panchangKaalRow}>
-                        <span>{f.label}</span><span>{f.value}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div className={styles.panchangDashMuhuratRow}>
+                  {SHUBH_FIELDS.map(f => (
+                    <span key={f.label} className={`${styles.panchangDashPill} ${styles.panchangDashPillShubh}`}>✓ {f.label} · {f.value}</span>
+                  ))}
+                  {ASHUBH_FIELDS.map(f => (
+                    <span key={f.label} className={`${styles.panchangDashPill} ${styles.panchangDashPillAshubh}`}>⚠ {f.label} · {f.value}</span>
+                  ))}
                 </div>
 
-                <p className={styles.panchangCardFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)</p>
-                </div>
+                <p className={styles.panchangDashFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)</p>
               </div>
 
               <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>

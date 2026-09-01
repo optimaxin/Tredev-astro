@@ -232,212 +232,181 @@
   padding: var(--space-8);
 }
 
-/* Panchang card — brand-headered Hindi layout, styled after a printed/
-   shared "Paavan Panchang" card (ornate double border, gold gradient,
-   layered shadow — the same premium treatment already used for the main
-   Kundli chart's .chartLayout, so this doesn't read as a plain field grid). */
-.panchangCard {
-  /* WCAG 2.2 AA (1.4.3): the site's usual --text-muted/--gold-primary
-     don't reach 4.5:1 against this card's cream/gold background at small
-     text sizes — verified against the card's actual rendered background
-     (including the hero-chip and shubh/ashubh tints), not just eyeballed. */
-  --panchang-label: #665A46; /* 5.85:1+ on every tinted surface in this card */
-  --panchang-footer: #6E5322; /* 5.76:1 on the card background */
-
-  border: 6px double var(--gold-primary);
-  border-radius: var(--radius-lg);
-  background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
-  box-shadow: 0 16px 40px rgba(74, 46, 27, 0.18), inset 0 0 40px rgba(74, 46, 27, 0.08);
-  overflow: hidden;
-  position: relative;
+/* Panchang dashboard — deliberately NOT another bordered paper card (that
+   look shipped 3 times already): borderless dark-glass stat tiles with a
+   gold glow, floating over the section's own starfield CelestialBackdrop,
+   closer to a modern astronomy dashboard than a printed/shared card. */
+.panchangDash {
+  /* WCAG 2.2 AA (1.4.3): verified against each tile's own actual rendered
+     background below, not eyeballed. */
+  --panchang-label: #5C544A; /* 7.2:1 on the light-theme glass tint */
+  --panchang-gold-text: #6E5322; /* 6.95:1 on the light-theme glass tint — gold-primary itself is only 3.05:1 here */
+  --panchang-shubh-text: #155C36; /* 6.4:1 on the shubh pill tint */
+  --panchang-ashubh-text: #B23A3A; /* 4.76:1 on the ashubh pill tint */
+  --panchang-glass: rgba(255, 255, 255, 0.55);
+  --panchang-glass-border: rgba(181, 138, 59, 0.28);
+  padding: var(--space-2);
 }
 
-/* Large, faint brand mark behind the whole card — decorative, so it sits
-   below every real content layer and never competes with the text. */
-.panchangCardWatermark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 65%;
-  max-width: 320px;
-  opacity: 0.06;
-  pointer-events: none;
-  z-index: 0;
+:global([data-theme='dark']) .panchangDash {
+  --panchang-label: var(--text-secondary); /* 9.1:1 on the dark-theme glass tint */
+  --panchang-gold-text: var(--gold-primary); /* 7.9:1 on the dark-theme glass tint */
+  --panchang-shubh-text: #6FD9A3; /* 9.4:1 on the shubh pill tint */
+  --panchang-ashubh-text: #F09A9A; /* 7.9:1 on the ashubh pill tint */
+  --panchang-glass: rgba(20, 14, 10, 0.55);
+  --panchang-glass-border: rgba(199, 161, 90, 0.25);
 }
 
-.panchangCardContent {
-  position: relative;
-  z-index: 1;
-}
-
-:global([data-theme='dark']) .panchangCard {
-  --panchang-label: var(--text-secondary); /* 7.8:1+ on this card's dark background */
-  --panchang-footer: var(--gold-primary); /* 7.4:1 on this card's dark background */
-
-  background: radial-gradient(circle, #251B17 0%, #150E0C 100%);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(181, 138, 59, 0.08);
-}
-
-.panchangCardHeader {
+.panchangDashHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-5) var(--space-6);
-  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-soft) 100%);
+  margin-bottom: var(--space-5);
 }
 
-.panchangCardBrand {
-  font-family: var(--font-serif);
-  font-size: var(--text-xl);
-  color: #1A1108;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
-
-.panchangCardSubtitle {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: #1A1108; /* solid, not the previous 0.75-alpha version — that fell to 4.06:1 on the gold header, below AA's 4.5:1 */
-  margin: 2px 0 0;
-}
-
-.panchangCardPortrait {
-  width: 68px;
-  height: 68px;
+.panchangDashPortrait {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   object-position: top center;
   flex-shrink: 0;
-  border: 2px solid rgba(26, 17, 8, 0.25);
+  border: 2px solid var(--gold-primary);
   box-shadow: var(--shadow-gold);
-  background: rgba(255, 255, 255, 0.4);
 }
 
-/* Hero row — the 3 fields people actually glance at first, called out as
-   bigger badges above the denser field grid. */
-.panchangCardHero {
+.panchangDashDate {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.panchangDashBrand {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--panchang-gold-text);
+  margin: 2px 0 0;
+}
+
+/* Hero row — Tithi/Nakshatra/Moon-Rashi as glowing glass tiles, the
+   biggest visual weight on the dashboard. */
+.panchangDashHeroRow {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-6) 0;
-}
-
-.panchangHeroChip {
-  display: flex;
-  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(141, 79, 40, 0.25);
+  margin-bottom: var(--space-4);
 }
 
-:global([data-theme='dark']) .panchangHeroChip {
-  background: rgba(0, 0, 0, 0.25);
-  border-color: rgba(181, 138, 59, 0.3);
+.panchangDashHeroTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--panchang-glass);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--gold-primary);
+  box-shadow: var(--shadow-gold);
 }
 
-.panchangHeroIcon { font-size: 1.3rem; }
+.panchangDashHeroIcon { font-size: 1.5rem; }
 
-.panchangHeroLabel {
-  display: block;
+.panchangDashHeroLabel {
   font-family: var(--font-sans);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.06em;
   color: var(--panchang-label);
 }
 
-.panchangHeroValue {
-  display: block;
+.panchangDashHeroValue {
   font-family: var(--font-serif);
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
-.panchangCardFields {
-  padding: var(--space-6);
+/* Detail grid — every other field as a small glass tile instead of table rows. */
+.panchangDashDetailGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3) var(--space-6);
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
-.panchangCardRow {
+.panchangDashDetailTile {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px dashed rgba(141, 79, 40, 0.25);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--panchang-glass);
+  border: 1px solid var(--panchang-glass-border);
+}
+
+.panchangDashDetailIcon {
+  font-size: 1.1rem;
+  color: var(--gold-primary);
+  flex-shrink: 0;
+}
+
+.panchangDashDetailLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: var(--panchang-label);
+}
+
+.panchangDashDetailValue {
+  display: block;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-}
-
-.panchangCardIcon {
-  margin-right: var(--space-2);
-  color: var(--gold-primary);
-}
-
-.panchangCardLabel {
-  color: var(--panchang-label);
-}
-
-.panchangCardValue {
-  color: var(--text-primary);
   font-weight: 600;
-  text-align: right;
-}
-
-.panchangCardKaalGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  padding: 0 var(--space-6) var(--space-6);
-}
-
-.panchangKaalBox {
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  border: 1px solid rgba(141, 79, 40, 0.25);
-}
-
-.panchangKaalShubh { background: rgba(46, 139, 87, 0.1); }
-.panchangKaalAshubh { background: rgba(214, 69, 69, 0.1); }
-
-.panchangKaalTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin: 0 0 var(--space-2);
-  color: var(--panchang-label);
-}
-
-.panchangKaalRow {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
   color: var(--text-primary);
-  padding: 4px 0;
 }
 
-.panchangCardFooter {
+/* Muhurat row — Shubh/Ashubh periods as glowing pills in one flowing row,
+   not two boxed side-by-side panels. */
+.panchangDashMuhuratRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.panchangDashPill {
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.panchangDashPillShubh {
+  background: rgba(46, 139, 87, 0.16);
+  border-color: rgba(46, 139, 87, 0.4);
+  color: var(--panchang-shubh-text);
+}
+
+.panchangDashPillAshubh {
+  background: rgba(214, 69, 69, 0.14);
+  border-color: rgba(214, 69, 69, 0.4);
+  color: var(--panchang-ashubh-text);
+}
+
+.panchangDashFooter {
   text-align: center;
   font-family: var(--font-serif);
   font-size: var(--text-xs);
   font-style: italic;
-  color: var(--panchang-footer); /* was gold-primary at opacity:0.85 -> 2.53:1 on light theme, well under AA */
-  padding: var(--space-4) var(--space-6) var(--space-5);
+  color: var(--panchang-gold-text);
   margin: 0;
-  border-top: 1px dashed rgba(141, 79, 40, 0.25);
 }
 
 .shareButton {
@@ -475,8 +444,6 @@
 }
 
 @media (max-width: 640px) {
-  .panchangCardHero { grid-template-columns: 1fr; }
-  .panchangCardFields { grid-template-columns: 1fr; }
-  .panchangCardKaalGrid { grid-template-columns: 1fr; }
+  .panchangDashHeroRow { grid-template-columns: 1fr; }
   .container { padding: 0 var(--space-5); }
 }
