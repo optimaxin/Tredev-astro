@@ -143,7 +143,7 @@ export const FREE_TOOLS_CATEGORIES = [
     label: 'Compatibility',
     icon: '♾',
     color: FREE_TOOLS_ACCENT,
-    tools: ['Kundli Matching', 'Love Compatibility'],
+    tools: ['Kundli Matching', 'Love Compatibility', 'FLAMES'],
   },
   {
     id: 'doshas',

@@ -41,7 +41,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { DailyHoroscopeResult, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { DailyHoroscopeResult, FlamesOutcome, GunMilanResult, KaalSarpDoshaResult, KundliResult, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -177,6 +177,9 @@ export default function PageRenderer() {
 
     case 'numerology-match':
       return <NumerologyMatchPage />;
+
+    case 'flames':
+      return <FlamesPage />;
 
     case 'astrology-tools':
       return (
@@ -1273,6 +1276,58 @@ function NumerologyMatchPage() {
           </p>
           <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
             This groups numbers 1/5/7, 2/4/8, and 3/6/9 by shared temperament — a common but simplified numerology convention, not a precise or universally-agreed system. Use it alongside Kundli Matching, not instead of it.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function FlamesPage() {
+  const [name1, setName1] = useState('');
+  const [name2, setName2] = useState('');
+  const [result, setResult] = useState<FlamesOutcome | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const canSubmit = name1.trim() && name2.trim() && !loading;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.flames(name1.trim(), name2.trim()));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="FLAMES" title="FLAMES Calculator" description="The classic letter-counting name game — Friends, Love, Affection, Marriage, Enemies, or Siblings. A fun word game, not an astrological reading.">
+      <form onSubmit={handleSubmit} style={{ maxWidth: '420px', margin: '0 auto' }}>
+        <div className="form-group" style={{ marginBottom: '12px' }}>
+          <label className="form-label">Your Name</label>
+          <input type="text" className="input-field input-cosmos" value={name1} onChange={e => setName1(e.target.value)} placeholder="Your name" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Their Name</label>
+          <input type="text" className="input-field input-cosmos" value={name2} onChange={e => setName2(e.target.value)} placeholder="Their name" />
+        </div>
+        {error && <p style={{ color: '#d64545', textAlign: 'center', margin: '16px 0 0' }}>{error}</p>}
+        <button type="submit" className="btn btn-gold btn-lg" style={{ width: '100%', marginTop: '20px' }} disabled={!canSubmit}>
+          {loading ? 'Calculating...' : 'Play FLAMES'}
+        </button>
+      </form>
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none', textAlign: 'center' }}>{result.result}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center' }}>
+            {name1.trim()} + {name2.trim()} → {result.remainingCount} letter{result.remainingCount === 1 ? '' : 's'} left after crossing out shared letters, landing on "{result.letter}".
           </p>
         </ResultCard>
       )}

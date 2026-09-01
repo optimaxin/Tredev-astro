@@ -109,6 +109,14 @@ export interface RahuKetuTransitResult {
   ketuHouseFromMoon: number;
 }
 
+export type FlamesResult = 'Friends' | 'Love' | 'Affection' | 'Marriage' | 'Enemies' | 'Siblings';
+
+export interface FlamesOutcome {
+  result: FlamesResult;
+  letter: string;
+  remainingCount: number;
+}
+
 export type NumerologyAffinity = 'same' | 'grouped' | 'different';
 
 export interface NumerologyMatchResult {
@@ -411,6 +419,8 @@ export const calculatorService = {
   rahuKetuTransit: (birth: BirthDetailsInput) => request<RahuKetuTransitResult>('/api/calculators/rahu-ketu-transit', { method: 'POST', body: JSON.stringify(birth) }),
   numerologyMatch: (person1: { name: string; date: string }, person2: { name: string; date: string }) =>
     request<NumerologyMatchResult>('/api/calculators/numerology-match', { method: 'POST', body: JSON.stringify({ person1, person2 }) }),
+  flames: (name1: string, name2: string) =>
+    request<FlamesOutcome>('/api/calculators/flames', { method: 'POST', body: JSON.stringify({ name1, name2 }) }),
   panchang: (date: string, latitude: number, longitude: number) =>
     request<PanchangResult>('/api/calculators/panchang', { method: 'POST', body: JSON.stringify({ date, latitude, longitude }) }),
   dailyHoroscope: (rashi: string) =>

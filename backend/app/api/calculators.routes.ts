@@ -6,6 +6,7 @@ import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSa
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
 import { calculateNumerology, calculateNumerologyMatch } from '../services/astrology/numerology.ts';
+import { calculateFlames } from '../services/astrology/flames.ts';
 import { calculateGunMilan } from '../services/astrology/gunMilan.ts';
 import { calculatePanchang } from '../services/astrology/panchang.ts';
 import { getDailyHoroscope } from '../services/astrology/dailyHoroscope.ts';
@@ -181,6 +182,18 @@ calculatorsRouter.post('/numerology', limiter, (req, res) => {
     const body = numerologySchema.parse(req.body);
     const [year, month, day] = body.date.split('-').map(Number);
     return calculateNumerology(new Date(Date.UTC(year, month - 1, day)), body.name);
+  });
+});
+
+const flamesSchema = z.object({
+  name1: z.string().trim().min(1).max(200),
+  name2: z.string().trim().min(1).max(200),
+});
+
+calculatorsRouter.post('/flames', limiter, (req, res) => {
+  handle(res, () => {
+    const body = flamesSchema.parse(req.body);
+    return calculateFlames(body.name1, body.name2);
   });
 });
 
