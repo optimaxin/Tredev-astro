@@ -66,7 +66,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <div data-pdf-block style={{ display: 'flex', gap: 24, marginBottom: 28 }}>
           <div style={{ width: 320, flexShrink: 0 }}>
             <div className={chartStyles.svgWrap} style={{ maxWidth: 320 }}>
-              <NorthIndianChart planets={chartPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
+              <NorthIndianChart planets={chartPlanets} ascendantRashi={result.kundli.ascendant.rashi} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
             </div>
             <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D1 — Rashi (Birth Chart)</div>
           </div>
@@ -91,7 +91,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <div data-pdf-block style={{ display: 'flex', gap: 24, marginBottom: 4 }}>
           <div style={{ width: 200, flexShrink: 0 }}>
             <div className={chartStyles.svgWrap} style={{ maxWidth: 200 }}>
-              <NorthIndianChart planets={navamsaPlanets} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
+              <NorthIndianChart planets={navamsaPlanets} ascendantRashi={result.navamsaChart.ascendant.rashi} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
             </div>
             <div style={{ fontSize: FONT.label, color: FAINT, textAlign: 'center', marginTop: 4 }}>D9 — Navamsa (Marriage)</div>
           </div>

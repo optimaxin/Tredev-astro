@@ -206,16 +206,35 @@ function ChartWatermark({ box }: { box: number }) {
 
 interface KundliChartProps {
   planets: ChartPlanet[];
+  // Which rashi occupies house-position 1 (the top diamond) — needed to
+  // label each wedge with its RASHI number (Aries=1...Pisces=12), the
+  // convention this app's own AstroTalk reference chart uses, instead of
+  // the house-count-from-ascendant number (which always reads "1" at the
+  // Ascendant's own wedge regardless of which sign it is — correct on its
+  // own terms, but a real, EXACT mismatch against that reference when
+  // compared side by side). Optional only so callers that never had this
+  // wired (none currently) don't hard-fail; falls back to house-count.
+  ascendantRashi?: string;
   onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void;
   onPlanetLeave: () => void;
   onHouseHover: (house: number, e: React.MouseEvent) => void;
   onHouseLeave: () => void;
 }
 
-export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave }: KundliChartProps) {
+// Fixed zodiacal order, Aries first — used to convert a house POSITION
+// (1-12, counting from the Ascendant) into the RASHI NUMBER of whichever
+// sign actually sits there for this chart's Ascendant.
+const RASHI_ORDER = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+
+export function NorthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave }: KundliChartProps) {
   const BOX = 400;
   const planetsByHouse: Record<number, ChartPlanet[]> = {};
   planets.forEach(p => { (planetsByHouse[p.house] ||= []).push(p); });
+  const ascIndex = ascendantRashi ? RASHI_ORDER.indexOf(ascendantRashi) : -1;
+  // House position -> the rashi number (1-12) occupying it, matching the
+  // reference chart's labeling convention. Falls back to the raw house
+  // position (old behavior) if the Ascendant's rashi wasn't passed in.
+  const rashiNumberForPosition = (pos: number) => ascIndex === -1 ? pos : ((ascIndex + pos - 1) % 12) + 1;
 
   return (
     <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" className={styles.kundliSvg}>
@@ -240,12 +259,14 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
         />
       ))}
 
-      {/* House numbers, anchored toward each cell's outer corner */}
+      {/* Rashi numbers, anchored toward each cell's outer corner — the
+          fixed zodiacal index (Aries=1...Pisces=12) of whichever sign
+          occupies that wedge, matching the reference chart's convention. */}
       {Object.entries(NORTH_HOUSE_POLYGONS).map(([hStr, points]) => {
         const [lx, ly] = outerLabelPos(points);
         return (
           <text key={`num-${hStr}`} x={lx} y={ly + 3} textAnchor="middle" fontSize="10" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">
-            {hStr}
+            {rashiNumberForPosition(Number(hStr))}
           </text>
         );
       })}

@@ -12,6 +12,7 @@ import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { PLANET_META } from '../../data/planetMeta';
+import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
   SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, DoshaShieldIcon,
@@ -590,7 +591,7 @@ export default function KundliSection() {
 
               {activeTab === 'charts' && (
                 <div className={styles.overview}>
-                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too, including a separate Bhav Chalit chart; click any of them to open it full-screen.</p>
+                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too, including a separate Bhav Chalit chart; click any of them to open it full-screen. The small number in each wedge's corner is that sign's fixed zodiac index (Aries=1 … Pisces=12) — the "house" a planet is actually in (counted from your Ascendant) is shown per-planet below the chart and in its hover tooltip.</p>
 
                   {/* D1 + D9, side by side, full detail (diagram + planet list) — no dropdown needed to see either. */}
                   <div className={styles.featuredChartsRow}>
@@ -611,11 +612,11 @@ export default function KundliSection() {
                   <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>All Divisional Charts</h2>
                   <div className={styles.chartTileGrid}>
                     {CHART_KEYS.filter(k => k !== 'D1' && k !== 'D9').map(key => {
-                      const { planets } = resolveChart(key);
+                      const { planets, ascendantRashi } = resolveChart(key);
                       return (
                         <button key={key} type="button" className={styles.chartTile} onClick={() => setZoomedChart(key)}>
                           <div className={styles.chartTilePreview}>
-                            <NorthIndianChart planets={planets} onPlanetHover={() => {}} onPlanetLeave={() => {}} onHouseHover={() => {}} onHouseLeave={() => {}} />
+                            <NorthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={() => {}} onPlanetLeave={() => {}} onHouseHover={() => {}} onHouseLeave={() => {}} />
                           </div>
                           <span className={styles.chartTileLabel}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</span>
                         </button>
@@ -824,7 +825,7 @@ export default function KundliSection() {
                       </div>
                       {fullResult.shadbala.planets.map(p => (
                         <div key={p.planet} className={styles.dataRow}>
-                          <span className={styles.dataRowPlanet}><span className={styles.planetSymbol}>{PLANET_META[p.planet]?.symbol || '✦'}</span>{PLANET_META[p.planet]?.name || p.planet}</span>
+                          <span className={styles.dataRowPlanet}><span className={styles.planetSymbol}><PlanetIcon id={p.planet} size={18} /></span>{PLANET_META[p.planet]?.name || p.planet}</span>
                           <span>{p.rupas.toFixed(2)}</span>
                           <span>{p.minRequiredRupas.toFixed(1)}</span>
                           <span className={`${styles.statusBadge} ${p.isStrong ? styles.statusBadgeClear : styles.statusBadgeActive}`}>{p.isStrong ? 'Strong' : 'Weak'}</span>
@@ -1051,6 +1052,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
           {style === 'north' ? (
             <NorthIndianChart
               planets={planets}
+              ascendantRashi={ascendantRashi}
               onPlanetHover={handlePlanetHover}
               onPlanetLeave={() => setTooltip(null)}
               onHouseHover={(house, e) => {
@@ -1110,7 +1112,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
           <div className={styles.planetGrid}>
             {planets.map(p => (
               <div key={p.id} className={styles.planetCard}>
-                <span className={styles.planetSymbolBadge}>{p.symbol}</span>
+                <span className={styles.planetSymbolBadge}><PlanetIcon id={p.id} size={20} /></span>
                 <div className={styles.planetCardText}>
                   <div className={styles.planetCardName}>{p.name}</div>
                   <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · House {p.house}{p.bhavHouse !== undefined ? ` · Bhav ${p.bhavHouse}` : ''}</div>
