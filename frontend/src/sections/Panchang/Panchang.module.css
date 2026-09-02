@@ -270,12 +270,12 @@
    download when this was a fixed-box `object-fit: cover` avatar. */
 .panchangDashFigure {
   position: absolute;
-  right: var(--space-2);
-  bottom: 0;
-  height: 88%;
+  top: 0;
+  right: var(--space-3);
+  height: 110px;
   width: auto;
-  z-index: 1;
-  opacity: 0.92;
+  z-index: 2;
+  opacity: 0.98;
   pointer-events: none;
 }
 
