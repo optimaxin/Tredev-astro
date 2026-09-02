@@ -479,10 +479,29 @@
 /* Responsive */
 @media (max-width: 900px) {
   .card { grid-template-columns: 1fr; }
-  .left { border-right: none; border-bottom: 1px solid var(--border-subtle); padding: var(--space-8); }
+  .left { border-right: none; border-bottom: 1px solid var(--border-subtle); padding: var(--space-6); }
+  .right { padding: var(--space-6); }
 }
 
+/* Mobile: the hero row used to collapse to 1 column (3 stacked full-width
+   tiles), which is what made the whole card read as extremely tall on a
+   phone. Tithi/Nakshatra/Moon-Rashi are short text — keeping all 3 side by
+   side, just smaller, is far more compact than stacking them. */
 @media (max-width: 640px) {
-  .panchangDashHeroRow { grid-template-columns: 1fr; }
-  .container { padding: 0 var(--space-5); }
+  .section { padding: var(--space-12) 0; }
+  .container { padding: 0 var(--space-4); }
+  .left { padding: var(--space-5); gap: var(--space-2); }
+  .right { padding: var(--space-5); }
+  .panchangDashHeader { margin-bottom: var(--space-3); }
+  .panchangDashFigure { height: 64px; }
+  .panchangDashDate { font-size: var(--text-lg); }
+  .panchangDashHeroRow { gap: var(--space-2); margin-bottom: var(--space-3); }
+  .panchangDashHeroTile { padding: var(--space-2) 4px; }
+  .panchangDashHeroIcon { font-size: 1.1rem; }
+  .panchangDashHeroLabel { font-size: 0.6rem; }
+  .panchangDashHeroValue { font-size: 0.8rem; }
+  .panchangDashDetailGrid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
+  .panchangDashDetailTile { padding: var(--space-2); }
+  .panchangDashMuhuratRow { margin-bottom: var(--space-3); }
+  .arcWrap { max-width: 180px; }
 }

@@ -1093,11 +1093,18 @@
   .infoGrid { grid-template-columns: repeat(2, 1fr); }
   .dataRow, .dataRowKp, .dataRowHeadKp { grid-template-columns: 1.4fr 1fr 1fr; }
   .dataRow span:nth-child(3) { display: none; } /* drop the least-critical column rather than crush all four */
+  /* 7 tabs never fit a phone width, so the bar scrolls horizontally — but
+     `justify-content: center` on an overflowing flex row pushes the extra
+     width past BOTH edges, and browsers only let you scroll to the content
+     actually in [0, contentWidth - containerWidth], cutting off however
+     much of the centered overflow spilled to the left. Left-aligning it
+     once it's in scrolling territory keeps every tab reachable. */
+  .tabBar { justify-content: flex-start; }
+  .tabButton { height: 36px; padding: 0 var(--space-4); font-size: var(--text-xs); }
 }
 
 @media (max-width: 480px) {
   .infoGrid { grid-template-columns: 1fr; }
-  .tabButton { height: 36px; padding: 0 var(--space-4); font-size: var(--text-xs); }
 }
 
 /* Light Theme High Contrast overrides for Planetary placements

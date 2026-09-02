@@ -120,7 +120,11 @@ export default function Panchang() {
     setSharing(true);
     try {
       const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
+      // Forces html2canvas's offscreen clone to lay out as if the window
+      // were desktop-width, so the shared image always looks like the
+      // laptop layout (3-column hero row etc.) regardless of what device —
+      // phone, tablet, desktop — actually triggered the share.
+      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null, windowWidth: 1280 });
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!blob) return;
       const file = new File([blob], 'panchang.png', { type: 'image/png' });
