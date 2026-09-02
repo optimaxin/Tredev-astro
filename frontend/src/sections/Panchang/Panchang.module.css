@@ -249,7 +249,7 @@
   position: relative;
 }
 
-/* Large, faint brand mark behind the whole dashboard. */
+/* Large brand mark behind the whole dashboard. */
 .panchangDashWatermark {
   position: absolute;
   top: 50%;
@@ -257,7 +257,7 @@
   transform: translate(-50%, -50%);
   width: 70%;
   max-width: 340px;
-  opacity: 0.05;
+  opacity: 0.1;
   pointer-events: none;
   z-index: 0;
 }
@@ -267,14 +267,18 @@
    tiny bordered avatar). Sized by height only (never width+height together)
    so its aspect ratio can't be squashed — html2canvas doesn't reliably
    honor `object-fit` on capture, which is what caused the stretch on
-   download when this was a fixed-box `object-fit: cover` avatar. */
+   download when this was a fixed-box `object-fit: cover` avatar.
+   z-index above .panchangDashContent so it's never painted over by it (both
+   were 2 before, and DOM order put the content on top) — but the real fix
+   is .panchangDashContent's own top padding below, which reserves this
+   image its own space above the header/hero row instead of overlapping it. */
 .panchangDashFigure {
   position: absolute;
   top: 0;
   right: var(--space-3);
   height: 190px;
   width: auto;
-  z-index: 2;
+  z-index: 3;
   opacity: 0.98;
   pointer-events: none;
 }
@@ -282,6 +286,7 @@
 .panchangDashContent {
   position: relative;
   z-index: 2;
+  padding-top: 180px;
 }
 
 :global([data-theme='dark']) .panchangDash {
@@ -342,7 +347,7 @@
   align-items: center;
   text-align: center;
   gap: 4px;
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-2);
   border-radius: var(--radius-lg);
   background: var(--panchang-glass);
   backdrop-filter: blur(6px);
@@ -350,7 +355,7 @@
   box-shadow: var(--shadow-gold);
 }
 
-.panchangDashHeroIcon { font-size: 1.5rem; }
+.panchangDashHeroIcon { font-size: 1.3rem; }
 
 .panchangDashHeroLabel {
   font-family: var(--font-sans);
