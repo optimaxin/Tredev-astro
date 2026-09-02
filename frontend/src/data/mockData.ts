@@ -127,6 +127,7 @@ export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'daily',
     label: 'Daily Astrology',
+    description: 'Explore daily predictions and panchang details.',
     icon: '☀',
     color: FREE_TOOLS_ACCENT,
     tools: ['Daily Horoscope', 'Weekly Horoscope', 'Monthly Horoscope', 'Weekly Love Horoscope', 'Half-Yearly Horoscope', 'Yearly Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
@@ -134,6 +135,7 @@ export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'birth',
     label: 'Birth',
+    description: 'Essential tools based on your birth details.',
     icon: '☽',
     color: FREE_TOOLS_ACCENT,
     tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder', 'Lucky Color & Date', 'Baby Name Calculator', 'Lal Kitab'],
@@ -141,6 +143,7 @@ export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'compatibility',
     label: 'Compatibility',
+    description: 'Check compatibility and relationships.',
     icon: '♾',
     color: FREE_TOOLS_ACCENT,
     tools: ['Kundli Matching', 'Love Compatibility', 'FLAMES'],
@@ -148,6 +151,7 @@ export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'doshas',
     label: 'Doshas',
+    description: 'Identify doshas in your kundli.',
     icon: '◎',
     color: FREE_TOOLS_ACCENT,
     tools: ['Mangal Dosha', 'Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
@@ -155,6 +159,7 @@ export const FREE_TOOLS_CATEGORIES = [
   {
     id: 'numerology',
     label: 'Numerology',
+    description: 'Discover the power of numbers.',
     icon: '∞',
     color: FREE_TOOLS_ACCENT,
     tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match', 'Numerology Horoscope', 'Chinese Zodiac'],

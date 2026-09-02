@@ -54,62 +54,46 @@
   min-height: 250px;
 }
 
+/* A plain left-aligned list of rows (bullet · name · chevron) inside each
+   category card — replaces the old per-tool tile grid so the card reads as
+   one cohesive panel (icon/title/description up top) with a simple list
+   below it, matching the reference layout. */
 .toolsGrid {
-  display: grid;
-  /* A fixed column size (not minmax(...,1fr)) instead of auto-fill+1fr —
-     that combination stretched leftover space in a row across whichever
-     cards happened to be in it, so a category with only 2-3 tools (leaving
-     empty tracks in the last row) rendered visibly wider cards than a
-     category with a full row of 5. Fixed width keeps every card identical
-     regardless of how many tools its category has. */
-  grid-template-columns: repeat(auto-fill, 240px);
-  gap: var(--space-5);
-  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  align-self: stretch;
 }
 
 .toolCard {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: color-mix(in srgb, var(--surface-elevated) 85%, var(--accent) 15%);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 45%, var(--accent) 55%);
-  border-top: 4px solid var(--accent);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-1);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);
   text-align: left;
-  transition: all var(--transition-base);
-  position: relative;
+  transition: color var(--transition-base);
+  width: 100%;
 }
 
 .toolCard:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--surface-elevated) 68%, var(--accent) 32%);
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-3px);
+  color: var(--accent);
 }
 
 .toolIconBadge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
+  display: block;
+  width: 6px;
+  height: 6px;
   flex-shrink: 0;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 85%, transparent);
-  color: #fff;
-  transition: transform var(--transition-base);
-}
-
-.toolCard:hover .toolIconBadge {
+  border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 50%, transparent);
-  transform: scale(1.1);
 }
 
 .toolName {
@@ -118,16 +102,16 @@
 }
 
 .toolArrow {
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all var(--transition-base);
-  color: var(--accent);
+  opacity: 0.45;
+  color: var(--text-secondary);
   flex-shrink: 0;
+  transition: all var(--transition-base);
 }
 
 .toolCard:hover .toolArrow {
   opacity: 1;
-  transform: translateX(0);
+  color: var(--accent);
+  transform: translateX(2px);
 }
 
 /* ── Asymmetrical Featured Grid ── */
@@ -381,43 +365,75 @@
 }
 
 .allToolsContainer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  margin-top: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+  align-items: start;
 }
 
 .categorySection {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  align-items: center;
+  gap: 0;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.categorySection:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
 }
 
 .categoryHeader {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  border-bottom: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  padding-bottom: var(--space-2);
-  margin: 0;
-  text-align: left;
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  text-align: center;
 }
 
 .categoryHeaderIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .categoryHeaderLabel {
   font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  font-weight: 500;
+  font-size: var(--text-xl);
+  font-weight: 600;
   color: var(--text-primary);
+}
+
+.categoryDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: center;
+  margin: 0 0 var(--space-5);
+}
+
+.categoryDivider {
+  width: 48px;
+  height: 2px;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  margin: 0 0 var(--space-4);
 }

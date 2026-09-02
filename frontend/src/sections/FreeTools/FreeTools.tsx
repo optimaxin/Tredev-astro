@@ -247,12 +247,14 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               viewport={{ once: true }}
               transition={{ delay: ci * 0.06, duration: 0.5 }}
             >
-              <h3 className={styles.categoryHeader} style={{ '--accent': category.color } as React.CSSProperties}>
+              <div className={styles.categoryHeader} style={{ '--accent': category.color } as React.CSSProperties}>
                 <span className={styles.categoryHeaderIcon}>
-                  <CategoryIcon size={20} />
+                  <CategoryIcon size={28} />
                 </span>
                 <span className={styles.categoryHeaderLabel}>{category.label}</span>
-              </h3>
+              </div>
+              <p className={styles.categoryDesc}>{category.description}</p>
+              <hr className={styles.categoryDivider} style={{ '--accent': category.color } as React.CSSProperties} />
               <div className={styles.toolsGrid}>
                 {category.tools.map(tool => (
                   <div
@@ -261,11 +263,9 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                     style={{ '--accent': category.color } as React.CSSProperties}
                     onClick={() => handleToolClick(tool)}
                   >
-                    <span className={styles.toolIconBadge}>
-                      <CategoryIcon size={18} />
-                    </span>
+                    <span className={styles.toolIconBadge} style={{ '--accent': category.color } as React.CSSProperties} />
                     <span className={styles.toolName}>{tool}</span>
-                    <span className={styles.toolArrow}>→</span>
+                    <span className={styles.toolArrow}>›</span>
                   </div>
                 ))}
               </div>
