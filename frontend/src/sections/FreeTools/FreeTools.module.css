@@ -366,10 +366,26 @@
 
 .allToolsContainer {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  /* Fixed column counts per breakpoint, not auto-fit+minmax — same lesson
+     as .toolsGrid's old fixed-width fix above: auto-fit stretches whatever
+     cards land in a partial last row to fill the leftover space, which with
+     5 unevenly-sized cards produced a visibly lopsided, "unaligned" grid. */
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-6);
   margin-top: var(--space-8);
   align-items: start;
+}
+
+@media (max-width: 1180px) {
+  .allToolsContainer { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .allToolsContainer { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .allToolsContainer { grid-template-columns: 1fr; }
 }
 
 .categorySection {
