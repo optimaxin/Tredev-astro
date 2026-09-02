@@ -8,17 +8,17 @@ import styles from './BirthDetailsForm.module.css';
 
 // Common timezones only — full IANA-zone coverage isn't worth the added
 // complexity for a birth-details form; this covers the vast majority of
-// this site's audience. Offset is "minutes to ADD to local time to get UTC"
-// (so IST, UTC+5:30, is -330).
+// this site's audience. Offset is the standard "UTC = local - offset"
+// convention (so IST, UTC+5:30, is +330) — matches toUtcDate on the backend.
 export const TIMEZONES = [
-  { label: 'India (IST, UTC+5:30)', offset: -330 },
+  { label: 'India (IST, UTC+5:30)', offset: 330 },
   { label: 'UTC', offset: 0 },
   { label: 'UK (GMT/UTC+0)', offset: 0 },
-  { label: 'Central Europe (UTC+1)', offset: -60 },
-  { label: 'Dubai (UTC+4)', offset: -240 },
-  { label: 'Singapore (UTC+8)', offset: -480 },
-  { label: 'US Eastern (UTC-5)', offset: 300 },
-  { label: 'US Pacific (UTC-8)', offset: 480 },
+  { label: 'Central Europe (UTC+1)', offset: 60 },
+  { label: 'Dubai (UTC+4)', offset: 240 },
+  { label: 'Singapore (UTC+8)', offset: 480 },
+  { label: 'US Eastern (UTC-5)', offset: -300 },
+  { label: 'US Pacific (UTC-8)', offset: -480 },
 ];
 
 export interface BirthDetailsSubmitValue extends BirthDetailsInput {

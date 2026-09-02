@@ -770,8 +770,8 @@ function KundliMatchingPage() {
       // used elsewhere on this form; a full per-partner timezone picker
       // would be the next refinement if international users need it.
       const data = await calculatorService.kundliMatching(
-        { date: girl.dob, time: girl.tob, timezoneOffsetMinutes: -330, latitude: girlGeo.latitude, longitude: girlGeo.longitude },
-        { date: boy.dob, time: boy.tob, timezoneOffsetMinutes: -330, latitude: boyGeo.latitude, longitude: boyGeo.longitude }
+        { date: girl.dob, time: girl.tob, timezoneOffsetMinutes: 330, latitude: girlGeo.latitude, longitude: girlGeo.longitude },
+        { date: boy.dob, time: boy.tob, timezoneOffsetMinutes: 330, latitude: boyGeo.latitude, longitude: boyGeo.longitude }
       );
       setResult(data);
     } catch (err) {

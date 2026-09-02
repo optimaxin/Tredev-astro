@@ -51,10 +51,12 @@ const birthSchema = z.object({
 function toUtcDate(b: z.infer<typeof birthSchema>): Date {
   const [year, month, day] = b.date.split('-').map(Number);
   const [hour, minute] = b.time.split(':').map(Number);
-  // Date.UTC treats its inputs as already-UTC fields, so shifting by the
-  // timezone offset here is what actually converts "local wall-clock time"
-  // into the correct UTC instant.
-  return new Date(Date.UTC(year, month - 1, day, hour, minute) + b.timezoneOffsetMinutes * 60_000);
+  // Date.UTC treats its inputs as already-UTC fields, so this numerically
+  // equals the local wall-clock reading mislabeled as UTC. timezoneOffsetMinutes
+  // uses the standard "UTC = local - offset" convention (IST, UTC+5:30, is
+  // +330), so subtracting it here converts that mislabeled value into the
+  // actual UTC instant.
+  return new Date(Date.UTC(year, month - 1, day, hour, minute) - b.timezoneOffsetMinutes * 60_000);
 }
 
 function handle(res: import('express').Response, fn: () => unknown) {
