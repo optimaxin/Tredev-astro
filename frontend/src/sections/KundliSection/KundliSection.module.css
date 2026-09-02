@@ -588,10 +588,15 @@
   box-shadow: var(--shadow-elevated);
 }
 
+/* Fixed to the viewport corner, not the panel — "Show Placements" changes
+   the panel's own height/width, and a button anchored to the panel's own
+   edge could end up scrolled out of view or behind other content when that
+   happens. Viewport-fixed means it's always in the same spot, clickable,
+   regardless of what the panel's content does. */
 .chartZoomClose {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
+  position: fixed;
+  top: 24px;
+  right: 24px;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -600,7 +605,8 @@
   color: var(--text-primary);
   font-size: var(--text-lg);
   cursor: pointer;
-  z-index: 1;
+  z-index: 1200;
+  box-shadow: var(--shadow-card);
 }
 .chartZoomClose:hover { border-color: var(--gold-primary); color: var(--gold-primary); }
 

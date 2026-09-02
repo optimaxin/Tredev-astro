@@ -20,7 +20,6 @@ import {
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
-import KundliChatWidget from './KundliChatWidget';
 import styles from './KundliSection.module.css';
 
 // Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
@@ -527,6 +526,7 @@ export default function KundliSection() {
                     title="Planetary Placements"
                     planets={chartPlanets}
                     ascendantRashi={kundliResult?.ascendant.rashi ?? ''}
+                    allowPlacementsToggle={false}
                     footer={
                       <>
                         <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult?.ascendant.rashi ?? '—'} />
@@ -596,10 +596,10 @@ export default function KundliSection() {
                   {/* D1 + D9, side by side, full detail (diagram + planet list) — no dropdown needed to see either. */}
                   <div className={styles.featuredChartsRow}>
                     <div onClick={() => setZoomedChart('D1')} className={styles.featuredChartClickable}>
-                      <ChartDisplay title="D1 — Rashi (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
+                      <ChartDisplay title="D1 — Rashi (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} allowPlacementsToggle={false} />
                     </div>
                     <div onClick={() => setZoomedChart('D9')} className={styles.featuredChartClickable}>
-                      <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} />
+                      <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} allowPlacementsToggle={false} />
                     </div>
                   </div>
                   {chartPlanets.some(p => p.bhavHouse !== undefined) && (
@@ -976,17 +976,6 @@ export default function KundliSection() {
           )}
         </AnimatePresence>
       </div>
-      {fullResult && submittedDetails && (
-        <KundliChatWidget
-          name={birthProfile.name}
-          dob={submittedDetails.date}
-          tob={submittedDetails.time}
-          latitude={submittedDetails.latitude}
-          longitude={submittedDetails.longitude}
-          place={submittedDetails.placeName}
-          timezoneOffsetMinutes={submittedDetails.timezoneOffsetMinutes}
-        />
-      )}
     </section>
   );
 }
@@ -1024,7 +1013,7 @@ function HighlightChip({ icon: Icon, label, value }: { icon: React.ComponentType
 // (D1, Chandra, D9, and every D2-D60 varga chart) — each instance owns its
 // own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
-function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode }) {
+function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowPlacementsToggle = true }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode; allowPlacementsToggle?: boolean }) {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
@@ -1084,7 +1073,10 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
 
         {footer && <div className={styles.chartHighlights}>{footer}</div>}
 
-        {!showPlacements && (
+        {/* Only offered once the chart is zoomed full-screen — in the small
+            featured/overview view it just added a button that didn't fit
+            the space. */}
+        {allowPlacementsToggle && !showPlacements && (
           <button
             type="button"
             className={styles.placementsToggle}
@@ -1095,7 +1087,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
         )}
       </div>
 
-      {showPlacements && (
+      {allowPlacementsToggle && showPlacements && (
         <div className={styles.planetList}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
             <h3 className={styles.planetListTitle} style={{ marginBottom: 0 }}>{title}</h3>

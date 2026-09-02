@@ -287,22 +287,13 @@ export function NorthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
             <text x={px} y={py} textAnchor="middle" fontSize="12" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
               {PLANET_SHORT[planet.id] || planet.name.slice(0, 2)}
             </text>
+            {/* Degree only — no Bhav badge on the diagram itself anymore
+                (it was cluttering crowded houses); the real Bhav Chalit
+                house is still in the planet list below and the hover
+                tooltip for anyone who wants it. */}
             <text x={px} y={py + 12} textAnchor="middle" fontSize="10" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
-              {/* The wedge/corner number is the whole-sign house (matches
-                  every real reference chart). The real Bhav Chalit house is
-                  a separate number — always shown, spelled out (not "Bh",
-                  which read as ambiguous) on its own line when there's
-                  room, or inline compact when the house is crowded. */}
-              {cols === 2 && planet.bhavHouse !== undefined && (
-                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize="8"> B{planet.bhavHouse}</tspan>
-              )}
             </text>
-            {cols === 1 && planet.bhavHouse !== undefined && (
-              <text x={px} y={py + 24} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--gold-primary)" fontFamily="DM Sans, sans-serif">
-                Bhav {planet.bhavHouse}
-              </text>
-            )}
           </g>
         );
       })}
@@ -353,14 +344,6 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
-                    {/* South Indian cells are always fixed-by-rashi (never
-                        repositioned by Bhav), so this inline badge is the
-                        only place a planet's real Bhav Chalit house is
-                        visible in this chart style. Always shown, not just
-                        when it differs from the whole-sign house. */}
-                    {p.bhavHouse !== undefined && (
-                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> B{p.bhavHouse}</tspan>
-                    )}
                   </text>
                 </g>
               );
