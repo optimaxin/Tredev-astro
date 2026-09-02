@@ -232,19 +232,29 @@
   padding: var(--space-8);
 }
 
-/* Panchang dashboard — deliberately NOT another bordered paper card (that
-   look shipped 3 times already): borderless dark-glass stat tiles with a
-   gold glow, floating over the section's own starfield CelestialBackdrop,
-   closer to a modern astronomy dashboard than a printed/shared card. */
+/* Always the clean, light "printed almanac" card — deliberately NOT
+   theme-adaptive (no dark-mode variant) anymore. Panchang content is
+   already hardcoded Hindi/IST regardless of the site's language toggle
+   (see lang="hi" below); the same reasoning applies to its look — a
+   classical printed Panchang reads the same regardless of what theme the
+   rest of the site is in. Replaces the earlier translucent "dark glass
+   dashboard" treatment with solid white cards, per direct reference. */
 .panchangDash {
-  /* WCAG 2.2 AA (1.4.3): verified against each tile's own actual rendered
-     background below, not eyeballed. */
-  --panchang-label: #5C544A; /* 7.2:1 on the light-theme glass tint */
-  --panchang-gold-text: #6E5322; /* 6.95:1 on the light-theme glass tint — gold-primary itself is only 3.05:1 here */
-  --panchang-shubh-text: #155C36; /* 6.4:1 on the shubh pill tint */
-  --panchang-ashubh-text: #B23A3A; /* 4.76:1 on the ashubh pill tint */
-  --panchang-glass: rgba(255, 255, 255, 0.55);
-  --panchang-glass-border: rgba(181, 138, 59, 0.28);
+  /* WCAG 2.2 AA (1.4.3): verified against solid white, not eyeballed —
+     all 4 improved their margin versus the old translucent glass tint. */
+  --panchang-label: #5C544A; /* 7.44:1 on solid white */
+  --panchang-gold-text: #6E5322; /* 7.19:1 on solid white */
+  --panchang-shubh-text: #155C36; /* 8.02:1 on solid white */
+  --panchang-ashubh-text: #B23A3A; /* 5.90:1 on solid white */
+  --panchang-glass: #FFFFFF;
+  --panchang-glass-border: rgba(181, 138, 59, 0.35);
+  /* Fixed, not theme-dependent — var(--text-primary)/var(--gold-primary)
+     flip to near-white/brighter-gold in dark mode, meant for a dark
+     background this card no longer has. Every text/icon color inside this
+     card uses one of these two instead, so dark mode can't make it
+     unreadable against the always-white tiles. */
+  --panchang-heading: #241A10;
+  --panchang-gold: #B58A3B;
   padding: var(--space-2);
   position: relative;
 }
@@ -286,15 +296,6 @@
   z-index: 2;
 }
 
-:global([data-theme='dark']) .panchangDash {
-  --panchang-label: var(--text-secondary); /* 9.1:1 on the dark-theme glass tint */
-  --panchang-gold-text: var(--gold-primary); /* 7.9:1 on the dark-theme glass tint */
-  --panchang-shubh-text: #6FD9A3; /* 9.4:1 on the shubh pill tint */
-  --panchang-ashubh-text: #F09A9A; /* 7.9:1 on the ashubh pill tint */
-  --panchang-glass: rgba(20, 14, 10, 0.55);
-  --panchang-glass-border: rgba(199, 161, 90, 0.25);
-}
-
 .panchangDashHeader {
   display: flex;
   align-items: center;
@@ -303,22 +304,11 @@
   margin-bottom: var(--space-5);
 }
 
-.panchangDashPortrait {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  object-fit: cover;
-  object-position: top center;
-  flex-shrink: 0;
-  border: 2px solid var(--gold-primary);
-  box-shadow: var(--shadow-gold);
-}
-
 .panchangDashDate {
   font-family: var(--font-serif);
   font-size: var(--text-xl);
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--panchang-heading);
   margin: 0;
 }
 
@@ -348,8 +338,7 @@
   padding: var(--space-3) var(--space-2);
   border-radius: var(--radius-lg);
   background: var(--panchang-glass);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--gold-primary);
+  border: 1px solid var(--panchang-gold);
   box-shadow: var(--shadow-gold);
 }
 
@@ -366,10 +355,11 @@
   font-family: var(--font-serif);
   font-size: var(--text-base);
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--panchang-heading);
 }
 
-/* Detail grid — every other field as a small glass tile instead of table rows. */
+/* Detail grid — every other field as its own small card, same bordered
+   style as the hero tiles (not a visually-distinct "glass" treatment). */
 .panchangDashDetailGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -382,14 +372,14 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--panchang-glass);
   border: 1px solid var(--panchang-glass-border);
 }
 
 .panchangDashDetailIcon {
   font-size: 1.1rem;
-  color: var(--gold-primary);
+  color: var(--panchang-gold);
   flex-shrink: 0;
 }
 
@@ -406,7 +396,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--panchang-heading);
 }
 
 /* Muhurat row — Shubh/Ashubh periods as glowing pills in one flowing row,

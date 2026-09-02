@@ -326,11 +326,10 @@ export default function Panchang() {
             {error && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
           </div>
 
-          {/* Right: Panchang dashboard — a dark glass/glow "cosmic dashboard"
-              instead of a bordered paper card: borderless stat tiles floating
-              over the section's own starfield backdrop, gold glow instead of
-              an ornate frame. Deliberately a different visual language from
-              the printed-card look used before. */}
+          {/* Right: Panchang dashboard — a clean, always-light "printed
+              almanac" card (white bordered tiles, gold accents), matching a
+              direct reference. Deliberately fixed/not theme-adaptive; see
+              .panchangDash in the CSS module for why. */}
           <AnimatePresence mode="wait">
             <motion.div
               key={location}
