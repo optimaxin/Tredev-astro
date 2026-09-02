@@ -10,6 +10,7 @@ import {
 import { contentService, ContentApiError } from '../services/contentService';
 import type { AstrologyReport, BlogPost, ReportBundle, ReportPurchase } from '../services/contentService';
 import { PLANET_META } from '../data/planetMeta';
+import PlanetIcon from '../components/PlanetIcon/PlanetIcon';
 import { useAstrologer } from '../hooks/useAstrologer';
 import styles from './PageRenderer.module.css';
 
@@ -518,7 +519,7 @@ function HoroscopePage() {
 
                   {period === 'weekly-love' && venusTransit && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '1.3rem' }}>{PLANET_META['venus']?.symbol}</span>
+                      <PlanetIcon id="venus" size={28} />
                       <span>
                         <strong style={{ color: 'var(--gold-primary)' }}>Love & Relationships this week:</strong>{' '}
                         Venus, the natural significator of love, is transiting your {venusTransit.house}{ordinal(venusTransit.house)} house in {venusTransit.rashi}{venusTransit.retrograde ? ' — Retrograde' : ''}.
@@ -528,7 +529,7 @@ function HoroscopePage() {
 
                   {focusPlanet && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                      <span style={{ fontSize: '1.3rem' }}>{PLANET_META[focusPlanet.id]?.symbol}</span>
+                      <PlanetIcon id={focusPlanet.id} size={28} />
                       <span>
                         <strong style={{ color: 'var(--gold-primary)' }}>Today's Focus:</strong>{' '}
                         {PLANET_META[focusPlanet.id]?.name} is transiting your 1st house (Self) in {focusPlanet.rashi}{focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
@@ -550,8 +551,8 @@ function HoroscopePage() {
                         <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: '6px' }} title={NATURAL_BENEFIC.has(t.id) ? 'Naturally benefic' : NATURAL_MALEFIC.has(t.id) ? 'Naturally malefic' : 'Naturally neutral'} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div>
-                              {meta?.symbol} {meta?.name || t.id} in {t.rashi}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <PlanetIcon id={t.id} size={18} /> {meta?.name || t.id} in {t.rashi}
                               {t.retrograde && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(200,90,90,0.15)', color: '#c85a5a' }}>℞ Retrograde</span>}
                             </div>
                             <div style={{ color: 'var(--color-text-muted, #999)', fontSize: '13px', marginTop: '2px' }}>
@@ -568,7 +569,7 @@ function HoroscopePage() {
                       <h4 style={{ color: 'var(--gold-primary)', fontSize: '14px', marginBottom: '8px' }}>Upcoming Sign Changes This Period</h4>
                       {upcomingTransits.map((ev, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '13px' }}>
-                          <span>{PLANET_META[ev.planetId]?.symbol} {PLANET_META[ev.planetId]?.name || ev.planetId}: {ev.fromRashi} → {ev.toRashi}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><PlanetIcon id={ev.planetId} size={16} /> {PLANET_META[ev.planetId]?.name || ev.planetId}: {ev.fromRashi} → {ev.toRashi}</span>
                           <span style={{ color: 'var(--color-text-muted)' }}>{new Date(ev.date).toLocaleDateString()}</span>
                         </div>
                       ))}
@@ -1069,7 +1070,7 @@ function LalKitabPage() {
             const meta = PLANET_META[h.planetId];
             return (
               <div key={h.planetId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <span>{meta?.symbol} {meta?.name || h.planetId} — in house {h.house} (Pakka Ghar: {h.pakkaGhar.join(', ')})</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><PlanetIcon id={h.planetId} size={18} /> {meta?.name || h.planetId} — in house {h.house} (Pakka Ghar: {h.pakkaGhar.join(', ')})</span>
                 <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '10px', background: h.inOwnHouse ? 'rgba(76,175,125,0.15)' : 'rgba(154,154,154,0.15)', color: h.inOwnHouse ? '#4caf7d' : 'var(--color-text-muted)' }}>
                   {h.inOwnHouse ? 'Settled (own house)' : 'Not settled'}
                 </span>

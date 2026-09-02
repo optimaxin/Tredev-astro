@@ -5,6 +5,7 @@ import { HOUSE_MEANINGS } from '../../data/mockData';
 import { resolveBirthDetailsInput } from '../../utils/birthChart';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { MySkyResult } from '../../services/calculatorService';
+import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import styles from './MySky.module.css';
 
 function ordinal(n: number): string {
@@ -38,10 +39,10 @@ export default function MySky() {
 
   const placements = sky
     ? [
-        { label: 'Surya (Sun)', value: sky.sunRashi, house: '', symbol: '☉', color: 'var(--color-gold)' },
-        { label: 'Chandra (Moon)', value: sky.moonRashi, house: '', symbol: '☽', color: 'var(--color-gold-light)' },
-        { label: 'Lagna (Ascendant)', value: sky.ascendantRashi, house: '1st Bhava (Rising)', symbol: '↑', color: 'var(--color-gold-dark)' },
-        { label: 'Janma Nakshatra', value: sky.moonNakshatra.name, house: `Pada ${sky.moonNakshatra.pada}`, symbol: '✦', color: 'var(--color-terracotta)' },
+        { label: 'Surya (Sun)', value: sky.sunRashi, house: '', symbol: '☉', planetId: 'sun', color: 'var(--color-gold)' },
+        { label: 'Chandra (Moon)', value: sky.moonRashi, house: '', symbol: '☽', planetId: 'moon', color: 'var(--color-gold-light)' },
+        { label: 'Lagna (Ascendant)', value: sky.ascendantRashi, house: '1st Bhava (Rising)', symbol: '↑', planetId: undefined, color: 'var(--color-gold-dark)' },
+        { label: 'Janma Nakshatra', value: sky.moonNakshatra.name, house: `Pada ${sky.moonNakshatra.pada}`, symbol: '✦', planetId: undefined, color: 'var(--color-terracotta)' },
       ]
     : [];
 
@@ -102,7 +103,7 @@ export default function MySky() {
         >
           {placements.map((p) => (
             <div key={p.label} className={styles.placement}>
-              <span className={styles.placementSymbol} style={{ color: p.color }}>{p.symbol}</span>
+              <span className={styles.placementSymbol} style={{ color: p.color }}>{p.planetId ? <PlanetIcon id={p.planetId} size={22} /> : p.symbol}</span>
               <div className={styles.placementInfo}>
                 <span className={styles.placementLabel}>{p.label}</span>
                 <span className={styles.placementValue}>{p.value}</span>
