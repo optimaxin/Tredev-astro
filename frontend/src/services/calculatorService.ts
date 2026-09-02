@@ -221,6 +221,17 @@ export interface PersonalNumerologyCycle {
   personalDay: number;
 }
 
+export interface LalKitabHouseEntry {
+  planetId: string;
+  house: number;
+  pakkaGhar: number[];
+  inOwnHouse: boolean;
+}
+
+export interface LalKitabResult {
+  houses: LalKitabHouseEntry[];
+}
+
 export interface BabyNameResult {
   nakshatra: string;
   pada: number;
@@ -463,6 +474,7 @@ export const calculatorService = {
   flames: (name1: string, name2: string) =>
     request<FlamesOutcome>('/api/calculators/flames', { method: 'POST', body: JSON.stringify({ name1, name2 }) }),
   babyName: (birth: BirthDetailsInput) => request<BabyNameResult>('/api/calculators/baby-name', { method: 'POST', body: JSON.stringify(birth) }),
+  lalKitab: (birth: BirthDetailsInput) => request<LalKitabResult>('/api/calculators/lal-kitab', { method: 'POST', body: JSON.stringify(birth) }),
   lucky: (birth: BirthDetailsInput) => request<LuckyAttributes>('/api/calculators/lucky', { method: 'POST', body: JSON.stringify(birth) }),
   panchang: (date: string, latitude: number, longitude: number) =>
     request<PanchangResult>('/api/calculators/panchang', { method: 'POST', body: JSON.stringify({ date, latitude, longitude }) }),

@@ -19,6 +19,7 @@ import { checkYogas } from '../services/astrology/yogas.ts';
 import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
 import { buildAvakhada, recommendGemstones, recommendRudraksha, getLuckyAttributes } from '../services/astrology/avakhada.ts';
 import { getBabyNameSyllable } from '../services/astrology/babyName.ts';
+import { getLalKitabHouses } from '../services/astrology/lalKitab.ts';
 import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
 import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
 import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
@@ -189,6 +190,14 @@ calculatorsRouter.post('/baby-name', limiter, (req, res) => {
     const birth = birthSchema.parse(req.body);
     const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
     return getBabyNameSyllable(kundli);
+  });
+});
+
+calculatorsRouter.post('/lal-kitab', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+    return getLalKitabHouses(kundli);
   });
 });
 

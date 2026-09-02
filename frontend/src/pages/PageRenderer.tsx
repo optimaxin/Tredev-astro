@@ -41,7 +41,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -186,6 +186,9 @@ export default function PageRenderer() {
 
     case 'baby-name':
       return <BabyNamePage />;
+
+    case 'lal-kitab':
+      return <LalKitabPage />;
 
     case 'chinese-zodiac':
       return <ChineseZodiacPage />;
@@ -1034,6 +1037,47 @@ function BabyNamePage() {
           </p>
           <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center' }}>
             All 4 padas of {result.nakshatra} use: {result.allSyllablesInNakshatra.join(', ')} — yours falls in Pada {result.pada}, so a name starting with "{result.syllable}" is the classical first choice.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+function LalKitabPage() {
+  const { currentUser } = useAppContext();
+  const [result, setResult] = useState<LalKitabResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.lalKitab(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Lal Kitab" title="Lal Kitab House Strength" description="Lal Kitab assigns each planet a fixed 'Pakka Ghar' (permanent house) — a framework distinct from classical Parashari sign-lordship. A planet placed in its own Pakka Ghar in your real chart is considered settled and strong.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check My Lal Kitab Houses" idPrefix="lalkitab" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          {result.houses.map(h => {
+            const meta = PLANET_META[h.planetId];
+            return (
+              <div key={h.planetId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span>{meta?.symbol} {meta?.name || h.planetId} — in house {h.house} (Pakka Ghar: {h.pakkaGhar.join(', ')})</span>
+                <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '10px', background: h.inOwnHouse ? 'rgba(76,175,125,0.15)' : 'rgba(154,154,154,0.15)', color: h.inOwnHouse ? '#4caf7d' : 'var(--color-text-muted)' }}>
+                  {h.inOwnHouse ? 'Settled (own house)' : 'Not settled'}
+                </span>
+              </div>
+            );
+          })}
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '14px' }}>
+            Lal Kitab's "Rin" (planetary debt) concept is deliberately not included here — different Lal Kitab teachers give conflicting rules for it, with no single agreed classical table.
           </p>
         </ResultCard>
       )}
