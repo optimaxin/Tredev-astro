@@ -2641,6 +2641,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistTokens(tokens.accessToken, tokens.refreshToken);
         const user = await authService.me(tokens.accessToken);
         setCurrentUser(toAuthUser(user));
+        // Login already redirects ADMIN/STAFF/ASTROLOGIST straight to their
+        // workspace (see AuthPage's redirectByRole) — but that only runs on
+        // the interactive login path. A session restored on page load (e.g.
+        // a hard refresh, or opening a fresh tab) skipped it entirely,
+        // landing back on whatever `page` was in history (usually 'home'),
+        // stranding these roles on the public homepage until they manually
+        // clicked "Dashboard". WORKSPACE_PAGES here must match App.tsx's
+        // isWorkspaceConsole list.
+        const WORKSPACE_PAGES = ['dashboard', 'profile', 'my-jyotish'];
+        if ((user.role === 'ADMIN' || user.role === 'STAFF' || user.role === 'ASTROLOGIST') && !WORKSPACE_PAGES.includes(page)) {
+          setPage('profile');
+        }
       } catch (e) {
         // Only sign the user out when the server explicitly rejected the
         // refresh token (it's genuinely invalid/expired/revoked) — a network
