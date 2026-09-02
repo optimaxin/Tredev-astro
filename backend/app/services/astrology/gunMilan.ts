@@ -51,15 +51,23 @@ VASHYA_GROUP[4] = 1; // Vanachar (wild) — Leo, alone
 [0, 1, 9].forEach(i => (VASHYA_GROUP[i] = 2)); // Chatushpad (quadruped)
 [3, 11].forEach(i => (VASHYA_GROUP[i] = 3)); // Jalachar (water)
 VASHYA_GROUP[7] = 4; // Keeta (insect) — Scorpio, alone
+// Symmetric — mutual-influence koota, no bride/groom direction. Every
+// off-diagonal pair matched its mirror except row/col 4 (Keeta), which had
+// two 1s where the matrix's own symmetry requires 2 (same transcription
+// failure mode as the TARA_POINTS row-6 bug below — an edge/last-row slip).
 const VASHYA_POINTS = [
   [2, 0.5, 1, 0, 2],
   [0.5, 2, 0, 0, 0],
   [1, 0, 2, 2, 2],
   [0, 0, 2, 2, 0],
-  [1, 0, 1, 0, 2],
+  [2, 0, 2, 0, 2],
 ];
 
 // ── Tara (3 points) — each nakshatra's residue mod 9 ─────────────────────
+// Rows 2, 4, 6 (inauspicious taras in both directions) all share the same
+// shape — row 6 had a transcription slip in its last two entries (1, 1
+// instead of 1.5, 1.5), breaking both that shared shape and the matrix's
+// own symmetry (TARA_POINTS[7][6] and [8][6] were already 1.5).
 const TARA_POINTS = [
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
@@ -67,7 +75,7 @@ const TARA_POINTS = [
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
   [1.5, 1.5, 0, 1.5, 0, 1.5, 0, 1.5, 1.5],
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
-  [1.5, 1.5, 0, 1.5, 0, 1.5, 0, 1, 1],
+  [1.5, 1.5, 0, 1.5, 0, 1.5, 0, 1.5, 1.5],
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
   [3, 3, 1.5, 3, 1.5, 3, 1.5, 3, 3],
 ];
