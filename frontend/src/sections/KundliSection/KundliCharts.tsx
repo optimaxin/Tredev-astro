@@ -260,14 +260,14 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
             </text>
             <text x={px} y={py + 12} textAnchor="middle" fontSize="10" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
-              {planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house && (
-                cols === 1
-                  ? <tspan fill="var(--gold-primary)" fontWeight="700"> B{planet.bhavHouse}</tspan>
-                  // 2-column houses (3+ planets) pack columns only 32px apart —
-                  // the full " B<n>" suffix overflows into the neighbour
-                  // column's text there, so fall back to a plain marker (exact
-                  // Bhav number is still in the hover tooltip).
-                  : <tspan fill="var(--gold-primary)" fontWeight="700">*</tspan>
+              {/* The real Bhav Chalit house — shown always now (not just when
+                  it differs from the whole-sign one), since that's the house
+                  number this app treats as authoritative. 2-column houses
+                  (3+ planets) pack columns only 32px apart, so the badge
+                  shrinks to stay legible instead of being replaced by an
+                  opaque "*" that hid the actual number. */}
+              {planet.bhavHouse !== undefined && (
+                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '10' : '8'}> Bh{planet.bhavHouse}</tspan>
               )}
             </text>
           </g>
@@ -320,10 +320,8 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
-                    {p.bhavHouse !== undefined && p.bhavHouse !== p.house && (
-                      cols === 1
-                        ? <tspan fill="var(--gold-primary)" fontWeight="700"> B{p.bhavHouse}</tspan>
-                        : <tspan fill="var(--gold-primary)" fontWeight="700">*</tspan>
+                    {p.bhavHouse !== undefined && (
+                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> Bh{p.bhavHouse}</tspan>
                     )}
                   </text>
                 </g>

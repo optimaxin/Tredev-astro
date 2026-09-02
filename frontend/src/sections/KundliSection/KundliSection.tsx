@@ -597,9 +597,9 @@ export default function KundliSection() {
                       <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} />
                     </div>
                   </div>
-                  {chartPlanets.some(p => p.bhavHouse !== undefined && p.bhavHouse !== p.house) && (
+                  {chartPlanets.some(p => p.bhavHouse !== undefined) && (
                     <p className={styles.chartNote}>
-                      House numbers on D1 use whole-sign counting (same for anyone with your Ascendant sign). Hover a planet on the D1 chart above — where its REAL cuspal house (computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person) differs from the whole-sign one, the tooltip shows both.
+                      The gold "Bh&lt;n&gt;" next to each planet on the D1 chart above is its real Bhav (cuspal) house — computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person — not the whole-sign house. The chart's own wedge positions (and the fixed corner numbers) still follow Rashi/sign placement, the standard convention for a Lagna chart; hover a planet for both numbers.
                     </p>
                   )}
 
@@ -1029,8 +1029,8 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
     if (!containerRect) return;
-    const houseLine = planet.bhavHouse !== undefined && planet.bhavHouse !== planet.house
-      ? `${planet.name} · ${planet.sign} · House ${planet.house} (Rashi) / Bhav ${planet.bhavHouse} (Chalit)`
+    const houseLine = planet.bhavHouse !== undefined
+      ? `${planet.name} · ${planet.sign} · Bhav ${planet.bhavHouse}${planet.bhavHouse !== planet.house ? ` (Rashi house ${planet.house})` : ''}`
       : `${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`;
     const lines = [houseLine, planet.degree, planet.retrograde ? 'Retrograde (℞)' : null, planet.quality].filter(Boolean);
     setTooltip({ text: lines.join('\n'), x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top - 10 });
@@ -1109,12 +1109,12 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
                 <span className={styles.planetSymbolBadge}>{p.symbol}</span>
                 <div className={styles.planetCardText}>
                   <div className={styles.planetCardName}>{p.name}</div>
-                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
+                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.bhavHouse ?? p.house}H</div>
                 </div>
               </div>
             ))}
           </div>
-          <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. A gold "B&lt;n&gt;" (or * in a crowded house — hover for the number) marks a planet whose real Bhav Chalit house differs from the whole-sign one shown.</div>
+          <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. The "H" number and the gold "Bh&lt;n&gt;" both refer to the real Bhav Chalit house (computed from your exact birth time) — the chart's wedge position still follows Rashi/sign placement, the standard Lagna-chart convention.</div>
         </div>
       )}
     </div>
