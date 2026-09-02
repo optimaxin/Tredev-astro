@@ -13,16 +13,22 @@ export interface ChartPlanet {
   symbol: string;
   name: string;
   sign: string;
-  // The number this app treats as authoritative — real Bhav Chalit
-  // (Placidus cuspal) house where available (currently: D1 only), whole-sign
-  // house everywhere else. This is what positions the planet's wedge on the
-  // chart AND what's shown as its house number, so the two can never
-  // disagree the way a separate "wedge = whole-sign, badge = bhav" split did.
+  // Whole-sign house — this positions the planet's wedge on the chart AND
+  // is what the chart's fixed corner numbers count. Deliberately NOT
+  // replaced by Bhav Chalit: every real Vedic astrology app (this app's own
+  // AstroTalk reference included, screenshot-verified earlier this session)
+  // draws D1 positioned by sign/whole-sign house — a planet's wedge tells
+  // you which sign-house it's in. Repositioning wedges by Bhav breaks that
+  // (two planets sharing a sign can have different real bhav numbers, so a
+  // single wedge can't consistently represent "one bhav") and was tried and
+  // reverted — it made the chart disagree with every real reference and
+  // read as arbitrary rather than clearer.
   house: number;
-  // Whole-sign house — the same for anyone sharing the same Ascendant+
-  // placement sign. Only populated for D1 (where `house` above is real
-  // Bhav Chalit), shown as secondary info when it differs from `house`.
-  rashiHouse?: number;
+  // Real Bhav Chalit (Placidus cuspal) house — genuinely varies with exact
+  // birth time/place, unlike `house` above. Only populated for D1, where
+  // it's shown as an always-visible, clearly-labeled "Bhav <n>" badge next
+  // to every planet (not just when it differs from the whole-sign house).
+  bhavHouse?: number;
   degree?: string;
   decimalDegree?: string;
   quality?: string;
@@ -79,8 +85,8 @@ export function toChartPlanets(result: KundliResult, bhavChalit?: { planets: { i
     name: PLANET_META[p.id]?.name || p.id,
     quality: PLANET_META[p.id]?.quality || '',
     sign: p.rashi,
-    house: bhavHouseById.get(p.id) ?? p.house,
-    rashiHouse: bhavHouseById.has(p.id) ? p.house : undefined,
+    house: p.house,
+    bhavHouse: bhavHouseById.get(p.id),
     degree: formatDegree(p.degreeInSign),
     decimalDegree: formatDecimalDegree(p.degreeInSign),
     retrograde: p.retrograde,
@@ -262,16 +268,20 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
             </text>
             <text x={px} y={py + 12} textAnchor="middle" fontSize="10" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
-              {/* The wedge position AND corner number are now the real Bhav
-                  Chalit house (see `house` above), so there's nothing left to
-                  badge for that. Whole-sign house is the secondary one now —
-                  shown only when it differs, since that's the case worth
-                  flagging (a planet whose Rashi-house reading would put it
-                  somewhere else). */}
-              {planet.rashiHouse !== undefined && planet.rashiHouse !== planet.house && (
-                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '10' : '8'}> H{planet.rashiHouse}</tspan>
+              {/* The wedge/corner number is the whole-sign house (matches
+                  every real reference chart). The real Bhav Chalit house is
+                  a separate number — always shown, spelled out (not "Bh",
+                  which read as ambiguous) on its own line when there's
+                  room, or inline compact when the house is crowded. */}
+              {cols === 2 && planet.bhavHouse !== undefined && (
+                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize="8"> B{planet.bhavHouse}</tspan>
               )}
             </text>
+            {cols === 1 && planet.bhavHouse !== undefined && (
+              <text x={px} y={py + 24} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--gold-primary)" fontFamily="DM Sans, sans-serif">
+                Bhav {planet.bhavHouse}
+              </text>
+            )}
           </g>
         );
       })}
@@ -323,10 +333,12 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
                     {/* South Indian cells are always fixed-by-rashi (never
-                        repositioned), so this badge is the only place a real
-                        Bhav Chalit house is visible in this chart style. */}
-                    {p.rashiHouse !== undefined && (
-                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> Bh{p.house}</tspan>
+                        repositioned by Bhav), so this inline badge is the
+                        only place a planet's real Bhav Chalit house is
+                        visible in this chart style. Always shown, not just
+                        when it differs from the whole-sign house. */}
+                    {p.bhavHouse !== undefined && (
+                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> B{p.bhavHouse}</tspan>
                     )}
                   </text>
                 </g>

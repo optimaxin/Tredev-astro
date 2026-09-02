@@ -77,7 +77,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               </p>
             </Section>
             <Section title="Planetary Positions" noPdfBlock>
-              <Table head={['Planet', 'Sign', 'Degree', 'Bhav']}>
+              <Table head={['Planet', 'Sign', 'Degree', 'House']}>
                 {chartPlanets.map(p => (
                   <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
                     <Td>{p.name}</Td><Td>{p.sign}</Td><Td>{p.degree}{p.retrograde ? ' ℞' : ''}</Td><Td>{ordinal(p.house)}</Td>

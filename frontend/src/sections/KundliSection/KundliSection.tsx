@@ -27,13 +27,16 @@ import styles from './KundliSection.module.css';
 // D2-D60 varga charts only ever resolve to a final sign, so no degree is
 // shown for those rather than fabricating one.
 // Main 8 first (this exact order is the highlighted quick-pick row below),
-// then the rest of the divisional charts in ascending order. No separate
-// "Bhav Chalit" tile anymore — D1 itself now positions/labels by real Bhav
-// Chalit house (see toChartPlanets), so a standalone duplicate of the same
-// layout would just be confusing.
-const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45'] as const;
+// then the rest of the divisional charts in ascending order, with the
+// alternate Bhav Chalit chart last. D1 stays positioned by whole-sign house
+// (matching every real reference chart, this app's own AstroTalk comparison
+// included) — a real Bhav-repositioned D1 was tried and reverted, since two
+// planets sharing a sign can have different real bhav numbers, so a single
+// wedge can't consistently represent "one bhav." The separate Bhav Chalit
+// tile is where wedges are actually positioned by real cuspal house.
+const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
 const CHART_LABELS: Record<string, string> = {
-  D1: 'D1 — Bhav Chalit (Birth Chart)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
+  D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
 };
 
 // Consolidated from an earlier 9-tab layout (Overview/Charts/Dasha/
@@ -112,6 +115,10 @@ export default function KundliSection() {
     if (!fullResult) return { planets: [], ascendantRashi: '' };
     if (key === 'D1') return { planets: chartPlanets, ascendantRashi: kundliResult?.ascendant.rashi ?? '' };
     if (key === 'CHANDRA') return { planets: toChandraChartPlanets(fullResult.chandraChart), ascendantRashi: fullResult.chandraChart.moonRashi };
+    if (key === 'BHAV_CHALIT') {
+      const planets = toSimpleChartPlanets(fullResult.bhavChalit);
+      return { planets, ascendantRashi: planets.find(p => p.id === 'asc')?.sign ?? '' };
+    }
     if (key === 'D9') return { planets: toSimpleChartPlanets(fullResult.navamsaChart), ascendantRashi: fullResult.navamsaChart.ascendant.rashi };
     const varga = fullResult.vargaCharts[key];
     if (varga) return { planets: toSimpleChartPlanets(varga), ascendantRashi: varga.ascendant.rashi };
@@ -583,20 +590,20 @@ export default function KundliSection() {
 
               {activeTab === 'charts' && (
                 <div className={styles.overview}>
-                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Bhav Chalit) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too; click any of them to open it full-screen.</p>
+                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too, including a separate Bhav Chalit chart; click any of them to open it full-screen.</p>
 
                   {/* D1 + D9, side by side, full detail (diagram + planet list) — no dropdown needed to see either. */}
                   <div className={styles.featuredChartsRow}>
                     <div onClick={() => setZoomedChart('D1')} className={styles.featuredChartClickable}>
-                      <ChartDisplay title="D1 — Bhav Chalit (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
+                      <ChartDisplay title="D1 — Rashi (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} />
                     </div>
                     <div onClick={() => setZoomedChart('D9')} className={styles.featuredChartClickable}>
                       <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} />
                     </div>
                   </div>
-                  {chartPlanets.some(p => p.rashiHouse !== undefined) && (
+                  {chartPlanets.some(p => p.bhavHouse !== undefined) && (
                     <p className={styles.chartNote}>
-                      Every number on the D1 chart above — the fixed corner numbers and each planet's own house — is its real Bhav (cuspal) house, computed from your exact birth time via Placidus Bhav Chalit and genuinely different person-to-person, not the whole-sign one. Where a planet's whole-sign (Rashi) house would differ, a gold "H&lt;n&gt;" next to it shows that instead; hover a planet for both numbers.
+                      The D1 chart above is positioned by whole-sign house (the fixed corner numbers), matching a standard Rashi/Lagna chart. Next to every planet, the gold "Bhav &lt;n&gt;" is its real cuspal house — computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person, and NOT the same as the whole-sign house it's sitting in. Open the separate "Bhav Chalit" chart below to see planets actually positioned by that real cuspal house instead.
                     </p>
                   )}
 
@@ -1026,8 +1033,8 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const containerRect = (e.currentTarget.closest(`.${styles.svgWrap}`) as HTMLElement)?.getBoundingClientRect();
     if (!containerRect) return;
-    const houseLine = planet.rashiHouse !== undefined
-      ? `${planet.name} · ${planet.sign} · Bhav ${planet.house}${planet.rashiHouse !== planet.house ? ` (Rashi house ${planet.rashiHouse})` : ''}`
+    const houseLine = planet.bhavHouse !== undefined
+      ? `${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House (Rashi) / Bhav ${planet.bhavHouse} (Chalit)`
       : `${planet.name} · ${planet.sign} · ${ordinal(planet.house)} House`;
     const lines = [houseLine, planet.degree, planet.retrograde ? 'Retrograde (℞)' : null, planet.quality].filter(Boolean);
     setTooltip({ text: lines.join('\n'), x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top - 10 });
@@ -1106,12 +1113,12 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
                 <span className={styles.planetSymbolBadge}>{p.symbol}</span>
                 <div className={styles.planetCardText}>
                   <div className={styles.planetCardName}>{p.name}</div>
-                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
+                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · House {p.house}{p.bhavHouse !== undefined ? ` · Bhav ${p.bhavHouse}` : ''}</div>
                 </div>
               </div>
             ))}
           </div>
-          <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. The "H" number is the real Bhav Chalit house (computed from your exact birth time) — the chart's wedge position and corner numbers follow it too. A gold "H&lt;n&gt;" next to a planet shows its whole-sign (Rashi) house, only when that differs.</div>
+          <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. "House" is the whole-sign house (matches the chart's wedge/corner number); "Bhav" is the real cuspal house computed from your exact birth time via Placidus Bhav Chalit — the two are different classification systems and are expected to disagree for most planets.</div>
         </div>
       )}
     </div>
