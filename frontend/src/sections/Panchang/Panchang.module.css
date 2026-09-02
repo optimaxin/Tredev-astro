@@ -262,9 +262,26 @@
   z-index: 0;
 }
 
+/* The Acharya cutout — already a real transparent-background PNG, so no
+   border/circle-crop is applied here (that was clipping the cutout into a
+   tiny bordered avatar). Sized by height only (never width+height together)
+   so its aspect ratio can't be squashed — html2canvas doesn't reliably
+   honor `object-fit` on capture, which is what caused the stretch on
+   download when this was a fixed-box `object-fit: cover` avatar. */
+.panchangDashFigure {
+  position: absolute;
+  right: var(--space-2);
+  bottom: 0;
+  height: 88%;
+  width: auto;
+  z-index: 1;
+  opacity: 0.92;
+  pointer-events: none;
+}
+
 .panchangDashContent {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 :global([data-theme='dark']) .panchangDash {

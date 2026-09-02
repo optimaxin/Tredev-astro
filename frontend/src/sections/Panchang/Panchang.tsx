@@ -337,9 +337,9 @@ export default function Panchang() {
             >
               <div className={styles.panchangDash} ref={cardRef} lang="hi">
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
+                <img src="/images/acharya.png" alt="" aria-hidden="true" className={styles.panchangDashFigure} />
                 <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashHeader}>
-                  <img src="/images/acharya.png" alt="Tredev Astro Acharya" className={styles.panchangDashPortrait} />
                   <div>
                     <p className={styles.panchangDashDate}>{data ? `${HINDI_WEEKDAY[data.vara] || data.vara}` : '...'}</p>
                     <p className={styles.panchangDashBrand}>Tredev Astro · पावन पंचांग{currentUser ? ` · ${currentUser.name}` : ''}</p>

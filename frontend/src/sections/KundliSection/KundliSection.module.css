@@ -201,12 +201,17 @@
   gap: var(--space-8);
   align-items: start;
   margin-top: var(--space-6);
-  background: radial-gradient(circle, #FAF1DF 0%, #EAD8B5 100%);
-  border: 12px double #8D4F28; /* Beautiful ornate double border */
-  border-radius: var(--radius-lg);
+  /* iOS-style frosted glass, replacing the old beige double-bordered card —
+     same translucent-blur recipe as globals.css's .card-cosmos, tuned per
+     theme like the Panchang glass dashboard elsewhere in this section. */
+  background: rgba(250, 247, 240, 0.72);
+  border: 1px solid rgba(181, 138, 59, 0.22);
+  border-radius: var(--radius-xl);
   padding: var(--space-8);
   position: relative;
-  box-shadow: 0 20px 50px rgba(74, 46, 27, 0.18), inset 0 0 60px rgba(74, 46, 27, 0.12);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 8px 32px rgba(23, 37, 58, 0.12);
   /* This same component now also renders at HALF page width (D1/D9 side by
      side) — the fixed 280px list column ate half that width and squeezed
      the actual diagram down to a barely-legible ~250px square. A container
@@ -218,13 +223,17 @@
 }
 
 :global([data-theme='dark']) .chartLayout {
-  background: radial-gradient(circle, #251B17 0%, #150E0C 100%) !important;
-  border-color: var(--gold-primary) !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(181, 138, 59, 0.08) !important;
+  background: rgba(17, 23, 44, 0.55);
+  border-color: rgba(199, 161, 90, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 @container (max-width: 700px) {
   .chartLayout { grid-template-columns: 1fr; }
+}
+
+.chartLayoutSingle {
+  grid-template-columns: 1fr;
 }
 
 .chartStyleToggle {
@@ -331,6 +340,32 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+/* Placements are opt-in now (click to reveal) instead of always occupying
+   a column up front — keeps the initial view to just the chart itself. */
+.placementsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: center;
+  margin-top: var(--space-4);
+  height: 34px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.placementsToggle:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
 }
 
 .planetListTitle {
@@ -525,11 +560,18 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
-  z-index: 200;
+  /* The site nav floats fixed at z-index up to 1010, above this overlay's
+     old z-index:200 — so a tall panel's close button (pinned to the
+     panel's own top-right corner) rendered underneath the nav pill instead
+     of on top of it. Raising the overlay above the nav, and padding its
+     top past the nav's height (24px top + 68px tall), keeps the panel and
+     its close button clear of it entirely. */
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  padding-top: 112px;
   overflow-y: auto;
   cursor: zoom-out;
 }

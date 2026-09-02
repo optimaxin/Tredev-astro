@@ -1023,6 +1023,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
+  const [showPlacements, setShowPlacements] = useState(false);
 
   const handlePlanetHover = (planet: ChartPlanet, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -1036,7 +1037,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
   };
 
   return (
-    <div className={styles.chartLayout}>
+    <div className={`${styles.chartLayout} ${!showPlacements ? styles.chartLayoutSingle : ''}`}>
       <div>
         <div className={styles.chartStyleToggle}>
           <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>North Indian</button>
@@ -1076,24 +1077,46 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer }: { ti
         </div>
 
         {footer && <div className={styles.chartHighlights}>{footer}</div>}
+
+        {!showPlacements && (
+          <button
+            type="button"
+            className={styles.placementsToggle}
+            onClick={e => { e.stopPropagation(); setShowPlacements(true); }}
+          >
+            Show Placements
+          </button>
+        )}
       </div>
 
-      <div className={styles.planetList}>
-        <h3 className={styles.planetListTitle}>{title}</h3>
-        {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
-        <div className={styles.planetGrid}>
-          {planets.map(p => (
-            <div key={p.id} className={styles.planetCard}>
-              <span className={styles.planetSymbolBadge}>{p.symbol}</span>
-              <div className={styles.planetCardText}>
-                <div className={styles.planetCardName}>{p.name}</div>
-                <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
+      {showPlacements && (
+        <div className={styles.planetList}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <h3 className={styles.planetListTitle} style={{ marginBottom: 0 }}>{title}</h3>
+            <button
+              type="button"
+              className={styles.placementsToggle}
+              style={{ marginTop: 0 }}
+              onClick={e => { e.stopPropagation(); setShowPlacements(false); }}
+            >
+              Hide
+            </button>
+          </div>
+          {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
+          <div className={styles.planetGrid}>
+            {planets.map(p => (
+              <div key={p.id} className={styles.planetCard}>
+                <span className={styles.planetSymbolBadge}>{p.symbol}</span>
+                <div className={styles.planetCardText}>
+                  <div className={styles.planetCardName}>{p.name}</div>
+                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · {p.house}H</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. A gold "B&lt;n&gt;" (or * in a crowded house — hover for the number) marks a planet whose real Bhav Chalit house differs from the whole-sign one shown.</div>
         </div>
-        <div className={styles.chartNote}>Hover over planets and houses to explore their meanings. ℞ marks a retrograde planet. A gold "B&lt;n&gt;" (or * in a crowded house — hover for the number) marks a planet whose real Bhav Chalit house differs from the whole-sign one shown.</div>
-      </div>
+      )}
     </div>
   );
 }
