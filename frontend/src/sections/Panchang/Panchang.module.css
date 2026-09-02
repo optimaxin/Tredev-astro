@@ -268,17 +268,15 @@
    so its aspect ratio can't be squashed — html2canvas doesn't reliably
    honor `object-fit` on capture, which is what caused the stretch on
    download when this was a fixed-box `object-fit: cover` avatar.
-   z-index above .panchangDashContent so it's never painted over by it (both
-   were 2 before, and DOM order put the content on top) — but the real fix
-   is .panchangDashContent's own top padding below, which reserves this
-   image its own space above the header/hero row instead of overlapping it. */
+   Deliberately a normal in-flow flex child now, not position:absolute —
+   every absolute-positioning attempt here (z-index ties with the content
+   painting over it, reserved padding not quite matching its height) kept
+   landing slightly off. A real flex sibling in the header row can't
+   overlap or misalign with anything else, by construction. */
 .panchangDashFigure {
-  position: absolute;
-  top: 0;
-  right: var(--space-3);
-  height: 190px;
+  height: 96px;
   width: auto;
-  z-index: 3;
+  flex-shrink: 0;
   opacity: 0.98;
   pointer-events: none;
 }
@@ -286,7 +284,6 @@
 .panchangDashContent {
   position: relative;
   z-index: 2;
-  padding-top: 180px;
 }
 
 :global([data-theme='dark']) .panchangDash {
@@ -301,6 +298,7 @@
 .panchangDashHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
 }
