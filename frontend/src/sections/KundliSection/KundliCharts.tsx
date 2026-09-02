@@ -13,14 +13,16 @@ export interface ChartPlanet {
   symbol: string;
   name: string;
   sign: string;
+  // The number this app treats as authoritative — real Bhav Chalit
+  // (Placidus cuspal) house where available (currently: D1 only), whole-sign
+  // house everywhere else. This is what positions the planet's wedge on the
+  // chart AND what's shown as its house number, so the two can never
+  // disagree the way a separate "wedge = whole-sign, badge = bhav" split did.
   house: number;
-  // Real Bhav Chalit (Placidus cuspal) house — genuinely varies with exact
-  // birth time/place, unlike `house` above (whole-sign, the same for anyone
-  // sharing the same Ascendant+placement sign). Only populated for the D1
-  // chart, where Bhav Chalit is meaningful; shown alongside `house` when the
-  // two differ, so the real cuspal placement isn't hidden inside the
-  // separate Bhav Chalit tab.
-  bhavHouse?: number;
+  // Whole-sign house — the same for anyone sharing the same Ascendant+
+  // placement sign. Only populated for D1 (where `house` above is real
+  // Bhav Chalit), shown as secondary info when it differs from `house`.
+  rashiHouse?: number;
   degree?: string;
   decimalDegree?: string;
   quality?: string;
@@ -77,8 +79,8 @@ export function toChartPlanets(result: KundliResult, bhavChalit?: { planets: { i
     name: PLANET_META[p.id]?.name || p.id,
     quality: PLANET_META[p.id]?.quality || '',
     sign: p.rashi,
-    house: p.house,
-    bhavHouse: bhavHouseById.get(p.id),
+    house: bhavHouseById.get(p.id) ?? p.house,
+    rashiHouse: bhavHouseById.has(p.id) ? p.house : undefined,
     degree: formatDegree(p.degreeInSign),
     decimalDegree: formatDecimalDegree(p.degreeInSign),
     retrograde: p.retrograde,
@@ -260,14 +262,14 @@ export function NorthIndianChart({ planets, onPlanetHover, onPlanetLeave, onHous
             </text>
             <text x={px} y={py + 12} textAnchor="middle" fontSize="10" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
               {planet.decimalDegree || ''}{planet.retrograde ? ' ℞' : ''}
-              {/* The real Bhav Chalit house — shown always now (not just when
-                  it differs from the whole-sign one), since that's the house
-                  number this app treats as authoritative. 2-column houses
-                  (3+ planets) pack columns only 32px apart, so the badge
-                  shrinks to stay legible instead of being replaced by an
-                  opaque "*" that hid the actual number. */}
-              {planet.bhavHouse !== undefined && (
-                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '10' : '8'}> Bh{planet.bhavHouse}</tspan>
+              {/* The wedge position AND corner number are now the real Bhav
+                  Chalit house (see `house` above), so there's nothing left to
+                  badge for that. Whole-sign house is the secondary one now —
+                  shown only when it differs, since that's the case worth
+                  flagging (a planet whose Rashi-house reading would put it
+                  somewhere else). */}
+              {planet.rashiHouse !== undefined && planet.rashiHouse !== planet.house && (
+                <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '10' : '8'}> H{planet.rashiHouse}</tspan>
               )}
             </text>
           </g>
@@ -320,8 +322,11 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
                   <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
-                    {p.bhavHouse !== undefined && (
-                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> Bh{p.bhavHouse}</tspan>
+                    {/* South Indian cells are always fixed-by-rashi (never
+                        repositioned), so this badge is the only place a real
+                        Bhav Chalit house is visible in this chart style. */}
+                    {p.rashiHouse !== undefined && (
+                      <tspan fill="var(--gold-primary)" fontWeight="700" fontSize={cols === 1 ? '9' : '7'}> Bh{p.house}</tspan>
                     )}
                   </text>
                 </g>

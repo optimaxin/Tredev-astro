@@ -31,7 +31,7 @@ const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', L
 const FONT = { title: 26, section: 14, body: 12, label: 10 };
 
 export default function KundliPrintLayout({ name, dob, tob, place, result }: { name: string; dob: string; tob: string; place: string; result: KundliFullResult }) {
-  const chartPlanets = toChartPlanets(result.kundli);
+  const chartPlanets = toChartPlanets(result.kundli, result.bhavChalit);
   const navamsaPlanets = toSimpleChartPlanets(result.navamsaChart);
   const noop = () => {};
 
@@ -77,7 +77,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               </p>
             </Section>
             <Section title="Planetary Positions" noPdfBlock>
-              <Table head={['Planet', 'Sign', 'Degree', 'House']}>
+              <Table head={['Planet', 'Sign', 'Degree', 'Bhav']}>
                 {chartPlanets.map(p => (
                   <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
                     <Td>{p.name}</Td><Td>{p.sign}</Td><Td>{p.degree}{p.retrograde ? ' ℞' : ''}</Td><Td>{ordinal(p.house)}</Td>
