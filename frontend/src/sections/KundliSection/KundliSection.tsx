@@ -272,12 +272,17 @@ export default function KundliSection() {
   useEffect(() => {
     if (pdfState !== 'generating' || !fullResult || !printRef.current) return;
     let settled = false;
+    // The print layout now runs to ~20 chart pages plus dozens of prediction
+    // cards (a full report, not a condensed summary) — 70-90 individual
+    // html2canvas captures. 60s was tuned for the old ~15-block version and
+    // is now a real risk of firing on a slow machine before a legitimately
+    // still-running capture finishes.
     const safetyTimer = window.setTimeout(() => {
       if (settled) return;
       settled = true;
       setPdfState('idle');
       setError('PDF generation took too long — please try again.');
-    }, 60000);
+    }, 180000);
 
     (async () => {
       try {
