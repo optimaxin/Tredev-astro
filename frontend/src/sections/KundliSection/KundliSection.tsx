@@ -47,14 +47,17 @@ const CHART_LABELS: Record<string, string> = {
 // absorbs Dasha+Doshas (both are "what's happening/will happen in life");
 // Advanced absorbs the 3 technical tabs behind one clearly-labeled, opt-in
 // destination instead of competing for attention in the main tab bar.
+// `labelKey` is a translation key (see TRANSLATIONS in AppContext.tsx), not
+// display text — TABS lives at module scope so it can't call t() itself;
+// the tab bar below looks it up at render time, where t() is available.
 const TABS = [
-  { key: 'overview', label: 'Kundli' },
-  { key: 'charts', label: 'Charts' },
-  { key: 'gochar', label: 'Gochar' },
-  { key: 'timeline', label: 'Timeline & Doshas' },
-  { key: 'predictions', label: 'Predictions' },
-  { key: 'remedies', label: 'Remedies' },
-  { key: 'advanced', label: 'Advanced' },
+  { key: 'overview', labelKey: 'kundli_tab_overview' },
+  { key: 'charts', labelKey: 'kundli_tab_charts' },
+  { key: 'gochar', labelKey: 'kundli_tab_gochar' },
+  { key: 'timeline', labelKey: 'kundli_tab_timeline' },
+  { key: 'predictions', labelKey: 'kundli_tab_predictions' },
+  { key: 'remedies', labelKey: 'kundli_tab_remedies' },
+  { key: 'advanced', labelKey: 'kundli_tab_advanced' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
@@ -91,7 +94,7 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
 // into the same ChartPlanet shape the visual chart renders, so every
 // divisional chart gets an actual diagram, not just a text list.
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language } = useAppContext();
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language, t } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
@@ -511,14 +514,14 @@ export default function KundliSection() {
                   >
                     {pdfState === 'generating'
                       ? (pdfProgress ? `Preparing PDF… ${pdfProgress.done}/${pdfProgress.total}` : 'Preparing PDF…')
-                      : isLoggedIn ? 'Download PDF' : 'Download PDF (login required)'}
+                      : isLoggedIn ? t('kundli_download_pdf') : `${t('kundli_download_pdf')} (login required)`}
                   </button>
                   <button
                     className="btn btn-outline-gold"
                     onClick={() => setFullResult(null)}
                     id="kundli-edit-btn"
                   >
-                    Edit Details
+                    {t('kundli_edit_details')}
                   </button>
                 </div>
               </div>
@@ -543,18 +546,18 @@ export default function KundliSection() {
 
               {/* Tab bar — swaps content below instead of one long continuous scroll */}
               <div className={styles.tabBar} role="tablist">
-                {TABS.map(t => {
-                  const TabIcon = TAB_ICONS[t.key];
+                {TABS.map(tab => {
+                  const TabIcon = TAB_ICONS[tab.key];
                   return (
                     <button
-                      key={t.key}
+                      key={tab.key}
                       role="tab"
-                      aria-selected={activeTab === t.key}
-                      className={`${styles.tabButton} ${activeTab === t.key ? styles.tabButtonActive : ''}`}
-                      onClick={() => setActiveTab(t.key)}
+                      aria-selected={activeTab === tab.key}
+                      className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabButtonActive : ''}`}
+                      onClick={() => setActiveTab(tab.key)}
                     >
                       <TabIcon size={16} />
-                      {t.label}
+                      {t(tab.labelKey)}
                     </button>
                   );
                 })}
@@ -563,7 +566,7 @@ export default function KundliSection() {
               {activeTab === 'overview' && (
                 <>
                   <ChartDisplay
-                    title="Planetary Placements"
+                    title={t('kundli_planetary_placements')}
                     planets={chartPlanets}
                     ascendantRashi={kundliResult?.ascendant.rashi ?? ''}
                     allowPlacementsToggle={false}
@@ -580,7 +583,7 @@ export default function KundliSection() {
                   />
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Panchang at Birth</h2>
+                    <h2 className={styles.overviewTitle}>{t('kundli_panchang_at_birth')}</h2>
                     <div className={styles.infoGrid}>
                       <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
                       <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult ? hindiOr(language, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : ''} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
@@ -600,7 +603,7 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>What This Chart Means</h2>
+                    <h2 className={styles.overviewTitle}>{t('kundli_what_chart_means')}</h2>
                     <p className={styles.overviewText}><strong>Ascendant.</strong> {fullResult.analysis.lagna}</p>
                     <p className={styles.overviewText}><strong>Moon.</strong> {fullResult.analysis.moon}</p>
                     {fullResult.analysis.planets.filter(p => p.id !== 'moon').map(p => (
@@ -649,7 +652,7 @@ export default function KundliSection() {
                   )}
 
                   {/* Every other chart — click any tile to open it full-screen. */}
-                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>All Divisional Charts</h2>
+                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>{t('kundli_all_divisional_charts')}</h2>
                   <div className={styles.chartTileGrid}>
                     {CHART_KEYS.filter(k => k !== 'D1' && k !== 'D9').map(key => {
                       const { planets, ascendantRashi } = resolveChart(key);
@@ -1054,7 +1057,7 @@ function HighlightChip({ icon: Icon, label, value }: { icon: React.ComponentType
 // own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
 function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowPlacementsToggle = true }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode; allowPlacementsToggle?: boolean }) {
-  const { language } = useAppContext();
+  const { language, t } = useAppContext();
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
@@ -1123,7 +1126,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
             className={styles.placementsToggle}
             onClick={e => { e.stopPropagation(); setShowPlacements(true); }}
           >
-            Show Placements
+            {t('kundli_show_placements')}
           </button>
         )}
       </div>
@@ -1138,7 +1141,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
               style={{ marginTop: 0 }}
               onClick={e => { e.stopPropagation(); setShowPlacements(false); }}
             >
-              Hide
+              {t('kundli_hide')}
             </button>
           </div>
           {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
