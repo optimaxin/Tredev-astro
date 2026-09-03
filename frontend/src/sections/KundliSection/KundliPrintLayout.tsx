@@ -36,7 +36,15 @@ import chartStyles from './KundliSection.module.css';
 const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', LINE = '#E8DEC8', TINT = '#F2EBD9';
 const FONT = { title: 30, section: 14, sub: 12.5, body: 11.5, label: 9.5 };
 
-const DIVISIONAL_ORDER = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60'];
+// Same "Main 8" set KundliSection.tsx's own Charts tab highlights as the
+// quick-pick row (CHART_KEYS there) — D1/D9 are already shown in "02
+// Kundli" above, so only the rest of that set appears here. The full
+// divisional-chart gallery (D2,D3,D5,D8,D11,D16,D20,D24,D27,D30,D40,D45)
+// is still one click away on the live Charts tab; rendering all 19 of them
+// into the PDF (each a full SVG chart) was most of what made generation
+// slow — this keeps the report focused on the charts most readings
+// actually start from instead of an exhaustive appendix.
+const DIVISIONAL_ORDER = ['D4', 'D6', 'D7', 'D10', 'D60'];
 
 type SimplePlanets = Parameters<typeof NorthIndianChart>[0]['planets'];
 
@@ -248,10 +256,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        {/* ── 05 Charts — 6 per block instead of 1 per block ── */}
+        {/* ── 05 Charts — the app's own "main" divisional charts, 6 per
+            block instead of 1 per block (see DIVISIONAL_ORDER above) ── */}
         <div data-pdf-block style={{ marginBottom: 8 }}>
           <SectionHeader num="05" title="Charts" />
-          <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Each chart breaks the zodiac into a finer-grained division (D-X) used to read a different life area, plus a Moon-referenced Chandra chart.</p>
+          <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>The main divisional charts most readings start from, plus a Moon-referenced Chandra chart. The full set of 19 divisional charts is available anytime on the Charts tab.</p>
         </div>
         {chunk(allCharts, 6).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
@@ -264,7 +273,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           <SectionHeader num="06" title="Dasha" />
           <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Each card describes one Mahadasha — what the ruling planet's house and sign placement mean while it runs.</p>
         </div>
-        {chunk(result.dashaPredictions, 4).map((group, gi) => (
+        {chunk(result.dashaPredictions, 6).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             {group.map(d => {
               const period = result.mahadashaTimeline.find(m => m.lord === d.lord);
@@ -309,7 +318,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <div data-pdf-block style={{ marginBottom: 8 }}>
           <SubHeading>Planetary Predictions</SubHeading>
         </div>
-        {chunk(result.analysis.planets, 4).map((group, gi) => (
+        {chunk(result.analysis.planets, 6).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             {group.map(p => <PredictionCard key={p.id} title={`${cap(p.id)} Consideration`}>{p.text}</PredictionCard>)}
           </div>
