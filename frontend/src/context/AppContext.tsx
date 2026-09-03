@@ -36,9 +36,17 @@ export interface CartItem {
   image?: string;
 }
 
-// ── Role-based auth (mock/frontend-only prototype — no real backend exists in
-// this project, so "backend authority" is simulated via localStorage) ──
+// ── Role-based auth — backed by the real backend (backend/app/api/auth.routes.ts) ──
 export type Role = 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
+
+// ADMIN/STAFF/ASTROLOGIST are workspace-only roles: they must never see the
+// public site, only their own console. Shared by App.tsx (which page) chrome
+// to render and the invariant effect in AppProvider below.
+export function isWorkspaceRole(role?: Role): boolean {
+  return role === 'ADMIN' || role === 'STAFF' || role === 'ASTROLOGIST';
+}
+
+export const WORKSPACE_PAGES = ['dashboard', 'profile', 'my-jyotish'];
 
 export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
 
@@ -2555,20 +2563,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const isPopStateRef = React.useRef(false);
+  // Read synchronously inside the (mount-only) popstate handler below, which
+  // otherwise can't see a fresh `currentUser` — kept in sync by an effect
+  // right after currentUser is declared further down.
+  const currentUserRoleRef = React.useRef<Role | undefined>(undefined);
 
   React.useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const state = event.state;
       isPopStateRef.current = true;
-      if (state && typeof state.page === 'string') {
-        setPageState(state.page);
-        setSelectedIdState(state.selectedId ?? null);
-        setConcernState(state.concern ?? null);
-      } else {
-        setPageState('home');
-        setSelectedIdState(null);
-        setConcernState(null);
+      let nextPage = (state && typeof state.page === 'string') ? state.page : 'home';
+      let nextSelectedId = state?.selectedId ?? null;
+      let nextConcern = state?.concern ?? null;
+      // A workspace-role user (ADMIN/STAFF/ASTROLOGIST) must never see the
+      // public site — correct here, before the state ever commits, so a
+      // browser back/forward press can't paint the homepage even for a
+      // single frame (a corrective useEffect elsewhere would run after paint).
+      if (isWorkspaceRole(currentUserRoleRef.current) && !WORKSPACE_PAGES.includes(nextPage)) {
+        nextPage = 'profile';
+        nextSelectedId = null;
+        nextConcern = null;
       }
+      setPageState(nextPage);
+      setSelectedIdState(nextSelectedId);
+      setConcernState(nextConcern);
       setTimeout(() => {
         isPopStateRef.current = false;
       }, 0);
@@ -2615,6 +2633,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const isLoggedIn = !!currentUser;
 
+  React.useEffect(() => {
+    currentUserRoleRef.current = currentUser?.role;
+  }, [currentUser]);
+
+  // Defense in depth: the popstate handler above already prevents a
+  // workspace-role user (ADMIN/STAFF/ASTROLOGIST) from ever landing on a
+  // public page via browser back/forward. This catches every other way
+  // `page` could change relative to `currentUser` (any other setPage call,
+  // or currentUser changing while `page` stays put) without a visible flash
+  // being the primary concern — those paths don't originate from a raw
+  // history event, so a same-tick correction is sufficient here.
+  React.useEffect(() => {
+    if (isWorkspaceRole(currentUser?.role) && !WORKSPACE_PAGES.includes(page)) {
+      setPage('profile');
+    }
+  }, [currentUser, page]);
+
   const persistTokens = (accessToken: string, refreshToken: string) => {
     localStorage.setItem('auth_access_token', accessToken);
     localStorage.setItem('auth_refresh_token', refreshToken);
@@ -2641,18 +2676,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistTokens(tokens.accessToken, tokens.refreshToken);
         const user = await authService.me(tokens.accessToken);
         setCurrentUser(toAuthUser(user));
-        // Login already redirects ADMIN/STAFF/ASTROLOGIST straight to their
-        // workspace (see AuthPage's redirectByRole) — but that only runs on
-        // the interactive login path. A session restored on page load (e.g.
-        // a hard refresh, or opening a fresh tab) skipped it entirely,
-        // landing back on whatever `page` was in history (usually 'home'),
-        // stranding these roles on the public homepage until they manually
-        // clicked "Dashboard". WORKSPACE_PAGES here must match App.tsx's
-        // isWorkspaceConsole list.
-        const WORKSPACE_PAGES = ['dashboard', 'profile', 'my-jyotish'];
-        if ((user.role === 'ADMIN' || user.role === 'STAFF' || user.role === 'ASTROLOGIST') && !WORKSPACE_PAGES.includes(page)) {
-          setPage('profile');
-        }
+        // The workspace-role invariant effect (above) redirects away from
+        // any non-workspace page as soon as currentUser is set — covers a
+        // session restored on page load the same way it covers login.
       } catch (e) {
         // Only sign the user out when the server explicitly rejected the
         // refresh token (it's genuinely invalid/expired/revoked) — a network

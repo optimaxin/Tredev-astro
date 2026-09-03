@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import './styles/globals.css';
-import { AppProvider, useAppContext } from './context/AppContext';
+import { AppProvider, useAppContext, isWorkspaceRole, WORKSPACE_PAGES } from './context/AppContext';
 
 // Layout
 import Navigation from './components/Navigation/Navigation';
@@ -27,9 +27,10 @@ function AppContent() {
   // The Admin Console and Astrologer Workspace are separate internal tools
   // with their own layout — they never show the public site's navbar/footer
   // chrome (the astrologer workspace renders its own header internally).
-  const isWorkspaceConsole =
-    (currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'ASTROLOGIST') &&
-    ['dashboard', 'profile', 'my-jyotish'].includes(page);
+  // AppContext's invariant effect keeps `page` inside WORKSPACE_PAGES for
+  // these roles at all times (login, session restore, and browser back/
+  // forward all funnel through it), so this check alone is always accurate.
+  const isWorkspaceConsole = isWorkspaceRole(currentUser?.role) && WORKSPACE_PAGES.includes(page);
 
   if (isWorkspaceConsole) {
     return (
