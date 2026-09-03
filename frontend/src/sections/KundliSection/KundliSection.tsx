@@ -98,6 +98,7 @@ export default function KundliSection() {
   const [zoomedChart, setZoomedChart] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
+  const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
   const [autoDownloadPending, setAutoDownloadPending] = useState(false);
   const [history, setHistory] = useState<KundliHistoryEntry[]>([]);
   const [gocharLagna, setGocharLagna] = useState<DailyHoroscopeResult | null>(null);
@@ -281,6 +282,7 @@ export default function KundliSection() {
       if (settled) return;
       settled = true;
       setPdfState('idle');
+      setPdfProgress(null);
       setError('PDF generation took too long — please try again.');
     }, 180000);
 
@@ -305,6 +307,7 @@ export default function KundliSection() {
 
         const root = printRef.current!;
         const blocks = Array.from(root.querySelectorAll<HTMLElement>('[data-pdf-block]'));
+        setPdfProgress({ done: 0, total: blocks.length });
 
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -346,10 +349,21 @@ export default function KundliSection() {
 
         drawWatermark();
 
-        for (const el of blocks) {
-          const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FAF7F0' });
+        // The report grew from ~15 blocks (one page-ish worth of sections) to
+        // ~70-90 (every divisional chart + every prediction card gets its
+        // own capture) — scale:2 was tuned for the old, much shorter
+        // document. 1.5 is still print-crisp (a chart/table isn't
+        // meaningfully sharper at 2x once it's placed at print size on an
+        // A4 page) and captures noticeably less pixel data per block, which
+        // is most of what was making the whole thing slow. logging:false
+        // skips html2canvas's own console output for every one of those
+        // captures, which adds up at this count.
+        for (let i = 0; i < blocks.length; i++) {
+          const el = blocks[i];
+          const canvas = await html2canvas(el, { scale: 1.5, backgroundColor: '#FAF7F0', logging: false });
           const imgHeight = (canvas.height * usableWidth) / canvas.width;
           const imgData = canvas.toDataURL('image/png');
+          setPdfProgress({ done: i + 1, total: blocks.length });
 
           if (imgHeight <= contentBottom - margin) {
             // Normal case: the whole block goes on one page, whole — this is
@@ -399,6 +413,7 @@ export default function KundliSection() {
         setError('Could not generate the PDF — please try again.');
       } finally {
         window.clearTimeout(safetyTimer);
+        setPdfProgress(null);
         if (!settled) { settled = true; setPdfState('idle'); }
       }
     })();
@@ -476,7 +491,9 @@ export default function KundliSection() {
                     disabled={pdfState === 'generating'}
                     id="kundli-download-pdf-btn"
                   >
-                    {pdfState === 'generating' ? 'Preparing PDF…' : isLoggedIn ? 'Download PDF' : 'Download PDF (login required)'}
+                    {pdfState === 'generating'
+                      ? (pdfProgress ? `Preparing PDF… ${pdfProgress.done}/${pdfProgress.total}` : 'Preparing PDF…')
+                      : isLoggedIn ? 'Download PDF' : 'Download PDF (login required)'}
                   </button>
                   <button
                     className="btn btn-outline-gold"
