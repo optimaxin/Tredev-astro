@@ -349,18 +349,29 @@ export default function KundliSection() {
 
         drawWatermark();
 
-        // The report grew from ~15 blocks (one page-ish worth of sections) to
-        // ~70-90 (every divisional chart + every prediction card gets its
-        // own capture) — scale:2 was tuned for the old, much shorter
-        // document. 1.5 is still print-crisp (a chart/table isn't
-        // meaningfully sharper at 2x once it's placed at print size on an
-        // A4 page) and captures noticeably less pixel data per block, which
-        // is most of what was making the whole thing slow. logging:false
-        // skips html2canvas's own console output for every one of those
-        // captures, which adds up at this count.
+        // Charts and prediction cards are batched several-per-block (a grid
+        // captured as one image) rather than one-per-block — brings this
+        // down to ~25-35 captures for the full report instead of ~70-90.
+        // scale:1.5 (still print-crisp — a block isn't meaningfully sharper
+        // at 2x once placed at print size on an A4 page) and logging:false
+        // trim per-capture cost further.
+        //
+        // Each block's capture is wrapped on its own: one block throwing
+        // (a chart with a rendering quirk, a transient canvas failure) used
+        // to abort the entire PDF after however much time had already been
+        // spent on everything before it. Now it's logged and skipped —
+        // worst case, one section is missing from an otherwise-complete PDF
+        // instead of the whole generation failing.
         for (let i = 0; i < blocks.length; i++) {
           const el = blocks[i];
-          const canvas = await html2canvas(el, { scale: 1.5, backgroundColor: '#FAF7F0', logging: false });
+          let canvas: HTMLCanvasElement;
+          try {
+            canvas = await html2canvas(el, { scale: 1.5, backgroundColor: '#FAF7F0', logging: false });
+          } catch (e) {
+            console.error(`PDF block ${i + 1}/${blocks.length} failed to capture, skipping:`, e);
+            setPdfProgress({ done: i + 1, total: blocks.length });
+            continue;
+          }
           const imgHeight = (canvas.height * usableWidth) / canvas.width;
           const imgData = canvas.toDataURL('image/png');
           setPdfProgress({ done: i + 1, total: blocks.length });
