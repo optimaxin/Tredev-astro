@@ -44,6 +44,25 @@ export const HINDI_KARANA: Record<string, string> = {
   Vishti: 'विष्टि (भद्रा)', Kimstughna: 'किंस्तुघ्न', Shakuni: 'शकुनि', Chatushpada: 'चतुष्पद', Naga: 'नाग',
 };
 
+// Planet id -> Hindi name — the classical Navagraha names, standard across
+// virtually every Hindi Kundli/Panchang (not site-specific i18n copy,
+// same reasoning as the tables above). Keyed by this app's internal planet
+// id (lowercase, e.g. "mars"), not the English display name, so callers can
+// look it up directly off a ChartPlanet/PlanetId without an extra mapping.
+export const HINDI_PLANET: Record<string, string> = {
+  sun: 'सूर्य', moon: 'चंद्र', mercury: 'बुध', venus: 'शुक्र', mars: 'मंगल',
+  jupiter: 'गुरु', saturn: 'शनि', uranus: 'यूरेनस', neptune: 'नेपच्यून', pluto: 'प्लूटो',
+  rahu: 'राहु', ketu: 'केतु', asc: 'लग्न',
+};
+
+// Small helper for "show the Hindi name when the site is in Hindi,
+// otherwise the English one" — the same fallback-to-English-if-untranslated
+// pattern already used by AppContext's own t()/tOr(), applied to these
+// classical-term tables instead of site copy.
+export function hindiOr(language: string, table: Record<string, string>, english: string): string {
+  return language === 'hi' ? (table[english] || english) : english;
+}
+
 export function hindiTime24(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(new Date(iso).getTime() + 5.5 * 3_600_000); // IST offset

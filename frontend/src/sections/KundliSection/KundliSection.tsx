@@ -20,6 +20,7 @@ import {
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
+import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, hindiOr } from '../../utils/panchangHindi';
 import styles from './KundliSection.module.css';
 
 // Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
@@ -90,7 +91,7 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
 // into the same ChartPlanet shape the visual chart renders, so every
 // divisional chart gets an actual diagram, not just a text list.
 export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal } = useAppContext();
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
   const [error, setError] = useState('');
@@ -373,7 +374,13 @@ export default function KundliSection() {
             continue;
           }
           const imgHeight = (canvas.height * usableWidth) / canvas.width;
-          const imgData = canvas.toDataURL('image/png');
+          // Every block has an opaque background (backgroundColor above), so
+          // there's no transparency to lose — JPEG encodes noticeably faster
+          // than PNG for this much pixel data and produces a much smaller
+          // embedded image, which speeds up both the remaining generation
+          // and the final pdf.save() (a real PNG-heavy 70+ page report was
+          // getting into the tens of MB; that's real save/download time too).
+          const imgData = canvas.toDataURL('image/jpeg', 0.88);
           setPdfProgress({ done: i + 1, total: blocks.length });
 
           if (imgHeight <= contentBottom - margin) {
@@ -386,7 +393,7 @@ export default function KundliSection() {
               cursorY = margin;
               drawWatermark();
             }
-            pdf.addImage(imgData, 'PNG', margin, cursorY, usableWidth, imgHeight);
+            pdf.addImage(imgData, 'JPEG', margin, cursorY, usableWidth, imgHeight);
             cursorY += imgHeight + blockGap;
           } else {
             // Rare oversized block (e.g. the full Mahadasha timeline is
@@ -403,7 +410,7 @@ export default function KundliSection() {
             let heightLeft = imgHeight;
             let position = margin;
             const pageContentHeight = contentBottom - margin;
-            pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+            pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
             heightLeft -= pageContentHeight;
             while (heightLeft > 0) {
               position -= pageContentHeight;
@@ -411,7 +418,7 @@ export default function KundliSection() {
               pdf.addPage();
               pageNum += 1;
               drawWatermark();
-              pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+              pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
               heightLeft -= pageContentHeight;
             }
             cursorY = contentBottom; // force the next block onto a fresh page
@@ -562,10 +569,10 @@ export default function KundliSection() {
                     allowPlacementsToggle={false}
                     footer={
                       <>
-                        <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult?.ascendant.rashi ?? '—'} />
-                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={chartPlanets.find(p => p.id === 'moon')?.sign ?? '—'} />
-                        <HighlightChip icon={SunIcon} label="Sun Sign" value={chartPlanets.find(p => p.id === 'sun')?.sign ?? '—'} />
-                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult?.moonNakshatra.name ?? '—'} />
+                        <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult ? hindiOr(language, HINDI_RASHI, kundliResult.ascendant.rashi) : '—'} />
+                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()} />
+                        <HighlightChip icon={SunIcon} label="Sun Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'sun')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()} />
+                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult ? hindiOr(language, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : '—'} />
                         <HighlightChip icon={LotusIcon} label="Tithi" value={`${fullResult.panchang.tithi.paksha} ${fullResult.panchang.tithi.name}`} />
                         <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'} />
                       </>
@@ -576,7 +583,7 @@ export default function KundliSection() {
                     <h2 className={styles.overviewTitle}>Panchang at Birth</h2>
                     <div className={styles.infoGrid}>
                       <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult?.moonNakshatra.name} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult ? hindiOr(language, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : ''} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
                       <InfoCard icon={LotusIcon} label="Yoga">{fullResult.panchang.yoga}</InfoCard>
                       <InfoCard icon={ConstellationIcon} label="Karana">{fullResult.panchang.karana}</InfoCard>
                       {fullResult.panchang.sunrise && <InfoCard icon={SunIcon} label="Sunrise">{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
@@ -586,8 +593,8 @@ export default function KundliSection() {
                       {fullResult.panchang.gulikaKaal && <InfoCard icon={ClockIcon} label="Gulika Kalam">{formatLocalTime(fullResult.panchang.gulikaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.gulikaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.abhijitMuhurat && <InfoCard icon={CheckCircleIcon} label="Abhijit Muhurat">{formatLocalTime(fullResult.panchang.abhijitMuhurat.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.abhijitMuhurat.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       <InfoCard icon={ConstellationIcon} label="Vara (Weekday)">{fullResult.panchang.vara}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{cap(kundliResult?.moonNakshatra.lord ?? '')}</InfoCard>
-                      <InfoCard icon={MoonIcon} label="Moon Rashi">{chartPlanets.find(p => p.id === 'moon')?.sign ?? '—'}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{language === 'hi' ? (HINDI_PLANET[kundliResult?.moonNakshatra.lord ?? ''] || cap(kundliResult?.moonNakshatra.lord ?? '')) : cap(kundliResult?.moonNakshatra.lord ?? '')}</InfoCard>
+                      <InfoCard icon={MoonIcon} label="Moon Rashi">{(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()}</InfoCard>
                       {kundliResult && <InfoCard icon={RashiChakraIcon} label="Ascendant Lord">{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</InfoCard>}
                     </div>
                   </div>
@@ -1047,6 +1054,7 @@ function HighlightChip({ icon: Icon, label, value }: { icon: React.ComponentType
 // own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
 function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowPlacementsToggle = true }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode; allowPlacementsToggle?: boolean }) {
+  const { language } = useAppContext();
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
@@ -1139,8 +1147,8 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
               <div key={p.id} className={styles.planetCard}>
                 <span className={styles.planetSymbolBadge}><PlanetIcon id={p.id} size={20} /></span>
                 <div className={styles.planetCardText}>
-                  <div className={styles.planetCardName}>{p.name}</div>
-                  <div className={styles.planetCardMeta}>{p.sign}{p.retrograde ? ' ℞' : ''} · House {p.house}{p.bhavHouse !== undefined ? ` · Bhav ${p.bhavHouse}` : ''}</div>
+                  <div className={styles.planetCardName}>{language === 'hi' ? (HINDI_PLANET[p.id] || p.name) : p.name}</div>
+                  <div className={styles.planetCardMeta}>{hindiOr(language, HINDI_RASHI, p.sign)}{p.retrograde ? ' ℞' : ''} · House {p.house}{p.bhavHouse !== undefined ? ` · Bhav ${p.bhavHouse}` : ''}</div>
                 </div>
               </div>
             ))}
