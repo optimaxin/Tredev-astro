@@ -171,6 +171,16 @@
 .avatarWrap {
   position: relative;
   flex-shrink: 0;
+  /* .card is a flex row with default align-items:stretch, and grid rows
+     stretch every card to match the tallest one — so whenever a sibling
+     card's content (wrapped languages, longer specialization) made a row
+     taller, this wrapper stretched with it, dragging .onlineDot (absolutely
+     positioned to its bottom-right) away from the actual 60x60 avatar
+     circle and leaving it floating lower on the card. Pinning this to its
+     own natural height keeps the avatar + status dot together regardless
+     of row height; .info still stretches so the price/CTA row can stay
+     bottom-aligned across a row via its own margin-top:auto. */
+  align-self: flex-start;
 }
 
 .avatar {

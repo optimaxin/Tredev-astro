@@ -28,11 +28,17 @@ import chartStyles from './KundliSection.module.css';
 // many of them made generation slow and, on some machines, made it fail
 // outright before finishing. Charts and cards inside the SAME topic are
 // still batched several-per-block (a grid captured as ONE image), keeping
-// capture count down — but every distinct topic (each data-pdf-newpage
-// block below) now starts its own fresh page instead of packing wherever
-// there happened to be room, and every one of the 20 divisional charts is
-// included, per later direction — this is a real, full-length report now,
-// not a condensed one, and runs well past the earlier ~18-20 page target.
+// capture count down.
+//
+// Only the 7 NUMBERED sections (data-pdf-newpage on "01 Basic" ... "07 Free
+// Report") force a fresh page — that's what "point 1, 2, 3..." means here.
+// Everything under a numbered section (Shadbala, KP Cusps, Yogini Dasha,
+// Rudraksha, etc.) still packs normally within that section's own pages —
+// forcing EVERY sub-heading onto its own page was tried and produced too
+// many mostly-blank pages; the generation effect's chapter-scoped packer
+// (see KundliSection.tsx) fills each numbered section's pages tightly.
+// Every one of the 20 divisional charts is included (05 Charts), so this
+// is a real, full-length report, not a condensed one.
 //
 // Rendered off-screen (see the wrapping div in KundliSection.tsx) — never
 // shown to the user, only rasterized.
@@ -140,7 +146,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Planetary Positions</SubHeading>
           <Table head={['Planet', 'Sign', 'Nakshatra', 'Naksh Lord', 'Degree', 'Retro']}>
             <tr style={{ borderTop: `1px solid ${LINE}` }}>
@@ -157,7 +163,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         {/* Mahadasha periods batched 3-per-block (was 1-per-block) — still
             small enough per block to never need the oversized-block split
             fallback, at a third of the capture count. */}
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
+        <div data-pdf-block style={{ marginBottom: 8 }}>
           <SubHeading>Vimshottari Dasha — Mahadasha</SubHeading>
         </div>
         {chunk(result.mahadashaTimeline, 3).map((group, gi) => (
@@ -184,7 +190,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             block was one of the tallest in the report and packed poorly,
             leaving large blank gaps under it on whichever page it landed;
             splitting gives the page-fill packer more flexibility. */}
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Shadbala — Planetary Strength</SubHeading>
           <Table head={['Planet', 'Total (Rupas)', 'Required', 'Ratio', 'Verdict']}>
             {result.shadbala.planets.map(p => (
@@ -195,7 +201,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ))}
           </Table>
         </div>
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Bhavbala — House Strength</SubHeading>
           <Table head={['House', 'Adhipati Bala', 'Dig Bala', 'Drik Bala', 'Total']}>
             {result.shadbala.houses.map(h => (
@@ -228,7 +234,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
 
         {/* KP Planets/Cusps split into 2 blocks (was 1) — same page-fill
             reasoning as the Shadbala/Bhavbala split above. */}
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>KP Planets</SubHeading>
           <Table head={['Planet', 'Bhav (Cusp)', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
             {result.kp.table.filter(r => r.id !== 'asc').map(row => (
@@ -238,7 +244,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ))}
           </Table>
         </div>
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>KP Cusps</SubHeading>
           <Table head={['Cusp', 'Degree', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
             {result.kp.cusps.map((row, i) => (
@@ -297,7 +303,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         ))}
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Yogini Dasha</SubHeading>
           <Table head={['Yogini', 'Lord', 'Start', 'End']}>
             {result.yoginiDashaTimeline.map((period, i) => (
@@ -326,7 +332,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
+        <div data-pdf-block style={{ marginBottom: 8 }}>
           <SubHeading>Planetary Predictions</SubHeading>
         </div>
         {chunk(result.analysis.planets, 6).map((group, gi) => (
@@ -336,7 +342,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         ))}
 
         {presentYogas.length > 0 && (
-          <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+          <div data-pdf-block style={{ marginBottom: 22 }}>
             <SubHeading>Yoga Combinations</SubHeading>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {presentYogas.map(y => <PredictionCard key={y.name} title={y.name}>{y.description}</PredictionCard>)}
@@ -344,7 +350,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         )}
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Rudraksha Recommendation</SubHeading>
           <p style={{ fontSize: FONT.section, fontWeight: 700, margin: '0 0 4px' }}>{result.rudraksha.mukhi}-Mukhi Rudraksha — {result.rudraksha.deity}</p>
           <p style={{ fontSize: FONT.body, lineHeight: 1.6, margin: '0 0 8px', color: MUTED }}>Ruled by {cap(result.rudraksha.rulingPlanet)}. {result.rudraksha.reason}</p>
@@ -365,7 +371,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Gemstone Recommendations</SubHeading>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {gems.map(g => (
@@ -379,7 +385,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Dosha Analysis</SubHeading>
           <DoshaRow label="Manglik Dosha" active={result.doshas.mangal.isManglik} activeText="Manglik" inactiveText="Not Present">
             {result.doshas.mangal.isManglik ? `${name} is Manglik — Mars is in the ${ordinal(result.doshas.mangal.marsHouse)} house.` : `${name}'s chart is free from Manglik Dosha.`}

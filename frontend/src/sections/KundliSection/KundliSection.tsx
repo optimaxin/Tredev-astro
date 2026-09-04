@@ -327,7 +327,7 @@ export default function KundliSection() {
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 28;
-        const footerSpace = 34; // two lines now — the brand line + the cross-promo line below it
+        const footerSpace = 40; // two lines, and both a little larger/bolder now
         const usableWidth = pageWidth - margin * 2;
         const contentBottom = pageHeight - margin - footerSpace;
         const blockGap = 14;
@@ -335,15 +335,56 @@ export default function KundliSection() {
         // header (see drawHeader) — the cover carries its own large
         // letterhead-style branding instead, so it alone starts flush at
         // `margin`.
-        const HEADER_RESERVE = 18;
+        const HEADER_RESERVE = 26;
         const contentTopFor = (p: number) => (p === 1 ? margin : margin + HEADER_RESERVE);
 
-        // Every new topic (data-pdf-newpage, plus the cover/closing special
-        // cases) forces its own fresh page — so blocks are processed in
-        // plain document order, no reordering: the whole point is that each
-        // topic reliably starts a page of its own, not that pages pack as
-        // tight as possible.
-        const blocks = rawBlocks;
+        // Only the 7 numbered sections (data-pdf-newpage — "01 Basic"
+        // through "07 Free Report") force their own fresh page; that's what
+        // "point 1, 2, 3..." means. Everything else within a numbered
+        // section should still pack as tightly as it can, so blocks are
+        // split into "chapters" at each newpage marker, and each chapter is
+        // independently re-ordered (bounded look-ahead first-fit) to fill
+        // its own pages — never reaching into a different chapter, since
+        // that would undo the "each numbered point gets its own page(s)"
+        // rule this whole thing exists for.
+        const planChapterOrder = (els: HTMLElement[], pageContentHeight: number): HTMLElement[] => {
+          const items = els.map(el => {
+            const rect = el.getBoundingClientRect();
+            return { el, height: rect.width ? (rect.height * usableWidth) / rect.width : 0 };
+          });
+          const ordered: HTMLElement[] = [];
+          let pageRemaining = pageContentHeight;
+          let firstOnPage = true;
+          const WINDOW = 6;
+          while (items.length) {
+            let idx = 0;
+            if (!firstOnPage) {
+              const found = items.findIndex((it, i) => i < WINDOW && it.height <= pageRemaining);
+              if (found === -1) {
+                firstOnPage = true;
+                pageRemaining = pageContentHeight;
+              } else {
+                idx = found;
+              }
+            }
+            const [chosen] = items.splice(idx, 1);
+            ordered.push(chosen.el);
+            pageRemaining -= chosen.height + (firstOnPage ? 0 : blockGap);
+            firstOnPage = chosen.height > pageContentHeight; // an oversized block spans its own pages; whatever follows starts fresh
+          }
+          return ordered;
+        };
+
+        const coverEl = rawBlocks.find(b => b.dataset.pdfCover === 'true');
+        const closingEl = rawBlocks.find(b => b.dataset.pdfClosing === 'true');
+        const middleEls = rawBlocks.filter(b => b !== coverEl && b !== closingEl);
+        const chapters: HTMLElement[][] = [];
+        for (const el of middleEls) {
+          if (el.dataset.pdfNewpage === 'true' || chapters.length === 0) chapters.push([el]);
+          else chapters[chapters.length - 1].push(el);
+        }
+        const orderedMiddle = chapters.flatMap(chapter => planChapterOrder(chapter, contentBottom - contentTopFor(2)));
+        const blocks = [...(coverEl ? [coverEl] : []), ...orderedMiddle, ...(closingEl ? [closingEl] : [])];
         setPdfProgress({ done: 0, total: blocks.length });
 
         let cursorY = contentTopFor(1);
@@ -371,17 +412,26 @@ export default function KundliSection() {
           }
         };
 
-        // Running header on every page but the cover — small brand mark
-        // left, subject ("<name>'s Kundli") right, thin gold rule beneath.
+        // Running header on every page but the cover — bigger/bolder brand
+        // mark + tagline on the left, subject ("<name>'s Kundli") right, a
+        // heavier gold rule beneath. Broader than the original thin single
+        // line so it reads as a real letterhead, not an afterthought.
         const drawHeader = () => {
           if (pageNum === 1) return;
-          pdf.setFontSize(8.5);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(11);
+          pdf.setTextColor(90, 70, 40);
+          pdf.text('TredevAstro', margin, 18);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(8);
           pdf.setTextColor(150, 140, 120);
-          pdf.text('TredevAstro', margin, margin - 6);
-          pdf.text(`${birthProfile.name || 'Kundli'}'s Kundli`, pageWidth - margin, margin - 6, { align: 'right' });
+          pdf.text('Your Sky. Your Story.', margin, 29);
+          pdf.setFontSize(9.5);
+          pdf.setTextColor(120, 105, 75);
+          pdf.text(`${birthProfile.name || 'Kundli'}'s Kundli`, pageWidth - margin, 22, { align: 'right' });
           pdf.setDrawColor(181, 138, 59);
-          pdf.setLineWidth(0.6);
-          pdf.line(margin, margin, pageWidth - margin, margin);
+          pdf.setLineWidth(1);
+          pdf.line(margin, 38, pageWidth - margin, 38);
         };
 
         // Second, fainter footer line cross-promoting the rest of the real
@@ -390,15 +440,15 @@ export default function KundliSection() {
         const OTHER_APPS = 'Also on TredevAstro: Free Kundli · Consultations · Panchang · Calculators · Reports · Academy · Store';
         const drawFooter = () => {
           pdf.setDrawColor(181, 138, 59);
-          pdf.setLineWidth(0.6);
+          pdf.setLineWidth(1);
           pdf.line(margin, pageHeight - margin, pageWidth - margin, pageHeight - margin);
+          pdf.setFontSize(9.5);
+          pdf.setTextColor(140, 128, 106);
+          pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 15);
+          pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - margin + 15, { align: 'right' });
           pdf.setFontSize(8);
-          pdf.setTextColor(150, 140, 120);
-          pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 12);
-          pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - margin + 12, { align: 'right' });
-          pdf.setFontSize(7);
-          pdf.setTextColor(178, 170, 152);
-          pdf.text(OTHER_APPS, pageWidth / 2, pageHeight - margin + 23, { align: 'center' });
+          pdf.setTextColor(170, 160, 140);
+          pdf.text(OTHER_APPS, pageWidth / 2, pageHeight - margin + 28, { align: 'center' });
         };
 
         drawWatermark();
@@ -655,7 +705,14 @@ export default function KundliSection() {
                       role="tab"
                       aria-selected={activeTab === tab.key}
                       className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabButtonActive : ''}`}
-                      onClick={() => setActiveTab(tab.key)}
+                      onClick={e => {
+                        setActiveTab(tab.key);
+                        // On mobile the bar scrolls horizontally — tapping a
+                        // tab near either edge used to leave it half-hidden
+                        // since nothing brought it into view. This centers
+                        // whichever tab was just tapped inside the bar.
+                        e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                      }}
                     >
                       <TabIcon size={16} />
                       {t(tab.labelKey)}
