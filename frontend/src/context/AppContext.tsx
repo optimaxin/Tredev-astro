@@ -345,7 +345,7 @@ interface AppContextValue {
   logAdminAction: (action: string, target: string) => void;
   suspendAccount: (email: string) => Promise<void>;
   restoreAccount: (email: string) => Promise<void>;
-  createAstrologerAccount: (name: string, email: string, password: string) => Promise<AuthUser | null>;
+  createAstrologerAccount: (name: string, email: string, password: string) => Promise<AuthUser>; // throws AdminApiError on failure (e.g. no Astrologers access, or the email is taken)
   // Server enforces who can assign what (see admin.routes.ts's staffOk /
   // in-handler STAFF-vs-ADMIN check) — this just calls the endpoint; a 403
   // for an over-reaching STAFF caller surfaces as a thrown ApiError.
@@ -2841,14 +2841,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshAdminData();
   };
 
-  const createAstrologerAccount = async (name: string, email: string, password: string): Promise<AuthUser | null> => {
-    try {
-      const user = await adminService.addAstrologer(name, email, password);
-      await refreshAdminData();
-      return { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status };
-    } catch {
-      return null;
-    }
+  // Rethrows on failure (was swallowed into a bare `null`, which forced the
+  // caller to guess at a reason — e.g. AstrologersPage showing "email
+  // already exists or password too short" for EVERY failure, including a
+  // Staff account without the Astrologers section, which just 403s. Real
+  // AdminApiError messages (from admin.routes.ts) surface as-is now.
+  const createAstrologerAccount = async (name: string, email: string, password: string): Promise<AuthUser> => {
+    const user = await adminService.addAstrologer(name, email, password);
+    await refreshAdminData();
+    return { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status };
   };
 
   // ── Astrologist practice-management state (mock prototype, see comment on

@@ -321,11 +321,19 @@ const addStaffSchema = z.object({
   role: z.enum(['STAFF', 'ADMIN']),
 });
 
+// A brand new Staff account starts with this much access rather than
+// nothing — matches what STAFF used to get automatically before per-account
+// toggles existed, so a freshly added Staff member isn't locked out of
+// everything until the admin remembers to go flip switches. Admin can
+// still narrow or widen it right away from the Manage Access drawer.
+const DEFAULT_STAFF_SECTIONS: AdminSectionKey[] = ['overview', 'astrologers', 'users'];
+
 adminRouter.post('/staff', adminOnly, async (req, res) => {
   const parsed = addStaffSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   try {
     const { user } = await register(parsed.data);
+    if (parsed.data.role === 'STAFF') await setStaffPermissions(user.id, DEFAULT_STAFF_SECTIONS);
     await audit(req, `${parsed.data.role.toLowerCase()}.create`, user.email);
     res.status(201).json({ success: true, data: user });
   } catch (e) {

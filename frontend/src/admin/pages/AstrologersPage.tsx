@@ -68,11 +68,14 @@ export default function AstrologersPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await createAstrologerAccount(form.name, form.email, form.password);
-    if (!result) { setFormError('An account with this email already exists, or the password is too short.'); return; }
-    setAddOpen(false);
-    setForm({ name: '', email: '', password: '' });
     setFormError('');
+    try {
+      await createAstrologerAccount(form.name, form.email, form.password);
+      setAddOpen(false);
+      setForm({ name: '', email: '', password: '' });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Could not create this astrologer account.');
+    }
   };
 
   const TABS = [
