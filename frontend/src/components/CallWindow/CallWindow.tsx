@@ -34,6 +34,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     const flushPendingCandidates = async () => {
@@ -54,39 +55,51 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
       if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') setStatus(s => (s === 'ended' ? s : 'error'));
     };
 
-    const unsubscribe = onCallSignal(async (event, id, payload) => {
-      if (id !== consultationId || cancelled) return;
-      try {
-        if (event === 'call:offer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload as RTCSessionDescriptionInit));
-          await flushPendingCandidates();
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          sendCallSignal('call:answer', consultationId, answer);
-        } else if (event === 'call:answer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload as RTCSessionDescriptionInit));
-          await flushPendingCandidates();
-        } else if (event === 'call:ice-candidate') {
-          const candidate = payload as RTCIceCandidateInit;
-          // ICE candidates can (and often do) arrive before the remote
-          // description is set — queue them and flush once it is, rather
-          // than dropping/erroring on addIceCandidate.
-          if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          else pendingCandidatesRef.current.push(candidate);
-        } else if (event === 'call:hangup') {
-          setStatus('ended');
-        }
-      } catch (err) {
-        console.error('Call signaling error:', err);
-      }
-    });
-
     (async () => {
       try {
+        // Acquire the mic and add the track BEFORE subscribing to signaling
+        // (and before creating an offer). Getting this backwards was the
+        // actual bug: the answerer's onCallSignal handler used to be live
+        // the instant the component mounted, so an offer arriving while
+        // getUserMedia was still pending (a permission prompt, a slow
+        // device) got answered with no local track ever added — the
+        // initiator would then get one-way or no audio, with nothing in
+        // the UI indicating why. Now nothing touches signaling until the
+        // local track actually exists.
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         localStreamRef.current = stream;
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+        unsubscribe = onCallSignal(async (event, id, payload) => {
+          if (id !== consultationId || cancelled) return;
+          try {
+            if (event === 'call:offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload as RTCSessionDescriptionInit));
+              await flushPendingCandidates();
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              sendCallSignal('call:answer', consultationId, answer);
+            } else if (event === 'call:answer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload as RTCSessionDescriptionInit));
+              await flushPendingCandidates();
+            } else if (event === 'call:ice-candidate') {
+              const candidate = payload as RTCIceCandidateInit;
+              // ICE candidates can (and often do) arrive before the remote
+              // description is set — queue them and flush once it is,
+              // rather than dropping/erroring on addIceCandidate.
+              if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              else pendingCandidatesRef.current.push(candidate);
+            } else if (event === 'call:hangup') {
+              setStatus('ended');
+              pc.close();
+              localStreamRef.current?.getTracks().forEach(t => t.stop());
+            }
+          } catch (err) {
+            console.error('Call signaling error:', err);
+          }
+        });
+
         if (isInitiator) {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -100,7 +113,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
 
     return () => {
       cancelled = true;
-      unsubscribe();
+      unsubscribe?.();
       pc.close();
       localStreamRef.current?.getTracks().forEach(t => t.stop());
     };

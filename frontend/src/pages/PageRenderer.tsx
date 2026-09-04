@@ -1779,7 +1779,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
     { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
   ];
 
-  const DURATION_OPTIONS = [10, 20, 30, 60];
+  const DURATION_STEP = 5, DURATION_MIN = 5, DURATION_MAX = 120;
 
   const SLOTS = [
     'Today - 04:30 PM',
@@ -1855,16 +1855,28 @@ function ConsultationBookingPage({ id }: { id: any }) {
                   ))}
                 </div>
                 <h3 className={styles.contentSectionTitle} style={{ border: 'none', marginTop: '20px' }}>Select Duration</h3>
-                <div className={styles.optionSelectGrid}>
-                  {DURATION_OPTIONS.map(mins => (
-                    <div
-                      key={mins}
-                      className={`${styles.optionSelector} ${durationMinutes === mins ? styles.optionSelectorActive : ''}`}
-                      onClick={() => setDurationMinutes(mins)}
-                    >
-                      <span className={styles.optionName}>{mins} min</span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '8px 0' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline-light btn-sm"
+                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
+                    disabled={durationMinutes <= DURATION_MIN}
+                    onClick={() => setDurationMinutes(m => Math.max(DURATION_MIN, m - DURATION_STEP))}
+                  >
+                    −
+                  </button>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-gold)', minWidth: '110px', textAlign: 'center' }}>
+                    {durationMinutes} min
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-outline-light btn-sm"
+                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
+                    disabled={durationMinutes >= DURATION_MAX}
+                    onClick={() => setDurationMinutes(m => Math.min(DURATION_MAX, m + DURATION_STEP))}
+                  >
+                    +
+                  </button>
                 </div>
                 <p className={styles.reviewCount} style={{ marginTop: '16px' }}>
                   This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Your chat/call runs for the duration you picked; you'll get an option to extend about a minute before it ends, and you can end it yourself any time.

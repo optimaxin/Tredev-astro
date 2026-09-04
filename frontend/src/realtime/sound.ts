@@ -3,6 +3,10 @@
 // rules as any other audio (must follow a user gesture / explicit opt-in,
 // see NotificationPermissionOnboarding).
 export function playNotificationChime() {
+  playChimeOnce();
+}
+
+function playChimeOnce() {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -25,4 +29,23 @@ export function playNotificationChime() {
     // Audio isn't available in every environment — the visual notification
     // must never depend on this succeeding (see spec section 8).
   }
+}
+
+// Repeats the same chime every 1.5s until stopped — used while a
+// consultation request is waiting for the astrologer to accept (see
+// RealtimeContext.tsx, which starts/stops this off pendingAssignments).
+// Module-level (not per-component) so it can't accidentally end up with two
+// independent loops running if more than one place ever calls start.
+let alarmIntervalId: number | null = null;
+
+export function startPendingRequestAlarm() {
+  if (alarmIntervalId !== null) return;
+  playChimeOnce();
+  alarmIntervalId = window.setInterval(playChimeOnce, 1500);
+}
+
+export function stopPendingRequestAlarm() {
+  if (alarmIntervalId === null) return;
+  window.clearInterval(alarmIntervalId);
+  alarmIntervalId = null;
 }

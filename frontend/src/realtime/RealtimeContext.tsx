@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { io, Socket } from 'socket.io-client';
 import { useAppContext } from '../context/AppContext';
 import { realtimeApi, SERVER_URL } from './api';
-import { playNotificationChime } from './sound';
+import { playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
 import type {
   AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
   RecommendedAstrologer, RequestResult, UserSyncSnapshot,
@@ -218,6 +218,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       socket.disconnect();
     };
   }, [currentUser?.email, currentUser?.role, notifyAstrologer, pushToast]);
+
+  // Loops a beep until the astrologer actually accepts (or the request
+  // otherwise leaves pendingAssignments) — a single chime was easy to miss
+  // if they weren't looking at the screen right when it fired. Respects the
+  // same sound preference the one-shot chime already does.
+  const pendingCount = astrologerSync?.pendingAssignments.length ?? 0;
+  useEffect(() => {
+    if (pendingCount > 0 && notifPrefs.sound) {
+      startPendingRequestAlarm();
+    } else {
+      stopPendingRequestAlarm();
+    }
+    return () => stopPendingRequestAlarm();
+  }, [pendingCount, notifPrefs.sound]);
 
   const sendCallSignal = useCallback((event: CallSignalEvent, consultationId: string, payload?: unknown) => {
     socketRef.current?.emit(event, { consultationId, payload });
