@@ -51,6 +51,8 @@ import { consultationService, ConsultationApiError } from '../services/consultat
 import type { MyConsultation } from '../services/consultationService';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
 import CallWindow from '../components/CallWindow/CallWindow';
+import { orderService, OrderApiError } from '../services/orderService';
+import type { Order } from '../services/orderService';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -2357,16 +2359,30 @@ function CartPage() {
 
 // 8. Checkout Page
 function CheckoutPage() {
-  const { clearCart, setPage, cart } = useAppContext();
-  const [formData, setFormData] = useState({ name: 'Arjun Sharma', email: 'arjun@gmail.com', address: '12, Sanskrit Marg', city: 'Delhi', zip: '110001' });
+  const { clearCart, setPage, cart, currentUser } = useAppContext();
+  const [formData, setFormData] = useState({ name: currentUser?.name || '', email: currentUser?.email || '', address: '', city: '', zip: '' });
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState('');
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Order placed successfully. Puja energization will begin during the upcoming Muhurta.');
-    clearCart();
-    setPage('my-orders');
+    if (!cart.length || placing) return;
+    setPlacing(true);
+    setError('');
+    try {
+      await orderService.place(
+        cart.map(item => ({ productId: item.id, name: item.name, price: item.price, quantity: item.quantity })),
+        { name: formData.name, address: formData.address, city: formData.city, zip: formData.zip }
+      );
+      clearCart();
+      setPage('my-orders');
+    } catch (err) {
+      setError(err instanceof OrderApiError ? err.message : 'Could not place your order. Please try again.');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
@@ -2442,8 +2458,9 @@ function CheckoutPage() {
               <span>Total Fees</span>
               <span>₹{total}</span>
             </div>
-            <button type="submit" className="btn btn-gold" style={{ width: '100%' }}>
-              Place Sacred Order
+            {error && <p style={{ color: '#c0392b', fontSize: '12px', marginBottom: '12px' }}>{error}</p>}
+            <button type="submit" className="btn btn-gold" style={{ width: '100%' }} disabled={placing || !cart.length}>
+              {placing ? 'Placing Order…' : 'Place Sacred Order'}
             </button>
           </div>
         </form>
@@ -2851,10 +2868,18 @@ function MyConsultationsPage({ nested = false }: { nested?: boolean } = {}) {
 
 // 15. My Orders Page
 function MyOrdersPage({ nested = false }: { nested?: boolean } = {}) {
-  const ORDERS = [
-    { orderId: 'TA-98384', items: 'Natural Colombian Emerald Gemstone', total: 2499, date: '12 August 2026', status: 'Puja Energization Scheduled' },
-    { orderId: 'TA-83748', items: 'Shri Yantra (Brass)', total: 1299, date: '02 July 2026', status: 'Delivered' },
-  ];
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    orderService.listMine()
+      .then(rows => { if (!cancelled) setOrders(rows); })
+      .catch(err => { if (!cancelled) setError(err instanceof OrderApiError ? err.message : 'Could not load your orders.'); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const STATUS_LABEL: Record<Order['deliveryStatus'], string> = { PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered' };
 
   const Wrapper = nested ? React.Fragment : 'div';
   const wrapperProps = nested ? {} : { className: `${styles.pageWrapper} ${styles.ivoryPage}` };
@@ -2868,16 +2893,21 @@ function MyOrdersPage({ nested = false }: { nested?: boolean } = {}) {
           <div className={styles.divider}>✦ ❖ ✦</div>
         </div>
 
+        {error && <p style={{ color: '#c0392b', textAlign: 'center' }}>{error}</p>}
+        {!error && orders && orders.length === 0 && <p style={{ textAlign: 'center', color: 'var(--color-text-dark-2)' }}>No orders yet.</p>}
+
         <div className={styles.cartList}>
-          {ORDERS.map(o => (
-            <div key={o.orderId} className={styles.cartItem}>
+          {orders?.map(o => (
+            <div key={o.id} className={styles.cartItem}>
               <div className={styles.cartItemInfo}>
-                <h3 className={styles.cartItemName}>Order #{o.orderId}</h3>
-                <span className={styles.cartItemCat}>{o.items} · Ordered: {o.date}</span>
+                <h3 className={styles.cartItemName}>Order #{o.id}</h3>
+                <span className={styles.cartItemCat}>
+                  {o.items.map(i => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join(', ')} · Ordered: {new Date(o.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </span>
               </div>
-              <div style={{ paddingRight: '20px', fontWeight: 600 }}>₹{o.total}</div>
-              <span className="badge" style={{ background: o.status === 'Delivered' ? 'rgba(80,200,120,0.1)' : 'rgba(184,138,59,0.08)', color: o.status === 'Delivered' ? '#50C878' : 'var(--color-gold-dark)', border: '1px solid' }}>
-                {o.status}
+              <div style={{ paddingRight: '20px', fontWeight: 600 }}>₹{o.amount}</div>
+              <span className="badge" style={{ background: o.deliveryStatus === 'DELIVERED' ? 'rgba(80,200,120,0.1)' : 'rgba(184,138,59,0.08)', color: o.deliveryStatus === 'DELIVERED' ? '#50C878' : 'var(--color-gold-dark)', border: '1px solid' }}>
+                {STATUS_LABEL[o.deliveryStatus]}
               </span>
             </div>
           ))}

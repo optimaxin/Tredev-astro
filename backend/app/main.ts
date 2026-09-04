@@ -13,6 +13,7 @@ import { chatRouter } from './api/chat.routes.ts';
 import { calculatorsRouter } from './api/calculators.routes.ts';
 import { favoritesRouter } from './api/favorites.routes.ts';
 import { kundliHistoryRouter } from './api/kundliHistory.routes.ts';
+import { ordersRouter } from './api/orders.routes.ts';
 import { adminRouter } from './api/admin.routes.ts';
 import { contentRouter } from './api/content.routes.ts';
 import { attachSockets } from './websocket/sockets.ts';
@@ -47,6 +48,7 @@ app.use('/api/consultations', chatRouter);
 app.use('/api/calculators', calculatorsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/kundli-history', kundliHistoryRouter);
+app.use('/api/orders', ordersRouter);
 app.use('/api', contentRouter);
 // `router` (legacy mock-trust realtime routes, including the unauthenticated
 // /admin/config and /admin/astrologers/:id/max-concurrent) MUST be mounted

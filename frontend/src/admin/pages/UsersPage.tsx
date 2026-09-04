@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import type { AuthUser } from '../../context/AppContext';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton } from '../components/SharedControls';
-import { SAMPLE_CONSULTATIONS, SAMPLE_PURCHASED_REPORTS, SAMPLE_ORDERS } from '../adminMockData';
+import { adminService } from '../../services/adminService';
+import type { ApiUserActivity } from '../../services/adminService';
 import { accountStatus, formatDate } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
@@ -15,22 +16,28 @@ function joinedDate(id: string): string {
   return match ? formatDate(new Date(Number(match[1])).toISOString()) : '—';
 }
 
-function countsFor(name: string) {
-  return {
-    reports: SAMPLE_PURCHASED_REPORTS.filter(r => r.userName === name).length,
-    consultations: SAMPLE_CONSULTATIONS.filter(c => c.userName === name).length,
-    orders: SAMPLE_ORDERS.filter(o => o.customer === name).length,
-  };
-}
-
 export default function UsersPage() {
   const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AuthUser | null>(null);
+  const [activity, setActivity] = useState<ApiUserActivity | null>(null);
+  const [activityError, setActivityError] = useState('');
   const [roleBusy, setRoleBusy] = useState(false);
   const [roleError, setRoleError] = useState('');
+
+  // Fetched fresh per user when the drawer opens (was 3 name-matched counts
+  // against SAMPLE_* mock arrays) — kept out of the main table since that
+  // would mean a fetch per visible row instead of one per drawer open.
+  useEffect(() => {
+    if (!selected) { setActivity(null); return; }
+    setActivity(null);
+    setActivityError('');
+    adminService.getUserActivity(selected.id)
+      .then(setActivity)
+      .catch(() => setActivityError('Could not load this user\'s activity.'));
+  }, [selected]);
   // Only an ADMIN can grant Staff or Admin — STAFF only ever sees the
   // "Make Astrologer" action. Mirrors the server-side check in
   // admin.routes.ts's PATCH /users/:id/role handler.
@@ -84,9 +91,6 @@ export default function UsersPage() {
         columns={[
           { key: 'user', label: t('admin_users_col_user'), render: u => (<div><div style={{ fontWeight: 700 }}>{u.name}</div><div style={{ fontSize: '0.72rem', color: 'var(--adm-muted)' }}>{u.email}</div></div>) },
           { key: 'joined', label: t('admin_users_col_joined'), render: u => joinedDate(u.id) },
-          { key: 'reports', label: t('admin_users_col_reports'), render: u => countsFor(u.name).reports },
-          { key: 'consultations', label: t('admin_users_col_consultations'), render: u => countsFor(u.name).consultations },
-          { key: 'orders', label: t('admin_users_col_orders'), render: u => countsFor(u.name).orders },
           { key: 'status', label: t('admin_users_col_status'), render: u => { const s = accountStatus(u.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
         ]}
         rows={pageRows}
@@ -122,10 +126,11 @@ export default function UsersPage() {
           <>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Email</span><span className={styles.drawerFieldValue}>{selected.email}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_joined')}</span><span className={styles.drawerFieldValue}>{joinedDate(selected.id)}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_reports')}</span><span className={styles.drawerFieldValue}>{countsFor(selected.name).reports}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_consultations')}</span><span className={styles.drawerFieldValue}>{countsFor(selected.name).consultations}</span></div>
-            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_orders')}</span><span className={styles.drawerFieldValue}>{countsFor(selected.name).orders}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_reports')}</span><span className={styles.drawerFieldValue}>{activity ? activity.reports : activityError ? '—' : '…'}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_consultations')}</span><span className={styles.drawerFieldValue}>{activity ? activity.consultations : activityError ? '—' : '…'}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_orders')}</span><span className={styles.drawerFieldValue}>{activity ? activity.orders : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_status')}</span><span className={styles.drawerFieldValue}>{(() => { const s = accountStatus(selected.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; })()}</span></div>
+            {activityError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{activityError}</p>}
             {roleError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{roleError}</p>}
           </>
         )}

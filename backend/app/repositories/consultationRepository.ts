@@ -112,6 +112,33 @@ export async function findAllForAstrologer(astrologerId: number): Promise<Consul
   return rows.map(fromRow);
 }
 
+export async function countForUser(userEmail: string): Promise<number> {
+  const row = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM consultations WHERE user_email = $1', [userEmail.toLowerCase()]);
+  return Number(row?.n ?? 0);
+}
+
+// "In flight" — this app only ever books immediate real-time consultations
+// (no scheduled-for-later slots), so this is the closest real equivalent to
+// the old mock's "today's consultations" KPI.
+export async function countInProgress(): Promise<number> {
+  const row = await queryOne<{ n: string }>(`SELECT COUNT(*) AS n FROM consultations WHERE status IN ('ASSIGNED', 'ACCEPTED', 'ACTIVE')`);
+  return Number(row?.n ?? 0);
+}
+
+// For the admin Overview's recent-activity feed — joins in the astrologer's
+// name since Consultation itself only carries astrologerId.
+export async function listRecentWithAstrologerName(limit: number) {
+  const rows = await query<ConsultationDbRow & { astrologer_name: string }>(
+    `SELECT c.*, a.name AS astrologer_name
+     FROM consultations c
+     JOIN astrologers a ON a.id = c.astrologer_id
+     ORDER BY c.created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return rows.map(row => ({ ...fromRow(row), astrologerName: row.astrologer_name }));
+}
+
 export async function listAllConsultations(page: number, limit: number): Promise<{ rows: Consultation[]; total: number }> {
   const totalRow = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM consultations');
   const rows = await query<ConsultationDbRow>(

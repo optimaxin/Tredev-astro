@@ -25,6 +25,28 @@ export function listPurchasesForUser(userId: string) {
   );
 }
 
+export async function countPurchasesForUser(userId: string): Promise<number> {
+  const row = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM report_purchases WHERE user_id = $1', [userId]);
+  return Number(row?.n ?? 0);
+}
+
+export async function getPurchaseStats(): Promise<{ count: number; total: number }> {
+  const row = await queryOne<{ n: string; total: string }>('SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total FROM report_purchases');
+  return { count: Number(row?.n ?? 0), total: Number(row?.total ?? 0) };
+}
+
+export function listRecentPurchases(limit: number) {
+  return query<ReportPurchaseRow & { report_title: string; user_name: string }>(
+    `SELECT rp.*, ar.title AS report_title, u.name AS user_name
+     FROM report_purchases rp
+     JOIN astrology_reports ar ON ar.id = rp.report_id
+     JOIN users u ON u.id = rp.user_id
+     ORDER BY rp.purchased_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+}
+
 export async function listAllPurchases(page: number, limit: number) {
   const totalRow = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM report_purchases');
   const rows = await query<ReportPurchaseRow & { report_title: string; user_name: string; user_email: string }>(

@@ -5,14 +5,16 @@ import { findUserById, listAllUsers, updateUserRole, updateUserStatus } from '..
 import { toPublicUser } from '../models/user.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
-import { listAllConsultations } from '../repositories/consultationRepository.ts';
+import { countForUser, countInProgress, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import { listAuditLog, logAdminAction } from '../repositories/auditLogRepository.ts';
 import { register, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
-import { listAllPurchases } from '../repositories/reportPurchaseRepository.ts';
+import { countPurchasesForUser, getPurchaseStats, listAllPurchases, listRecentPurchases } from '../repositories/reportPurchaseRepository.ts';
+import { countOrdersForUser, getOrderStats, listAllOrders, listRecentDeliveredOrders, updateOrderDeliveryStatus } from '../repositories/orderRepository.ts';
+import { orderDisplayId, toPublicOrder } from '../models/order.ts';
 
 export const adminRouter = Router();
 
@@ -97,6 +99,47 @@ adminRouter.post('/astrologers', staffOk, async (req, res) => {
   }
 });
 
+// One combined summary instead of 3 separate count endpoints — the Users
+// drawer only ever needs all three at once (see UsersPage.tsx), and this
+// keeps it to a single fetch when the drawer opens. Replaces the old
+// name-matched counts against SAMPLE_* mock arrays.
+adminRouter.get('/users/:id/activity', staffOk, async (req, res) => {
+  const target = await findUserById(req.params.id as string);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  const [reports, consultations, orders] = await Promise.all([
+    countPurchasesForUser(target.id),
+    countForUser(target.email),
+    countOrdersForUser(target.id),
+  ]);
+  res.json({ success: true, data: { reports, consultations, orders } });
+});
+
+// ── Dashboard (Overview page KPIs + recent activity, real — replacing the
+// old SAMPLE_CONSULTATIONS/SAMPLE_PURCHASED_REPORTS/SAMPLE_ORDERS reads) ──
+
+adminRouter.get('/dashboard-stats', staffOk, async (_req, res) => {
+  const [consultationsInProgress, purchaseStats, orderStats, recentConsultations, recentPurchases, recentDeliveredOrders] = await Promise.all([
+    countInProgress(),
+    getPurchaseStats(),
+    getOrderStats(),
+    listRecentWithAstrologerName(3),
+    listRecentPurchases(3),
+    listRecentDeliveredOrders(3),
+  ]);
+  res.json({
+    success: true,
+    data: {
+      consultationsInProgress,
+      revenue: purchaseStats.total + orderStats.total,
+      reportsGenerated: purchaseStats.count,
+      storeOrders: orderStats.count,
+      recentConsultations: recentConsultations.map(c => ({ id: c.id, userName: c.userName, astrologerName: c.astrologerName, createdAt: c.createdAt })),
+      recentPurchases: recentPurchases.map(r => ({ id: r.id, userName: r.user_name, reportTitle: r.report_title, purchasedAt: Number(r.purchased_at) })),
+      recentDeliveredOrders: recentDeliveredOrders.map(o => ({ id: orderDisplayId(o.id), createdAt: Number(o.created_at) })),
+    },
+  });
+});
+
 // ── Astrologer applications ─────────────────────────────────────────────
 
 adminRouter.get('/astrologer-applications', staffOk, async (_req, res) => {
@@ -152,6 +195,29 @@ adminRouter.get('/report-purchases', adminOnly, async (req, res) => {
     bundle: r.bundle, amount: r.amount, purchasedAt: Number(r.purchased_at),
   }));
   res.json({ success: true, data, pagination: { ...parsed.data, total } });
+});
+
+// ── Orders (Store product orders, real — replacing SAMPLE_ORDERS) ───────
+
+adminRouter.get('/orders', adminOnly, async (req, res) => {
+  const parsed = pageSchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { rows, total } = await listAllOrders(parsed.data.page, parsed.data.limit);
+  const data = rows.map(r => ({ ...toPublicOrder(r), customerName: r.user_name, customerEmail: r.user_email }));
+  res.json({ success: true, data, pagination: { ...parsed.data, total } });
+});
+
+const deliveryStatusSchema = z.object({ deliveryStatus: z.enum(['PROCESSING', 'SHIPPED', 'DELIVERED']) });
+
+adminRouter.patch('/orders/:id/delivery-status', adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = deliveryStatusSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await updateOrderDeliveryStatus(id, parsed.data.deliveryStatus);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Order not found');
+  await audit(req, `order.delivery.${parsed.data.deliveryStatus.toLowerCase()}`, orderDisplayId(id));
+  res.json({ success: true, data: toPublicOrder(row) });
 });
 
 // ── Audit log ────────────────────────────────────────────────────────────

@@ -113,6 +113,33 @@ export interface ApiBroadcast {
   active: boolean;
 }
 
+export interface ApiOrder {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  items: { productId: number; name: string; price: number; quantity: number }[];
+  amount: number;
+  shipping: { name: string; address: string; city: string; zip: string };
+  deliveryStatus: 'PROCESSING' | 'SHIPPED' | 'DELIVERED';
+  createdAt: number;
+}
+
+export interface ApiUserActivity {
+  reports: number;
+  consultations: number;
+  orders: number;
+}
+
+export interface ApiDashboardStats {
+  consultationsInProgress: number;
+  revenue: number;
+  reportsGenerated: number;
+  storeOrders: number;
+  recentConsultations: { id: string; userName: string; astrologerName: string; createdAt: number }[];
+  recentPurchases: { id: string; userName: string; reportTitle: string; purchasedAt: number }[];
+  recentDeliveredOrders: { id: string; createdAt: number }[];
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -139,4 +166,14 @@ export const adminService = {
   listBroadcasts: () => request<ApiBroadcast[]>('/broadcasts'),
   createBroadcast: (message: string) => request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message }) }),
   deleteBroadcast: (id: number) => request<{ ok: boolean }>(`/broadcasts/${id}`, { method: 'DELETE' }),
+
+  listOrders: (page = 1, limit = 100) => request<ApiOrder[]>(`/orders?page=${page}&limit=${limit}`),
+  // `id` here is the display id ("ORD-1042") the order comes back with —
+  // the backend route wants the raw numeric primary key it was derived from.
+  updateOrderDeliveryStatus: (id: string, deliveryStatus: 'PROCESSING' | 'SHIPPED' | 'DELIVERED') =>
+    request<ApiOrder>(`/orders/${id.replace(/^ORD-/, '')}/delivery-status`, { method: 'PATCH', body: JSON.stringify({ deliveryStatus }) }),
+
+  getUserActivity: (id: string) => request<ApiUserActivity>(`/users/${id}/activity`),
+
+  getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
 };
