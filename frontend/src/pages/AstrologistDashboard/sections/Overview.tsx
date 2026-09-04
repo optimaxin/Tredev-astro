@@ -5,6 +5,7 @@ import { astrologerService } from '../../../services/astrologerService';
 import { consultationService } from '../../../services/consultationService';
 import type { MyConsultationAsAstrologer } from '../../../services/consultationService';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
+import CallWindow from '../../../components/CallWindow/CallWindow';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
   EmptyState, KpiCard, MiniBarChart, Panel,
@@ -76,7 +77,11 @@ function LiveStatusCard() {
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <ChatWindow consultationId={active.id} otherPartyName={active.userName} />
+            {active.type === 'voice' ? (
+              <CallWindow consultationId={active.id} otherPartyName={active.userName} isInitiator={false} />
+            ) : (
+              <ChatWindow consultationId={active.id} otherPartyName={active.userName} />
+            )}
           </div>
         </div>
       )}

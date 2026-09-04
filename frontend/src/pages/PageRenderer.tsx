@@ -50,6 +50,7 @@ import type { Review, UiAstrologer } from '../services/astrologerService';
 import { consultationService, ConsultationApiError } from '../services/consultationService';
 import type { MyConsultation } from '../services/consultationService';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
+import CallWindow from '../components/CallWindow/CallWindow';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -2043,7 +2044,11 @@ function ConsultationWaitingPage() {
             <h2>Your consultation with {astrologer?.name} is now active</h2>
             <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
           </div>
-          <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} />
+          {consultation.type === 'voice' ? (
+            <CallWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} isInitiator />
+          ) : (
+            <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} />
+          )}
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <button className="btn btn-outline-light" onClick={() => setPage('home')}>Back to Home</button>
           </div>

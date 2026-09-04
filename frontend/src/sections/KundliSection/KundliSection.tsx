@@ -103,6 +103,7 @@ export default function KundliSection() {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
   const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
+  const [pdfElapsedSec, setPdfElapsedSec] = useState(0);
   const [autoDownloadPending, setAutoDownloadPending] = useState(false);
   const [history, setHistory] = useState<KundliHistoryEntry[]>([]);
   const [gocharLagna, setGocharLagna] = useState<DailyHoroscopeResult | null>(null);
@@ -274,21 +275,31 @@ export default function KundliSection() {
   // the slice boundary. Also adds a hard timeout: if generation ever hangs
   // (whatever the cause), the button unstucks itself instead of needing a
   // manual page refresh.
+  // Drives the loading overlay's elapsed-time readout — the report now
+  // covers every divisional chart with one topic per page, so generation
+  // routinely runs past a minute; showing real elapsed time (ticking every
+  // second) instead of just a block count keeps it from reading as hung.
+  useEffect(() => {
+    if (pdfState !== 'generating') { setPdfElapsedSec(0); return; }
+    setPdfElapsedSec(0);
+    const id = window.setInterval(() => setPdfElapsedSec(s => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [pdfState]);
+
   useEffect(() => {
     if (pdfState !== 'generating' || !fullResult || !printRef.current) return;
     let settled = false;
-    // The print layout now runs to ~20 chart pages plus dozens of prediction
-    // cards (a full report, not a condensed summary) — 70-90 individual
-    // html2canvas captures. 60s was tuned for the old ~15-block version and
-    // is now a real risk of firing on a slow machine before a legitimately
-    // still-running capture finishes.
+    // The report now includes every divisional chart with one topic per
+    // page (a real full-length report, not a condensed summary) — more
+    // captures and more pages than the earlier condensed version, so this
+    // window is generous rather than tuned tight.
     const safetyTimer = window.setTimeout(() => {
       if (settled) return;
       settled = true;
       setPdfState('idle');
       setPdfProgress(null);
       setError('PDF generation took too long — please try again.');
-    }, 180000);
+    }, 300000);
 
     (async () => {
       try {
@@ -316,7 +327,7 @@ export default function KundliSection() {
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 28;
-        const footerSpace = 24;
+        const footerSpace = 34; // two lines now — the brand line + the cross-promo line below it
         const usableWidth = pageWidth - margin * 2;
         const contentBottom = pageHeight - margin - footerSpace;
         const blockGap = 14;
@@ -327,54 +338,12 @@ export default function KundliSection() {
         const HEADER_RESERVE = 18;
         const contentTopFor = (p: number) => (p === 1 ? margin : margin + HEADER_RESERVE);
 
-        // Pre-measure each block's rendered height via layout (cheap — no
-        // html2canvas involved) so the page-fill order can be decided
-        // up front. A straight document-order walk left many pages with a
-        // large blank strip at the bottom whenever the very next block
-        // didn't fit what was left, even when a smaller block a few
-        // positions later would have fit perfectly. This does a bounded
-        // look-ahead (6 blocks) first-fit re-ordering; the real placement
-        // loop below still uses each block's REAL captured height to
-        // decide page breaks, so a measurement/capture mismatch can never
-        // cause content to overlap or get cut — this only picks a better
-        // serving order.
-        const planBlockOrder = (els: HTMLElement[], pageContentHeight: number): HTMLElement[] => {
-          const items = els.map(el => {
-            const rect = el.getBoundingClientRect();
-            return { el, height: rect.width ? (rect.height * usableWidth) / rect.width : 0 };
-          });
-          const ordered: HTMLElement[] = [];
-          let pageRemaining = pageContentHeight;
-          let firstOnPage = true;
-          const WINDOW = 6;
-          while (items.length) {
-            let idx = 0;
-            if (!firstOnPage) {
-              const found = items.findIndex((it, i) => i < WINDOW && it.height <= pageRemaining);
-              if (found === -1) {
-                firstOnPage = true;
-                pageRemaining = pageContentHeight;
-              } else {
-                idx = found;
-              }
-            }
-            const [chosen] = items.splice(idx, 1);
-            ordered.push(chosen.el);
-            pageRemaining -= chosen.height + (firstOnPage ? 0 : blockGap);
-            firstOnPage = chosen.height > pageContentHeight; // an oversized block spans its own pages; whatever follows starts fresh
-          }
-          return ordered;
-        };
-
-        // Cover and closing are pinned to the very first/last position —
-        // each forces its own dedicated page below (see forceBreakBeforeNext
-        // and the isClosing check in the main loop) regardless of ordering,
-        // so they're excluded from the fill heuristic entirely.
-        const coverEl = rawBlocks.find(b => b.dataset.pdfCover === 'true');
-        const closingEl = rawBlocks.find(b => b.dataset.pdfClosing === 'true');
-        const middleEls = rawBlocks.filter(b => b !== coverEl && b !== closingEl);
-        const orderedMiddle = planBlockOrder(middleEls, contentBottom - contentTopFor(2));
-        const blocks = [...(coverEl ? [coverEl] : []), ...orderedMiddle, ...(closingEl ? [closingEl] : [])];
+        // Every new topic (data-pdf-newpage, plus the cover/closing special
+        // cases) forces its own fresh page — so blocks are processed in
+        // plain document order, no reordering: the whole point is that each
+        // topic reliably starts a page of its own, not that pages pack as
+        // tight as possible.
+        const blocks = rawBlocks;
         setPdfProgress({ done: 0, total: blocks.length });
 
         let cursorY = contentTopFor(1);
@@ -415,6 +384,10 @@ export default function KundliSection() {
           pdf.line(margin, margin, pageWidth - margin, margin);
         };
 
+        // Second, fainter footer line cross-promoting the rest of the real
+        // site sections (same labels as the main nav — Navigation.tsx),
+        // not just the Kundli report itself.
+        const OTHER_APPS = 'Also on TredevAstro: Free Kundli · Consultations · Panchang · Calculators · Reports · Academy · Store';
         const drawFooter = () => {
           pdf.setDrawColor(181, 138, 59);
           pdf.setLineWidth(0.6);
@@ -423,6 +396,9 @@ export default function KundliSection() {
           pdf.setTextColor(150, 140, 120);
           pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 12);
           pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - margin + 12, { align: 'right' });
+          pdf.setFontSize(7);
+          pdf.setTextColor(178, 170, 152);
+          pdf.text(OTHER_APPS, pageWidth / 2, pageHeight - margin + 23, { align: 'center' });
         };
 
         drawWatermark();
@@ -460,11 +436,12 @@ export default function KundliSection() {
           const imgData = canvas.toDataURL('image/jpeg', 0.88);
           setPdfProgress({ done: i + 1, total: blocks.length });
 
-          // The closing "thank you" block always gets its own fresh page,
-          // same as the cover forcing a break before whatever follows it
-          // (see forceBreakBeforeNext below) — mirror images of the same
-          // "give this block the whole page to itself" rule.
-          const mustBreakBefore = (forceBreakBeforeNext || el.dataset.pdfClosing === 'true') && !isFirstOnPage;
+          // Every new topic (data-pdf-newpage) and the closing "thank you"
+          // block always get their own fresh page, same as the cover
+          // forcing a break before whatever follows it (see
+          // forceBreakBeforeNext below) — all the same "give this block the
+          // whole page to itself" rule.
+          const mustBreakBefore = (forceBreakBeforeNext || el.dataset.pdfClosing === 'true' || el.dataset.pdfNewpage === 'true') && !isFirstOnPage;
           forceBreakBeforeNext = false;
           if (mustBreakBefore) {
             drawFooter();
@@ -640,6 +617,31 @@ export default function KundliSection() {
                   <div ref={printRef}>
                     <KundliPrintLayout name={birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} />
                   </div>
+                </div>
+              )}
+
+              {/* Visible loading overlay — the button label alone was easy to
+                  miss, and a full report (every chart, one topic per page)
+                  routinely runs past a minute, so this shows real elapsed
+                  time plus block progress instead of leaving the page
+                  looking frozen. */}
+              {pdfState === 'generating' && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 8, 6, 0.6)', backdropFilter: 'blur(3px)' }}>
+                  <div style={{ background: 'var(--surface-elevated, #1b1712)', border: '1px solid var(--border-subtle, rgba(181,138,59,0.25))', borderRadius: 'var(--radius-lg, 14px)', padding: '32px 36px', width: 320, textAlign: 'center', boxShadow: 'var(--shadow-elevated, 0 20px 60px rgba(0,0,0,0.5))' }}>
+                    <div style={{ width: 40, height: 40, margin: '0 auto 18px', borderRadius: '50%', border: '3px solid rgba(181,138,59,0.25)', borderTopColor: 'var(--gold-primary, #b58a3b)', animation: 'kundli-pdf-spin 0.9s linear infinite' }} />
+                    <p style={{ fontWeight: 600, marginBottom: 6 }}>Preparing your Kundli PDF…</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary, #9a9488)', marginBottom: 14 }}>
+                      {pdfProgress ? `${pdfProgress.done} of ${pdfProgress.total} sections rendered` : 'Starting up…'}
+                    </p>
+                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 10 }}>
+                      <div style={{ height: '100%', borderRadius: 999, background: 'var(--gold-primary, #b58a3b)', width: `${pdfProgress ? Math.round((pdfProgress.done / Math.max(pdfProgress.total, 1)) * 100) : 4}%`, transition: 'width 0.3s ease' }} />
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary, #9a9488)' }}>
+                      Elapsed: {String(Math.floor(pdfElapsedSec / 60)).padStart(2, '0')}:{String(pdfElapsedSec % 60).padStart(2, '0')}
+                      {pdfElapsedSec >= 60 ? ' — large reports take a little longer, hang tight' : ''}
+                    </p>
+                  </div>
+                  <style>{'@keyframes kundli-pdf-spin { to { transform: rotate(360deg); } }'}</style>
                 </div>
               )}
 

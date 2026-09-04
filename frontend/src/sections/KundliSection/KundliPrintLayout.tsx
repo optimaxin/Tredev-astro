@@ -26,25 +26,22 @@ import chartStyles from './KundliSection.module.css';
 // too literally on the reference's "one item per page" layout. Each capture
 // has real fixed overhead regardless of how small the content is, so that
 // many of them made generation slow and, on some machines, made it fail
-// outright before finishing. Charts and cards are now batched several-per-
-// block (a grid captured as ONE image) instead of one-per-block — same
-// content, ~5x fewer captures, and the whole report now lands around 18-20
-// PDF pages instead of 60+.
+// outright before finishing. Charts and cards inside the SAME topic are
+// still batched several-per-block (a grid captured as ONE image), keeping
+// capture count down — but every distinct topic (each data-pdf-newpage
+// block below) now starts its own fresh page instead of packing wherever
+// there happened to be room, and every one of the 20 divisional charts is
+// included, per later direction — this is a real, full-length report now,
+// not a condensed one, and runs well past the earlier ~18-20 page target.
 //
 // Rendered off-screen (see the wrapping div in KundliSection.tsx) — never
 // shown to the user, only rasterized.
 const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', LINE = '#E8DEC8', TINT = '#F2EBD9';
 const FONT = { title: 30, section: 14, sub: 12.5, body: 11.5, label: 9.5 };
 
-// Same "Main 8" set KundliSection.tsx's own Charts tab highlights as the
-// quick-pick row (CHART_KEYS there) — D1/D9 are already shown in "02
-// Kundli" above, so only the rest of that set appears here. The full
-// divisional-chart gallery (D2,D3,D5,D8,D11,D16,D20,D24,D27,D30,D40,D45)
-// is still one click away on the live Charts tab; rendering all 19 of them
-// into the PDF (each a full SVG chart) was most of what made generation
-// slow — this keeps the report focused on the charts most readings
-// actually start from instead of an exhaustive appendix.
-const DIVISIONAL_ORDER = ['D4', 'D6', 'D7', 'D10', 'D60'];
+// Every divisional chart the app computes, in ascending order — D1/D9 are
+// already shown in "02 Kundli" above, so only the rest appears here.
+const DIVISIONAL_ORDER = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D10', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60'];
 
 type SimplePlanets = Parameters<typeof NorthIndianChart>[0]['planets'];
 
@@ -97,7 +94,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </div>
 
         {/* ── 01 Basic ── */}
-        <div data-pdf-block style={{ marginBottom: 24 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 24 }}>
           <SectionHeader num="01" title="Basic" />
           <SubHeading>Birth Details</SubHeading>
           <KVGrid cols={2}>
@@ -135,7 +132,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </div>
 
         {/* ── 02 Kundli — D1 + D9 together in one block instead of two ── */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SectionHeader num="02" title="Kundli" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <MiniChart title="Lagna Chart (D1)" planets={chartPlanets} ascendantRashi={result.kundli.ascendant.rashi} />
@@ -143,7 +140,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Planetary Positions</SubHeading>
           <Table head={['Planet', 'Sign', 'Nakshatra', 'Naksh Lord', 'Degree', 'Retro']}>
             <tr style={{ borderTop: `1px solid ${LINE}` }}>
@@ -160,7 +157,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         {/* Mahadasha periods batched 3-per-block (was 1-per-block) — still
             small enough per block to never need the oversized-block split
             fallback, at a third of the capture count. */}
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SubHeading>Vimshottari Dasha — Mahadasha</SubHeading>
         </div>
         {chunk(result.mahadashaTimeline, 3).map((group, gi) => (
@@ -187,7 +184,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             block was one of the tallest in the report and packed poorly,
             leaving large blank gaps under it on whichever page it landed;
             splitting gives the page-fill packer more flexibility. */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Shadbala — Planetary Strength</SubHeading>
           <Table head={['Planet', 'Total (Rupas)', 'Required', 'Ratio', 'Verdict']}>
             {result.shadbala.planets.map(p => (
@@ -198,7 +195,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ))}
           </Table>
         </div>
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Bhavbala — House Strength</SubHeading>
           <Table head={['House', 'Adhipati Bala', 'Dig Bala', 'Drik Bala', 'Total']}>
             {result.shadbala.houses.map(h => (
@@ -210,7 +207,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </div>
 
         {/* ── 03 KP ── */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SectionHeader num="03" title="KP" />
           <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, alignItems: 'start' }}>
             <MiniChart title="Bhav Chalit Chart" planets={bhavChalitPlanets} ascendantRashi={result.bhavChalit.ascendant.rashi} />
@@ -231,7 +228,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
 
         {/* KP Planets/Cusps split into 2 blocks (was 1) — same page-fill
             reasoning as the Shadbala/Bhavbala split above. */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>KP Planets</SubHeading>
           <Table head={['Planet', 'Bhav (Cusp)', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
             {result.kp.table.filter(r => r.id !== 'asc').map(row => (
@@ -241,7 +238,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             ))}
           </Table>
         </div>
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>KP Cusps</SubHeading>
           <Table head={['Cusp', 'Degree', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
             {result.kp.cusps.map((row, i) => (
@@ -255,7 +252,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         {/* ── 04 Ashtakvarga — 8 grids (SAV + 7 grahas), 4 per block (was
             all 8 in one block — split for the same page-fill reasoning as
             Shadbala/KP above) ── */}
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SectionHeader num="04" title="Ashtakvarga" />
           <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Total bindus per rashi. SAV is the combined Sarvashtakvarga (total: {result.ashtakavarga.sarvaTotal}).</p>
         </div>
@@ -270,11 +267,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         ))}
 
-        {/* ── 05 Charts — the app's own "main" divisional charts, 6 per
-            block instead of 1 per block (see DIVISIONAL_ORDER above) ── */}
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        {/* ── 05 Charts — every divisional chart the app computes, 6 per
+            block (see DIVISIONAL_ORDER above) ── */}
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SectionHeader num="05" title="Charts" />
-          <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>The main divisional charts most readings start from, plus a Moon-referenced Chandra chart. The full set of 19 divisional charts is available anytime on the Charts tab.</p>
+          <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Every divisional (varga) chart computed for this birth, plus a Moon-referenced Chandra chart.</p>
         </div>
         {chunk(allCharts, 6).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
@@ -283,7 +280,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         ))}
 
         {/* ── 06 Dasha — 4 prediction cards per block instead of 2 ── */}
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SectionHeader num="06" title="Dasha" />
           <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Each card describes one Mahadasha — what the ruling planet's house and sign placement mean while it runs.</p>
         </div>
@@ -300,7 +297,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         ))}
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Yogini Dasha</SubHeading>
           <Table head={['Yogini', 'Lord', 'Start', 'End']}>
             {result.yoginiDashaTimeline.map((period, i) => (
@@ -312,7 +309,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </div>
 
         {/* ── 07 Free Report ── */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SectionHeader num="07" title="Free Report" />
           <SubHeading>Ascendant Predictions — {result.ascendantPredictions.ascendant}</SubHeading>
           <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 12px' }}>{result.ascendantPredictions.description}</p>
@@ -329,7 +326,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SubHeading>Planetary Predictions</SubHeading>
         </div>
         {chunk(result.analysis.planets, 6).map((group, gi) => (
@@ -339,7 +336,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         ))}
 
         {presentYogas.length > 0 && (
-          <div data-pdf-block style={{ marginBottom: 22 }}>
+          <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
             <SubHeading>Yoga Combinations</SubHeading>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {presentYogas.map(y => <PredictionCard key={y.name} title={y.name}>{y.description}</PredictionCard>)}
@@ -347,7 +344,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         )}
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Rudraksha Recommendation</SubHeading>
           <p style={{ fontSize: FONT.section, fontWeight: 700, margin: '0 0 4px' }}>{result.rudraksha.mukhi}-Mukhi Rudraksha — {result.rudraksha.deity}</p>
           <p style={{ fontSize: FONT.body, lineHeight: 1.6, margin: '0 0 8px', color: MUTED }}>Ruled by {cap(result.rudraksha.rulingPlanet)}. {result.rudraksha.reason}</p>
@@ -368,7 +365,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Gemstone Recommendations</SubHeading>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {gems.map(g => (
@@ -382,7 +379,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SubHeading>Dosha Analysis</SubHeading>
           <DoshaRow label="Manglik Dosha" active={result.doshas.mangal.isManglik} activeText="Manglik" inactiveText="Not Present">
             {result.doshas.mangal.isManglik ? `${name} is Manglik — Mars is in the ${ordinal(result.doshas.mangal.marsHouse)} house.` : `${name}'s chart is free from Manglik Dosha.`}

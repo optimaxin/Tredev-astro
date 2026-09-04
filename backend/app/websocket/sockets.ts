@@ -45,6 +45,22 @@ export function attachSockets(io: Server) {
         getUserSyncSnapshot(email).then(snapshot => socket.emit('sync:user', snapshot)).catch(console.error);
       }
     }
+
+    // WebRTC call signaling — a pure relay, no persistence: the two parties
+    // in a consultation exchange SDP offers/answers and ICE candidates
+    // directly over their existing socket connection rather than a REST
+    // round trip, since none of this needs a database record (unlike chat
+    // messages). getConsultation confirms `consultationId` is real before
+    // forwarding, and `.except(socket.id)` keeps the sender from getting an
+    // echo of its own signal back.
+    (['call:offer', 'call:answer', 'call:ice-candidate', 'call:hangup'] as const).forEach(event => {
+      socket.on(event, (data: { consultationId: string; payload?: unknown }) => {
+        getConsultation(data.consultationId).then(consultation => {
+          if (!consultation) return;
+          io.to(astroRoom(consultation.astrologerId)).to(userRoom(consultation.userEmail)).except(socket.id).emit(event, data);
+        }).catch(console.error);
+      });
+    });
   });
 
   // Forward the internal event bus onto the right Socket.IO rooms. This is

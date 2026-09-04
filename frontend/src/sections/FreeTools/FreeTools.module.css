@@ -379,7 +379,11 @@
 }
 
 .categorySection {
-  padding: var(--space-6) var(--space-7);
+  /* was var(--space-7), which doesn't exist in the spacing scale (it jumps
+     6 -> 8) — an invalid var() with no fallback drops the WHOLE `padding`
+     shorthand, so this band had zero horizontal padding and every card sat
+     flush against its edge. */
+  padding: var(--space-6) var(--space-8);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);

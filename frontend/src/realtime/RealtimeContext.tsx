@@ -62,7 +62,17 @@ interface RealtimeContextValue {
   // Live chat — messages arrive here the instant either party sends one;
   // ChatWindow merges these into the history it loaded via chatService.
   liveChatMessages: ChatMessage[];
+
+  // WebRTC call signaling — a thin pass-through to the socket, used by
+  // CallWindow. Incoming signals go through a plain callback subscription
+  // rather than React state: ICE candidates can arrive many times in a
+  // couple seconds, and CallWindow needs to feed each one into its
+  // RTCPeerConnection immediately, not wait for a re-render.
+  sendCallSignal: (event: CallSignalEvent, consultationId: string, payload?: unknown) => void;
+  onCallSignal: (handler: (event: CallSignalEvent, consultationId: string, payload: unknown) => void) => () => void;
 }
+
+export type CallSignalEvent = 'call:offer' | 'call:answer' | 'call:ice-candidate' | 'call:hangup';
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
@@ -76,6 +86,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAppContext();
   const socketRef = useRef<Socket | null>(null);
   const seenNotificationIds = useRef(new Set<string>());
+  const callHandlersRef = useRef(new Set<(event: CallSignalEvent, consultationId: string, payload: unknown) => void>());
 
   const [connected, setConnected] = useState(false);
   const [publicStates, setPublicStates] = useState<Record<number, PublicAstrologerState>>({});
@@ -179,10 +190,25 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       setLiveChatMessages(prev => [...prev, message]);
     });
 
+    (['call:offer', 'call:answer', 'call:ice-candidate', 'call:hangup'] as const).forEach(event => {
+      socket.on(event, (data: { consultationId: string; payload?: unknown }) => {
+        callHandlersRef.current.forEach(h => h(event, data.consultationId, data.payload));
+      });
+    });
+
     return () => {
       socket.disconnect();
     };
   }, [currentUser?.email, currentUser?.role, notifyAstrologer, pushToast]);
+
+  const sendCallSignal = useCallback((event: CallSignalEvent, consultationId: string, payload?: unknown) => {
+    socketRef.current?.emit(event, { consultationId, payload });
+  }, []);
+
+  const onCallSignal = useCallback((handler: (event: CallSignalEvent, consultationId: string, payload: unknown) => void) => {
+    callHandlersRef.current.add(handler);
+    return () => callHandlersRef.current.delete(handler);
+  }, []);
 
   const goOnline = useCallback(async () => {
     if (!currentUser) return;
@@ -267,6 +293,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
       toasts, dismissToast, liveChatMessages,
+      sendCallSignal, onCallSignal,
     }}>
       {children}
     </RealtimeContext.Provider>
