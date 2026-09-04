@@ -229,6 +229,10 @@
   gap: 16px;
 }
 
+.settingsFullRow {
+  margin-top: 16px;
+}
+
 .settingsCard {
   background: var(--adm-surface);
   border: 1px solid var(--adm-border-soft);

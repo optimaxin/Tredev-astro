@@ -66,18 +66,6 @@ export interface AuthUser {
   phoneVerified?: boolean;
 }
 
-export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export interface AstrologerApplication {
-  id: string;
-  userEmail: string;
-  userName: string;
-  expertise: string;
-  experience: string;
-  status: ApplicationStatus;
-  submittedAt: string;
-}
-
 export interface AuditLogEntry {
   id: string;
   action: string;
@@ -348,13 +336,9 @@ interface AppContextValue {
   setPendingAction: (a: string | null) => void;
   showLoginModal: boolean;
   setShowLoginModal: (v: boolean) => void;
-  // Astrologer application + admin approval workflow — real backend
-  // (backend/app/api/admin.routes.ts, backend/app/api/astrologers.routes.ts)
+  // Admin account data — real backend (backend/app/api/admin.routes.ts)
   accounts: AuthUser[];
-  applications: AstrologerApplication[];
   applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => Promise<void>;
-  approveApplication: (id: string) => Promise<void>;
-  rejectApplication: (id: string) => Promise<void>;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
   // Admin console actions — real backend, requires an ADMIN-role JWT
@@ -708,10 +692,10 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_applications: 'Applications',
     admin_sidebar_astrologers: 'Astrologers',
     admin_sidebar_users: 'Users',
+    admin_sidebar_staff: 'Staff',
     admin_sidebar_consultations: 'Consultations',
     admin_sidebar_reports: 'Reports',
     admin_sidebar_orders: 'Orders',
-    admin_sidebar_content: 'Content',
     admin_sidebar_blog: 'Blog',
     admin_sidebar_notifications: 'Notifications',
     admin_sidebar_audit: 'Audit Logs',
@@ -749,6 +733,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_action_close: 'Close',
     admin_action_add_astrologer: 'Add Astrologer',
     admin_action_save: 'Save Changes',
+    admin_action_remove: 'Remove',
+    admin_staff_title: 'Staff & Admins',
+    admin_staff_add_title: 'Add Team Member',
+    admin_staff_add_name: 'Full Name',
+    admin_staff_add_email: 'Email',
+    admin_staff_add_password: 'Password',
+    admin_staff_add_role: 'Role',
+    admin_staff_role_staff: 'Staff',
+    admin_staff_role_admin: 'Admin',
+    admin_staff_col_member: 'Team Member',
+    admin_staff_col_role: 'Role',
+    admin_staff_col_access: 'Access',
+    admin_staff_action_add: 'Add Team Member',
+    admin_staff_action_manage_access: 'Manage Access',
+    admin_staff_access_title: 'Section Access',
+    admin_staff_access_desc: 'Toggle which parts of the admin console this Staff account can reach.',
+    admin_staff_access_full: 'Full access (Admin)',
+    admin_staff_confirm_remove_title: 'Remove this account\'s access?',
+    admin_staff_confirm_remove_desc: 'They will be reverted to a regular User account and lose all admin console access.',
+    admin_astro_confirm_remove_title: 'Remove this astrologer?',
+    admin_astro_confirm_remove_desc: 'They will be reverted to a regular User account and removed from the bookable astrologer catalog.',
     admin_empty_title: 'Nothing here yet',
     admin_empty_desc: 'There is no data to display for this view right now.',
     admin_search_name_email: 'Search by name or email',
@@ -2727,7 +2732,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
   const [accounts, setAccounts] = useState<AuthUser[]>([]);
-  const [applications, setApplications] = useState<AstrologerApplication[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [notifications, setNotifications] = useState<NotificationEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem('notifications') || '[]'); } catch { return []; }
@@ -2737,26 +2741,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshAdminData = async () => {
     try {
-      const [users, apps] = await Promise.all([adminService.listUsers(), adminService.listApplications()]);
+      const users = await adminService.listUsers();
       setAccounts(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status })));
-      setApplications(apps.map(a => ({
-        id: a.id, userEmail: a.userEmail, userName: a.userName, expertise: a.expertise, experience: a.experience,
-        status: a.status, submittedAt: new Date(Number(a.submittedAt)).toISOString(),
-      })));
     } catch (e) {
       console.error('Failed to load admin data', e);
     }
-    // Audit log is ADMIN-only server-side now (STAFF has no access) — fetched
-    // separately so a 403 here can never block the users/applications load
-    // above, which STAFF genuinely needs (they used to be one Promise.all,
-    // where one rejection failed the whole batch).
-    if (currentUser?.role === 'ADMIN') {
-      try {
-        const logs = await adminService.listAuditLog();
-        setAuditLog(logs.map(l => ({ id: l.id, action: l.action, actor: l.actor_label, target: l.target, at: new Date(Number(l.created_at)).toISOString() })));
-      } catch (e) {
-        console.error('Failed to load audit log', e);
-      }
+    // Audit log access is now a per-STAFF-member toggle (see
+    // staff_permissions) rather than hardcoded ADMIN-only — fetched
+    // separately so a 403 here (a STAFF session without that section) can
+    // never block the users load above, which every admin/staff session
+    // needs regardless.
+    try {
+      const logs = await adminService.listAuditLog();
+      setAuditLog(logs.map(l => ({ id: l.id, action: l.action, actor: l.actor_label, target: l.target, at: new Date(Number(l.created_at)).toISOString() })));
+    } catch {
+      // Expected for a STAFF session without the Audit section — not an error.
     }
   };
 
@@ -2819,20 +2818,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const applyToBecomeAstrologer = async (details: { expertise: string; experience: string }) => {
     if (!currentUser) return;
     await astrologerService.submitApplication(details.expertise, details.experience);
-  };
-
-  const approveApplication = async (id: string) => {
-    const app = applications.find(a => a.id === id);
-    await adminService.approveApplication(id);
-    await refreshAdminData();
-    if (app) notify(`${app.userName}'s astrologer application was approved.`);
-  };
-
-  const rejectApplication = async (id: string) => {
-    const app = applications.find(a => a.id === id);
-    await adminService.rejectApplication(id);
-    await refreshAdminData();
-    if (app) notify(`${app.userName}'s astrologer application was rejected.`);
   };
 
   const suspendAccount = async (email: string) => {
@@ -3084,7 +3069,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoggedIn, currentUser, authLoading, login, register, saveBirthDetails, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
-      accounts, applications, applyToBecomeAstrologer, approveApplication, rejectApplication,
+      accounts, applyToBecomeAstrologer,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
       suspendAccount, restoreAccount, createAstrologerAccount, updateAccountRole,

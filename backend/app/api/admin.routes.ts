@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import { findUserById, listAllUsers, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
-import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 import { countForUser, countInProgress, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import { listAuditLog, logAdminAction } from '../repositories/auditLogRepository.ts';
 import { register, AuthError } from '../services/authService.ts';
@@ -15,19 +14,35 @@ import { toPublicBroadcast } from '../models/broadcast.ts';
 import { countPurchasesForUser, getPurchaseStats, listAllPurchases, listRecentPurchases } from '../repositories/reportPurchaseRepository.ts';
 import { countOrdersForUser, getOrderStats, listAllOrders, listRecentDeliveredOrders, updateOrderDeliveryStatus } from '../repositories/orderRepository.ts';
 import { orderDisplayId, toPublicOrder } from '../models/order.ts';
+import { ADMIN_SECTIONS, deleteStaffPermissions, getStaffPermissions, setStaffPermissions } from '../repositories/staffPermissionRepository.ts';
+import type { AdminSectionKey } from '../repositories/staffPermissionRepository.ts';
 
 export const adminRouter = Router();
 
 // Every route here requires a real, JWT-verified account — unlike the older
 // mock-trust realtime routes in routes.ts, there is no client-supplied
-// identity trusted anywhere in this file. Most of the console (broadcasts,
-// blog, audit log, financials, suspending accounts) stays ADMIN-only; STAFF
-// is scoped narrowly to the astrologer-assignment workflow (see staffOk
-// below) — assigning ADMIN or STAFF itself is never available to STAFF,
-// enforced inside the /role handler, not just by route gating.
+// identity trusted anywhere in this file.
+//
+// ADMIN always has every section. STAFF's access is per-account and
+// per-section, not a single hardcoded slice — see requireSection below,
+// which checks the requesting STAFF user's own row in staff_permissions
+// (managed from the admin's Staff page, see the "Staff & Admin accounts"
+// block near the bottom of this file). Managing staff/admin accounts
+// themselves (who exists, what they can reach) is never itself a
+// toggleable section — those routes stay adminOnly unconditionally.
 adminRouter.use(requireAuth);
 const adminOnly = requireRole('ADMIN');
-const staffOk = requireRole('ADMIN', 'STAFF');
+const staffOrAdmin = requireRole('ADMIN', 'STAFF');
+
+function requireSection(section: AdminSectionKey) {
+  return async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+    if (req.user!.role === 'ADMIN') return next();
+    if (req.user!.role !== 'STAFF') return fail(res, 403, 'FORBIDDEN', 'Insufficient permissions');
+    const sections = await getStaffPermissions(req.user!.id);
+    if (!sections.includes(section)) return fail(res, 403, 'FORBIDDEN', 'You do not have access to this section');
+    next();
+  };
+}
 
 async function audit(req: import('express').Request, action: string, target: string) {
   const actor = await findUserById(req.user!.id);
@@ -40,18 +55,30 @@ function fail(res: import('express').Response, status: number, code: string, mes
 
 // ── Users ────────────────────────────────────────────────────────────────
 
-adminRouter.get('/users', staffOk, async (_req, res) => {
+// Deliberately broader than requireSection('users'): the account list is
+// shared foundational data several OTHER sections build on (Astrologers
+// filters it to role=ASTROLOGIST, Staff filters it to STAFF/ADMIN, Overview
+// derives KPI counts from it) — gating the read itself behind the Users
+// section specifically would break those other sections for a staff member
+// who has them but not Users. The actual Users-management actions below
+// (suspend, role change) stay properly section-gated.
+adminRouter.get('/users', staffOrAdmin, async (_req, res) => {
   const rows = await listAllUsers();
   res.json({ success: true, data: rows.map(toPublicUser) });
 });
 
 const statusSchema = z.object({ status: z.enum(['ACTIVE', 'SUSPENDED']) });
 
-adminRouter.patch('/users/:id/status', adminOnly, async (req, res) => {
+adminRouter.patch('/users/:id/status', requireSection('users'), async (req, res) => {
   const parsed = statusSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  // A STAFF account granted the Users section still can't touch another
+  // Staff or Admin account's status — only an actual Admin can do that.
+  if (req.user!.role === 'STAFF' && (target.role === 'ADMIN' || target.role === 'STAFF')) {
+    return fail(res, 403, 'FORBIDDEN', 'Only an admin can change a Staff or Admin account');
+  }
   await updateUserStatus(target.id, parsed.data.status);
   await audit(req, `user.status.${parsed.data.status.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
@@ -59,33 +86,58 @@ adminRouter.patch('/users/:id/status', adminOnly, async (req, res) => {
 
 const roleSchema = z.object({ role: z.enum(['USER', 'ASTROLOGIST', 'STAFF', 'ADMIN']) });
 
-// STAFF can reach this route (staffOk) but only to assign USER/ASTROLOGIST —
-// granting STAFF or ADMIN itself is an ADMIN-exclusive privilege, checked
-// here rather than at the route level since the permitted target roles
-// depend on who's asking, not just whether they're allowed to hit the route.
-adminRouter.patch('/users/:id/role', staffOk, async (req, res) => {
+// STAFF can reach this route (if granted the Users section) but only to
+// assign USER/ASTROLOGIST on a target that isn't itself Staff/Admin —
+// granting Staff/Admin, or touching an existing Staff/Admin account at all,
+// is an ADMIN-exclusive privilege, checked here rather than at the route
+// level since the permitted target roles depend on who's asking.
+adminRouter.patch('/users/:id/role', requireSection('users'), async (req, res) => {
   const parsed = roleSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  if (req.user!.role === 'STAFF' && (parsed.data.role === 'ADMIN' || parsed.data.role === 'STAFF')) {
-    return fail(res, 403, 'FORBIDDEN', 'Only an admin can grant Staff or Admin access');
-  }
   const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  if (req.user!.role === 'STAFF') {
+    if (parsed.data.role === 'ADMIN' || parsed.data.role === 'STAFF') return fail(res, 403, 'FORBIDDEN', 'Only an admin can grant Staff or Admin access');
+    if (target.role === 'ADMIN' || target.role === 'STAFF') return fail(res, 403, 'FORBIDDEN', 'Only an admin can change a Staff or Admin account');
+  }
   await updateUserRole(target.id, parsed.data.role);
+  if (parsed.data.role !== 'STAFF') await deleteStaffPermissions(target.id);
+  // Leaving the Astrologer role should also take them out of the public
+  // bookable catalog — otherwise the catalog row is orphaned but still
+  // publicly listed (see deactivateAstrologerByUserId's own comment).
+  if (target.role === 'ASTROLOGIST' && parsed.data.role !== 'ASTROLOGIST') await deactivateAstrologerByUserId(target.id);
   await audit(req, `user.role.${parsed.data.role.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
 });
 
-// Admin directly onboarding an astrologer, bypassing the public
-// apply→approve flow — creates a real user account (real password, hashed)
-// and an immediately-bookable catalog row in one step.
+// One combined summary instead of 3 separate count endpoints — the Users
+// drawer only ever needs all three at once (see UsersPage.tsx), and this
+// keeps it to a single fetch when the drawer opens.
+adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res) => {
+  const target = await findUserById(req.params.id as string);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  const [reports, consultations, orders] = await Promise.all([
+    countPurchasesForUser(target.id),
+    countForUser(target.email),
+    countOrdersForUser(target.id),
+  ]);
+  res.json({ success: true, data: { reports, consultations, orders } });
+});
+
+// ── Astrologers ──────────────────────────────────────────────────────────
+
+// Admin/staff directly onboarding an astrologer — creates a real user
+// account (real password, hashed) and an immediately-bookable catalog row
+// in one step. Removing an astrologer reuses PATCH /users/:id/role (set
+// role back to USER) rather than a dedicated endpoint — same mechanism the
+// Users page already uses for role changes.
 const addAstrologerSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
 });
 
-adminRouter.post('/astrologers', staffOk, async (req, res) => {
+adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res) => {
   const parsed = addAstrologerSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   try {
@@ -99,25 +151,9 @@ adminRouter.post('/astrologers', staffOk, async (req, res) => {
   }
 });
 
-// One combined summary instead of 3 separate count endpoints — the Users
-// drawer only ever needs all three at once (see UsersPage.tsx), and this
-// keeps it to a single fetch when the drawer opens. Replaces the old
-// name-matched counts against SAMPLE_* mock arrays.
-adminRouter.get('/users/:id/activity', staffOk, async (req, res) => {
-  const target = await findUserById(req.params.id as string);
-  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
-  const [reports, consultations, orders] = await Promise.all([
-    countPurchasesForUser(target.id),
-    countForUser(target.email),
-    countOrdersForUser(target.id),
-  ]);
-  res.json({ success: true, data: { reports, consultations, orders } });
-});
+// ── Dashboard (Overview page KPIs + recent activity) ────────────────────
 
-// ── Dashboard (Overview page KPIs + recent activity, real — replacing the
-// old SAMPLE_CONSULTATIONS/SAMPLE_PURCHASED_REPORTS/SAMPLE_ORDERS reads) ──
-
-adminRouter.get('/dashboard-stats', staffOk, async (_req, res) => {
+adminRouter.get('/dashboard-stats', requireSection('overview'), async (_req, res) => {
   const [consultationsInProgress, purchaseStats, orderStats, recentConsultations, recentPurchases, recentDeliveredOrders] = await Promise.all([
     countInProgress(),
     getPurchaseStats(),
@@ -140,53 +176,23 @@ adminRouter.get('/dashboard-stats', staffOk, async (_req, res) => {
   });
 });
 
-// ── Astrologer applications ─────────────────────────────────────────────
-
-adminRouter.get('/astrologer-applications', staffOk, async (_req, res) => {
-  res.json({ success: true, data: await listApplicationsWithUsers() });
-});
-
-adminRouter.post('/astrologer-applications/:id/approve', staffOk, async (req, res) => {
-  const application = await findApplicationById(req.params.id as string);
-  if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  if (application.status !== 'PENDING') return fail(res, 400, 'ALREADY_DECIDED', 'This application was already decided');
-  const applicant = await findUserById(application.user_id);
-  if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account no longer exists');
-
-  await updateUserRole(applicant.id, 'ASTROLOGIST');
-  await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
-  await decideApplication(application.id, 'APPROVED');
-  await audit(req, 'application.approve', applicant.email);
-  res.json({ success: true, data: { ok: true } });
-});
-
-adminRouter.post('/astrologer-applications/:id/reject', staffOk, async (req, res) => {
-  const application = await findApplicationById(req.params.id as string);
-  if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  if (application.status !== 'PENDING') return fail(res, 400, 'ALREADY_DECIDED', 'This application was already decided');
-  await decideApplication(application.id, 'REJECTED');
-  const applicant = await findUserById(application.user_id);
-  await audit(req, 'application.reject', applicant?.email || application.user_id);
-  res.json({ success: true, data: { ok: true } });
-});
-
-// ── Consultations (real bookings, replacing the old fake admin rows) ────
+// ── Consultations (real bookings) ───────────────────────────────────────
 
 const pageSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-adminRouter.get('/consultations', adminOnly, async (req, res) => {
+adminRouter.get('/consultations', requireSection('consultations'), async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllConsultations(parsed.data.page, parsed.data.limit);
   res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
 });
 
-// ── Report purchases (real, replacing the old fake SAMPLE_PURCHASED_REPORTS) ──
+// ── Report purchases ─────────────────────────────────────────────────────
 
-adminRouter.get('/report-purchases', adminOnly, async (req, res) => {
+adminRouter.get('/report-purchases', requireSection('reports'), async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllPurchases(parsed.data.page, parsed.data.limit);
@@ -197,9 +203,9 @@ adminRouter.get('/report-purchases', adminOnly, async (req, res) => {
   res.json({ success: true, data, pagination: { ...parsed.data, total } });
 });
 
-// ── Orders (Store product orders, real — replacing SAMPLE_ORDERS) ───────
+// ── Orders (Store product orders) ────────────────────────────────────────
 
-adminRouter.get('/orders', adminOnly, async (req, res) => {
+adminRouter.get('/orders', requireSection('orders'), async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllOrders(parsed.data.page, parsed.data.limit);
@@ -209,7 +215,7 @@ adminRouter.get('/orders', adminOnly, async (req, res) => {
 
 const deliveryStatusSchema = z.object({ deliveryStatus: z.enum(['PROCESSING', 'SHIPPED', 'DELIVERED']) });
 
-adminRouter.patch('/orders/:id/delivery-status', adminOnly, async (req, res) => {
+adminRouter.patch('/orders/:id/delivery-status', requireSection('orders'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   const parsed = deliveryStatusSchema.safeParse(req.body);
@@ -222,17 +228,17 @@ adminRouter.patch('/orders/:id/delivery-status', adminOnly, async (req, res) => 
 
 // ── Audit log ────────────────────────────────────────────────────────────
 
-adminRouter.get('/audit-log', adminOnly, async (req, res) => {
+adminRouter.get('/audit-log', requireSection('audit'), async (req, res) => {
   const parsed = pageSchema.safeParse(req.query);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   res.json({ success: true, data: await listAuditLog(parsed.data.page, parsed.data.limit) });
 });
 
-// Lets the admin console log a manual note (e.g. "requested more info from
-// an applicant") that isn't tied to any other state-changing action here.
+// Lets the admin console log a manual note that isn't tied to any other
+// state-changing action here.
 const auditNoteSchema = z.object({ action: z.string().trim().min(1).max(100), target: z.string().trim().min(1).max(200) });
 
-adminRouter.post('/audit-log', adminOnly, async (req, res) => {
+adminRouter.post('/audit-log', requireSection('audit'), async (req, res) => {
   const parsed = auditNoteSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await audit(req, parsed.data.action, parsed.data.target);
@@ -255,7 +261,7 @@ const blogPostSchema = z.object({
   featured: z.boolean().default(false),
 });
 
-adminRouter.post('/blog', adminOnly, async (req, res) => {
+adminRouter.post('/blog', requireSection('blog'), async (req, res) => {
   const parsed = blogPostSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const row = await createBlogPost(parsed.data);
@@ -263,7 +269,7 @@ adminRouter.post('/blog', adminOnly, async (req, res) => {
   res.status(201).json({ success: true, data: toPublicBlogPost(row) });
 });
 
-adminRouter.delete('/blog/:id', adminOnly, async (req, res) => {
+adminRouter.delete('/blog/:id', requireSection('blog'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deleteBlogPost(id);
@@ -273,13 +279,13 @@ adminRouter.delete('/blog/:id', adminOnly, async (req, res) => {
 
 // ── Broadcasts (site-wide admin announcements) ──────────────────────────
 
-adminRouter.get('/broadcasts', adminOnly, async (_req, res) => {
+adminRouter.get('/broadcasts', requireSection('notifications'), async (_req, res) => {
   res.json({ success: true, data: (await listAllBroadcasts()).map(toPublicBroadcast) });
 });
 
 const broadcastSchema = z.object({ message: z.string().trim().min(1).max(500) });
 
-adminRouter.post('/broadcasts', adminOnly, async (req, res) => {
+adminRouter.post('/broadcasts', requireSection('notifications'), async (req, res) => {
   const parsed = broadcastSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const row = await createBroadcast(parsed.data.message, req.user!.id);
@@ -287,10 +293,65 @@ adminRouter.post('/broadcasts', adminOnly, async (req, res) => {
   res.status(201).json({ success: true, data: toPublicBroadcast(row) });
 });
 
-adminRouter.delete('/broadcasts/:id', adminOnly, async (req, res) => {
+adminRouter.delete('/broadcasts/:id', requireSection('notifications'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deactivateBroadcast(id);
   await audit(req, 'broadcast.deactivate', String(id));
   res.json({ success: true, data: { ok: true } });
+});
+
+// ── Staff & Admin accounts ───────────────────────────────────────────────
+// Always adminOnly, regardless of any Staff permission toggle — who has
+// admin-console access at all is not itself a delegable section.
+
+adminRouter.get('/staff', adminOnly, async (_req, res) => {
+  const rows = (await listAllUsers()).filter(u => u.role === 'STAFF' || u.role === 'ADMIN');
+  const data = await Promise.all(rows.map(async u => ({
+    ...toPublicUser(u),
+    sections: u.role === 'ADMIN' ? [...ADMIN_SECTIONS] : await getStaffPermissions(u.id),
+  })));
+  res.json({ success: true, data });
+});
+
+const addStaffSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(200),
+  role: z.enum(['STAFF', 'ADMIN']),
+});
+
+adminRouter.post('/staff', adminOnly, async (req, res) => {
+  const parsed = addStaffSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  try {
+    const { user } = await register(parsed.data);
+    await audit(req, `${parsed.data.role.toLowerCase()}.create`, user.email);
+    res.status(201).json({ success: true, data: user });
+  } catch (e) {
+    if (e instanceof AuthError) return fail(res, e.status, 'AUTH_ERROR', e.message);
+    throw e;
+  }
+});
+
+const permissionsSchema = z.object({ sections: z.array(z.enum(ADMIN_SECTIONS)) });
+
+adminRouter.patch('/staff/:id/permissions', adminOnly, async (req, res) => {
+  const parsed = permissionsSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const target = await findUserById(req.params.id as string);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  if (target.role !== 'STAFF') return fail(res, 400, 'NOT_STAFF', 'Only a Staff account has toggleable permissions — Admin already has full access');
+  await setStaffPermissions(target.id, parsed.data.sections);
+  await audit(req, 'staff.permissions.update', target.email);
+  res.json({ success: true, data: { sections: parsed.data.sections } });
+});
+
+// A Staff/Admin account fetching its OWN permitted sections — the admin
+// console uses this to decide what to render for a Staff session instead
+// of a hardcoded section list.
+adminRouter.get('/my-permissions', async (req, res) => {
+  if (req.user!.role === 'ADMIN') return res.json({ success: true, data: { sections: [...ADMIN_SECTIONS] } });
+  if (req.user!.role !== 'STAFF') return fail(res, 403, 'FORBIDDEN', 'Insufficient permissions');
+  res.json({ success: true, data: { sections: await getStaffPermissions(req.user!.id) } });
 });

@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function OverviewPage({ onNavigate }: Props) {
-  const { t, currentUser, accounts, applications } = useAppContext();
+  const { t, currentUser, accounts } = useAppContext();
   const [stats, setStats] = useState<ApiDashboardStats | null>(null);
 
   useEffect(() => {
@@ -23,13 +23,11 @@ export default function OverviewPage({ onNavigate }: Props) {
   const totalUsers = accounts.filter(a => a.role === 'USER').length;
   const activeUsers = accounts.filter(a => a.role === 'USER' && (a.status ?? 'ACTIVE') === 'ACTIVE').length;
   const totalAstrologers = accounts.filter(a => a.role === 'ASTROLOGIST').length;
-  const pendingApps = applications.filter(a => a.status === 'PENDING').length;
 
   const kpis = [
     { icon: '☰', label: t('admin_kpi_total_users'), value: totalUsers },
     { icon: '✓', label: t('admin_kpi_active_users'), value: activeUsers },
     { icon: '☉', label: t('admin_kpi_astrologers'), value: totalAstrologers },
-    { icon: '◎', label: t('admin_kpi_pending_applications'), value: pendingApps },
     { icon: '◐', label: t('admin_kpi_todays_consultations'), value: stats ? stats.consultationsInProgress : '—' },
     { icon: '₹', label: t('admin_kpi_revenue'), value: stats ? `₹${stats.revenue.toLocaleString()}` : '—' },
     { icon: '▤', label: t('admin_kpi_reports_generated'), value: stats ? stats.reportsGenerated : '—' },
@@ -37,25 +35,19 @@ export default function OverviewPage({ onNavigate }: Props) {
   ];
 
   const QUICK_ACTIONS: { icon: string; labelKey: string; section: AdminSection }[] = [
-    { icon: '◎', labelKey: 'admin_qa_review_applications', section: 'applications' },
     { icon: '☉', labelKey: 'admin_qa_add_astrologer', section: 'astrologers' },
+    { icon: '◆', labelKey: 'admin_sidebar_staff', section: 'staff' },
     { icon: '◐', labelKey: 'admin_qa_view_consultations', section: 'consultations' },
     { icon: '▤', labelKey: 'admin_qa_manage_reports', section: 'reports' },
     { icon: '▢', labelKey: 'admin_qa_manage_store', section: 'orders' },
     { icon: '♃', labelKey: 'admin_qa_send_announcement', section: 'notifications' },
   ];
 
-  // Merged from 4 different sources (applications, consultations, report
-  // purchases, delivered orders) — sorted by a real timestamp so "recent
-  // activity" is genuinely chronological across all of them, not just
-  // grouped by source and truncated.
+  // Merged from 3 different sources (consultations, report purchases,
+  // delivered orders) — sorted by a real timestamp so "recent activity" is
+  // genuinely chronological across all of them, not just grouped by source
+  // and truncated.
   const dated: (TimelineItem & { ts: number })[] = [];
-  applications.forEach(a => {
-    const ts = new Date(a.submittedAt).getTime();
-    if (a.status === 'APPROVED') dated.push({ id: `app-appr-${a.id}`, icon: '✓', text: formatMsg(t('admin_activity_application_approved'), { name: a.userName }), at: formatDateTime(a.submittedAt), ts });
-    else if (a.status === 'REJECTED') dated.push({ id: `app-rej-${a.id}`, icon: '✕', text: formatMsg(t('admin_activity_application_rejected'), { name: a.userName }), at: formatDateTime(a.submittedAt), ts });
-    else dated.push({ id: `app-sub-${a.id}`, icon: '◎', text: formatMsg(t('admin_activity_astrologer_applied'), { name: a.userName }), at: formatDateTime(a.submittedAt), ts });
-  });
   stats?.recentConsultations.forEach(c =>
     dated.push({ id: `consult-${c.id}`, icon: '◐', text: formatMsg(t('admin_activity_consultation_booked'), { user: c.userName, astrologer: c.astrologerName }), at: formatDateTime(new Date(c.createdAt).toISOString()), ts: c.createdAt })
   );

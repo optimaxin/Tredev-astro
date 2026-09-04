@@ -5,7 +5,7 @@ import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer } from '../../services/astrologerService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
-import { StatusBadge, SearchInput, EmptyState, AdminButton } from '../components/SharedControls';
+import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog } from '../components/SharedControls';
 import { accountStatus } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
@@ -27,7 +27,7 @@ function joinedProfile(account: AuthUser, catalog: UiAstrologer[]) {
 }
 
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, createAstrologerAccount } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, createAstrologerAccount, updateAccountRole } = useAppContext();
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AuthUser | null>(null);
@@ -36,6 +36,24 @@ export default function AstrologersPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [formError, setFormError] = useState('');
   const [catalog, setCatalog] = useState<UiAstrologer[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<AuthUser | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState('');
+
+  const handleRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    setRemoveError('');
+    try {
+      await updateAccountRole(removeTarget.email, 'USER');
+      setRemoveTarget(null);
+      if (selected?.email === removeTarget.email) setSelected(null);
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : 'Could not remove this astrologer.');
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   useEffect(() => {
     astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data)).catch(() => {});
@@ -114,6 +132,7 @@ export default function AstrologersPage() {
                   {status === 'ACTIVE'
                     ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                     : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
+                  <AdminButton variant="danger" onClick={() => setRemoveTarget(a)}>{t('admin_action_remove')}</AdminButton>
                 </div>
               </div>
             );
@@ -140,6 +159,7 @@ export default function AstrologersPage() {
                     {s === 'ACTIVE'
                       ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                       : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
+                    <AdminButton variant="danger" onClick={() => setRemoveTarget(a)}>{t('admin_action_remove')}</AdminButton>
                   </div>
                 );
               }
@@ -208,6 +228,18 @@ export default function AstrologersPage() {
           {formError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{formError}</p>}
         </form>
       </Drawer>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        title={t('admin_astro_confirm_remove_title')}
+        description={t('admin_astro_confirm_remove_desc')}
+        confirmLabel={t('admin_action_remove')}
+        cancelLabel={t('admin_action_cancel')}
+        variant="danger"
+        onConfirm={handleRemove}
+        onCancel={() => setRemoveTarget(null)}
+      />
+      {removeError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem', marginTop: 8 }}>{removeError}</p>}
     </div>
   );
 }

@@ -104,6 +104,15 @@ export async function updateMaxConcurrent(id: number, maxConcurrent: number) {
   await query('UPDATE astrologers SET max_concurrent = $1 WHERE id = $2', [maxConcurrent, id]);
 }
 
+// Called when an account stops being an Astrologer (admin.routes.ts's
+// PATCH /users/:id/role) — is_active is the same flag listAstrologers'
+// public catalog query already filters on, so this is what actually takes
+// them out of the bookable listing; demoting the user's role alone would
+// leave a now-orphaned catalog row still publicly listed.
+export async function deactivateAstrologerByUserId(userId: string): Promise<void> {
+  await query('UPDATE astrologers SET is_active = 0 WHERE user_id = $1', [userId]);
+}
+
 export function findAstrologerById(id: number): Promise<AstrologerCatalogRow | undefined> {
   return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE id = $1 AND is_active = 1', [id]);
 }

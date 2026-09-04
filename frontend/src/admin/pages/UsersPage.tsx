@@ -16,9 +16,15 @@ function joinedDate(id: string): string {
   return match ? formatDate(new Date(Number(match[1])).toISOString()) : '—';
 }
 
+type RoleFilter = 'ALL' | 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
+
 export default function UsersPage() {
   const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+  // Was hardcoded to role==='USER' only — an admin couldn't find or block a
+  // Staff/Astrologer/Admin account here at all, only plain Users. This is
+  // now the "block ANY account" surface; role is just another filter.
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AuthUser | null>(null);
@@ -60,10 +66,15 @@ export default function UsersPage() {
   const users = useMemo(() => {
     const q = search.trim().toLowerCase();
     return accounts
-      .filter(a => a.role === 'USER')
+      .filter(a => roleFilter === 'ALL' || a.role === roleFilter)
       .filter(a => filter === 'ALL' || accountStatus(a.status) === filter)
       .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
-  }, [accounts, filter, search]);
+  }, [accounts, filter, roleFilter, search]);
+
+  // A Staff viewer can only touch (suspend/restore) plain User/Astrologer
+  // accounts — mirrors admin.routes.ts's own restriction on PATCH
+  // /users/:id/status, so this button never shows only to 403 when clicked.
+  const canModerate = (u: AuthUser) => isAdmin || (u.role !== 'ADMIN' && u.role !== 'STAFF');
 
   const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const pageRows = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -75,6 +86,17 @@ export default function UsersPage() {
       </div>
 
       <div className={styles.toolbar}>
+        <FilterBar
+          filters={[
+            { key: 'ALL', label: t('admin_status_all') },
+            { key: 'USER', label: t('admin_sidebar_users') },
+            { key: 'ASTROLOGIST', label: t('admin_kpi_astrologers') },
+            { key: 'STAFF', label: t('admin_staff_role_staff') },
+            { key: 'ADMIN', label: t('admin_staff_role_admin') },
+          ]}
+          active={roleFilter}
+          onChange={k => { setRoleFilter(k as RoleFilter); setPage(1); }}
+        />
         <FilterBar
           filters={[
             { key: 'ALL', label: t('admin_status_all') },
@@ -90,6 +112,7 @@ export default function UsersPage() {
       <DataTable
         columns={[
           { key: 'user', label: t('admin_users_col_user'), render: u => (<div><div style={{ fontWeight: 700 }}>{u.name}</div><div style={{ fontSize: '0.72rem', color: 'var(--adm-muted)' }}>{u.email}</div></div>) },
+          { key: 'role', label: t('admin_staff_col_role'), render: u => u.role },
           { key: 'joined', label: t('admin_users_col_joined'), render: u => joinedDate(u.id) },
           { key: 'status', label: t('admin_users_col_status'), render: u => { const s = accountStatus(u.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
         ]}
@@ -113,12 +136,15 @@ export default function UsersPage() {
         title={selected?.name || ''}
         footer={selected ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <AdminButton variant="gold" disabled={roleBusy} onClick={() => assignRole('ASTROLOGIST')}>Make Astrologer</AdminButton>
-            {isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('STAFF')}>Make Staff</AdminButton>}
-            {isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('ADMIN')}>Make Admin</AdminButton>}
-            {accountStatus(selected.status) === 'ACTIVE'
+            {/* Promoting to Staff/Admin/Astrologer only makes sense starting
+                from a plain User — Staff/Admin accounts already have a
+                dedicated page (Staff), and Astrologers have their own. */}
+            {selected.role === 'USER' && <AdminButton variant="gold" disabled={roleBusy} onClick={() => assignRole('ASTROLOGIST')}>Make Astrologer</AdminButton>}
+            {selected.role === 'USER' && isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('STAFF')}>Make Staff</AdminButton>}
+            {selected.role === 'USER' && isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('ADMIN')}>Make Admin</AdminButton>}
+            {canModerate(selected) && (accountStatus(selected.status) === 'ACTIVE'
               ? <AdminButton variant="danger" onClick={() => { suspendAccount(selected.email); setSelected(null); }}>{t('admin_action_suspend')}</AdminButton>
-              : <AdminButton variant="gold" onClick={() => { restoreAccount(selected.email); setSelected(null); }}>{t('admin_action_restore')}</AdminButton>}
+              : <AdminButton variant="gold" onClick={() => { restoreAccount(selected.email); setSelected(null); }}>{t('admin_action_restore')}</AdminButton>)}
           </div>
         ) : undefined}
       >

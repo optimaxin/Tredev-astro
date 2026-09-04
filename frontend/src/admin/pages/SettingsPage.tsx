@@ -71,6 +71,14 @@ export default function SettingsPage() {
         <div className={styles.pageSub}>{t('admin_settings_readonly_note')}</div>
       </div>
 
+      {/* Short info cards together in one row — the realtime-rules card
+          below is real functionality (inputs + save) and much taller, so it
+          gets its own full-width row instead of stretching/cramping next to
+          these. The old grid also carried 3 purely-decorative cards
+          (notification templates / payment / system prefs) that were just a
+          title and a sentence with no actual control behind them — removed
+          rather than faked, since that's what was making the layout read as
+          unfinished. */}
       <div className={styles.settingsGrid}>
         <div className={styles.settingsCard}>
           <div className={styles.settingsCardTitle}>{t('admin_settings_general')}</div>
@@ -95,22 +103,9 @@ export default function SettingsPage() {
           <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_kpi_astrologers')}</span><span className={styles.drawerFieldValue}>{roleCounts.ASTROLOGIST}</span></div>
           <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_settings_admins')}</span><span className={styles.drawerFieldValue}>{roleCounts.ADMIN}</span></div>
         </div>
+      </div>
 
-        <div className={styles.settingsCard}>
-          <div className={styles.settingsCardTitle}>{t('admin_settings_notification_templates')}</div>
-          <p className={styles.settingsCardDesc}>{t('admin_settings_notification_templates_desc')}</p>
-        </div>
-
-        <div className={styles.settingsCard}>
-          <div className={styles.settingsCardTitle}>{t('admin_settings_payment')}</div>
-          <p className={styles.settingsCardDesc}>{t('admin_settings_payment_desc')}</p>
-        </div>
-
-        <div className={styles.settingsCard}>
-          <div className={styles.settingsCardTitle}>{t('admin_settings_system_prefs')}</div>
-          <p className={styles.settingsCardDesc}>{t('admin_settings_system_prefs_desc')}</p>
-        </div>
-
+      <div className={styles.settingsFullRow}>
         <RealtimeConfigCard />
       </div>
     </div>

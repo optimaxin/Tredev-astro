@@ -39,17 +39,11 @@ export interface ApiUserRecord {
   created_at: string;
 }
 
-export interface ApiApplication {
-  id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  expertise: string;
-  experience: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  submittedAt: string;
-  decidedAt: string | null;
-}
+// Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
+export const ADMIN_SECTIONS = [
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'blog', 'notifications', 'audit', 'settings',
+] as const;
+export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
 export interface ApiAuditEntry {
   id: string;
@@ -140,6 +134,10 @@ export interface ApiDashboardStats {
   recentDeliveredOrders: { id: string; createdAt: number }[];
 }
 
+export interface ApiStaffMember extends ApiUserRecord {
+  sections: AdminSectionKey[];
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -148,10 +146,6 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   addAstrologer: (name: string, email: string, password: string) =>
     request<ApiUserRecord>('/astrologers', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
-
-  listApplications: () => request<ApiApplication[]>('/astrologer-applications'),
-  approveApplication: (id: string) => request<{ ok: boolean }>(`/astrologer-applications/${id}/approve`, { method: 'POST' }),
-  rejectApplication: (id: string) => request<{ ok: boolean }>(`/astrologer-applications/${id}/reject`, { method: 'POST' }),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),
 
@@ -176,4 +170,11 @@ export const adminService = {
   getUserActivity: (id: string) => request<ApiUserActivity>(`/users/${id}/activity`),
 
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
+
+  listStaff: () => request<ApiStaffMember[]>('/staff'),
+  addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>
+    request<ApiUserRecord>('/staff', { method: 'POST', body: JSON.stringify({ name, email, password, role }) }),
+  updateStaffPermissions: (id: string, sections: AdminSectionKey[]) =>
+    request<{ sections: AdminSectionKey[] }>(`/staff/${id}/permissions`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
+  getMyPermissions: () => request<{ sections: AdminSectionKey[] }>('/my-permissions'),
 };

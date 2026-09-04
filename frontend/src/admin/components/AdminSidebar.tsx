@@ -4,13 +4,12 @@ import styles from './AdminSidebar.module.css';
 
 const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'overview', icon: '◈', labelKey: 'admin_sidebar_overview' },
-  { key: 'applications', icon: '◎', labelKey: 'admin_sidebar_applications' },
   { key: 'astrologers', icon: '☉', labelKey: 'admin_sidebar_astrologers' },
   { key: 'users', icon: '☰', labelKey: 'admin_sidebar_users' },
+  { key: 'staff', icon: '◆', labelKey: 'admin_sidebar_staff' },
   { key: 'consultations', icon: '◐', labelKey: 'admin_sidebar_consultations' },
   { key: 'reports', icon: '▤', labelKey: 'admin_sidebar_reports' },
   { key: 'orders', icon: '▢', labelKey: 'admin_sidebar_orders' },
-  { key: 'content', icon: '✎', labelKey: 'admin_sidebar_content' },
   { key: 'blog', icon: '✍', labelKey: 'admin_sidebar_blog' },
   { key: 'notifications', icon: '♃', labelKey: 'admin_sidebar_notifications' },
   { key: 'audit', icon: '◈', labelKey: 'admin_sidebar_audit' },
@@ -21,14 +20,15 @@ interface Props {
   active: AdminSection;
   onNavigate: (section: AdminSection) => void;
   mobileOpen: boolean;
-  pendingApplications: number;
-  // Restricts which nav items render at all — used for STAFF, who only get
-  // a narrow slice of the console (see AdminConsole.tsx's STAFF_SECTIONS).
-  // Undefined/omitted means no restriction (the ADMIN case).
+  // Restricts which nav items render at all — used for STAFF, whose real
+  // allowed sections are per-account (see AdminConsole.tsx, which fetches
+  // them from /admin/my-permissions). Undefined means no restriction (the
+  // ADMIN case) — 'staff' itself is never in a STAFF account's own list, so
+  // it only ever shows for an unrestricted (ADMIN) sidebar.
   allowedSections?: AdminSection[];
 }
 
-export default function AdminSidebar({ active, onNavigate, mobileOpen, pendingApplications, allowedSections }: Props) {
+export default function AdminSidebar({ active, onNavigate, mobileOpen, allowedSections }: Props) {
   const { t } = useAppContext();
   const items = allowedSections ? NAV_ITEMS.filter(item => allowedSections.includes(item.key)) : NAV_ITEMS;
 
@@ -51,9 +51,6 @@ export default function AdminSidebar({ active, onNavigate, mobileOpen, pendingAp
           >
             <span className={styles.navIcon}>{item.icon}</span>
             <span className={styles.navLabel}>{t(item.labelKey)}</span>
-            {item.key === 'applications' && pendingApplications > 0 && (
-              <span className={styles.navBadge}>{pendingApplications}</span>
-            )}
           </button>
         ))}
       </nav>

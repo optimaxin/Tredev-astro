@@ -177,6 +177,32 @@ export function SearchInput({ value, onChange, placeholder }: SearchInputProps) 
   );
 }
 
+/* ---------- ToggleSwitch ---------- */
+interface ToggleSwitchProps {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label?: string;
+  disabled?: boolean;
+}
+
+export function ToggleSwitch({ checked, onChange, label, disabled }: ToggleSwitchProps) {
+  return (
+    <label className={`${styles.toggleRow} ${disabled ? styles.toggleRowDisabled : ''}`}>
+      {label && <span className={styles.toggleLabel}>{label}</span>}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        className={`${styles.toggleSwitch} ${checked ? styles.toggleSwitchOn : ''}`}
+        onClick={() => !disabled && onChange(!checked)}
+      >
+        <span className={styles.toggleKnob} />
+      </button>
+    </label>
+  );
+}
+
 /* ---------- Buttons (shared, not spec-named but avoids re-styling per page) ---------- */
 export function AdminButton({ children, variant = 'outline', ...rest }: { children: ReactNode; variant?: 'gold' | 'outline' | 'danger' } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const cls = variant === 'gold' ? styles.btnGold : variant === 'danger' ? styles.btnDanger : styles.btnOutline;
