@@ -50,11 +50,18 @@ interface RealtimeContextValue {
 
   // User side
   userSync: UserSyncSnapshot | null;
-  requestConsultation: (astrologerId: number, category: string, type: ConsultationType) => Promise<RequestResult>;
+  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => Promise<RequestResult>;
   cancelMyQueueEntry: () => Promise<void>;
   recommendations: RecommendedAstrologer[] | null;
   queueExpired: boolean;
   clearQueueExpired: () => void;
+
+  // Time-boxed consultations — either party can end early; either can top
+  // up once the "expiring soon" warning fires (~1 min before the chosen
+  // duration, plus any prior top-ups, runs out).
+  endConsultationById: (id: string) => Promise<void>;
+  extendConsultationById: (id: string, extraMinutes: number) => Promise<void>;
+  expiringSoon: { consultationId: string; remainingSeconds: number } | null;
 
   toasts: Toast[];
   dismissToast: (id: string) => void;
@@ -97,6 +104,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [queueExpired, setQueueExpired] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [liveChatMessages, setLiveChatMessages] = useState<ChatMessage[]>([]);
+  const [expiringSoon, setExpiringSoon] = useState<{ consultationId: string; remainingSeconds: number } | null>(null);
   const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(() => loadNotifPrefs());
   const notifPrefsRef = useRef(notifPrefs);
   useEffect(() => { notifPrefsRef.current = notifPrefs; }, [notifPrefs]);
@@ -164,6 +172,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on('chat:ended', (consultation) => {
       setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === consultation.id ? null : prev.activeConsultation } : prev);
       setUserSync(prev => prev ? { ...prev, consultation } : prev);
+      setExpiringSoon(prev => prev?.consultationId === consultation.id ? null : prev);
+    });
+
+    socket.on('chat:expiring-soon', (payload: { consultationId: string; remainingSeconds: number }) => {
+      setExpiringSoon(payload);
+    });
+    socket.on('chat:extended', (consultation) => {
+      setAstrologerSync(prev => prev && prev.activeConsultation?.id === consultation.id ? { ...prev, activeConsultation: consultation } : prev);
+      setUserSync(prev => prev && prev.consultation?.id === consultation.id ? { ...prev, consultation } : prev);
+      setExpiringSoon(prev => prev?.consultationId === consultation.id ? null : prev);
     });
 
     socket.on('queue:position', ({ position, eta }: { position: number; eta: { minMinutes: number; maxMinutes: number } }) => {
@@ -236,6 +254,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     await realtimeApi.endConsultation(astrologerSync.activeConsultation.id, currentUser.email);
   }, [currentUser, astrologerSync]);
 
+  // Generic id-based versions (unlike endActiveConsultation, which only
+  // ever acts on the astrologer's OWN activeConsultation) — the user side
+  // has no equivalent "my active consultation" slot to reach for, so these
+  // just take whatever id the caller already has in scope.
+  const endConsultationById = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    await realtimeApi.endConsultation(id, currentUser.email);
+  }, [currentUser]);
+
+  const extendConsultationById = useCallback(async (id: string, extraMinutes: number) => {
+    if (!currentUser) return;
+    await realtimeApi.extendConsultation(id, currentUser.email, extraMinutes);
+  }, [currentUser]);
+
   const markNotifRead = useCallback(async (id: string) => {
     if (!currentUser) return;
     setAstrologerSync(prev => prev ? { ...prev, notifications: prev.notifications.map(n => n.id === id ? { ...n, read: true } : n) } : prev);
@@ -263,10 +295,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('astro_realtime_notif_prefs', JSON.stringify(next));
   }, []);
 
-  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType) => {
+  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => {
     if (!currentUser) throw new Error('Not logged in');
     const requestId = `req-${currentUser.email}-${astrologerId}-${Date.now()}`;
-    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type });
+    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes });
     setQueueExpired(false);
     if (result.outcome === 'QUEUED') {
       setUserSync({ consultation: null, queueEntry: result.entry, position: result.position, eta: result.eta });
@@ -292,6 +324,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
+      endConsultationById, extendConsultationById, expiringSoon,
       toasts, dismissToast, liveChatMessages,
       sendCallSignal, onCallSignal,
     }}>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  acceptConsultation, cancelQueueEntry, declineConsultation, endConsultation,
+  acceptConsultation, cancelQueueEntry, declineConsultation, endConsultation, extendConsultation,
   getAdminConfig, getAstrologer, getAstrologerByEmail, getAstrologerSyncSnapshot,
   getRecommendations, getUserSyncSnapshot, listNotifications, listPublicAstrologers,
   markAllNotificationsRead, markNotificationRead, requestConsultation, setIntent,
@@ -67,15 +67,15 @@ router.get('/users/sync', async (req, res) => {
 });
 
 router.post('/consultations/request', async (req, res) => {
-  const { requestId, astrologerId, userEmail, userName, category, type } = req.body as {
-    requestId?: string; astrologerId?: number; userEmail?: string; userName?: string; category?: string; type?: ConsultationType;
+  const { requestId, astrologerId, userEmail, userName, category, type, durationMinutes } = req.body as {
+    requestId?: string; astrologerId?: number; userEmail?: string; userName?: string; category?: string; type?: ConsultationType; durationMinutes?: number;
   };
   if (!requestId || !astrologerId || !userEmail || !userName || !category || !type) {
     return res.status(400).json({ error: 'requestId, astrologerId, userEmail, userName, category, type are required' });
   }
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
-  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type });
+  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes });
   res.json(result);
 });
 
@@ -98,6 +98,14 @@ router.post('/consultations/:id/decline', async (req, res) => {
 router.post('/consultations/:id/end', async (req, res) => {
   try {
     res.json(await endConsultation(req.params.id, String(req.body.email || '')));
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+router.post('/consultations/:id/extend', async (req, res) => {
+  try {
+    res.json(await extendConsultation(req.params.id, String(req.body.email || ''), Number(req.body.extraMinutes)));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }

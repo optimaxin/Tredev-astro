@@ -58,6 +58,8 @@ export interface Consultation {
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
+  durationMinutes: number; // chosen by the user at booking time
+  extendedMinutes: number; // accumulated top-ups added mid-call
 }
 
 export interface QueueEntry {
@@ -71,6 +73,7 @@ export interface QueueEntry {
   requestId: string;
   joinedAt: number;
   promotedConsultationId?: string;
+  durationMinutes: number; // carried through to the Consultation once promoted
 }
 
 export type NotificationKind = 'chat_request' | 'queue_waiting' | 'consultation_completed' | 'system';

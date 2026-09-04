@@ -99,4 +99,20 @@ export function attachSockets(io: Server) {
       io.to(userRoom(consultation.userEmail)).emit('chat:message', message);
     }).catch(console.error);
   });
+
+  // Time-boxed consultations: fired ~1 min before the chosen duration
+  // (plus any top-ups) runs out, so the user's screen can offer to extend
+  // before it auto-ends. 'chat:extended' clears that prompt on both sides
+  // once someone actually adds time.
+  bus.onTyped('chat:expiring-soon', payload => {
+    getConsultation(payload.consultationId).then(consultation => {
+      if (!consultation) return;
+      io.to(astroRoom(consultation.astrologerId)).emit('chat:expiring-soon', payload);
+      io.to(userRoom(consultation.userEmail)).emit('chat:expiring-soon', payload);
+    }).catch(console.error);
+  });
+  bus.onTyped('chat:extended', c => {
+    io.to(astroRoom(c.astrologerId)).emit('chat:extended', c);
+    io.to(userRoom(c.userEmail)).emit('chat:extended', c);
+  });
 }

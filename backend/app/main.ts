@@ -17,7 +17,7 @@ import { ordersRouter } from './api/orders.routes.ts';
 import { adminRouter } from './api/admin.routes.ts';
 import { contentRouter } from './api/content.routes.ts';
 import { attachSockets } from './websocket/sockets.ts';
-import { runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
+import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
@@ -38,6 +38,7 @@ await seedDemoAccounts();
 await seedAstrologerCatalog();
 await seedContent();
 await seedRealtimeStore();
+await rescheduleActiveConsultationTimers();
 
 const app = express();
 app.use(cors({ origin: corsOrigin }));

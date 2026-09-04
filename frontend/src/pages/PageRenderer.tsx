@@ -1759,6 +1759,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const { publicStates, requestConsultation } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
+  const [durationMinutes, setDurationMinutes] = useState(20);
   const [activeSlot, setActiveSlot] = useState(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1777,6 +1778,8 @@ function ConsultationBookingPage({ id }: { id: any }) {
     { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: '20-min session text consultation' },
     { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
   ];
+
+  const DURATION_OPTIONS = [10, 20, 30, 60];
 
   const SLOTS = [
     'Today - 04:30 PM',
@@ -1804,7 +1807,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
     setError(null);
     try {
       const category = astrologer.category[0] || astrologer.specialization[0];
-      const result = await requestConsultation(astrologer.id, category, activeType);
+      const result = await requestConsultation(astrologer.id, category, activeType, durationMinutes);
       if (result.outcome === 'UNAVAILABLE') {
         setError(result.reason);
       } else {
@@ -1851,8 +1854,20 @@ function ConsultationBookingPage({ id }: { id: any }) {
                     </div>
                   ))}
                 </div>
+                <h3 className={styles.contentSectionTitle} style={{ border: 'none', marginTop: '20px' }}>Select Duration</h3>
+                <div className={styles.optionSelectGrid}>
+                  {DURATION_OPTIONS.map(mins => (
+                    <div
+                      key={mins}
+                      className={`${styles.optionSelector} ${durationMinutes === mins ? styles.optionSelectorActive : ''}`}
+                      onClick={() => setDurationMinutes(mins)}
+                    >
+                      <span className={styles.optionName}>{mins} min</span>
+                    </div>
+                  ))}
+                </div>
                 <p className={styles.reviewCount} style={{ marginTop: '16px' }}>
-                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot.
+                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Your chat/call runs for the duration you picked; you'll get an option to extend about a minute before it ends, and you can end it yourself any time.
                 </p>
               </div>
             </div>
@@ -1863,13 +1878,17 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span>Astrologist</span>
                 <span style={{ color: 'var(--color-text-light)' }}>{astrologer.name}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
                 <span>Format</span>
                 <span style={{ color: 'var(--color-text-light)' }}>{selectedOpt.label}</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
+                <span>Duration</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{durationMinutes} min</span>
+              </div>
               <div style={{ borderTop: '1px solid rgba(184,138,59,0.15)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--color-gold)' }}>
-                <span>Rate</span>
-                <span>₹{astrologer.price}/min</span>
+                <span>Estimated Total</span>
+                <span>₹{astrologer.price * durationMinutes}</span>
               </div>
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
               <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting} onClick={handleStartNow}>
@@ -1950,8 +1969,21 @@ function ConsultationBookingPage({ id }: { id: any }) {
 // computed client-side; it only renders what server/store.ts has decided.
 function ConsultationWaitingPage() {
   const { setPage, setSelectedId } = useAppContext();
-  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry } = useRealtime();
+  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, extendConsultationById, expiringSoon } = useRealtime();
   const [justReviewed, setJustReviewed] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [extending, setExtending] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // expiringSoon starts at a fixed 60s from the server (see
+  // realtimeStore.ts's scheduleExpiry) — ticked down client-side just for
+  // a live-feeling countdown; the server's own end-timer is the real clock.
+  useEffect(() => {
+    if (!expiringSoon || expiringSoon.consultationId !== userSync?.consultation?.id) { setCountdown(null); return; }
+    setCountdown(expiringSoon.remainingSeconds);
+    const id = window.setInterval(() => setCountdown(s => (s !== null && s > 0 ? s - 1 : 0)), 1000);
+    return () => window.clearInterval(id);
+  }, [expiringSoon, userSync?.consultation?.id]);
 
   const astrologerId = userSync?.queueEntry?.astrologerId ?? userSync?.consultation?.astrologerId;
   const { astrologer } = useAstrologer(astrologerId);
@@ -2039,20 +2071,45 @@ function ConsultationWaitingPage() {
     );
   }
   if (consultation.status === 'ACTIVE' || consultation.status === 'ACCEPTED') {
+    const showTopUp = countdown !== null && expiringSoon?.consultationId === consultation.id;
+    const handleEnd = async () => {
+      setEnding(true);
+      try { await endConsultationById(consultation.id); } finally { setEnding(false); }
+    };
+    const handleExtend = async (extraMinutes: number) => {
+      setExtending(true);
+      try { await extendConsultationById(consultation.id, extraMinutes); } finally { setExtending(false); }
+    };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ maxWidth: '600px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2>Your consultation with {astrologer?.name} is now active</h2>
-            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
+            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · {consultation.durationMinutes + consultation.extendedMinutes} min</p>
           </div>
+
+          {showTopUp && (
+            <div style={{ border: '1px solid var(--color-gold)', background: 'rgba(184,138,59,0.08)', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '14px' }}>
+                Your session ends in <strong>{countdown}s</strong> — want more time?
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {[5, 10, 15].map(mins => (
+                  <button key={mins} className="btn btn-gold btn-sm" disabled={extending} onClick={() => handleExtend(mins)}>
+                    +{mins} min
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {consultation.type === 'voice' ? (
             <CallWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} isInitiator />
           ) : (
             <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} />
           )}
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button className="btn btn-outline-light" onClick={() => setPage('home')}>Back to Home</button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
+            <button className="btn btn-outline-light" disabled={ending} onClick={handleEnd}>{ending ? 'Ending…' : 'End Consultation'}</button>
           </div>
         </div>
       </div>

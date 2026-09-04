@@ -28,6 +28,8 @@ interface BusEvents {
   'astrologer:away': [{ astrologerId: number }];
   'astrologer:idle-warning': [{ astrologerId: number }];
   'chat:message': [ChatMessage];
+  'chat:expiring-soon': [{ consultationId: string; remainingSeconds: number }];
+  'chat:extended': [Consultation];
 }
 
 class TypedBus extends EventEmitter {

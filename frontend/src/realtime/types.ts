@@ -29,6 +29,8 @@ export interface Consultation {
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
+  durationMinutes: number;
+  extendedMinutes: number;
 }
 
 export interface QueueEntry {

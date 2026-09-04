@@ -12,6 +12,7 @@ interface QueueEntryDbRow {
   request_id: string;
   joined_at: string; // BIGINT comes back as a string from node-postgres
   promoted_consultation_id: string | null;
+  duration_minutes: number;
 }
 
 function fromRow(row: QueueEntryDbRow): QueueEntry {
@@ -26,6 +27,7 @@ function fromRow(row: QueueEntryDbRow): QueueEntry {
     requestId: row.request_id,
     joinedAt: Number(row.joined_at),
     promotedConsultationId: row.promoted_consultation_id ?? undefined,
+    durationMinutes: row.duration_minutes,
   };
 }
 
@@ -34,9 +36,9 @@ function fromRow(row: QueueEntryDbRow): QueueEntry {
 // decide QUEUED, so the decision and the write stay atomic together.
 export async function insertQueueEntry(e: QueueEntry, executor?: Executor) {
   await query(
-    `INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [e.id, e.astrologerId, e.userEmail.toLowerCase(), e.userName, e.category, e.type, e.status, e.requestId, e.joinedAt, e.promotedConsultationId ?? null],
+    `INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id, duration_minutes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [e.id, e.astrologerId, e.userEmail.toLowerCase(), e.userName, e.category, e.type, e.status, e.requestId, e.joinedAt, e.promotedConsultationId ?? null, e.durationMinutes],
     executor
   );
 }

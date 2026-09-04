@@ -248,6 +248,7 @@ export interface RequestParams {
   userName: string;
   category: string;
   type: ConsultationType;
+  durationMinutes?: number; // chosen by the user at booking time; falls back to the site default
 }
 
 export async function requestConsultation(params: RequestParams): Promise<RequestResult> {
@@ -271,6 +272,7 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
       const entry: QueueEntry = {
         id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
         category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
+        durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
       };
       await queueRepo.insertQueueEntry(entry, client);
       const queued = await queueRepo.listQueuedForAstrologer(astro.id, client);
@@ -289,6 +291,8 @@ async function createConsultation(astrologerId: number, params: Omit<RequestPara
   const consultation: Consultation = {
     id: randomUUID(), astrologerId, userEmail: params.userEmail, userName: params.userName,
     category: params.category, type: params.type, status: 'ASSIGNED', fromQueue, requestId: params.requestId, createdAt: Date.now(),
+    durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
+    extendedMinutes: 0,
   };
   await consultationRepo.insertConsultation(consultation, executor);
   await recomputeStatus(astrologerId, executor);
@@ -308,6 +312,107 @@ function assertOwnership(consultation: Consultation | undefined, astrologerEmail
   return consultation;
 }
 
+// Either party — the astrologer can end it same as before, but now so can
+// the user themselves instead of only ever being able to wait for the
+// astrologer to hang up.
+function assertParticipant(consultation: Consultation | undefined, requesterEmail: string): Consultation {
+  if (!consultation) throw new Error('Consultation not found');
+  const astro = astrologers.get(consultation.astrologerId);
+  const email = requesterEmail.toLowerCase();
+  if (astro?.email.toLowerCase() !== email && consultation.userEmail.toLowerCase() !== email) {
+    throw new Error('Not authorized for this consultation');
+  }
+  return consultation;
+}
+
+// ── Time-boxed consultations ─────────────────────────────────────────────
+// In-memory only (same tradeoff as the presence/session state above) —
+// rescheduleActiveConsultationTimers() rebuilds these from the DB's real
+// startedAt/duration/extended values on every boot, so a restart mid-call
+// just re-derives the same remaining time rather than losing the deadline.
+const expiryTimers = new Map<string, { warn?: NodeJS.Timeout; end: NodeJS.Timeout }>();
+
+function clearExpiryTimers(consultationId: string) {
+  const t = expiryTimers.get(consultationId);
+  if (!t) return;
+  if (t.warn) clearTimeout(t.warn);
+  clearTimeout(t.end);
+  expiryTimers.delete(consultationId);
+}
+
+function totalConsultationMs(c: Consultation): number {
+  return (c.durationMinutes + c.extendedMinutes) * 60_000;
+}
+
+function scheduleExpiry(c: Consultation) {
+  clearExpiryTimers(c.id);
+  if (!c.startedAt) return;
+  const remaining = c.startedAt + totalConsultationMs(c) - Date.now();
+  if (remaining <= 0) {
+    // Already overdue (e.g. the server was down past the deadline) — end it
+    // now instead of scheduling a timer with a negative delay.
+    autoEndConsultation(c.id).catch(console.error);
+    return;
+  }
+  const end = setTimeout(() => autoEndConsultation(c.id).catch(console.error), remaining);
+  let warn: NodeJS.Timeout | undefined;
+  if (remaining > 60_000) {
+    warn = setTimeout(() => {
+      bus.emitTyped('chat:expiring-soon', { consultationId: c.id, remainingSeconds: 60 });
+    }, remaining - 60_000);
+  }
+  expiryTimers.set(c.id, { warn, end });
+}
+
+// System-initiated end (the clock ran out, nobody topped up) — same
+// bookkeeping as endConsultation but with no participant to authorize
+// against.
+async function autoEndConsultation(consultationId: string) {
+  const c = await consultationRepo.findConsultationById(consultationId);
+  if (!c || c.status !== 'ACTIVE') return;
+  clearExpiryTimers(c.id);
+  c.status = 'COMPLETED';
+  c.endedAt = Date.now();
+  await consultationRepo.updateConsultation(c);
+  recordDurationSample(c);
+  await touchActivity(c.astrologerId);
+  await recomputeStatus(c.astrologerId);
+  bus.emitTyped('chat:ended', c);
+  await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
+  await processQueue(c.astrologerId);
+}
+
+function recordDurationSample(c: Consultation) {
+  if (!c.startedAt || !c.endedAt) return;
+  const astro = astrologers.get(c.astrologerId);
+  if (!astro) return;
+  astro.durationSamplesMs.push(c.endedAt - c.startedAt);
+  if (astro.durationSamplesMs.length > 20) astro.durationSamplesMs.shift();
+}
+
+// Called once at boot (after seedRealtimeStore) — an ACTIVE consultation's
+// deadline is derived fresh from its real startedAt/duration/extended
+// columns, so this always reschedules the correct remaining time (or ends
+// it immediately if the deadline already passed while the server was down).
+export async function rescheduleActiveConsultationTimers() {
+  for (const c of await consultationRepo.listActiveConsultations()) {
+    scheduleExpiry(c);
+  }
+}
+
+// Adds minutes to an ACTIVE consultation and reschedules its expiry —
+// either party can top up, same as either party can now end it.
+export async function extendConsultation(consultationId: string, requesterEmail: string, extraMinutes: number): Promise<Consultation> {
+  if (!Number.isFinite(extraMinutes) || extraMinutes <= 0) throw new Error('extraMinutes must be a positive number');
+  const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
+  if (c.status !== 'ACTIVE') throw new Error(`Cannot extend a consultation in status ${c.status}`);
+  c.extendedMinutes += extraMinutes;
+  await consultationRepo.updateConsultation(c);
+  scheduleExpiry(c);
+  bus.emitTyped('chat:extended', c);
+  return c;
+}
+
 export async function acceptConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
   const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot accept a consultation in status ${c.status}`);
@@ -316,6 +421,7 @@ export async function acceptConsultation(consultationId: string, astrologerEmail
   c.startedAt = Date.now();
   await consultationRepo.updateConsultation(c);
   await touchActivity(c.astrologerId);
+  scheduleExpiry(c);
   bus.emitTyped('chat:accepted', c);
   bus.emitTyped('chat:started', c);
   return c;
@@ -334,19 +440,17 @@ export async function declineConsultation(consultationId: string, astrologerEmai
   return c;
 }
 
-export async function endConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
-  const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
+// Either the astrologer or the user can end an active consultation now —
+// previously only the astrologer could (assertOwnership), leaving the user
+// with no way to disconnect on their own.
+export async function endConsultation(consultationId: string, requesterEmail: string): Promise<Consultation> {
+  const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
   if (c.status !== 'ACTIVE') throw new Error(`Cannot end a consultation in status ${c.status}`);
+  clearExpiryTimers(c.id);
   c.status = 'COMPLETED';
   c.endedAt = Date.now();
   await consultationRepo.updateConsultation(c);
-  if (c.startedAt) {
-    const astro = astrologers.get(c.astrologerId);
-    if (astro) {
-      astro.durationSamplesMs.push(c.endedAt - c.startedAt);
-      if (astro.durationSamplesMs.length > 20) astro.durationSamplesMs.shift();
-    }
-  }
+  recordDurationSample(c);
   await touchActivity(c.astrologerId);
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
@@ -392,6 +496,7 @@ async function promoteOneIfCapacity(astrologerId: number): Promise<boolean> {
     await queueRepo.updateQueueEntry(next, client);
     const consultation = await createConsultation(astrologerId, {
       requestId: next.requestId, userEmail: next.userEmail, userName: next.userName, category: next.category, type: next.type,
+      durationMinutes: next.durationMinutes,
     }, true, client);
     next.promotedConsultationId = consultation.id;
     await queueRepo.updateQueueEntry(next, client);

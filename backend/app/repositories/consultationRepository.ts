@@ -15,6 +15,8 @@ interface ConsultationDbRow {
   accepted_at: string | null;
   started_at: string | null;
   ended_at: string | null;
+  duration_minutes: number;
+  extended_minutes: number;
 }
 
 function fromRow(row: ConsultationDbRow): Consultation {
@@ -32,6 +34,8 @@ function fromRow(row: ConsultationDbRow): Consultation {
     acceptedAt: row.accepted_at ? Number(row.accepted_at) : undefined,
     startedAt: row.started_at ? Number(row.started_at) : undefined,
     endedAt: row.ended_at ? Number(row.ended_at) : undefined,
+    durationMinutes: row.duration_minutes,
+    extendedMinutes: row.extended_minutes,
   };
 }
 
@@ -42,11 +46,12 @@ function fromRow(row: ConsultationDbRow): Consultation {
 export async function insertConsultation(c: Consultation, executor?: Executor) {
   await query(
     `INSERT INTO consultations
-      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
     [
       c.id, c.astrologerId, c.userEmail.toLowerCase(), c.userName, c.category, c.type, c.status,
       c.fromQueue ? 1 : 0, c.requestId, c.createdAt, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null,
+      c.durationMinutes, c.extendedMinutes,
     ],
     executor
   );
@@ -54,14 +59,22 @@ export async function insertConsultation(c: Consultation, executor?: Executor) {
 
 export async function updateConsultation(c: Consultation) {
   await query(
-    'UPDATE consultations SET status = $1, accepted_at = $2, started_at = $3, ended_at = $4 WHERE id = $5',
-    [c.status, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null, c.id]
+    'UPDATE consultations SET status = $1, accepted_at = $2, started_at = $3, ended_at = $4, duration_minutes = $5, extended_minutes = $6 WHERE id = $7',
+    [c.status, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null, c.durationMinutes, c.extendedMinutes, c.id]
   );
 }
 
 export async function findConsultationById(id: string): Promise<Consultation | undefined> {
   const row = await queryOne<ConsultationDbRow>('SELECT * FROM consultations WHERE id = $1', [id]);
   return row ? fromRow(row) : undefined;
+}
+
+// For rescheduling expiry timers on server boot — timers are in-memory
+// (see realtimeStore.ts's expiryTimers map) so they don't survive a
+// restart on their own; any consultation still ACTIVE needs a fresh one.
+export async function listActiveConsultations(): Promise<Consultation[]> {
+  const rows = await query<ConsultationDbRow>(`SELECT * FROM consultations WHERE status = 'ACTIVE'`);
+  return rows.map(fromRow);
 }
 
 const ACTIVE_STATUSES = ['ASSIGNED', 'ACCEPTED', 'ACTIVE'];

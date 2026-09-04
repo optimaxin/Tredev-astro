@@ -42,11 +42,13 @@ export const realtimeApi = {
   heartbeat: (email: string) => request('/api/heartbeat', { method: 'POST', body: JSON.stringify({ email }) }),
   astrologerSync: (astrologerId: number) => request<AstrologerSyncSnapshot>(`/api/astrologers/${astrologerId}/sync`),
   userSync: (email: string) => request<UserSyncSnapshot>(`/api/users/sync?email=${encodeURIComponent(email)}`),
-  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string }) =>
+  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string; durationMinutes?: number }) =>
     request<RequestResult>('/api/consultations/request', { method: 'POST', body: JSON.stringify(params) }),
   acceptConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/accept`, { method: 'POST', body: JSON.stringify({ email }) }),
   declineConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/decline`, { method: 'POST', body: JSON.stringify({ email }) }),
   endConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/end`, { method: 'POST', body: JSON.stringify({ email }) }),
+  extendConsultation: (id: string, email: string, extraMinutes: number) =>
+    request<Consultation>(`/api/consultations/${id}/extend`, { method: 'POST', body: JSON.stringify({ email, extraMinutes }) }),
   cancelQueueEntry: (id: string, email: string) => request<QueueEntry>(`/api/queue/${id}/cancel`, { method: 'POST', body: JSON.stringify({ email }) }),
   listNotifications: (email: string) => request<AstrologerNotification[]>(`/api/notifications?email=${encodeURIComponent(email)}`),
   markNotificationRead: (id: string, email: string) => request(`/api/notifications/${id}/read`, { method: 'POST', body: JSON.stringify({ email }) }),
