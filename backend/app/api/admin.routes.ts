@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import { findUserById, listAllUsers, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, insertAstrologerForUser, updateAstrologerProfile } from '../repositories/astrologerRepository.ts';
+import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { countForUser, countInProgress, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import { listAuditLog, logAdminAction } from '../repositories/auditLogRepository.ts';
 import { register, AuthError } from '../services/authService.ts';
@@ -149,6 +150,37 @@ adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res)
     if (e instanceof AuthError) return fail(res, e.status, 'AUTH_ERROR', e.message);
     throw e;
   }
+});
+
+// The rest of an astrologer's catalog profile — title, bio, experience,
+// languages, pricing, etc. — never had an edit path at all before this;
+// insertAstrologerForUser's own comment flagged it as a "complete your
+// profile" follow-up that wasn't built yet. `name` isn't included: it
+// mirrors the linked user account's name, which the admin UI matches
+// catalog rows to accounts by (see AstrologersPage.tsx's joinedProfile).
+const editAstrologerSchema = z.object({
+  title: z.string().trim().min(1).max(100),
+  bio: z.string().trim().max(2000),
+  avatar: z.string().trim().max(500),
+  languages: z.array(z.string().trim().min(1).max(40)).max(20),
+  categories: z.array(z.string().trim().min(1).max(40)).max(20),
+  expertise: z.array(z.string().trim().min(1).max(40)).max(20),
+  consultationTypes: z.array(z.enum(['chat', 'voice', 'video'])).min(1),
+  chatPrice: z.number().int().min(0).max(100000),
+  callPrice: z.number().int().min(0).max(100000),
+  videoPrice: z.number().int().min(0).max(100000),
+  experienceYears: z.number().int().min(0).max(80),
+});
+
+adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = editAstrologerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await updateAstrologerProfile(id, parsed.data);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  await audit(req, 'astrologer.profile.update', row.name);
+  res.json({ success: true, data: toPublicAstrologerProfile(row) });
 });
 
 // ── Dashboard (Overview page KPIs + recent activity) ────────────────────

@@ -104,6 +104,41 @@ export async function updateMaxConcurrent(id: number, maxConcurrent: number) {
   await query('UPDATE astrologers SET max_concurrent = $1 WHERE id = $2', [maxConcurrent, id]);
 }
 
+export interface AstrologerProfilePatch {
+  title: string;
+  bio: string;
+  avatar: string;
+  languages: string[];
+  categories: string[];
+  expertise: string[];
+  consultationTypes: string[];
+  chatPrice: number;
+  callPrice: number;
+  videoPrice: number;
+  experienceYears: number;
+}
+
+// The "complete your profile" follow-up insertAstrologerForUser's own
+// comment already flagged as not built yet — title/bio/languages/pricing/
+// experience were only ever set once at creation (or left at their zero
+// defaults) with no way to change them afterward. `name` is deliberately
+// not editable here: it mirrors the linked user account's name, which
+// AstrologersPage.tsx's admin UI matches catalog rows to accounts by.
+export async function updateAstrologerProfile(id: number, patch: AstrologerProfilePatch): Promise<AstrologerCatalogRow | undefined> {
+  const rows = await query<AstrologerCatalogRow>(
+    `UPDATE astrologers SET
+       title = $1, bio = $2, avatar = $3, languages = $4, categories = $5, expertise = $6,
+       consultation_types = $7, chat_price = $8, call_price = $9, video_price = $10, experience_years = $11
+     WHERE id = $12
+     RETURNING *`,
+    [
+      patch.title, patch.bio, patch.avatar, JSON.stringify(patch.languages), JSON.stringify(patch.categories), JSON.stringify(patch.expertise),
+      JSON.stringify(patch.consultationTypes), patch.chatPrice, patch.callPrice, patch.videoPrice, patch.experienceYears, id,
+    ]
+  );
+  return rows[0];
+}
+
 // Called when an account stops being an Astrologer (admin.routes.ts's
 // PATCH /users/:id/role) — is_active is the same flag listAstrologers'
 // public catalog query already filters on, so this is what actually takes

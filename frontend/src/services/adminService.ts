@@ -30,6 +30,39 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
+export interface ApiAstrologerProfile {
+  id: number;
+  name: string;
+  title: string;
+  bio: string;
+  avatar: string;
+  languages: string[];
+  categories: string[];
+  expertise: string[];
+  consultationTypes: string[];
+  chatPrice: number;
+  callPrice: number;
+  videoPrice: number;
+  rating: number;
+  reviewCount: number;
+  experienceYears: number;
+  consultationCount: number;
+}
+
+export interface AstrologerProfilePatch {
+  title: string;
+  bio: string;
+  avatar: string;
+  languages: string[];
+  categories: string[];
+  expertise: string[];
+  consultationTypes: string[];
+  chatPrice: number;
+  callPrice: number;
+  videoPrice: number;
+  experienceYears: number;
+}
+
 export interface ApiUserRecord {
   id: string;
   name: string;
@@ -146,6 +179,8 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   addAstrologer: (name: string, email: string, password: string) =>
     request<ApiUserRecord>('/astrologers', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
+  updateAstrologerProfile: (id: number, patch: AstrologerProfilePatch) =>
+    request<ApiAstrologerProfile>(`/astrologers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),
 

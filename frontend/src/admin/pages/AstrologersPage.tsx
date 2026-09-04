@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
-import type { UiAstrologer } from '../../services/astrologerService';
+import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
+import { adminService, AdminApiError } from '../../services/adminService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog } from '../components/SharedControls';
@@ -15,6 +16,7 @@ import styles from './AdminPages.module.css';
 function joinedProfile(account: AuthUser, catalog: UiAstrologer[]) {
   const profile = catalog.find(a => a.name === account.name);
   return {
+    id: profile?.id,
     rating: profile?.rating ?? 0,
     experience: profile?.experience ?? 0,
     languages: profile?.languages ?? [],
@@ -25,6 +27,40 @@ function joinedProfile(account: AuthUser, catalog: UiAstrologer[]) {
     avatar: profile?.avatar,
   };
 }
+
+const CONSULTATION_TYPES = ['chat', 'voice', 'video'] as const;
+
+interface EditForm {
+  title: string;
+  bio: string;
+  avatar: string;
+  experienceYears: string;
+  languages: string;   // comma-separated in the form, split into string[] on save
+  categories: string;
+  expertise: string;
+  consultationTypes: string[];
+  chatPrice: string;
+  callPrice: string;
+  videoPrice: string;
+}
+
+const EMPTY_EDIT_FORM: EditForm = {
+  title: '', bio: '', avatar: '', experienceYears: '0',
+  languages: '', categories: '', expertise: '',
+  consultationTypes: ['chat', 'voice', 'video'],
+  chatPrice: '0', callPrice: '0', videoPrice: '0',
+};
+
+function profileToForm(p: ApiAstrologerProfile): EditForm {
+  return {
+    title: p.title, bio: p.bio, avatar: p.avatar, experienceYears: String(p.experienceYears),
+    languages: p.languages.join(', '), categories: p.categories.join(', '), expertise: p.expertise.join(', '),
+    consultationTypes: p.consultationTypes,
+    chatPrice: String(p.chatPrice), callPrice: String(p.callPrice), videoPrice: String(p.videoPrice),
+  };
+}
+
+const splitList = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
 
 export default function AstrologersPage() {
   const { t, accounts, suspendAccount, restoreAccount, createAstrologerAccount, updateAccountRole } = useAppContext();
@@ -39,6 +75,76 @@ export default function AstrologersPage() {
   const [removeTarget, setRemoveTarget] = useState<AuthUser | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState('');
+
+  // Editing the rest of the catalog profile (experience years, bio,
+  // languages, pricing, etc.) — previously had no edit path at all; "Edit"
+  // and "View" both just opened the same read-only drawer.
+  const [editTarget, setEditTarget] = useState<AuthUser | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_EDIT_FORM);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const openEdit = async (account: AuthUser) => {
+    const id = joinedProfile(account, catalog).id;
+    if (id === undefined) { setEditError('No catalog entry found for this astrologer.'); return; }
+    setEditTarget(account);
+    setEditError('');
+    setEditLoading(true);
+    try {
+      const profile = await astrologerService.getRaw(id);
+      if (profile) setEditForm(profileToForm(profile));
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Could not load this astrologer\'s profile.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const toggleConsultationType = (type: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      consultationTypes: prev.consultationTypes.includes(type)
+        ? prev.consultationTypes.filter(t => t !== type)
+        : [...prev.consultationTypes, type],
+    }));
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    const id = joinedProfile(editTarget, catalog).id;
+    if (id === undefined) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const updated = await adminService.updateAstrologerProfile(id, {
+        title: editForm.title,
+        bio: editForm.bio,
+        avatar: editForm.avatar,
+        languages: splitList(editForm.languages),
+        categories: splitList(editForm.categories),
+        expertise: splitList(editForm.expertise),
+        consultationTypes: editForm.consultationTypes,
+        chatPrice: Number(editForm.chatPrice) || 0,
+        callPrice: Number(editForm.callPrice) || 0,
+        videoPrice: Number(editForm.videoPrice) || 0,
+        experienceYears: Number(editForm.experienceYears) || 0,
+      });
+      // Reflect the save immediately in the list/cards without a full
+      // reload — adapt() lives in astrologerService, so just re-map here.
+      setCatalog(prev => prev.map(c => c.id === updated.id ? {
+        ...c, title: updated.title, rating: updated.rating, reviews: updated.reviewCount,
+        experience: updated.experienceYears, languages: updated.languages, price: updated.chatPrice,
+        avatar: updated.avatar, about: updated.bio, category: updated.categories, specialization: updated.expertise,
+      } : c));
+      setEditTarget(null);
+    } catch (err) {
+      setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const handleRemove = async () => {
     if (!removeTarget) return;
@@ -131,7 +237,7 @@ export default function AstrologersPage() {
                 <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
                 <div className={styles.astroCardActions}>
                   <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
-                  <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_edit')}</AdminButton>
+                  <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
                   {status === 'ACTIVE'
                     ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                     : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
@@ -159,6 +265,7 @@ export default function AstrologersPage() {
                 return (
                   <div style={{ display: 'flex', gap: 6 }}>
                     <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
+                    <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
                     {s === 'ACTIVE'
                       ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                       : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
@@ -230,6 +337,71 @@ export default function AstrologersPage() {
           </div>
           {formError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{formError}</p>}
         </form>
+      </Drawer>
+
+      <Drawer
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title={editTarget ? `${t('admin_action_edit')} — ${editTarget.name}` : ''}
+        footer={<AdminButton variant="gold" type="submit" form="edit-astrologer-form" disabled={editLoading || editSaving}>{editSaving ? '…' : t('admin_action_save')}</AdminButton>}
+      >
+        {editLoading ? (
+          <p style={{ fontSize: '0.85rem', color: 'var(--adm-charcoal-soft)' }}>Loading…</p>
+        ) : (
+          <form id="edit-astrologer-form" onSubmit={handleEditSave}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_title')}</label>
+              <input className={styles.formInput} required value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_bio')}</label>
+              <textarea className={styles.formTextarea} value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_avatar')}</label>
+              <input className={styles.formInput} value={editForm.avatar} onChange={e => setEditForm({ ...editForm, avatar: e.target.value })} placeholder="https://…" />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_experience')}</label>
+              <input type="number" min={0} max={80} className={styles.formInput} value={editForm.experienceYears} onChange={e => setEditForm({ ...editForm, experienceYears: e.target.value })} />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_col_languages')}</label>
+              <input className={styles.formInput} value={editForm.languages} onChange={e => setEditForm({ ...editForm, languages: e.target.value })} placeholder="Hindi, English, …" />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_categories')}</label>
+              <input className={styles.formInput} value={editForm.categories} onChange={e => setEditForm({ ...editForm, categories: e.target.value })} placeholder="Love, Marriage, Career, …" />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_expertise')}</label>
+              <input className={styles.formInput} value={editForm.expertise} onChange={e => setEditForm({ ...editForm, expertise: e.target.value })} placeholder="Vedic Astrology, Numerology, …" />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_consultation_types')}</label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                {CONSULTATION_TYPES.map(type => (
+                  <AdminButton key={type} type="button" variant={editForm.consultationTypes.includes(type) ? 'gold' : 'outline'} onClick={() => toggleConsultationType(type)}>
+                    {type}
+                  </AdminButton>
+                ))}
+              </div>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_chat_price')}</label>
+              <input type="number" min={0} className={styles.formInput} value={editForm.chatPrice} onChange={e => setEditForm({ ...editForm, chatPrice: e.target.value })} />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_call_price')}</label>
+              <input type="number" min={0} className={styles.formInput} value={editForm.callPrice} onChange={e => setEditForm({ ...editForm, callPrice: e.target.value })} />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{t('admin_astro_edit_video_price')}</label>
+              <input type="number" min={0} className={styles.formInput} value={editForm.videoPrice} onChange={e => setEditForm({ ...editForm, videoPrice: e.target.value })} />
+            </div>
+            {editError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{editError}</p>}
+          </form>
+        )}
       </Drawer>
 
       <ConfirmDialog

@@ -5,7 +5,7 @@
 
 import { API_URL } from './apiUrl';
 
-interface ApiAstrologerProfile {
+export interface ApiAstrologerProfile {
   id: number;
   name: string;
   title: string;
@@ -123,6 +123,16 @@ export const astrologerService = {
     const body = await res.json();
     if (!body.success) throw new Error(body.error?.message || 'Failed to load astrologer');
     return adapt(body.data as ApiAstrologerProfile);
+  },
+
+  // Unadapted — the admin edit form needs fields (consultationTypes,
+  // callPrice, videoPrice, categories) that UiAstrologer/`adapt` drops.
+  async getRaw(id: number): Promise<ApiAstrologerProfile | null> {
+    const res = await fetch(`${API_URL}/api/astrologers/catalog/${id}`);
+    if (res.status === 404) return null;
+    const body = await res.json();
+    if (!body.success) throw new Error(body.error?.message || 'Failed to load astrologer');
+    return body.data as ApiAstrologerProfile;
   },
 
   // ── Reviews ──────────────────────────────────────────────────────────
