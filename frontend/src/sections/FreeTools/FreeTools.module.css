@@ -54,16 +54,15 @@
   min-height: 250px;
 }
 
-/* A plain left-aligned list of rows (bullet · name · chevron) inside each
-   category card — replaces the old per-tool tile grid so the card reads as
-   one cohesive panel (icon/title/description up top) with a simple list
-   below it, matching the reference layout. */
+/* Rows (bullet · name · chevron) wrap into as many columns as the band's
+   width allows — a category with 10 tools fills 3-4 columns of a few rows
+   instead of one long single-file list, while a 3-tool category is just
+   one short row. Each band sizes to its own content either way. */
 .toolsGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2px var(--space-6);
   width: 100%;
-  align-self: stretch;
 }
 
 .toolCard {
@@ -364,36 +363,23 @@
   }
 }
 
+/* Was a fixed 5-column grid of equal-height cards — but the 5 categories
+   hold wildly different tool counts (10 down to 3), so forcing them into
+   same-width grid cells produced a tall, cramped "Daily" column towering
+   next to a nearly-empty "Compatibility" one: a visibly ragged, unbalanced
+   row. Stacking each category as its own full-width band, with its own
+   tools wrapping in a responsive internal grid, removes the cross-card
+   height comparison entirely — every band is exactly as tall as its own
+   content needs, regardless of how many tools it lists. */
 .allToolsContainer {
-  display: grid;
-  /* Fixed column counts per breakpoint, not auto-fit+minmax — same lesson
-     as .toolsGrid's old fixed-width fix above: auto-fit stretches whatever
-     cards land in a partial last row to fill the leftover space, which with
-     5 unevenly-sized cards produced a visibly lopsided, "unaligned" grid. */
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-6);
   margin-top: var(--space-8);
-  align-items: start;
-}
-
-@media (max-width: 1180px) {
-  .allToolsContainer { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 760px) {
-  .allToolsContainer { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 480px) {
-  .allToolsContainer { grid-template-columns: 1fr; }
 }
 
 .categorySection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-6) var(--space-7);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
@@ -403,26 +389,26 @@
 
 .categorySection:hover {
   box-shadow: var(--shadow-card-hover);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 
 .categoryHeader {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   border: none;
   padding: 0;
-  margin: 0 0 var(--space-4);
-  text-align: center;
+  margin: 0 0 var(--space-2);
+  text-align: left;
 }
 
 .categoryHeaderIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
   border-radius: var(--radius-full);
   background: var(--accent);
@@ -442,14 +428,14 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.5;
-  text-align: center;
+  text-align: left;
   margin: 0 0 var(--space-5);
 }
 
 .categoryDivider {
-  width: 48px;
+  width: 100%;
   height: 2px;
   border: none;
-  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
   margin: 0 0 var(--space-4);
 }

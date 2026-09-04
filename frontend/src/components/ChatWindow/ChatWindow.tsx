@@ -14,16 +14,24 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
   const { currentUser } = useAppContext();
   const { liveChatMessages } = useRealtime();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMessages([]);
+    setLoading(true);
     chatService.listMessages(consultationId)
       .then(setMessages)
-      .catch(err => setError(err instanceof ChatApiError ? err.message : 'Could not load chat history.'));
+      .catch(err => setError(err instanceof ChatApiError ? err.message : 'Could not load chat history.'))
+      .finally(() => setLoading(false));
+  }, [consultationId]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
   }, [consultationId]);
 
   useEffect(() => {
@@ -63,10 +71,17 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
 
   return (
     <div className={styles.chatWindow}>
-      <div className={styles.header}>Chat with {otherPartyName}</div>
+      <div className={styles.header}>
+        <span className={styles.headerDot} aria-hidden="true" />
+        Chat with {otherPartyName}
+      </div>
 
       <div className={styles.messages} ref={messagesRef}>
-        {messages.length === 0 && <p className={styles.empty}>No messages yet — say hello!</p>}
+        {loading ? (
+          <p className={styles.empty}>Loading conversation…</p>
+        ) : messages.length === 0 ? (
+          <p className={styles.empty}>No messages yet — say hello!</p>
+        ) : null}
         {messages.map(m => (
           <div key={m.id} className={`${styles.message} ${m.senderEmail.toLowerCase() === currentUser?.email.toLowerCase() ? styles.own : styles.other}`}>
             <div className={styles.bubble}>{m.content}</div>
@@ -79,6 +94,7 @@ export default function ChatWindow({ consultationId, otherPartyName }: ChatWindo
 
       <form className={styles.inputRow} onSubmit={handleSubmit}>
         <input
+          ref={inputRef}
           type="text"
           className={styles.input}
           placeholder="Type a message..."

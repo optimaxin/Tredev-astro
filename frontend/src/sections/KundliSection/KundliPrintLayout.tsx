@@ -82,11 +82,15 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
       <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
 
-        {/* Cover */}
-        <div data-pdf-block style={{ textAlign: 'center', padding: '50px 20px 30px', borderBottom: `2px solid ${GOLD}`, marginBottom: 28 }}>
-          <div style={{ fontSize: FONT.label, letterSpacing: '0.15em', color: GOLD, textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>TredevAstro · Vedic Astrology Report</div>
-          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: FONT.title, color: INK, margin: '4px 0 10px' }}>{name}&apos;s Kundli</div>
-          <div style={{ fontSize: FONT.body, color: MUTED, marginBottom: 18 }}>{dob} · {tob} · {place}</div>
+        {/* Cover — its own dedicated first page (see data-pdf-cover: the
+            generation effect forces a page break right after this block,
+            regardless of how much room is left on the page). */}
+        <div data-pdf-block data-pdf-cover="true" style={{ minHeight: 620, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '50px 20px' }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+          <img src="/logo.png" style={{ width: 96, height: 96, objectFit: 'contain', marginBottom: 22 }} />
+          <div style={{ fontSize: FONT.label, letterSpacing: '0.15em', color: GOLD, textTransform: 'uppercase', marginBottom: 14, fontWeight: 700 }}>TredevAstro · Vedic Astrology Report</div>
+          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '4px 0 14px', maxWidth: 560 }}>{name}&apos;s Kundli</div>
+          <div style={{ fontSize: FONT.body, color: MUTED, marginBottom: 22 }}>{dob} · {tob} · {place}</div>
           <span style={{ display: 'inline-block', padding: '5px 16px', borderRadius: 999, background: GOLD, color: '#FAF7F0', fontSize: FONT.label, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
             Generated {generatedDate}
           </span>
@@ -179,6 +183,10 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         ))}
 
+        {/* Shadbala/Bhavbala split into 2 blocks (was 1) — that combined
+            block was one of the tallest in the report and packed poorly,
+            leaving large blank gaps under it on whichever page it landed;
+            splitting gives the page-fill packer more flexibility. */}
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>Shadbala — Planetary Strength</SubHeading>
           <Table head={['Planet', 'Total (Rupas)', 'Required', 'Ratio', 'Verdict']}>
@@ -189,16 +197,16 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               </tr>
             ))}
           </Table>
-          <div style={{ marginTop: 10 }}>
-            <SubHeading>Bhavbala — House Strength</SubHeading>
-            <Table head={['House', 'Adhipati Bala', 'Dig Bala', 'Drik Bala', 'Total']}>
-              {result.shadbala.houses.map(h => (
-                <tr key={h.house} style={{ borderTop: `1px solid ${LINE}` }}>
-                  <Td><b>H{h.house}</b></Td><Td>{h.adhipatiBala.toFixed(1)}</Td><Td>{h.digBala.toFixed(1)}</Td><Td>{h.drikBala.toFixed(1)}</Td><Td>{h.total.toFixed(1)}</Td>
-                </tr>
-              ))}
-            </Table>
-          </div>
+        </div>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
+          <SubHeading>Bhavbala — House Strength</SubHeading>
+          <Table head={['House', 'Adhipati Bala', 'Dig Bala', 'Drik Bala', 'Total']}>
+            {result.shadbala.houses.map(h => (
+              <tr key={h.house} style={{ borderTop: `1px solid ${LINE}` }}>
+                <Td><b>H{h.house}</b></Td><Td>{h.adhipatiBala.toFixed(1)}</Td><Td>{h.digBala.toFixed(1)}</Td><Td>{h.drikBala.toFixed(1)}</Td><Td>{h.total.toFixed(1)}</Td>
+              </tr>
+            ))}
+          </Table>
         </div>
 
         {/* ── 03 KP ── */}
@@ -221,6 +229,8 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         </div>
 
+        {/* KP Planets/Cusps split into 2 blocks (was 1) — same page-fill
+            reasoning as the Shadbala/Bhavbala split above. */}
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>KP Planets</SubHeading>
           <Table head={['Planet', 'Bhav (Cusp)', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
@@ -230,31 +240,35 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               </tr>
             ))}
           </Table>
-          <div style={{ marginTop: 10 }}>
-            <SubHeading>KP Cusps</SubHeading>
-            <Table head={['Cusp', 'Degree', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
-              {result.kp.cusps.map((row, i) => (
-                <tr key={row.id} style={{ borderTop: `1px solid ${LINE}` }}>
-                  <Td><b>{i + 1}</b></Td><Td>{formatDeg(result.bhavChalit.cusps[i]?.degreeInSign ?? 0)}</Td><Td>{row.rashi}</Td><Td>{cap(row.signLord)}</Td><Td>{cap(row.starLord)}</Td><Td>{cap(row.subLord)}</Td>
-                </tr>
-              ))}
-            </Table>
-          </div>
+        </div>
+        <div data-pdf-block style={{ marginBottom: 22 }}>
+          <SubHeading>KP Cusps</SubHeading>
+          <Table head={['Cusp', 'Degree', 'Sign', 'Sign Lord', 'Star Lord', 'Sub Lord']}>
+            {result.kp.cusps.map((row, i) => (
+              <tr key={row.id} style={{ borderTop: `1px solid ${LINE}` }}>
+                <Td><b>{i + 1}</b></Td><Td>{formatDeg(result.bhavChalit.cusps[i]?.degreeInSign ?? 0)}</Td><Td>{row.rashi}</Td><Td>{cap(row.signLord)}</Td><Td>{cap(row.starLord)}</Td><Td>{cap(row.subLord)}</Td>
+              </tr>
+            ))}
+          </Table>
         </div>
 
-        {/* ── 04 Ashtakvarga — all 8 grids (SAV + 7 grahas) in one block ── */}
-        <div data-pdf-block style={{ marginBottom: 22 }}>
+        {/* ── 04 Ashtakvarga — 8 grids (SAV + 7 grahas), 4 per block (was
+            all 8 in one block — split for the same page-fill reasoning as
+            Shadbala/KP above) ── */}
+        <div data-pdf-block style={{ marginBottom: 8 }}>
           <SectionHeader num="04" title="Ashtakvarga" />
-          <p style={{ fontSize: FONT.body, color: MUTED, margin: '0 0 10px' }}>Total bindus per rashi. SAV is the combined Sarvashtakvarga (total: {result.ashtakavarga.sarvaTotal}).</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-            {ASHTAKAVARGA_GROUPS.map(g => (
+          <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Total bindus per rashi. SAV is the combined Sarvashtakvarga (total: {result.ashtakavarga.sarvaTotal}).</p>
+        </div>
+        {chunk(ASHTAKAVARGA_GROUPS, 4).map((group, gi) => (
+          <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
+            {group.map(g => (
               <div key={g.label}>
                 <div style={{ fontSize: FONT.label, fontWeight: 700, color: GOLD, textTransform: 'uppercase', marginBottom: 4 }}>{g.label}</div>
                 <BinduGrid points={g.points} />
               </div>
             ))}
           </div>
-        </div>
+        ))}
 
         {/* ── 05 Charts — the app's own "main" divisional charts, 6 per
             block instead of 1 per block (see DIVISIONAL_ORDER above) ── */}
@@ -381,13 +395,19 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </DoshaRow>
         </div>
 
-        {/* Closing */}
-        <div data-pdf-block style={{ textAlign: 'center', padding: '40px 20px', borderTop: `2px solid ${GOLD}`, marginTop: 12 }}>
+        {/* Closing — its own dedicated last page (data-pdf-closing forces a
+            page break BEFORE this block in the generation effect, the
+            mirror image of data-pdf-cover above). */}
+        <div data-pdf-block data-pdf-closing="true" style={{ minHeight: 620, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 20px' }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+          <img src="/logo.png" style={{ width: 72, height: 72, objectFit: 'contain', marginBottom: 20, opacity: 0.9 }} />
           <div style={{ fontSize: FONT.label, letterSpacing: '0.15em', color: GOLD, textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>Thank You For Reading</div>
-          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 22, color: INK, margin: '4px 0 10px' }}>Your journey continues</div>
-          <p style={{ fontSize: FONT.body, color: MUTED, maxWidth: 460, margin: '0 auto' }}>
-            Generated by TredevAstro — log in to your account to revisit this Kundli anytime, or consult a verified astrologer for a deeper, personalised reading.
+          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '4px 0 14px' }}>Your journey continues, {name}</div>
+          <p style={{ fontSize: FONT.body, color: MUTED, maxWidth: 460, margin: '0 auto 22px', lineHeight: 1.7 }}>
+            This report is a starting point, not the whole story. Log in to your TredevAstro account to revisit this Kundli anytime, or consult a verified astrologer for a deeper, personalised reading.
           </p>
+          <div style={{ width: 48, height: 2, background: GOLD, margin: '0 0 14px' }} />
+          <div style={{ fontSize: FONT.label, color: FAINT, letterSpacing: '0.08em' }}>TREDEVASTRO · YOUR SKY. YOUR STORY.</div>
         </div>
       </div>
     </div>

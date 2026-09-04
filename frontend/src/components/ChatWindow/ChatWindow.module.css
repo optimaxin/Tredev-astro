@@ -5,16 +5,28 @@
   border-radius: var(--radius-lg, 12px);
   background: var(--surface, #fff);
   overflow: hidden;
-  height: 420px;
-  max-height: 60vh;
+  height: 540px;
+  max-height: 72vh;
 }
 
 .header {
-  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
   font-weight: 600;
   font-size: 14px;
   border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   background: var(--surface-elevated, rgba(0, 0, 0, 0.02));
+}
+
+.headerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2ecc71;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #2ecc71 25%, transparent);
 }
 
 .messages {

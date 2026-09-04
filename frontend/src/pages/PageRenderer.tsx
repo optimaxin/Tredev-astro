@@ -1755,7 +1755,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const { setPage, currentUser, setShowLoginModal, setPendingAction } = useAppContext();
   const { publicStates, requestConsultation } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
-  const [activeType, setActiveType] = useState<'chat' | 'voice' | 'video'>('chat');
+  const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
   const [activeSlot, setActiveSlot] = useState(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1767,10 +1767,12 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const live = publicStates[astrologer.id];
   const liveLabel = !live ? null : live.status === 'ONLINE_AVAILABLE' ? '🟢 Available now' : live.status === 'ONLINE_BUSY' ? '🟡 Currently busy' : live.status === 'AWAY' ? '⚪ Away' : '⚪ Offline';
 
+  // Video call is coming later (WebRTC signaling isn't built yet) — chat and
+  // voice already run on the real consultation queue/socket pipeline, so
+  // only those two are offered for now.
   const OPTIONS = [
     { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: '20-min session text consultation' },
     { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
-    { type: 'video', label: 'Video Call', price: astrologer.price * 30, desc: '30-min premium video chart reading' },
   ];
 
   const SLOTS = [

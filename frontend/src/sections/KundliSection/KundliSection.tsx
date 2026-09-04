@@ -310,8 +310,7 @@ export default function KundliSection() {
         }).catch(() => null);
 
         const root = printRef.current!;
-        const blocks = Array.from(root.querySelectorAll<HTMLElement>('[data-pdf-block]'));
-        setPdfProgress({ done: 0, total: blocks.length });
+        const rawBlocks = Array.from(root.querySelectorAll<HTMLElement>('[data-pdf-block]'));
 
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -321,30 +320,105 @@ export default function KundliSection() {
         const usableWidth = pageWidth - margin * 2;
         const contentBottom = pageHeight - margin - footerSpace;
         const blockGap = 14;
+        // Every page except the cover reserves a strip for the running
+        // header (see drawHeader) — the cover carries its own large
+        // letterhead-style branding instead, so it alone starts flush at
+        // `margin`.
+        const HEADER_RESERVE = 18;
+        const contentTopFor = (p: number) => (p === 1 ? margin : margin + HEADER_RESERVE);
 
-        let cursorY = margin;
+        // Pre-measure each block's rendered height via layout (cheap — no
+        // html2canvas involved) so the page-fill order can be decided
+        // up front. A straight document-order walk left many pages with a
+        // large blank strip at the bottom whenever the very next block
+        // didn't fit what was left, even when a smaller block a few
+        // positions later would have fit perfectly. This does a bounded
+        // look-ahead (6 blocks) first-fit re-ordering; the real placement
+        // loop below still uses each block's REAL captured height to
+        // decide page breaks, so a measurement/capture mismatch can never
+        // cause content to overlap or get cut — this only picks a better
+        // serving order.
+        const planBlockOrder = (els: HTMLElement[], pageContentHeight: number): HTMLElement[] => {
+          const items = els.map(el => {
+            const rect = el.getBoundingClientRect();
+            return { el, height: rect.width ? (rect.height * usableWidth) / rect.width : 0 };
+          });
+          const ordered: HTMLElement[] = [];
+          let pageRemaining = pageContentHeight;
+          let firstOnPage = true;
+          const WINDOW = 6;
+          while (items.length) {
+            let idx = 0;
+            if (!firstOnPage) {
+              const found = items.findIndex((it, i) => i < WINDOW && it.height <= pageRemaining);
+              if (found === -1) {
+                firstOnPage = true;
+                pageRemaining = pageContentHeight;
+              } else {
+                idx = found;
+              }
+            }
+            const [chosen] = items.splice(idx, 1);
+            ordered.push(chosen.el);
+            pageRemaining -= chosen.height + (firstOnPage ? 0 : blockGap);
+            firstOnPage = chosen.height > pageContentHeight; // an oversized block spans its own pages; whatever follows starts fresh
+          }
+          return ordered;
+        };
+
+        // Cover and closing are pinned to the very first/last position —
+        // each forces its own dedicated page below (see forceBreakBeforeNext
+        // and the isClosing check in the main loop) regardless of ordering,
+        // so they're excluded from the fill heuristic entirely.
+        const coverEl = rawBlocks.find(b => b.dataset.pdfCover === 'true');
+        const closingEl = rawBlocks.find(b => b.dataset.pdfClosing === 'true');
+        const middleEls = rawBlocks.filter(b => b !== coverEl && b !== closingEl);
+        const orderedMiddle = planBlockOrder(middleEls, contentBottom - contentTopFor(2));
+        const blocks = [...(coverEl ? [coverEl] : []), ...orderedMiddle, ...(closingEl ? [closingEl] : [])];
+        setPdfProgress({ done: 0, total: blocks.length });
+
+        let cursorY = contentTopFor(1);
         let pageNum = 1;
+        let isFirstOnPage = true;
+        let forceBreakBeforeNext = false;
 
-        // A faint mark anchored at the top of the page (a letterhead-style
-        // watermark, not a full-page tile) — drawn first, so every block
-        // placed afterward sits visually "on top of" it. Wrapped in its own
-        // try/catch: this is a cosmetic nice-to-have, and it must never be
-        // able to take down PDF generation as a whole if the opacity/GState
-        // call or the image draw fails for any reason.
+        // A faint mark centered on the page (not pinned to the top, where it
+        // used to visually collide with the very first block placed on a
+        // page) — drawn first, so every block placed afterward sits
+        // visually "on top of" it. Wrapped in its own try/catch: this is a
+        // cosmetic nice-to-have, and it must never be able to take down PDF
+        // generation as a whole if the opacity/GState call or the image
+        // draw fails for any reason.
         const drawWatermark = () => {
           if (!logoImg) return;
           try {
-            const size = 210;
+            const size = 260;
             pdf.saveGraphicsState();
-            pdf.setGState(pdf.GState({ opacity: 0.055 }));
-            pdf.addImage(logoImg, 'PNG', (pageWidth - size) / 2, margin + 6, size, size);
+            pdf.setGState(pdf.GState({ opacity: 0.05 }));
+            pdf.addImage(logoImg, 'PNG', (pageWidth - size) / 2, (pageHeight - size) / 2, size, size);
             pdf.restoreGraphicsState();
           } catch (e) {
             console.error('Watermark draw failed, continuing without it:', e);
           }
         };
 
+        // Running header on every page but the cover — small brand mark
+        // left, subject ("<name>'s Kundli") right, thin gold rule beneath.
+        const drawHeader = () => {
+          if (pageNum === 1) return;
+          pdf.setFontSize(8.5);
+          pdf.setTextColor(150, 140, 120);
+          pdf.text('TredevAstro', margin, margin - 6);
+          pdf.text(`${birthProfile.name || 'Kundli'}'s Kundli`, pageWidth - margin, margin - 6, { align: 'right' });
+          pdf.setDrawColor(181, 138, 59);
+          pdf.setLineWidth(0.6);
+          pdf.line(margin, margin, pageWidth - margin, margin);
+        };
+
         const drawFooter = () => {
+          pdf.setDrawColor(181, 138, 59);
+          pdf.setLineWidth(0.6);
+          pdf.line(margin, pageHeight - margin, pageWidth - margin, pageHeight - margin);
           pdf.setFontSize(8);
           pdf.setTextColor(150, 140, 120);
           pdf.text('TredevAstro — Your Sky. Your Story.', margin, pageHeight - margin + 12);
@@ -386,33 +460,54 @@ export default function KundliSection() {
           const imgData = canvas.toDataURL('image/jpeg', 0.88);
           setPdfProgress({ done: i + 1, total: blocks.length });
 
-          if (imgHeight <= contentBottom - margin) {
+          // The closing "thank you" block always gets its own fresh page,
+          // same as the cover forcing a break before whatever follows it
+          // (see forceBreakBeforeNext below) — mirror images of the same
+          // "give this block the whole page to itself" rule.
+          const mustBreakBefore = (forceBreakBeforeNext || el.dataset.pdfClosing === 'true') && !isFirstOnPage;
+          forceBreakBeforeNext = false;
+          if (mustBreakBefore) {
+            drawFooter();
+            pdf.addPage();
+            pageNum += 1;
+            cursorY = contentTopFor(pageNum);
+            isFirstOnPage = true;
+            drawHeader();
+            drawWatermark();
+          }
+
+          if (imgHeight <= contentBottom - contentTopFor(Math.max(pageNum, 2))) {
             // Normal case: the whole block goes on one page, whole — this is
             // what guarantees nothing is ever cut mid-way through.
-            if (cursorY !== margin && cursorY + imgHeight > contentBottom) {
+            if (!isFirstOnPage && cursorY + imgHeight > contentBottom) {
               drawFooter();
               pdf.addPage();
               pageNum += 1;
-              cursorY = margin;
+              cursorY = contentTopFor(pageNum);
+              isFirstOnPage = true;
+              drawHeader();
               drawWatermark();
             }
             pdf.addImage(imgData, 'JPEG', margin, cursorY, usableWidth, imgHeight);
             cursorY += imgHeight + blockGap;
+            isFirstOnPage = false;
           } else {
             // Rare oversized block (e.g. the full Mahadasha timeline is
             // taller than one whole page on its own) — the one case allowed
             // to split across pages, via jsPDF's own negative-offset
             // repeated-image technique, rather than silently overflowing.
-            if (cursorY !== margin) {
+            if (!isFirstOnPage) {
               drawFooter();
               pdf.addPage();
               pageNum += 1;
-              cursorY = margin;
+              cursorY = contentTopFor(pageNum);
+              isFirstOnPage = true;
+              drawHeader();
               drawWatermark();
             }
             let heightLeft = imgHeight;
-            let position = margin;
-            const pageContentHeight = contentBottom - margin;
+            let position = cursorY;
+            const pageContentHeight = contentBottom - contentTopFor(pageNum);
             pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
             heightLeft -= pageContentHeight;
             while (heightLeft > 0) {
@@ -420,12 +515,16 @@ export default function KundliSection() {
               drawFooter();
               pdf.addPage();
               pageNum += 1;
+              drawHeader();
               drawWatermark();
               pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
               heightLeft -= pageContentHeight;
             }
-            cursorY = contentBottom; // force the next block onto a fresh page
+            cursorY = contentBottom; // guarantees the next block's overflow check trips
+            isFirstOnPage = false; // this block filled to the bottom of its last page — next one needs a fresh page
           }
+
+          if (el.dataset.pdfCover === 'true') forceBreakBeforeNext = true;
         }
         drawFooter();
         pdf.save(`${birthProfile.name || 'kundli'}-janam-kundli.pdf`);
