@@ -27,6 +27,8 @@ import { decideApplication, findApplicationById, listApplicationsWithUsers } fro
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPricingRegions, updatePricingRegion } from '../repositories/pricingRegionRepository.ts';
 import { toPublicPricingRegion } from '../models/pricingRegion.ts';
+import { deleteOverride, listOverridesForAdmin, upsertOverride } from '../repositories/astrologerRegionPriceRepository.ts';
+import { parseCsv, toCsvRow } from '../services/csv.ts';
 
 export const adminRouter = Router();
 
@@ -572,6 +574,124 @@ adminRouter.delete('/pricing-regions/:id', requireSection('pricing'), async (req
   await deletePricingRegion(id);
   await audit(req, 'pricing_region.delete', target.name);
   res.json({ success: true, data: { ok: true } });
+});
+
+// ── Per-astrologer, per-region price overrides ──────────────────────────
+// A region's multiplier is a quick global knob; this is staff's exact,
+// final price for one astrologer in one region — set by hand, one at a
+// time, or in bulk via the CSV template/import below. Whichever exists for
+// an (astrologer, region) pair wins over the multiplier — see
+// pricingEngine.ts's computePriceWithOverride.
+
+adminRouter.get('/astrologer-region-prices', requireSection('pricing'), async (_req, res) => {
+  const rows = await listOverridesForAdmin();
+  res.json({
+    success: true,
+    data: rows.map(r => ({
+      astrologerId: r.astrologer_id,
+      astrologerName: r.astrologer_name,
+      regionId: r.region_id,
+      regionName: r.region_name,
+      chatPrice: r.chat_price,
+      callPrice: r.call_price,
+      videoPrice: r.video_price,
+      updatedAt: Number(r.updated_at),
+    })),
+  });
+});
+
+const overrideSchema = z.object({
+  astrologerId: z.number().int(),
+  regionId: z.number().int(),
+  chatPrice: z.number().nonnegative(),
+  callPrice: z.number().nonnegative(),
+  videoPrice: z.number().nonnegative(),
+});
+
+adminRouter.post('/astrologer-region-prices', requireSection('pricing'), async (req, res) => {
+  const parsed = overrideSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { astrologerId, regionId, chatPrice, callPrice, videoPrice } = parsed.data;
+  const astro = await findAstrologerById(astrologerId);
+  if (!astro) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  const region = await findPricingRegionById(regionId);
+  if (!region) return fail(res, 404, 'NOT_FOUND', 'Region not found');
+  await upsertOverride(astrologerId, regionId, chatPrice, callPrice, videoPrice);
+  await audit(req, 'astrologer_region_price.set', `${astro.name} / ${region.name}: chat ₹${chatPrice}, call ₹${callPrice}, video ₹${videoPrice}`);
+  res.json({ success: true, data: { astrologerId, astrologerName: astro.name, regionId, regionName: region.name, chatPrice, callPrice, videoPrice, updatedAt: Date.now() } });
+});
+
+adminRouter.delete('/astrologer-region-prices/:astrologerId/:regionId', requireSection('pricing'), async (req, res) => {
+  const astrologerId = Number(req.params.astrologerId);
+  const regionId = Number(req.params.regionId);
+  if (!Number.isInteger(astrologerId) || !Number.isInteger(regionId)) return fail(res, 422, 'VALIDATION_ERROR', 'ids must be integers');
+  await deleteOverride(astrologerId, regionId);
+  await audit(req, 'astrologer_region_price.remove', `astrologer #${astrologerId} / region #${regionId}`);
+  res.json({ success: true, data: { ok: true } });
+});
+
+// CSV template: one row per astrologer × region, pre-filled with today's
+// value (an existing override, else the astrologer's own plain price) so
+// staff edits a real spreadsheet in one sitting instead of a blank one.
+// astrologer_id/region_id are what import actually matches on; name/
+// experience/category are there only so staff can read the sheet.
+adminRouter.get('/astrologer-region-prices/csv-template', requireSection('pricing'), async (_req, res) => {
+  const [astrologers, regions, overrides] = await Promise.all([
+    listAllAstrologersRaw(), listPricingRegions(), listOverridesForAdmin(),
+  ]);
+  const overrideMap = new Map(overrides.map(o => [`${o.astrologer_id}:${o.region_id}`, o]));
+  const header = ['astrologer_id', 'astrologer_name', 'experience_years', 'category', 'region_id', 'region_name', 'chat_price', 'call_price', 'video_price'];
+  const lines = [toCsvRow(header)];
+  for (const a of astrologers) {
+    const category = (JSON.parse(a.categories || '[]')[0]) || '';
+    for (const r of regions) {
+      const o = overrideMap.get(`${a.id}:${r.id}`);
+      lines.push(toCsvRow([
+        a.id, a.name, a.experience_years, category, r.id, r.name,
+        o ? o.chat_price : a.chat_price,
+        o ? o.call_price : a.call_price,
+        o ? o.video_price : a.video_price,
+      ]));
+    }
+  }
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="astrologer-region-pricing.csv"');
+  res.send(lines.join('\n'));
+});
+
+// CSV import: staff downloads the template above, edits the price columns in
+// a spreadsheet, and re-uploads the same file — astrologer_id/region_id
+// columns are matched, every other column is ignored.
+adminRouter.post('/astrologer-region-prices/csv-import', requireSection('pricing'), async (req, res) => {
+  const csv = String(req.body?.csv || '');
+  if (!csv.trim()) return fail(res, 422, 'VALIDATION_ERROR', 'csv is required');
+  const rows = parseCsv(csv);
+  if (rows.length < 2) return fail(res, 422, 'VALIDATION_ERROR', 'CSV has no data rows');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const col = (name: string) => header.indexOf(name);
+  const aIdx = col('astrologer_id'), rIdx = col('region_id'), chatIdx = col('chat_price'), callIdx = col('call_price'), videoIdx = col('video_price');
+  if ([aIdx, rIdx, chatIdx, callIdx, videoIdx].some(i => i === -1)) {
+    return fail(res, 422, 'VALIDATION_ERROR', 'CSV must have astrologer_id, region_id, chat_price, call_price, video_price columns');
+  }
+  let updated = 0;
+  const errors: string[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
+    if (cols.length <= 1 && !cols[0]) continue;
+    const astrologerId = Number(cols[aIdx]);
+    const regionId = Number(cols[rIdx]);
+    const chatPrice = Number(cols[chatIdx]);
+    const callPrice = Number(cols[callIdx]);
+    const videoPrice = Number(cols[videoIdx]);
+    if (![astrologerId, regionId, chatPrice, callPrice, videoPrice].every(Number.isFinite)) {
+      errors.push(`Row ${i + 1}: invalid numbers`);
+      continue;
+    }
+    await upsertOverride(astrologerId, regionId, chatPrice, callPrice, videoPrice);
+    updated++;
+  }
+  await audit(req, 'astrologer_region_price.import', `${updated} row(s) via CSV`);
+  res.json({ success: true, data: { updated, errors } });
 });
 
 // ── Staff & Admin accounts ───────────────────────────────────────────────

@@ -4,8 +4,9 @@ import { findAstrologerById, findAstrologerByUserId, listAstrologers, setActiveO
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { optionalAuth, requireAuth } from '../middleware/auth.ts';
 import { getLoyalty } from '../repositories/loyaltyRepository.ts';
-import { applyRegionMultiplier, computeRegionAdjustedPrice } from '../services/pricingEngine.ts';
-import { getMultiplierForCountry } from '../repositories/pricingRegionRepository.ts';
+import { applyRegionMultiplier, computePriceWithOverride } from '../services/pricingEngine.ts';
+import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
+import { getOverride, listOverridesMap, type AstrologerRegionPriceRow } from '../repositories/astrologerRegionPriceRepository.ts';
 import { countryFromRequest } from '../services/geoLocation.ts';
 import type { PublicAstrologerProfile } from '../models/astrologer.ts';
 import { findReviewByConsultation, insertReviewAndUpdateRating, listReviewsForAstrologer } from '../repositories/reviewRepository.ts';
@@ -40,7 +41,10 @@ const listQuerySchema = z.object({
 // used so browsing the catalog already shows a visitor their real region
 // price, not just the final booking-confirmation step. A multiplier of 1
 // (no matching region, the default) returns the profile untouched.
-function withRegionPricing(profile: PublicAstrologerProfile, multiplier: number): PublicAstrologerProfile {
+function withRegionPricing(profile: PublicAstrologerProfile, multiplier: number, override?: AstrologerRegionPriceRow): PublicAstrologerProfile {
+  if (override) {
+    return { ...profile, chatPrice: override.chat_price, callPrice: override.call_price, videoPrice: override.video_price };
+  }
   if (multiplier === 1) return profile;
   return {
     ...profile,
@@ -56,10 +60,15 @@ astrologersCatalogRouter.get('/catalog', async (req, res) => {
     return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
   }
   const { rows, total } = await listAstrologers(parsed.data);
-  const regionMultiplier = await getMultiplierForCountry(countryFromRequest(req));
+  const region = await getRegionForCountry(countryFromRequest(req));
+  const overrides = region ? await listOverridesMap() : null;
   res.json({
     success: true,
-    data: rows.map(r => withRegionPricing(toPublicAstrologerProfile(r), regionMultiplier)),
+    data: rows.map(r => withRegionPricing(
+      toPublicAstrologerProfile(r),
+      region ? Number(region.price_multiplier) : 1,
+      region && overrides ? overrides.get(`${r.id}:${region.id}`) : undefined,
+    )),
     pagination: { page: parsed.data.page, limit: parsed.data.limit, total },
   });
 });
@@ -71,8 +80,9 @@ astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   }
   const row = await findAstrologerById(id);
   if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Astrologer not found' } });
-  const regionMultiplier = await getMultiplierForCountry(countryFromRequest(req));
-  res.json({ success: true, data: withRegionPricing(toPublicAstrologerProfile(row), regionMultiplier) });
+  const region = await getRegionForCountry(countryFromRequest(req));
+  const override = region ? await getOverride(id, region.id) : undefined;
+  res.json({ success: true, data: withRegionPricing(toPublicAstrologerProfile(row), region ? Number(region.price_multiplier) : 1, override) });
 });
 
 // The exact per-minute price a booking would lock in RIGHT NOW for this
@@ -94,8 +104,10 @@ astrologersCatalogRouter.get('/:id/effective-price', optionalAuth, async (req, r
     if (user) isLoyal = (await getLoyalty(user.email, id)).isLoyal;
   }
   const countryCode = countryFromRequest(req);
-  const regionMultiplier = await getMultiplierForCountry(countryCode);
-  const { pricePerMin, appliedOfferPercent } = computeRegionAdjustedPrice(row, type as 'chat' | 'voice' | 'video', isLoyal, regionMultiplier);
+  const region = await getRegionForCountry(countryCode);
+  const override = region ? await getOverride(id, region.id) : undefined;
+  const regionMultiplier = region ? Number(region.price_multiplier) : 1;
+  const { pricePerMin, appliedOfferPercent } = computePriceWithOverride(row, type as 'chat' | 'voice' | 'video', isLoyal, regionMultiplier, override ?? null);
   res.json({ success: true, data: { pricePerMin, appliedOfferPercent, isLoyal, countryCode, regionMultiplier } });
 });
 

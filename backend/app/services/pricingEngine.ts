@@ -67,3 +67,21 @@ export function computeRegionAdjustedPrice(astro: AstrologerCatalogRow, type: Co
   const { pricePerMin, appliedOfferPercent } = computeEffectivePrice(astro, type, isLoyal);
   return { pricePerMin: applyRegionMultiplier(pricePerMin, regionMultiplier), appliedOfferPercent };
 }
+
+// A staff-set per-astrologer, per-region override (astrologerRegionPriceRepository)
+// takes full precedence over the region's plain multiplier — it's staff's
+// exact, final say for that astrologer in that region, so no offer/loyalty
+// discount is layered on top of it.
+export function computePriceWithOverride(
+  astro: AstrologerCatalogRow,
+  type: ConsultationType,
+  isLoyal: boolean,
+  regionMultiplier: number,
+  override: { chat_price: number; call_price: number; video_price: number } | null,
+): { pricePerMin: number; appliedOfferPercent: number } {
+  if (override) {
+    const pricePerMin = type === 'chat' ? override.chat_price : type === 'voice' ? override.call_price : override.video_price;
+    return { pricePerMin, appliedOfferPercent: 0 };
+  }
+  return computeRegionAdjustedPrice(astro, type, isLoyal, regionMultiplier);
+}

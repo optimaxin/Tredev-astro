@@ -260,6 +260,20 @@ export interface PricingRegionPatch {
   priceMultiplier: number;
 }
 
+// A staff-set exact price for one astrologer in one region — takes full
+// precedence over that region's plain multiplier (backend/app/services/
+// pricingEngine.ts's computePriceWithOverride).
+export interface ApiAstrologerRegionPrice {
+  astrologerId: number;
+  astrologerName: string;
+  regionId: number;
+  regionName: string;
+  chatPrice: number;
+  callPrice: number;
+  videoPrice: number;
+  updatedAt: number;
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -324,4 +338,23 @@ export const adminService = {
   updatePricingRegion: (id: number, patch: PricingRegionPatch) =>
     request<ApiPricingRegion>(`/pricing-regions/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deletePricingRegion: (id: number) => request<{ ok: boolean }>(`/pricing-regions/${id}`, { method: 'DELETE' }),
+
+  listAstrologerRegionPrices: () => request<ApiAstrologerRegionPrice[]>('/astrologer-region-prices'),
+  setAstrologerRegionPrice: (astrologerId: number, regionId: number, chatPrice: number, callPrice: number, videoPrice: number) =>
+    request<ApiAstrologerRegionPrice>('/astrologer-region-prices', { method: 'POST', body: JSON.stringify({ astrologerId, regionId, chatPrice, callPrice, videoPrice }) }),
+  deleteAstrologerRegionPrice: (astrologerId: number, regionId: number) =>
+    request<{ ok: boolean }>(`/astrologer-region-prices/${astrologerId}/${regionId}`, { method: 'DELETE' }),
+
+  // Raw fetch, not the JSON `request()` helper — the server sends this as a
+  // text/csv attachment, not a {success, data} envelope.
+  downloadAstrologerRegionPriceCsv: async (): Promise<Blob> => {
+    const token = localStorage.getItem('auth_access_token');
+    const res = await fetch(`${API_URL}/api/admin/astrologer-region-prices/csv-template`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new AdminApiError('DOWNLOAD_FAILED', 'Could not download the pricing CSV template.');
+    return res.blob();
+  },
+  importAstrologerRegionPriceCsv: (csv: string) =>
+    request<{ updated: number; errors: string[] }>('/astrologer-region-prices/csv-import', { method: 'POST', body: JSON.stringify({ csv }) }),
 };

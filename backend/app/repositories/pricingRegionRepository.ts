@@ -42,9 +42,13 @@ export async function deletePricingRegion(id: number): Promise<void> {
 // today's plain price, unchanged. The region list is expected to stay small
 // (a handful of staff-managed entries), so fetching all of them and matching
 // in memory is simpler than a dedicated indexed lookup query.
-export async function getMultiplierForCountry(countryCode: string | null): Promise<number> {
-  if (!countryCode) return 1;
+export async function getRegionForCountry(countryCode: string | null): Promise<PricingRegionRow | null> {
+  if (!countryCode) return null;
   const regions = await listPricingRegions();
-  const match = regions.find(r => r.country_codes.some(c => c.toUpperCase() === countryCode.toUpperCase()));
-  return match ? Number(match.price_multiplier) : 1;
+  return regions.find(r => r.country_codes.some(c => c.toUpperCase() === countryCode.toUpperCase())) ?? null;
+}
+
+export async function getMultiplierForCountry(countryCode: string | null): Promise<number> {
+  const region = await getRegionForCountry(countryCode);
+  return region ? Number(region.price_multiplier) : 1;
 }

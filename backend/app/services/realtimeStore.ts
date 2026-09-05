@@ -8,8 +8,9 @@ import * as notificationRepo from '../repositories/notificationRepository.ts';
 import * as processedRequestRepo from '../repositories/processedRequestRepository.ts';
 import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
 import * as boostRepo from '../repositories/boostRepository.ts';
-import { computeRegionAdjustedPrice } from './pricingEngine.ts';
-import { getMultiplierForCountry } from '../repositories/pricingRegionRepository.ts';
+import { computePriceWithOverride } from './pricingEngine.ts';
+import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
+import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
   AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
@@ -307,9 +308,11 @@ async function createConsultation(astrologerId: number, params: Omit<RequestPara
   // pricingEngine.ts's comment on why).
   const catalogRow = await findAstrologerByIdRaw(astrologerId);
   const { isLoyal } = await loyaltyRepo.getLoyalty(params.userEmail, astrologerId, executor);
-  const regionMultiplier = await getMultiplierForCountry(params.countryCode ?? null);
+  const region = await getRegionForCountry(params.countryCode ?? null);
+  const regionMultiplier = region ? Number(region.price_multiplier) : 1;
+  const override = region ? await getOverride(astrologerId, region.id) : undefined;
   const { pricePerMin, appliedOfferPercent } = catalogRow
-    ? computeRegionAdjustedPrice(catalogRow, params.type, isLoyal, regionMultiplier)
+    ? computePriceWithOverride(catalogRow, params.type, isLoyal, regionMultiplier, override ?? null)
     : { pricePerMin: 0, appliedOfferPercent: 0 };
 
   let boostId: number | undefined;
