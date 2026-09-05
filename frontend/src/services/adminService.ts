@@ -91,7 +91,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'blog', 'notifications', 'audit', 'settings',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'notifications', 'audit', 'settings',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -245,6 +245,21 @@ export interface ApiAstrologerStatus {
   effectiveBoostPayoutSharePercent: number;
 }
 
+export interface ApiPricingRegion {
+  id: number;
+  name: string;
+  countryCodes: string[];
+  priceMultiplier: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PricingRegionPatch {
+  name: string;
+  countryCodes: string[];
+  priceMultiplier: number;
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -303,4 +318,10 @@ export const adminService = {
   // `percent: null` clears the override, falling back to the platform default.
   updateAstrologerBoostPayout: (id: number, percent: number | null) =>
     request<{ boostPayoutOverridePercent: number | null }>(`/astrologers/${id}/boost-payout`, { method: 'PATCH', body: JSON.stringify({ percent }) }),
+
+  listPricingRegions: () => request<ApiPricingRegion[]>('/pricing-regions'),
+  createPricingRegion: (patch: PricingRegionPatch) => request<ApiPricingRegion>('/pricing-regions', { method: 'POST', body: JSON.stringify(patch) }),
+  updatePricingRegion: (id: number, patch: PricingRegionPatch) =>
+    request<ApiPricingRegion>(`/pricing-regions/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deletePricingRegion: (id: number) => request<{ ok: boolean }>(`/pricing-regions/${id}`, { method: 'DELETE' }),
 };

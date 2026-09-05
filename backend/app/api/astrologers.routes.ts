@@ -4,7 +4,10 @@ import { findAstrologerById, findAstrologerByUserId, listAstrologers, setActiveO
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { optionalAuth, requireAuth } from '../middleware/auth.ts';
 import { getLoyalty } from '../repositories/loyaltyRepository.ts';
-import { computeEffectivePrice } from '../services/pricingEngine.ts';
+import { applyRegionMultiplier, computeRegionAdjustedPrice } from '../services/pricingEngine.ts';
+import { getMultiplierForCountry } from '../repositories/pricingRegionRepository.ts';
+import { countryFromRequest } from '../services/geoLocation.ts';
+import type { PublicAstrologerProfile } from '../models/astrologer.ts';
 import { findReviewByConsultation, insertReviewAndUpdateRating, listReviewsForAstrologer } from '../repositories/reviewRepository.ts';
 import { toPublicReview } from '../models/review.ts';
 import { findConsultationById } from '../repositories/consultationRepository.ts';
@@ -33,15 +36,30 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+// Applies a region's price multiplier to the 3 advertised price fields —
+// used so browsing the catalog already shows a visitor their real region
+// price, not just the final booking-confirmation step. A multiplier of 1
+// (no matching region, the default) returns the profile untouched.
+function withRegionPricing(profile: PublicAstrologerProfile, multiplier: number): PublicAstrologerProfile {
+  if (multiplier === 1) return profile;
+  return {
+    ...profile,
+    chatPrice: applyRegionMultiplier(profile.chatPrice, multiplier),
+    callPrice: applyRegionMultiplier(profile.callPrice, multiplier),
+    videoPrice: applyRegionMultiplier(profile.videoPrice, multiplier),
+  };
+}
+
 astrologersCatalogRouter.get('/catalog', async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
   }
   const { rows, total } = await listAstrologers(parsed.data);
+  const regionMultiplier = await getMultiplierForCountry(countryFromRequest(req));
   res.json({
     success: true,
-    data: rows.map(toPublicAstrologerProfile),
+    data: rows.map(r => withRegionPricing(toPublicAstrologerProfile(r), regionMultiplier)),
     pagination: { page: parsed.data.page, limit: parsed.data.limit, total },
   });
 });
@@ -53,7 +71,8 @@ astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   }
   const row = await findAstrologerById(id);
   if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Astrologer not found' } });
-  res.json({ success: true, data: toPublicAstrologerProfile(row) });
+  const regionMultiplier = await getMultiplierForCountry(countryFromRequest(req));
+  res.json({ success: true, data: withRegionPricing(toPublicAstrologerProfile(row), regionMultiplier) });
 });
 
 // The exact per-minute price a booking would lock in RIGHT NOW for this
@@ -74,8 +93,10 @@ astrologersCatalogRouter.get('/:id/effective-price', optionalAuth, async (req, r
     const user = await findUserById(req.user.id);
     if (user) isLoyal = (await getLoyalty(user.email, id)).isLoyal;
   }
-  const { pricePerMin, appliedOfferPercent } = computeEffectivePrice(row, type as 'chat' | 'voice' | 'video', isLoyal);
-  res.json({ success: true, data: { pricePerMin, appliedOfferPercent, isLoyal } });
+  const countryCode = countryFromRequest(req);
+  const regionMultiplier = await getMultiplierForCountry(countryCode);
+  const { pricePerMin, appliedOfferPercent } = computeRegionAdjustedPrice(row, type as 'chat' | 'voice' | 'video', isLoyal, regionMultiplier);
+  res.json({ success: true, data: { pricePerMin, appliedOfferPercent, isLoyal, countryCode, regionMultiplier } });
 });
 
 // Lets a logged-in astrologer resolve their own catalog row (id + pricing +

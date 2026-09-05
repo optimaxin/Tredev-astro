@@ -51,3 +51,19 @@ export function computeEffectivePrice(astro: AstrologerCatalogRow, type: Consult
   const pricePerMin = Math.round(basePrice * (1 - appliedOfferPercent / 100));
   return { pricePerMin, appliedOfferPercent };
 }
+
+// Region pricing layers on top of computeEffectivePrice rather than folding
+// into it — offer/loyalty pricing is per-astrologer data already on the
+// catalog row, while a region multiplier comes from a lookup keyed by the
+// VISITOR's detected country (pricingRegionRepository.getMultiplierForCountry),
+// a different axis entirely. Keeping them separate means an existing caller
+// of computeEffectivePrice is untouched unless it deliberately opts into
+// region adjustment by calling this instead.
+export function applyRegionMultiplier(pricePerMin: number, regionMultiplier: number): number {
+  return Math.round(pricePerMin * regionMultiplier);
+}
+
+export function computeRegionAdjustedPrice(astro: AstrologerCatalogRow, type: ConsultationType, isLoyal: boolean, regionMultiplier: number): { pricePerMin: number; appliedOfferPercent: number } {
+  const { pricePerMin, appliedOfferPercent } = computeEffectivePrice(astro, type, isLoyal);
+  return { pricePerMin: applyRegionMultiplier(pricePerMin, regionMultiplier), appliedOfferPercent };
+}

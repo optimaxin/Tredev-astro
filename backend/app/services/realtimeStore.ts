@@ -8,7 +8,8 @@ import * as notificationRepo from '../repositories/notificationRepository.ts';
 import * as processedRequestRepo from '../repositories/processedRequestRepository.ts';
 import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
 import * as boostRepo from '../repositories/boostRepository.ts';
-import { computeEffectivePrice } from './pricingEngine.ts';
+import { computeRegionAdjustedPrice } from './pricingEngine.ts';
+import { getMultiplierForCountry } from '../repositories/pricingRegionRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
   AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
@@ -252,6 +253,11 @@ export interface RequestParams {
   category: string;
   type: ConsultationType;
   durationMinutes?: number; // chosen by the user at booking time; falls back to the site default
+  // The requester's IP-detected country (routes.ts computes this from the
+  // HTTP request — see geoLocation.ts) — used to apply a staff-set region
+  // price multiplier so what's actually charged matches what the catalog
+  // and effective-price endpoints showed this same visitor before booking.
+  countryCode?: string | null;
 }
 
 export async function requestConsultation(params: RequestParams): Promise<RequestResult> {
@@ -301,8 +307,9 @@ async function createConsultation(astrologerId: number, params: Omit<RequestPara
   // pricingEngine.ts's comment on why).
   const catalogRow = await findAstrologerByIdRaw(astrologerId);
   const { isLoyal } = await loyaltyRepo.getLoyalty(params.userEmail, astrologerId, executor);
+  const regionMultiplier = await getMultiplierForCountry(params.countryCode ?? null);
   const { pricePerMin, appliedOfferPercent } = catalogRow
-    ? computeEffectivePrice(catalogRow, params.type, isLoyal)
+    ? computeRegionAdjustedPrice(catalogRow, params.type, isLoyal, regionMultiplier)
     : { pricePerMin: 0, appliedOfferPercent: 0 };
 
   let boostId: number | undefined;

@@ -17,6 +17,7 @@ export type AdminSection =
   | 'consultations'
   | 'reports'
   | 'orders'
+  | 'pricing'
   | 'blog'
   | 'notifications'
   | 'audit'

@@ -41,6 +41,13 @@ await seedRealtimeStore();
 await rescheduleActiveConsultationTimers();
 
 const app = express();
+// Needed for req.ip to reflect the real visitor IP (via X-Forwarded-For)
+// when this runs behind a reverse proxy/load balancer, rather than always
+// resolving to the proxy's own address — geoLocation.ts's region-pricing
+// lookup depends on this being accurate. `1` trusts exactly one hop, the
+// typical single-proxy deployment shape; adjust if this ever sits behind
+// more than one proxy layer.
+app.set('trust proxy', 1);
 app.use(cors({ origin: corsOrigin }));
 // Default 100kb is fine for everything except chat's IMAGE/AUDIO messages,
 // which arrive as a base64 data URL (see chat.routes.ts's sendMessageSchema

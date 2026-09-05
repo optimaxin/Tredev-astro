@@ -25,6 +25,8 @@ import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
+import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPricingRegions, updatePricingRegion } from '../repositories/pricingRegionRepository.ts';
+import { toPublicPricingRegion } from '../models/pricingRegion.ts';
 
 export const adminRouter = Router();
 
@@ -522,6 +524,54 @@ adminRouter.patch('/settings/boost-payout', requireSection('settings'), async (r
   await setBoostPayoutSharePercent(parsed.data.percent);
   await audit(req, 'settings.boost_payout.update', `${parsed.data.percent}%`);
   res.json({ success: true, data: { percent: parsed.data.percent } });
+});
+
+// ── Pricing regions (region-wise consultation pricing) ──────────────────
+// A visitor's IP-detected country (geoLocation.ts) is matched against a
+// region's country codes, and that region's multiplier is applied on top of
+// an astrologer's own price everywhere a price is shown or charged — see
+// pricingEngine.ts's computeRegionAdjustedPrice and its 3 call sites
+// (astrologers.routes.ts's catalog + effective-price, and
+// realtimeStore.ts's createConsultation).
+
+adminRouter.get('/pricing-regions', requireSection('pricing'), async (_req, res) => {
+  const rows = await listPricingRegions();
+  res.json({ success: true, data: rows.map(toPublicPricingRegion) });
+});
+
+const pricingRegionSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  countryCodes: z.array(z.string().trim().length(2)).min(1),
+  priceMultiplier: z.number().positive().max(100),
+});
+
+adminRouter.post('/pricing-regions', requireSection('pricing'), async (req, res) => {
+  const parsed = pricingRegionSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await createPricingRegion(parsed.data.name, parsed.data.countryCodes.map(c => c.toUpperCase()), parsed.data.priceMultiplier);
+  await audit(req, 'pricing_region.create', `${row.name} (${row.country_codes.join(', ')}) x${row.price_multiplier}`);
+  res.status(201).json({ success: true, data: toPublicPricingRegion(row) });
+});
+
+adminRouter.patch('/pricing-regions/:id', requireSection('pricing'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = pricingRegionSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await updatePricingRegion(id, parsed.data.name, parsed.data.countryCodes.map(c => c.toUpperCase()), parsed.data.priceMultiplier);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Region not found');
+  await audit(req, 'pricing_region.update', `${row.name} (${row.country_codes.join(', ')}) x${row.price_multiplier}`);
+  res.json({ success: true, data: toPublicPricingRegion(row) });
+});
+
+adminRouter.delete('/pricing-regions/:id', requireSection('pricing'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const target = await findPricingRegionById(id);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'Region not found');
+  await deletePricingRegion(id);
+  await audit(req, 'pricing_region.delete', target.name);
+  res.json({ success: true, data: { ok: true } });
 });
 
 // ── Staff & Admin accounts ───────────────────────────────────────────────

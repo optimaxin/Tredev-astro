@@ -7,6 +7,7 @@ import {
   setMaxConcurrent, touchActivity, updateAdminConfig,
 } from '../services/realtimeStore.ts';
 import type { ConsultationType } from '../models/types.ts';
+import { countryFromRequest } from '../services/geoLocation.ts';
 
 export const router = Router();
 
@@ -75,7 +76,8 @@ router.post('/consultations/request', async (req, res) => {
   }
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
-  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes });
+  const countryCode = countryFromRequest(req);
+  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode });
   res.json(result);
 });
 
