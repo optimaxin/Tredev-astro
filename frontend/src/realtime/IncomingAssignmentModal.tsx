@@ -9,21 +9,16 @@ import styles from './realtime.module.css';
 // section) so it appears no matter where the astrologer currently is.
 export default function IncomingAssignmentModal() {
   const { currentUser } = useAppContext();
-  const { astrologerSync, acceptAssignment, declineAssignment } = useRealtime();
+  const { astrologerSync, acceptAssignment } = useRealtime();
   const [busy, setBusy] = useState(false);
   const profile = ASTROLOGERS.find(a => a.name === currentUser?.name) || ASTROLOGERS[0];
 
   const next = astrologerSync?.pendingAssignments[0];
   if (!next) return null;
 
-  const handle = async (action: 'accept' | 'decline') => {
+  const handleAccept = async () => {
     setBusy(true);
-    try {
-      if (action === 'accept') await acceptAssignment(next.id);
-      else await declineAssignment(next.id);
-    } finally {
-      setBusy(false);
-    }
+    try { await acceptAssignment(next.id); } finally { setBusy(false); }
   };
 
   return (
@@ -36,8 +31,7 @@ export default function IncomingAssignmentModal() {
         <div className={styles.assignRow}><span>Type</span><span style={{ textTransform: 'capitalize' }}>{next.type}</span></div>
         <div className={styles.assignRow}><span>Rate</span><span>₹{profile.price}/min</span></div>
         <div className={styles.assignActions}>
-          <button className="btn btn-gold" style={{ flex: 1 }} disabled={busy} onClick={() => handle('accept')}>Accept</button>
-          <button className="btn btn-outline-light" style={{ flex: 1 }} disabled={busy} onClick={() => handle('decline')}>Decline</button>
+          <button className="btn btn-gold" style={{ flex: 1 }} disabled={busy} onClick={handleAccept}>Accept</button>
         </div>
         {astrologerSync && astrologerSync.pendingAssignments.length > 1 && (
           <div className={styles.assignMeta} style={{ marginTop: 10, textAlign: 'center' }}>+{astrologerSync.pendingAssignments.length - 1} more waiting</div>

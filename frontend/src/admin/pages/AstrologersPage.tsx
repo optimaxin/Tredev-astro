@@ -4,6 +4,7 @@ import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
 import { adminService, AdminApiError } from '../../services/adminService';
+import type { ApiAstrologerRevenue } from '../../services/adminService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog } from '../components/SharedControls';
@@ -62,16 +63,18 @@ function profileToForm(p: ApiAstrologerProfile): EditForm {
 
 const splitList = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
 
+const ZERO_REVENUE: ApiAstrologerRevenue = {
+  astrologerId: -1, astrologerName: '', chatCount: 0, chatRevenue: 0, voiceCount: 0, voiceRevenue: 0, videoCount: 0, videoRevenue: 0, totalRevenue: 0,
+};
+
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, createAstrologerAccount, updateAccountRole } = useAppContext();
-  const [view, setView] = useState<'cards' | 'table'>('cards');
+  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole } = useAppContext();
+  const [view, setView] = useState<'cards' | 'table' | 'revenue'>('cards');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AuthUser | null>(null);
   const [profileTab, setProfileTab] = useState('overview');
-  const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-  const [formError, setFormError] = useState('');
   const [catalog, setCatalog] = useState<UiAstrologer[]>([]);
+  const [revenue, setRevenue] = useState<ApiAstrologerRevenue[]>([]);
   const [removeTarget, setRemoveTarget] = useState<AuthUser | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState('');
@@ -163,6 +166,7 @@ export default function AstrologersPage() {
 
   useEffect(() => {
     astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data)).catch(() => {});
+    adminService.getAstrologerRevenue().then(setRevenue).catch(() => {});
   }, []);
 
   const astrologers = useMemo(() => {
@@ -172,17 +176,13 @@ export default function AstrologersPage() {
       .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
   }, [accounts, search]);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    try {
-      await createAstrologerAccount(form.name, form.email, form.password);
-      setAddOpen(false);
-      setForm({ name: '', email: '', password: '' });
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not create this astrologer account.');
-    }
-  };
+  // Real per-type revenue (chat/voice/video, each at that astrologer's own
+  // price, counted only from completed consultations) — replaces the old
+  // `price * totalConsultations` estimate, which used the CHAT price for
+  // every consultation type and counted consultations that were never
+  // actually completed.
+  const revenueFor = (astrologerId: number | undefined): ApiAstrologerRevenue =>
+    revenue.find(r => r.astrologerId === astrologerId) ?? ZERO_REVENUE;
 
   const TABS = [
     { key: 'overview', labelKey: 'admin_astro_tab_overview' },
@@ -203,15 +203,29 @@ export default function AstrologersPage() {
         <div className={styles.viewToggle}>
           <AdminButton variant={view === 'cards' ? 'gold' : 'outline'} onClick={() => setView('cards')}>{t('admin_astro_view_cards')}</AdminButton>
           <AdminButton variant={view === 'table' ? 'gold' : 'outline'} onClick={() => setView('table')}>{t('admin_astro_view_table')}</AdminButton>
+          <AdminButton variant={view === 'revenue' ? 'gold' : 'outline'} onClick={() => setView('revenue')}>{t('admin_astro_view_revenue')}</AdminButton>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <SearchInput value={search} onChange={setSearch} placeholder={t('admin_search_name_email')} />
-          <AdminButton variant="gold" onClick={() => setAddOpen(true)}>{t('admin_action_add_astrologer')}</AdminButton>
         </div>
       </div>
 
       {astrologers.length === 0 && (
         <EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />
+      )}
+
+      {astrologers.length > 0 && view === 'revenue' && (
+        <DataTable
+          columns={[
+            { key: 'name', label: t('admin_astro_col_name'), render: a => a.name },
+            { key: 'chat', label: t('admin_astro_revenue_chat'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).chatRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).chatCount})` },
+            { key: 'voice', label: t('admin_astro_revenue_voice'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).voiceRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).voiceCount})` },
+            { key: 'video', label: t('admin_astro_revenue_video'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).videoRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).videoCount})` },
+            { key: 'total', label: t('admin_astro_revenue_total'), render: a => <strong>₹{revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}</strong> },
+          ]}
+          rows={astrologers}
+          keyField="email"
+        />
       )}
 
       {astrologers.length > 0 && view === 'cards' && (
@@ -232,7 +246,7 @@ export default function AstrologersPage() {
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_rating')}: </span><span className={styles.astroStatValue}>★ {p.rating}</span></div>
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_experience')}: </span><span className={styles.astroStatValue}>{p.experience}y</span></div>
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_consultations')}: </span><span className={styles.astroStatValue}>{p.consultations.toLocaleString()}</span></div>
-                  <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{(p.price * p.consultations).toLocaleString()}</span></div>
+                  <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{revenueFor(p.id).totalRevenue.toLocaleString()}</span></div>
                 </div>
                 <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
                 <div className={styles.astroCardActions}>
@@ -257,7 +271,7 @@ export default function AstrologersPage() {
             { key: 'experience', label: t('admin_astro_col_experience'), render: a => `${joinedProfile(a, catalog).experience}y` },
             { key: 'languages', label: t('admin_astro_col_languages'), render: a => joinedProfile(a, catalog).languages.join(', ') || '—' },
             { key: 'consultations', label: t('admin_astro_col_consultations'), render: a => joinedProfile(a, catalog).consultations.toLocaleString() },
-            { key: 'earnings', label: t('admin_astro_col_earnings'), render: a => { const p = joinedProfile(a, catalog); return `₹${(p.price * p.consultations).toLocaleString()}`; } },
+            { key: 'earnings', label: t('admin_astro_col_earnings'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}` },
             { key: 'status', label: t('admin_astro_col_status'), render: a => { const s = accountStatus(a.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
             {
               key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: a => {
@@ -304,9 +318,17 @@ export default function AstrologersPage() {
               )}
               {profileTab === 'schedule' && <EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />}
               {profileTab === 'reviews' && <EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />}
-              {profileTab === 'earnings' && (
-                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_earnings')}</span><span className={styles.drawerFieldValue}>₹{(p.price * p.consultations).toLocaleString()}</span></div>
-              )}
+              {profileTab === 'earnings' && (() => {
+                const rev = revenueFor(p.id);
+                return (
+                  <>
+                    <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_chat')}</span><span className={styles.drawerFieldValue}>₹{rev.chatRevenue.toLocaleString()} ({rev.chatCount})</span></div>
+                    <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_voice')}</span><span className={styles.drawerFieldValue}>₹{rev.voiceRevenue.toLocaleString()} ({rev.voiceCount})</span></div>
+                    <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_video')}</span><span className={styles.drawerFieldValue}>₹{rev.videoRevenue.toLocaleString()} ({rev.videoCount})</span></div>
+                    <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_total')}</span><span className={styles.drawerFieldValue}><strong>₹{rev.totalRevenue.toLocaleString()}</strong></span></div>
+                  </>
+                );
+              })()}
               {profileTab === 'consultations' && (
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_consultations')}</span><span className={styles.drawerFieldValue}>{p.consultations.toLocaleString()}</span></div>
               )}
@@ -316,28 +338,6 @@ export default function AstrologersPage() {
         })()}
       </Drawer>
 
-      <Drawer
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title={t('admin_astro_add_title')}
-        footer={<AdminButton variant="gold" type="submit" form="add-astrologer-form">{t('admin_action_confirm')}</AdminButton>}
-      >
-        <form id="add-astrologer-form" onSubmit={handleAdd}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>{t('admin_astro_add_name')}</label>
-            <input className={styles.formInput} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>{t('admin_astro_add_email')}</label>
-            <input type="email" className={styles.formInput} required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>{t('admin_astro_add_password')}</label>
-            <input type="password" className={styles.formInput} required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-          </div>
-          {formError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{formError}</p>}
-        </form>
-      </Drawer>
 
       <Drawer
         open={!!editTarget}

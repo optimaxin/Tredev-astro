@@ -49,6 +49,18 @@ export interface ApiAstrologerProfile {
   consultationCount: number;
 }
 
+export interface ApiAstrologerRevenue {
+  astrologerId: number;
+  astrologerName: string;
+  chatCount: number;
+  chatRevenue: number;
+  voiceCount: number;
+  voiceRevenue: number;
+  videoCount: number;
+  videoRevenue: number;
+  totalRevenue: number;
+}
+
 export interface AstrologerProfilePatch {
   title: string;
   bio: string;
@@ -177,10 +189,9 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   updateUserRole: (id: string, role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') =>
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
-  addAstrologer: (name: string, email: string, password: string) =>
-    request<ApiUserRecord>('/astrologers', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
   updateAstrologerProfile: (id: number, patch: AstrologerProfilePatch) =>
     request<ApiAstrologerProfile>(`/astrologers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  getAstrologerRevenue: () => request<ApiAstrologerRevenue[]>('/astrologers/revenue'),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),
 

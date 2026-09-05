@@ -13,7 +13,22 @@ interface CallWindowProps {
   isInitiator: boolean;
 }
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+// STUN alone only works when at least one side has a NAT that allows a
+// direct/reflexive path — real users on separate networks routinely sit
+// behind a NAT that doesn't, which is exactly "stuck on Connecting…
+// forever" (ICE never completes, so pc.ontrack/onconnectionstatechange
+// never fires). The TURN entries are Metered.ca's public OpenRelay demo
+// server — a well-known free-for-testing relay, not something to rely on
+// for real production traffic, but real enough to make calls actually
+// connect instead of silently failing behind a strict NAT.
+// ponytail: demo TURN server, no auth/rate-limit control — swap for a paid
+// TURN provider (or self-hosted coturn) if call volume ever matters.
+const ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+];
 
 type CallStatus = 'connecting' | 'connected' | 'ended' | 'error';
 
@@ -24,9 +39,10 @@ type CallStatus = 'connecting' | 'connected' | 'ended' | 'error';
 // — the underlying consultation record's lifecycle (accept/end) is a
 // separate, already-built concern (see endActiveConsultation).
 export default function CallWindow({ consultationId, otherPartyName, isInitiator }: CallWindowProps) {
-  const { sendCallSignal, onCallSignal } = useRealtime();
+  const { sendCallSignal, onCallSignal, endConsultationById } = useRealtime();
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [muted, setMuted] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(true);
   const [seconds, setSeconds] = useState(0);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -133,9 +149,25 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
     setMuted(next);
   };
 
+  // "Speaker" here means whether you can hear the other person at all —
+  // there's no separate earpiece/loudspeaker device to route between on a
+  // typical desktop browser, and setSinkId() support is inconsistent
+  // enough (no Firefox/Safari) that picking a specific output device isn't
+  // reliable. Muting the remote <audio> element itself is the one thing
+  // that always works everywhere.
+  const toggleSpeaker = () => {
+    if (remoteAudioRef.current) remoteAudioRef.current.muted = speakerOn;
+    setSpeakerOn(!speakerOn);
+  };
+
   const hangUp = () => {
     sendCallSignal('call:hangup', consultationId);
     setStatus('ended');
+    // Hanging up the call ends the underlying consultation too — not just
+    // the media connection. The other side doesn't need to also call this:
+    // ending here fires chat:ended over the socket, which updates both
+    // parties' state on its own (see RealtimeContext's listener).
+    endConsultationById(consultationId).catch(console.error);
   };
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -159,6 +191,9 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
         <div className={styles.controls}>
           <button className={`${styles.iconBtn} ${muted ? styles.iconBtnActive : ''}`} onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'} type="button">
             {muted ? '🔇' : '🎙️'}
+          </button>
+          <button className={`${styles.iconBtn} ${!speakerOn ? styles.iconBtnActive : ''}`} onClick={toggleSpeaker} title={speakerOn ? 'Mute speaker' : 'Unmute speaker'} type="button">
+            {speakerOn ? '🔊' : '🔈'}
           </button>
           <button className={styles.hangupBtn} onClick={hangUp} title="End call" type="button">📞</button>
         </div>

@@ -133,6 +133,20 @@ export async function countForUser(userEmail: string): Promise<number> {
 // "In flight" — this app only ever books immediate real-time consultations
 // (no scheduled-for-later slots), so this is the closest real equivalent to
 // the old mock's "today's consultations" KPI.
+// Grouped by astrologer + type — the admin Astrologers page's revenue
+// breakdown multiplies each group's count by that astrologer's CURRENT
+// per-type price (chat_price/call_price/video_price), same "estimate off
+// current pricing, not a captured-at-booking-time ledger" reasoning
+// chat.routes.ts's mine-as-astrologer already uses. Only COMPLETED
+// consultations count — an assigned-then-declined/cancelled one was never
+// actually delivered.
+export async function countCompletedByAstrologerAndType(): Promise<{ astrologerId: number; type: string; count: number }[]> {
+  const rows = await query<{ astrologer_id: number; type: string; n: string }>(
+    `SELECT astrologer_id, type, COUNT(*) AS n FROM consultations WHERE status = 'COMPLETED' GROUP BY astrologer_id, type`
+  );
+  return rows.map(r => ({ astrologerId: r.astrologer_id, type: r.type, count: Number(r.n) }));
+}
+
 export async function countInProgress(): Promise<number> {
   const row = await queryOne<{ n: string }>(`SELECT COUNT(*) AS n FROM consultations WHERE status IN ('ASSIGNED', 'ACCEPTED', 'ACTIVE')`);
   return Number(row?.n ?? 0);

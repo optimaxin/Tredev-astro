@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import { findUserById, listAllUsers, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, insertAstrologerForUser, updateAstrologerProfile } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, listAllAstrologersRaw, updateAstrologerProfile } from '../repositories/astrologerRepository.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
-import { countForUser, countInProgress, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
+import { countCompletedByAstrologerAndType, countForUser, countInProgress, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import { listAuditLog, logAdminAction } from '../repositories/auditLogRepository.ts';
 import { register, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
@@ -126,30 +126,47 @@ adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res)
 });
 
 // ── Astrologers ──────────────────────────────────────────────────────────
+// Direct admin-onboarding ("Add Astrologer") was removed per explicit
+// request — astrologer accounts come from the apply/approve flow now.
+// Removing one still reuses PATCH /users/:id/role (set role back to USER),
+// same mechanism the Users page already uses for role changes.
 
-// Admin/staff directly onboarding an astrologer — creates a real user
-// account (real password, hashed) and an immediately-bookable catalog row
-// in one step. Removing an astrologer reuses PATCH /users/:id/role (set
-// role back to USER) rather than a dedicated endpoint — same mechanism the
-// Users page already uses for role changes.
-const addAstrologerSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email(),
-  password: z.string().min(8).max(200),
-});
+// Real per-astrologer revenue, replacing the old `price * totalConsultations`
+// estimate the Astrologers page used to show (which used the CHAT price
+// for every consultation type, and counted every consultation regardless
+// of whether it was ever actually completed). Grouped by type and priced
+// at that astrologer's current per-type rate — still an estimate (no
+// price is captured at booking time anywhere in this app), but the same
+// real, trusted methodology chat.routes.ts's mine-as-astrologer uses.
+adminRouter.get('/astrologers/revenue', requireSection('astrologers'), async (_req, res) => {
+  const [astrologers, counts] = await Promise.all([listAllAstrologersRaw(), countCompletedByAstrologerAndType()]);
+  const priceByType: Record<number, Record<string, number>> = {};
+  for (const a of astrologers) priceByType[a.id] = { chat: a.chat_price, voice: a.call_price, video: a.video_price };
 
-adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res) => {
-  const parsed = addAstrologerSchema.safeParse(req.body);
-  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  try {
-    const { user } = await register({ ...parsed.data, role: 'ASTROLOGIST' });
-    await insertAstrologerForUser(user.id, user.name, 'General Astrology');
-    await audit(req, 'astrologer.create', user.email);
-    res.status(201).json({ success: true, data: user });
-  } catch (e) {
-    if (e instanceof AuthError) return fail(res, e.status, 'AUTH_ERROR', e.message);
-    throw e;
+  const byAstrologer: Record<number, { chatCount: number; chatRevenue: number; voiceCount: number; voiceRevenue: number; videoCount: number; videoRevenue: number }> = {};
+  for (const a of astrologers) byAstrologer[a.id] = { chatCount: 0, chatRevenue: 0, voiceCount: 0, voiceRevenue: 0, videoCount: 0, videoRevenue: 0 };
+  for (const c of counts) {
+    const bucket = byAstrologer[c.astrologerId];
+    if (!bucket) continue;
+    const price = priceByType[c.astrologerId]?.[c.type] ?? 0;
+    const revenue = price * c.count;
+    if (c.type === 'chat') { bucket.chatCount += c.count; bucket.chatRevenue += revenue; }
+    else if (c.type === 'voice') { bucket.voiceCount += c.count; bucket.voiceRevenue += revenue; }
+    else if (c.type === 'video') { bucket.videoCount += c.count; bucket.videoRevenue += revenue; }
   }
+
+  const data = astrologers.map(a => {
+    const b = byAstrologer[a.id]!;
+    return {
+      astrologerId: a.id, astrologerName: a.name,
+      chatCount: b.chatCount, chatRevenue: b.chatRevenue,
+      voiceCount: b.voiceCount, voiceRevenue: b.voiceRevenue,
+      videoCount: b.videoCount, videoRevenue: b.videoRevenue,
+      totalRevenue: b.chatRevenue + b.voiceRevenue + b.videoRevenue,
+    };
+  }).sort((x, y) => y.totalRevenue - x.totalRevenue);
+
+  res.json({ success: true, data });
 });
 
 // The rest of an astrologer's catalog profile — title, bio, experience,
