@@ -89,8 +89,11 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
             generation effect forces a page break right after this block,
             regardless of how much room is left on the page). */}
         <div data-pdf-block data-pdf-cover="true" style={{ minHeight: 620, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '50px 20px' }}>
+          {/* The Acharya portrait lives in the running header of every page
+              instead (see drawHeader in KundliSection.tsx) — the cover
+              stays a clean, single-focal-point brand mark. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
-          <img src="/logo.png" style={{ width: 96, height: 96, objectFit: 'contain', marginBottom: 22 }} />
+          <img src="/logo.png" style={{ width: 120, height: 120, objectFit: 'contain', marginBottom: 22 }} />
           <div style={{ fontSize: FONT.label, letterSpacing: '0.15em', color: GOLD, textTransform: 'uppercase', marginBottom: 14, fontWeight: 700 }}>TredevAstro · Vedic Astrology Report</div>
           <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '4px 0 14px', maxWidth: 560 }}>{name}&apos;s Kundli</div>
           <div style={{ fontSize: FONT.body, color: MUTED, marginBottom: 22 }}>{dob} · {tob} · {place}</div>
@@ -137,27 +140,31 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </KVGrid>
         </div>
 
-        {/* ── 02 Kundli — D1 + D9 together in one block instead of two ── */}
+        {/* ── 02 Kundli — D1 + D9 + Planetary Positions all in ONE block, so
+            they can never land on separate pages. Each chart already draws
+            its own centered logo watermark (ChartWatermark, inside
+            NorthIndianChart/SouthIndianChart in KundliCharts.tsx — shared
+            with the live site) — no separate divider needed between them. ── */}
         <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SectionHeader num="02" title="Kundli" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <MiniChart title="Lagna Chart (D1)" planets={chartPlanets} ascendantRashi={result.kundli.ascendant.rashi} />
             <MiniChart title="Navamsa Chart (D9)" planets={navamsaPlanets} ascendantRashi={result.navamsaChart.ascendant.rashi} />
           </div>
-        </div>
 
-        <div data-pdf-block style={{ marginBottom: 22 }}>
-          <SubHeading>Planetary Positions</SubHeading>
-          <Table head={['Planet', 'Sign', 'Nakshatra', 'Naksh Lord', 'Degree', 'Retro']}>
-            <tr style={{ borderTop: `1px solid ${LINE}` }}>
-              <Td><b>Ascendant</b></Td><Td>{result.kundli.ascendant.rashi}</Td><Td>—</Td><Td>—</Td><Td>{formatDeg(result.kundli.ascendant.degreeInSign)}</Td><Td>No</Td>
-            </tr>
-            {result.kundli.planets.map(p => (
-              <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
-                <Td><b>{cap(p.id)}</b></Td><Td>{p.rashi}</Td><Td>{p.nakshatra}</Td><Td>{cap(p.nakshatraLord)}</Td><Td>{formatDeg(p.degreeInSign)}</Td><Td>{p.retrograde ? 'Yes' : 'No'}</Td>
+          <div style={{ marginTop: 20 }}>
+            <SubHeading>Planetary Positions</SubHeading>
+            <Table head={['Planet', 'Sign', 'Nakshatra', 'Naksh Lord', 'Degree', 'Retro']}>
+              <tr style={{ borderTop: `1px solid ${LINE}` }}>
+                <Td><b>Ascendant</b></Td><Td>{result.kundli.ascendant.rashi}</Td><Td>—</Td><Td>—</Td><Td>{formatDeg(result.kundli.ascendant.degreeInSign)}</Td><Td>No</Td>
               </tr>
-            ))}
-          </Table>
+              {result.kundli.planets.map(p => (
+                <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
+                  <Td><b>{cap(p.id)}</b></Td><Td>{p.rashi}</Td><Td>{p.nakshatra}</Td><Td>{cap(p.nakshatraLord)}</Td><Td>{formatDeg(p.degreeInSign)}</Td><Td>{p.retrograde ? 'Yes' : 'No'}</Td>
+                </tr>
+              ))}
+            </Table>
+          </div>
         </div>
 
         {/* Mahadasha periods batched 3-per-block (was 1-per-block) — still
@@ -273,13 +280,17 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           </div>
         ))}
 
-        {/* ── 05 Charts — every divisional chart the app computes, 6 per
-            block (see DIVISIONAL_ORDER above) ── */}
+        {/* ── 05 Charts — every divisional chart the app computes, one row
+            of 3 per block (see DIVISIONAL_ORDER above). Was 6-per-block (two
+            rows) — a smaller batch keeps every capture's rows aligned to a
+            single visual row, and is also a much cheaper html2canvas capture
+            per block (chart SVGs are the slowest thing this report
+            rasterizes), which matters directly for total generation time. ── */}
         <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 8 }}>
           <SectionHeader num="05" title="Charts" />
           <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>Every divisional (varga) chart computed for this birth, plus a Moon-referenced Chandra chart.</p>
         </div>
-        {chunk(allCharts, 6).map((group, gi) => (
+        {chunk(allCharts, 3).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {group.map(c => <MiniChart key={c.title} title={c.title} planets={c.planets} ascendantRashi={c.ascendantRashi} small />)}
           </div>
@@ -296,7 +307,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               const period = result.mahadashaTimeline.find(m => m.lord === d.lord);
               return (
                 <PredictionCard key={d.lord} title={`${cap(d.lord)} Mahadasha${period?.active ? ' (Active)' : ''}`} subtitle={period ? `${period.startsAt} – ${period.endsAt}` : undefined} active={period?.active}>
-                  {d.text}
+                  {shorten(d.text, 130)}
                 </PredictionCard>
               );
             })}
@@ -318,7 +329,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22 }}>
           <SectionHeader num="07" title="Free Report" />
           <SubHeading>Ascendant Predictions — {result.ascendantPredictions.ascendant}</SubHeading>
-          <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 12px' }}>{result.ascendantPredictions.description}</p>
+          <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 12px' }}>{shorten(result.ascendantPredictions.description, 220)}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {([
               ['Personality', result.ascendantPredictions.personality],
@@ -327,7 +338,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
               ['Career', result.ascendantPredictions.career],
               ['Relationship', result.ascendantPredictions.relationship],
             ] as const).map(([label, text]) => (
-              <PredictionCard key={label} title={label}>{text}</PredictionCard>
+              <PredictionCard key={label} title={label}>{shorten(text, 110)}</PredictionCard>
             ))}
           </div>
         </div>
@@ -337,7 +348,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
         </div>
         {chunk(result.analysis.planets, 6).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            {group.map(p => <PredictionCard key={p.id} title={`${cap(p.id)} Consideration`}>{p.text}</PredictionCard>)}
+            {group.map(p => <PredictionCard key={p.id} title={`${cap(p.id)} Consideration`}>{shorten(p.text, 110)}</PredictionCard>)}
           </div>
         ))}
 
@@ -345,7 +356,7 @@ export default function KundliPrintLayout({ name, dob, tob, place, result }: { n
           <div data-pdf-block style={{ marginBottom: 22 }}>
             <SubHeading>Yoga Combinations</SubHeading>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {presentYogas.map(y => <PredictionCard key={y.name} title={y.name}>{y.description}</PredictionCard>)}
+              {presentYogas.map(y => <PredictionCard key={y.name} title={y.name}>{shorten(y.description, 110)}</PredictionCard>)}
             </div>
           </div>
         )}
@@ -423,6 +434,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// The PDF favors a brief, scannable read over the live site's full prediction
+// text — cut at the end of the first sentence within `max` chars, falling
+// back to a hard cut only if no sentence boundary exists in range. Only used
+// here; the live Predictions tab still shows the full text.
+function shorten(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastPeriod = cut.lastIndexOf('. ');
+  if (lastPeriod > max * 0.4) return cut.slice(0, lastPeriod + 1);
+  return `${cut.trimEnd()}…`;
+}
+
 function formatDeg(degreeInSign: number): string {
   const deg = Math.floor(degreeInSign);
   const min = Math.round((degreeInSign - deg) * 60);
@@ -439,6 +462,15 @@ function MiniChart({ title, planets, ascendantRashi, small }: { title: string; p
       <div style={{ fontSize: small ? FONT.label : FONT.sub, fontWeight: 700, color: INK, textAlign: 'center', marginBottom: 4 }}>{title}</div>
       <div className={chartStyles.svgWrap} style={{ maxWidth: small ? 200 : 320, margin: '0 auto' }}>
         <NorthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} />
+        {/* Every chart already has its own centered logo watermark
+            (ChartWatermark, an SVG <image href> inside NorthIndianChart) —
+            but html2canvas doesn't reliably rasterize an SVG-embedded
+            external image reference, so it silently didn't survive capture
+            here. A plain HTML <img> sibling does — this is PDF-only (the
+            live site keeps using ChartWatermark, which renders fine in a
+            real browser), so it doesn't touch the shared chart component. */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+        <img src="/logo.png" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '22%', opacity: 0.14, pointerEvents: 'none' }} />
       </div>
     </div>
   );

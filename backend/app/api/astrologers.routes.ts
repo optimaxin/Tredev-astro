@@ -1,14 +1,19 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { findAstrologerById, findAstrologerByUserId, listAstrologers } from '../repositories/astrologerRepository.ts';
+import { findAstrologerById, findAstrologerByUserId, listAstrologers, setActiveOfferPercent } from '../repositories/astrologerRepository.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
-import { requireAuth } from '../middleware/auth.ts';
+import { optionalAuth, requireAuth } from '../middleware/auth.ts';
+import { getLoyalty } from '../repositories/loyaltyRepository.ts';
+import { computeEffectivePrice } from '../services/pricingEngine.ts';
 import { findReviewByConsultation, insertReviewAndUpdateRating, listReviewsForAstrologer } from '../repositories/reviewRepository.ts';
 import { toPublicReview } from '../models/review.ts';
 import { findConsultationById } from '../repositories/consultationRepository.ts';
 import { findUserById } from '../repositories/userRepository.ts';
 import { addFavorite, isFavorite, removeFavorite } from '../repositories/favoriteRepository.ts';
 import { createApplication, findLatestApplicationForUser, findPendingApplicationForUser } from '../repositories/astrologerApplicationRepository.ts';
+import { canActivateOffer } from '../services/pricingEngine.ts';
+import { activateBoost, boostDisplayId, getActiveBoost, listBoostHistory } from '../repositories/boostRepository.ts';
+import { getBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
 
 // Discovery/catalog API (spec §9-10). Separate from the existing
 // GET /api/astrologers in routes.ts, which returns bare live-availability
@@ -51,6 +56,28 @@ astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
 });
 
+// The exact per-minute price a booking would lock in RIGHT NOW for this
+// type — offer/loyalty-adjusted, matching what createConsultation computes
+// server-side. Works for anonymous visitors too (shows the advertised,
+// non-loyal rate); a logged-in user sees their real loyalty-adjusted price.
+astrologersCatalogRouter.get('/:id/effective-price', optionalAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const type = String(req.query.type || 'chat');
+  if (!Number.isInteger(id) || !['chat', 'voice', 'video'].includes(type)) {
+    return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'id must be an integer and type must be chat/voice/video' } });
+  }
+  const row = await findAstrologerById(id);
+  if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Astrologer not found' } });
+
+  let isLoyal = false;
+  if (req.user) {
+    const user = await findUserById(req.user.id);
+    if (user) isLoyal = (await getLoyalty(user.email, id)).isLoyal;
+  }
+  const { pricePerMin, appliedOfferPercent } = computeEffectivePrice(row, type as 'chat' | 'voice' | 'video', isLoyal);
+  res.json({ success: true, data: { pricePerMin, appliedOfferPercent, isLoyal } });
+});
+
 // Lets a logged-in astrologer resolve their own catalog row (id + pricing +
 // rating) without needing to search the public catalog by name — the
 // astrologer dashboard's Requests/Consultations/Earnings/Reviews tabs all
@@ -59,6 +86,57 @@ astrologersCatalogRouter.get('/me', requireAuth, async (req, res) => {
   const row = await findAstrologerByUserId(req.user!.id);
   if (!row) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No astrologer catalog entry for this account' } });
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
+});
+
+// ── Offers (percentage discounts) ───────────────────────────────────────
+// Astrologer self-service — turn a promotional discount on/off for their
+// own catalog row. The auto "Price Increase Offer" isn't toggled here; it's
+// set automatically by updateAstrologerProfile when a price goes up.
+
+const offerSchema = z.object({ percent: z.union([z.literal(0), z.literal(20), z.literal(50), z.literal(75)]) });
+
+astrologersCatalogRouter.patch('/me/offer', requireAuth, async (req, res) => {
+  const astro = await findAstrologerByUserId(req.user!.id);
+  if (!astro) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No astrologer catalog entry for this account' } });
+  const parsed = offerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
+
+  const check = canActivateOffer(astro, parsed.data.percent, JSON.parse(astro.consultation_types));
+  if (!check.ok) return res.status(400).json({ success: false, error: { code: 'OFFER_NOT_ALLOWED', message: check.reason } });
+
+  const updated = await setActiveOfferPercent(astro.id, parsed.data.percent);
+  res.json({ success: true, data: toPublicAstrologerProfile(updated!) });
+});
+
+// ── Boost (visibility feature — astrologer-only, never user-facing) ─────
+
+astrologersCatalogRouter.get('/me/boost', requireAuth, async (req, res) => {
+  const astro = await findAstrologerByUserId(req.user!.id);
+  if (!astro) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No astrologer catalog entry for this account' } });
+  const [active, history] = await Promise.all([getActiveBoost(astro.id), listBoostHistory(astro.id)]);
+  res.json({
+    success: true,
+    data: {
+      active: active ? { id: active.id, displayId: boostDisplayId(active.id), startedAt: Number(active.started_at), endsAt: Number(active.ends_at), payoutSharePercent: active.payout_share_percent } : null,
+      history: history.map(b => ({ id: b.id, displayId: boostDisplayId(b.id), startedAt: Number(b.started_at), endsAt: Number(b.ends_at), payoutSharePercent: b.payout_share_percent })),
+      // What the astrologer would get if they activate a Boost right now —
+      // their own staff-set override if there is one, else the platform
+      // default — so the dashboard can show this in the "are you sure?"
+      // confirmation before they actually activate.
+      pendingPayoutSharePercent: astro.boost_payout_override_percent ?? await getBoostPayoutSharePercent(),
+    },
+  });
+});
+
+astrologersCatalogRouter.post('/me/boost', requireAuth, async (req, res) => {
+  const astro = await findAstrologerByUserId(req.user!.id);
+  if (!astro) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No astrologer catalog entry for this account' } });
+  try {
+    const boost = await activateBoost(astro.id, astro.boost_payout_override_percent);
+    res.status(201).json({ success: true, data: { id: boost.id, displayId: boostDisplayId(boost.id), startedAt: Number(boost.started_at), endsAt: Number(boost.ends_at), payoutSharePercent: boost.payout_share_percent } });
+  } catch (err) {
+    res.status(409).json({ success: false, error: { code: 'BOOST_ALREADY_ACTIVE', message: (err as Error).message } });
+  }
 });
 
 // ── Reviews ──────────────────────────────────────────────────────────────

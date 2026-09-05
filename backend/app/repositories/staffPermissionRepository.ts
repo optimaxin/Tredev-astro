@@ -6,7 +6,7 @@ import { query, queryOne } from '../core/db.ts';
 // here: managing staff/admin accounts and their access is an ADMIN-only
 // power, never delegable to a STAFF account regardless of what's toggled.
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'blog', 'notifications', 'audit', 'settings',
+  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'blog', 'notifications', 'audit', 'settings',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 

@@ -4,10 +4,10 @@ import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
 import { adminService, AdminApiError } from '../../services/adminService';
-import type { ApiAstrologerRevenue } from '../../services/adminService';
+import type { ApiAstrologerRevenue, ApiAstrologerActivity, ApiAstrologerStatus } from '../../services/adminService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
-import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog } from '../components/SharedControls';
+import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog, ChatAuditPanel } from '../components/SharedControls';
 import { accountStatus } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
@@ -26,6 +26,7 @@ function joinedProfile(account: AuthUser, catalog: UiAstrologer[]) {
     specialization: profile?.specialization ?? [],
     about: profile?.about ?? '—',
     avatar: profile?.avatar,
+    activeOfferPercent: profile?.activeOfferPercent ?? 0,
   };
 }
 
@@ -65,19 +66,33 @@ const splitList = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean)
 
 const ZERO_REVENUE: ApiAstrologerRevenue = {
   astrologerId: -1, astrologerName: '', chatCount: 0, chatRevenue: 0, voiceCount: 0, voiceRevenue: 0, videoCount: 0, videoRevenue: 0, totalRevenue: 0,
+  astrologerPayout: 0, platformShare: 0,
 };
 
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
+  // Revenue is an ADMIN-only view — Staff never sees it here regardless of
+  // whether they've been granted the Astrologers section, mirrors the
+  // backend's GET /astrologers/revenue being adminOnly now.
+  const isAdmin = currentUser?.role === 'ADMIN';
   const [view, setView] = useState<'cards' | 'table' | 'revenue'>('cards');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AuthUser | null>(null);
   const [profileTab, setProfileTab] = useState('overview');
   const [catalog, setCatalog] = useState<UiAstrologer[]>([]);
   const [revenue, setRevenue] = useState<ApiAstrologerRevenue[]>([]);
+  const [liveStatus, setLiveStatus] = useState<Record<number, ApiAstrologerStatus>>({});
+  const [activity, setActivity] = useState<ApiAstrologerActivity | null>(null);
+  const [activityError, setActivityError] = useState('');
   const [removeTarget, setRemoveTarget] = useState<AuthUser | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState('');
+
+  // Staff-set per-astrologer Boost payout-share override — draft input for
+  // whichever astrologer's drawer is currently open.
+  const [boostPayoutDraft, setBoostPayoutDraft] = useState('');
+  const [boostPayoutSaving, setBoostPayoutSaving] = useState(false);
+  const [boostPayoutError, setBoostPayoutError] = useState('');
 
   // Editing the rest of the catalog profile (experience years, bio,
   // languages, pricing, etc.) — previously had no edit path at all; "Edit"
@@ -166,8 +181,56 @@ export default function AstrologersPage() {
 
   useEffect(() => {
     astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data)).catch(() => {});
-    adminService.getAstrologerRevenue().then(setRevenue).catch(() => {});
-  }, []);
+    if (isAdmin) adminService.getAstrologerRevenue().then(setRevenue).catch(() => {});
+    adminService.getAstrologerStatuses()
+      .then(rows => setLiveStatus(Object.fromEntries(rows.map(r => [r.id, r]))))
+      .catch(() => {});
+  }, [isAdmin]);
+
+  // Reset the Boost payout override draft whenever a different astrologer's
+  // drawer opens, seeded from their current override (blank = using the
+  // platform default).
+  useEffect(() => {
+    const id = selected ? joinedProfile(selected, catalog).id : undefined;
+    const override = id !== undefined ? liveStatus[id]?.boostPayoutOverridePercent : null;
+    setBoostPayoutDraft(override != null ? String(override) : '');
+    setBoostPayoutError('');
+  }, [selected, catalog, liveStatus]);
+
+  const saveBoostPayoutOverride = async (astrologerId: number, clear: boolean) => {
+    setBoostPayoutSaving(true);
+    setBoostPayoutError('');
+    try {
+      const percent = clear ? null : Number(boostPayoutDraft);
+      if (!clear && (Number.isNaN(percent) || percent! < 0 || percent! > 100)) {
+        setBoostPayoutError('Enter a number between 0 and 100.');
+        return;
+      }
+      await adminService.updateAstrologerBoostPayout(astrologerId, percent);
+      // Re-fetch rather than patch the local cache — the effective %
+      // when clearing an override depends on the platform default, which
+      // this component doesn't otherwise track.
+      const rows = await adminService.getAstrologerStatuses();
+      setLiveStatus(Object.fromEntries(rows.map(r => [r.id, r])));
+      if (clear) setBoostPayoutDraft('');
+    } catch (err) {
+      setBoostPayoutError(err instanceof AdminApiError ? err.message : 'Could not save this override.');
+    } finally {
+      setBoostPayoutSaving(false);
+    }
+  };
+
+  // Fetched fresh per astrologer when the profile drawer opens — same
+  // pattern as UsersPage's activity fetch.
+  useEffect(() => {
+    const id = selected ? joinedProfile(selected, catalog).id : undefined;
+    if (id === undefined) { setActivity(null); return; }
+    setActivity(null);
+    setActivityError('');
+    adminService.getAstrologerActivity(id)
+      .then(setActivity)
+      .catch(() => setActivityError('Could not load this astrologer\'s activity.'));
+  }, [selected, catalog]);
 
   const astrologers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -184,12 +247,28 @@ export default function AstrologersPage() {
   const revenueFor = (astrologerId: number | undefined): ApiAstrologerRevenue =>
     revenue.find(r => r.astrologerId === astrologerId) ?? ZERO_REVENUE;
 
+  // Live realtime availability (see ApiAstrologerStatus) — separate from the
+  // account ACTIVE/SUSPENDED StatusBadge, which only reflects moderation.
+  const liveStatusFor = (astrologerId: number | undefined) => liveStatus[astrologerId ?? -1]?.status ?? 'OFFLINE';
+  const liveStatusBadge = (astrologerId: number | undefined) => {
+    const s = liveStatusFor(astrologerId).toLowerCase();
+    return <StatusBadge status={s} label={t(`admin_astro_status_${s}`)} />;
+  };
+  // Offer/Boost — see Extra/Astrologer Offers Feature and Boost Feature
+  // PDFs; both were fully implemented backend + astrologer-dashboard side
+  // but had no visibility anywhere in the admin/staff console until now.
+  const boostBadge = (astrologerId: number | undefined) =>
+    liveStatus[astrologerId ?? -1]?.activeBoost ? <StatusBadge status="boost_active" label="Boost active" /> : null;
+  const offerBadge = (percent: number) =>
+    percent > 0 ? <StatusBadge status="offer_active" label={`${percent}% OFF active`} /> : null;
+
   const TABS = [
     { key: 'overview', labelKey: 'admin_astro_tab_overview' },
     { key: 'schedule', labelKey: 'admin_astro_tab_schedule' },
     { key: 'reviews', labelKey: 'admin_astro_tab_reviews' },
-    { key: 'earnings', labelKey: 'admin_astro_tab_earnings' },
+    ...(isAdmin ? [{ key: 'earnings', labelKey: 'admin_astro_tab_earnings' }] : []),
     { key: 'consultations', labelKey: 'admin_astro_tab_consultations' },
+    { key: 'audit', labelKey: 'admin_astro_tab_audit' },
     { key: 'documents', labelKey: 'admin_astro_tab_documents' },
   ];
 
@@ -203,7 +282,7 @@ export default function AstrologersPage() {
         <div className={styles.viewToggle}>
           <AdminButton variant={view === 'cards' ? 'gold' : 'outline'} onClick={() => setView('cards')}>{t('admin_astro_view_cards')}</AdminButton>
           <AdminButton variant={view === 'table' ? 'gold' : 'outline'} onClick={() => setView('table')}>{t('admin_astro_view_table')}</AdminButton>
-          <AdminButton variant={view === 'revenue' ? 'gold' : 'outline'} onClick={() => setView('revenue')}>{t('admin_astro_view_revenue')}</AdminButton>
+          {isAdmin && <AdminButton variant={view === 'revenue' ? 'gold' : 'outline'} onClick={() => setView('revenue')}>{t('admin_astro_view_revenue')}</AdminButton>}
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <SearchInput value={search} onChange={setSearch} placeholder={t('admin_search_name_email')} />
@@ -222,6 +301,8 @@ export default function AstrologersPage() {
             { key: 'voice', label: t('admin_astro_revenue_voice'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).voiceRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).voiceCount})` },
             { key: 'video', label: t('admin_astro_revenue_video'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).videoRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).videoCount})` },
             { key: 'total', label: t('admin_astro_revenue_total'), render: a => <strong>₹{revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}</strong> },
+            { key: 'payout', label: 'Astrologer Payout', render: a => `₹${revenueFor(joinedProfile(a, catalog).id).astrologerPayout.toLocaleString()}` },
+            { key: 'platformShare', label: 'Platform Share', render: a => `₹${revenueFor(joinedProfile(a, catalog).id).platformShare.toLocaleString()}` },
           ]}
           rows={astrologers}
           keyField="email"
@@ -246,9 +327,14 @@ export default function AstrologersPage() {
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_rating')}: </span><span className={styles.astroStatValue}>★ {p.rating}</span></div>
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_experience')}: </span><span className={styles.astroStatValue}>{p.experience}y</span></div>
                   <div><span className={styles.astroStatLabel}>{t('admin_astro_col_consultations')}: </span><span className={styles.astroStatValue}>{p.consultations.toLocaleString()}</span></div>
-                  <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{revenueFor(p.id).totalRevenue.toLocaleString()}</span></div>
+                  {isAdmin && <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{revenueFor(p.id).totalRevenue.toLocaleString()}</span></div>}
                 </div>
-                <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
+                  {liveStatusBadge(p.id)}
+                  {boostBadge(p.id)}
+                  {offerBadge(p.activeOfferPercent)}
+                </div>
                 <div className={styles.astroCardActions}>
                   <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                   <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
@@ -271,7 +357,14 @@ export default function AstrologersPage() {
             { key: 'experience', label: t('admin_astro_col_experience'), render: a => `${joinedProfile(a, catalog).experience}y` },
             { key: 'languages', label: t('admin_astro_col_languages'), render: a => joinedProfile(a, catalog).languages.join(', ') || '—' },
             { key: 'consultations', label: t('admin_astro_col_consultations'), render: a => joinedProfile(a, catalog).consultations.toLocaleString() },
-            { key: 'earnings', label: t('admin_astro_col_earnings'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}` },
+            ...(isAdmin ? [{ key: 'earnings', label: t('admin_astro_col_earnings'), render: (a: AuthUser) => `₹${revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}` }] : []),
+            { key: 'liveStatus', label: t('admin_astro_col_live_status'), render: a => liveStatusBadge(joinedProfile(a, catalog).id) },
+            {
+              key: 'promotions', label: 'Promotions', render: a => {
+                const p = joinedProfile(a, catalog);
+                return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{boostBadge(p.id)}{offerBadge(p.activeOfferPercent)}</div>;
+              },
+            },
             { key: 'status', label: t('admin_astro_col_status'), render: a => { const s = accountStatus(a.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
             {
               key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: a => {
@@ -294,7 +387,7 @@ export default function AstrologersPage() {
         />
       )}
 
-      <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.name || ''}>
+      <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.name || ''} wide>
         {selected && (() => {
           const p = joinedProfile(selected, catalog);
           return (
@@ -310,10 +403,47 @@ export default function AstrologersPage() {
               {profileTab === 'overview' && (
                 <>
                   <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Email</span><span className={styles.drawerFieldValue}>{selected.email}</span></div>
+                  <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_live_status')}</span><span className={styles.drawerFieldValue}>{liveStatusBadge(p.id)}</span></div>
+                  {(liveStatus[p.id ?? -1]?.activeBoost || p.activeOfferPercent > 0) && (
+                    <div className={styles.drawerField}>
+                      <span className={styles.drawerFieldLabel}>Promotions</span>
+                      <span className={styles.drawerFieldValue} style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        {boostBadge(p.id)}
+                        {offerBadge(p.activeOfferPercent)}
+                      </span>
+                    </div>
+                  )}
                   <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_rating')}</span><span className={styles.drawerFieldValue}>★ {p.rating}</span></div>
                   <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_experience')}</span><span className={styles.drawerFieldValue}>{p.experience} yrs</span></div>
                   <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_languages')}</span><span className={styles.drawerFieldValue}>{p.languages.join(', ') || '—'}</span></div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)', marginTop: 14, lineHeight: 1.5 }}>{p.about}</p>
+
+                  <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 6 }}>Boost Payout Override</div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--adm-charcoal-soft)', marginBottom: 10 }}>
+                      What this astrologer keeps on a Boost-attributed session. Leave blank to use the platform default
+                      {liveStatus[p.id ?? -1] && !liveStatus[p.id ?? -1]?.boostPayoutOverridePercent && ` (currently ${liveStatus[p.id ?? -1]?.effectiveBoostPayoutSharePercent}%)`}.
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <input
+                        type="number" min={0} max={100}
+                        className={styles.formInput} style={{ width: 90 }}
+                        value={boostPayoutDraft}
+                        placeholder="Default"
+                        onChange={e => setBoostPayoutDraft(e.target.value)}
+                      />
+                      <span style={{ fontSize: '0.82rem' }}>%</span>
+                      <AdminButton variant="gold" disabled={boostPayoutSaving || p.id === undefined || !boostPayoutDraft} onClick={() => p.id !== undefined && saveBoostPayoutOverride(p.id, false)}>
+                        {boostPayoutSaving ? '…' : 'Save'}
+                      </AdminButton>
+                      {liveStatus[p.id ?? -1]?.boostPayoutOverridePercent != null && (
+                        <AdminButton variant="outline" disabled={boostPayoutSaving || p.id === undefined} onClick={() => p.id !== undefined && saveBoostPayoutOverride(p.id, true)}>
+                          Reset to default
+                        </AdminButton>
+                      )}
+                    </div>
+                    {boostPayoutError && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.8rem', marginTop: 8 }}>{boostPayoutError}</p>}
+                  </div>
                 </>
               )}
               {profileTab === 'schedule' && <EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />}
@@ -326,11 +456,25 @@ export default function AstrologersPage() {
                     <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_voice')}</span><span className={styles.drawerFieldValue}>₹{rev.voiceRevenue.toLocaleString()} ({rev.voiceCount})</span></div>
                     <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_video')}</span><span className={styles.drawerFieldValue}>₹{rev.videoRevenue.toLocaleString()} ({rev.videoCount})</span></div>
                     <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_revenue_total')}</span><span className={styles.drawerFieldValue}><strong>₹{rev.totalRevenue.toLocaleString()}</strong></span></div>
+                    {rev.astrologerPayout !== rev.totalRevenue && (
+                      <>
+                        <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Astrologer Payout</span><span className={styles.drawerFieldValue}>₹{rev.astrologerPayout.toLocaleString()}</span></div>
+                        <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Platform Share (Boost)</span><span className={styles.drawerFieldValue}>₹{rev.platformShare.toLocaleString()}</span></div>
+                      </>
+                    )}
                   </>
                 );
               })()}
               {profileTab === 'consultations' && (
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_astro_col_consultations')}</span><span className={styles.drawerFieldValue}>{p.consultations.toLocaleString()}</span></div>
+              )}
+              {profileTab === 'audit' && (
+                <ChatAuditPanel
+                  recentChats={activity ? activity.recentChats : activityError ? [] : null}
+                  lastAction={activity?.lastAction ?? null}
+                  loadError={activityError}
+                  onRaiseWarning={note => adminService.logNote('audit.warning', `${selected.name} (astrologer): ${note}`).then(() => {})}
+                />
               )}
               {profileTab === 'documents' && <EmptyState title={t('admin_apps_no_docs')} />}
             </>

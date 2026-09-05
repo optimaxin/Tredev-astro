@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getAstrologer, getConsultation } from './realtimeStore.ts';
 import { insertMessage, listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { bus } from '../websocket/bus.ts';
-import type { ChatMessage, SenderRole } from '../models/chatMessage.ts';
+import type { ChatMessage, MessageType, SenderRole } from '../models/chatMessage.ts';
 import type { Consultation } from '../models/types.ts';
 
 export class ChatError extends Error {
@@ -39,16 +39,23 @@ export async function listMessages(consultationId: string, requesterEmail: strin
   return listMessagesForConsultation(consultationId);
 }
 
-export async function sendMessage(consultationId: string, requesterEmail: string, content: string): Promise<ChatMessage> {
+export async function sendMessage(consultationId: string, requesterEmail: string, content: string, messageType: MessageType = 'TEXT'): Promise<ChatMessage> {
   const { consultation, role } = assertParticipant(await getConsultation(consultationId), requesterEmail);
   assertChatOpen(consultation);
+  // Media upload is user-side only (spec) — an astrologer sending IMAGE/FILE
+  // is rejected here even if a client somehow tried, same boundary as any
+  // other server-enforced rule in this file. Voice notes (AUDIO) are fine
+  // from either side.
+  if ((messageType === 'IMAGE' || messageType === 'FILE') && role !== 'USER') {
+    throw new ChatError('Only the user can send media in this chat', 403);
+  }
 
   const message: ChatMessage = {
     id: randomUUID(),
     consultationId,
     senderEmail: requesterEmail,
     senderRole: role,
-    messageType: 'TEXT',
+    messageType,
     content,
     createdAt: Date.now(),
   };

@@ -1,0 +1,43 @@
+.banner {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: none;
+  background: var(--gold-primary, #b58a3b);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.banner:hover {
+  filter: brightness(1.08);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 8px 28px rgba(181, 138, 59, 0.55); }
+}

@@ -59,6 +59,11 @@ export interface ApiAstrologerRevenue {
   videoCount: number;
   videoRevenue: number;
   totalRevenue: number;
+  // Boost-adjusted split — astrologerPayout equals totalRevenue when none of
+  // this astrologer's completed sessions were ever Boost-attributed (see
+  // backend/app/repositories/boostRepository.ts).
+  astrologerPayout: number;
+  platformShare: number;
 }
 
 export interface AstrologerProfilePatch {
@@ -163,15 +168,42 @@ export interface ApiOrder {
   createdAt: number;
 }
 
+// A chat-audit entry for the Users/Astrologers drawer — one recent
+// consultation with its full transcript, so a Staff/Admin reviewer can see
+// who a user or astrologer was talking to and what was said, no money
+// figures anywhere in here.
+export interface ApiChatAudit {
+  consultationId: string;
+  partnerName: string;
+  type: 'chat' | 'voice' | 'video';
+  status: string;
+  startedAt?: number;
+  endedAt?: number;
+  messages: { senderRole: 'USER' | 'ASTROLOGIST'; messageType: string; content: string; createdAt: number }[];
+}
+
+export interface ApiLastAction {
+  action: string;
+  at: number;
+}
+
 export interface ApiUserActivity {
   reports: number;
   consultations: number;
   orders: number;
+  recentChats: ApiChatAudit[];
+  lastAction: ApiLastAction | null;
+}
+
+export interface ApiAstrologerActivity {
+  consultations: number;
+  recentChats: ApiChatAudit[];
+  lastAction: ApiLastAction | null;
 }
 
 export interface ApiDashboardStats {
   consultationsInProgress: number;
-  revenue: number;
+  revenue?: number;
   reportsGenerated: number;
   storeOrders: number;
   recentConsultations: { id: string; userName: string; astrologerName: string; createdAt: number }[];
@@ -181,6 +213,36 @@ export interface ApiDashboardStats {
 
 export interface ApiStaffMember extends ApiUserRecord {
   sections: AdminSectionKey[];
+}
+
+export interface ApiApplication {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  expertise: string;
+  experience: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: number;
+  decidedAt: number | null;
+}
+
+// Live availability from the realtime server, not account status — see
+// backend/app/services/realtimeStore.ts.
+export interface ApiAstrologerStatus {
+  id: number;
+  status: 'ONLINE_AVAILABLE' | 'ONLINE_BUSY' | 'AWAY' | 'OFFLINE';
+  activeCount: number;
+  maxConcurrent: number;
+  queueLength: number;
+  // Whether this astrologer currently has an active Boost (visibility
+  // feature) — see backend/app/repositories/boostRepository.ts.
+  activeBoost: boolean;
+  // Staff-set per-astrologer override of the global Boost payout share —
+  // null means "using the platform default" (see SettingsPage's Boost
+  // Payout Share card). effective* is override ?? platform default.
+  boostPayoutOverridePercent: number | null;
+  effectiveBoostPayoutSharePercent: number;
 }
 
 export const adminService = {
@@ -214,6 +276,7 @@ export const adminService = {
     request<ApiOrder>(`/orders/${id.replace(/^ORD-/, '')}/delivery-status`, { method: 'PATCH', body: JSON.stringify({ deliveryStatus }) }),
 
   getUserActivity: (id: string) => request<ApiUserActivity>(`/users/${id}/activity`),
+  getAstrologerActivity: (id: number) => request<ApiAstrologerActivity>(`/astrologers/${id}/activity`),
 
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
 
@@ -223,4 +286,21 @@ export const adminService = {
   updateStaffPermissions: (id: string, sections: AdminSectionKey[]) =>
     request<{ sections: AdminSectionKey[] }>(`/staff/${id}/permissions`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
   getMyPermissions: () => request<{ sections: AdminSectionKey[] }>('/my-permissions'),
+
+  listApplications: () => request<ApiApplication[]>('/applications'),
+  decideApplication: (id: string, decision: 'APPROVED' | 'REJECTED') =>
+    request<{ ok: boolean }>(`/applications/${id}/decide`, { method: 'POST', body: JSON.stringify({ decision }) }),
+
+  getAstrologerStatuses: () => request<ApiAstrologerStatus[]>('/astrologers/status'),
+
+  updateMe: (patch: { name?: string; currentPassword?: string; newPassword?: string }) =>
+    request<ApiUserRecord>('/me', { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  getBoostPayoutShare: () => request<{ percent: number }>('/settings/boost-payout'),
+  updateBoostPayoutShare: (percent: number) =>
+    request<{ percent: number }>('/settings/boost-payout', { method: 'PATCH', body: JSON.stringify({ percent }) }),
+
+  // `percent: null` clears the override, falling back to the platform default.
+  updateAstrologerBoostPayout: (id: number, percent: number | null) =>
+    request<{ boostPayoutOverridePercent: number | null }>(`/astrologers/${id}/boost-payout`, { method: 'PATCH', body: JSON.stringify({ percent }) }),
 };

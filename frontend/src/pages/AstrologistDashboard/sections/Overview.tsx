@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
 import { useRealtime } from '../../../realtime/RealtimeContext';
-import { astrologerService } from '../../../services/astrologerService';
+import { astrologerService, AstrologerApiError, type BoostStatus } from '../../../services/astrologerService';
 import { consultationService } from '../../../services/consultationService';
 import type { MyConsultationAsAstrologer } from '../../../services/consultationService';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
 import CallWindow from '../../../components/CallWindow/CallWindow';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
-  EmptyState, KpiCard, MiniBarChart, Panel,
+  EmptyState, KpiCard, MiniBarChart, Panel, ConfirmModal,
 } from './shared';
 import { useDashboardNav } from './shared';
 import styles from './sections.module.css';
@@ -102,6 +102,74 @@ function LiveStatusCard() {
   );
 }
 
+// Quick-action version of the full "Offers & Boost" panel in
+// Availability.tsx (which keeps the detailed history) — just the button and
+// current status, for the astrologer who wants more consultations right now
+// without leaving Overview.
+function BoostCard() {
+  const [boost, setBoost] = useState<BoostStatus | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    astrologerService.getMyBoost().then(setBoost).catch(() => {});
+  }, []);
+
+  const activate = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await astrologerService.activateMyBoost();
+      setBoost(await astrologerService.getMyBoost());
+      setConfirming(false);
+    } catch (e) {
+      setError(e instanceof AstrologerApiError ? e.message : 'Could not activate Boost');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const active = boost?.active;
+  const remainingMin = active ? Math.max(0, Math.round((active.endsAt - Date.now()) / 60000)) : 0;
+  const keepPercent = boost?.pendingPayoutSharePercent ?? 70;
+
+  return (
+    <Panel title="Boost">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          {active ? (
+            <>
+              <div className={styles.tablePrimary}>● Boost {active.displayId} active — {remainingMin} min of visibility left</div>
+              <div className={styles.tableMuted}>You're ranked at the top of listings right now.</div>
+            </>
+          ) : (
+            <div className={styles.tableMuted}>30 minutes of extra visibility at the top of listings, in exchange for a reduced share ({keepPercent}%) on any session it brings you.</div>
+          )}
+        </div>
+        {!active && <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busy} onClick={() => setConfirming(true)}>Activate Boost</button>}
+      </div>
+      {error && <div className={styles.tableMuted} style={{ color: 'var(--danger, #e05252)', marginTop: 8 }}>{error}</div>}
+
+      {confirming && (
+        <ConfirmModal
+          title="Activate Boost?"
+          body={(
+            <>
+              Your profile will jump to the top of listings for 30 minutes.<br /><br />
+              On any session this brings you, you'll get <strong>{keepPercent}%</strong> and the platform keeps <strong>{100 - keepPercent}%</strong> — this never changes what the user pays.
+            </>
+          )}
+          confirmLabel="Yes, Activate"
+          busy={busy}
+          onConfirm={activate}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+    </Panel>
+  );
+}
+
 export default function Overview() {
   const { t, currentUser } = useAppContext();
   const { astrologerSync, acceptAssignment } = useRealtime();
@@ -157,6 +225,7 @@ export default function Overview() {
       </div>
 
       <LiveStatusCard />
+      <BoostCard />
 
       <div className={styles.kpiRow}>
         <KpiCard label={t('astro_kpi_today')} value={createdToday} hint={createdToday !== createdYesterday ? `${createdToday > createdYesterday ? '+' : ''}${createdToday - createdYesterday} from yesterday` : 'Same as yesterday'} />

@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { withTransaction, type Executor } from '../core/db.ts';
-import { listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import { findAstrologerByIdRaw, listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
 import { findUserById } from '../repositories/userRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
 import * as notificationRepo from '../repositories/notificationRepository.ts';
 import * as processedRequestRepo from '../repositories/processedRequestRepository.ts';
+import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
+import * as boostRepo from '../repositories/boostRepository.ts';
+import { computeEffectivePrice } from './pricingEngine.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
   AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
@@ -279,6 +282,11 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
       const position = queued.findIndex(q => q.id === entry.id) + 1;
       const eta = await calcEta(astro, position - 1, client);
       bus.emitTyped('queue:position', { entry, position, eta });
+      // Joining the waitlist while a Boost is active grants this user 7-day
+      // Boost eligibility with this astrologer (Boost Feature spec) —
+      // consumed whenever their next session with this astrologer starts.
+      const activeBoost = await boostRepo.getActiveBoost(astro.id, client);
+      if (activeBoost) await boostRepo.grantWaitlistAttribution(activeBoost.id, astro.id, params.userEmail, client);
       await createNotification(astro.id, 'queue_waiting', `${params.userName} is waiting in your queue.`, undefined, `queue-${entry.id}`, client);
       result = { outcome: 'QUEUED', entry, position, eta };
     }
@@ -288,13 +296,33 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
 }
 
 async function createConsultation(astrologerId: number, params: Omit<RequestParams, 'astrologerId'>, fromQueue: boolean, executor?: Executor): Promise<Consultation> {
+  // Offer/loyalty pricing and Boost attribution are both locked in ONCE,
+  // right here at session creation — never recalculated afterward (see
+  // pricingEngine.ts's comment on why).
+  const catalogRow = await findAstrologerByIdRaw(astrologerId);
+  const { isLoyal } = await loyaltyRepo.getLoyalty(params.userEmail, astrologerId, executor);
+  const { pricePerMin, appliedOfferPercent } = catalogRow
+    ? computeEffectivePrice(catalogRow, params.type, isLoyal)
+    : { pricePerMin: 0, appliedOfferPercent: 0 };
+
+  let boostId: number | undefined;
+  const activeBoost = await boostRepo.getActiveBoost(astrologerId, executor);
+  const attribution = activeBoost ? undefined : await boostRepo.findUnconsumedAttribution(astrologerId, params.userEmail, executor);
+  if (activeBoost) {
+    boostId = activeBoost.id; // direct connect during an active window — attributed for the whole session
+  } else if (attribution) {
+    boostId = attribution.boost_id;
+  }
+
   const consultation: Consultation = {
     id: randomUUID(), astrologerId, userEmail: params.userEmail, userName: params.userName,
     category: params.category, type: params.type, status: 'ASSIGNED', fromQueue, requestId: params.requestId, createdAt: Date.now(),
     durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
     extendedMinutes: 0,
+    pricePerMin, appliedOfferPercent, boostId,
   };
   await consultationRepo.insertConsultation(consultation, executor);
+  if (attribution) await boostRepo.consumeAttribution(attribution.id, consultation.id, executor);
   await recomputeStatus(astrologerId, executor);
   bus.emitTyped('chat:assigned', consultation);
   await createNotification(astrologerId, 'chat_request', `${params.userName} wants to start a consultation.`, consultation.id, `assign-${consultation.id}`, executor);
@@ -375,6 +403,7 @@ async function autoEndConsultation(consultationId: string) {
   c.endedAt = Date.now();
   await consultationRepo.updateConsultation(c);
   recordDurationSample(c);
+  if (c.startedAt && c.endedAt) await loyaltyRepo.addSessionMinutes(c.userEmail, c.astrologerId, c.endedAt - c.startedAt);
   await touchActivity(c.astrologerId);
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
@@ -451,6 +480,7 @@ export async function endConsultation(consultationId: string, requesterEmail: st
   c.endedAt = Date.now();
   await consultationRepo.updateConsultation(c);
   recordDurationSample(c);
+  if (c.startedAt && c.endedAt) await loyaltyRepo.addSessionMinutes(c.userEmail, c.astrologerId, c.endedAt - c.startedAt);
   await touchActivity(c.astrologerId);
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { SearchInput } from './SharedControls';
+import { AdminApiError } from '../../services/adminService';
+import { SearchInput, AdminButton } from './SharedControls';
+import Drawer from './Drawer';
 import styles from './AdminHeader.module.css';
+import pageStyles from '../pages/AdminPages.module.css';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -14,11 +17,44 @@ interface Props {
 }
 
 export default function AdminHeader({ onMenuClick }: Props) {
-  const { t, currentUser, logout, setPage, language, setLanguage, notifications } = useAppContext();
+  const { t, currentUser, logout, setPage, language, setLanguage, notifications, updateMyProfile } = useAppContext();
   const [search, setSearch] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCurrentPassword, setEditCurrentPassword] = useState('');
+  const [editNewPassword, setEditNewPassword] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const openEdit = () => {
+    setEditName(currentUser?.name || '');
+    setEditCurrentPassword('');
+    setEditNewPassword('');
+    setEditError('');
+    setEditOpen(true);
+    setProfileOpen(false);
+  };
+
+  const saveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await updateMyProfile({
+        name: editName.trim() || undefined,
+        newPassword: editNewPassword || undefined,
+        currentPassword: editNewPassword ? editCurrentPassword : undefined,
+      });
+      setEditOpen(false);
+    } catch (err) {
+      setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const notifRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -90,7 +126,7 @@ export default function AdminHeader({ onMenuClick }: Props) {
         <div className={styles.dropdownWrap} ref={profileRef}>
           <button className={styles.profileBtn} onClick={() => setProfileOpen(v => !v)}>
             <span className={styles.profileAvatar}>{initials}</span>
-            <span>{t('admin_profile')} ▾</span>
+            <span>{t(currentUser?.role === 'STAFF' ? 'admin_profile_staff' : 'admin_profile')} ▾</span>
           </button>
           {profileOpen && (
             <div className={styles.dropdown}>
@@ -98,6 +134,9 @@ export default function AdminHeader({ onMenuClick }: Props) {
                 <div className={styles.profileName}>{currentUser?.name}</div>
                 <div className={styles.profileEmail}>{currentUser?.email}</div>
               </div>
+              <button className={styles.menuOption} onClick={openEdit}>
+                {t('admin_profile_edit')}
+              </button>
               <button
                 className={`${styles.menuOption} ${styles.menuOptionDanger}`}
                 onClick={() => { logout(); setPage('home'); }}
@@ -108,6 +147,31 @@ export default function AdminHeader({ onMenuClick }: Props) {
           )}
         </div>
       </div>
+
+      <Drawer
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title={t('admin_profile_edit_title')}
+        footer={<AdminButton variant="gold" type="submit" form="edit-my-profile-form" disabled={editSaving}>{editSaving ? '…' : t('admin_action_save')}</AdminButton>}
+      >
+        <form id="edit-my-profile-form" onSubmit={saveEdit}>
+          <div className={pageStyles.formGroup}>
+            <label className={pageStyles.formLabel}>{t('admin_profile_field_name')}</label>
+            <input className={pageStyles.formInput} required value={editName} onChange={e => setEditName(e.target.value)} />
+          </div>
+          <div className={pageStyles.formGroup}>
+            <label className={pageStyles.formLabel}>{t('admin_profile_field_new_password')}</label>
+            <input type="password" className={pageStyles.formInput} value={editNewPassword} onChange={e => setEditNewPassword(e.target.value)} />
+          </div>
+          {editNewPassword && (
+            <div className={pageStyles.formGroup}>
+              <label className={pageStyles.formLabel}>{t('admin_profile_field_current_password')}</label>
+              <input type="password" className={pageStyles.formInput} required value={editCurrentPassword} onChange={e => setEditCurrentPassword(e.target.value)} />
+            </div>
+          )}
+          {editError && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.8rem' }}>{editError}</p>}
+        </form>
+      </Drawer>
     </header>
   );
 }

@@ -75,6 +75,13 @@ export async function updateUserRole(userId: string, role: Role) {
   await query('UPDATE users SET role = $1 WHERE id = $2', [role, userId]);
 }
 
+// Self-service display-name change (Admin/Staff "Edit Profile") — distinct
+// from updateUserRole/updateUserStatus above, which are admin-on-someone-else
+// operations; this one is a user acting on their own row.
+export async function updateUserName(userId: string, name: string) {
+  await query('UPDATE users SET name = $1 WHERE id = $2', [name, userId]);
+}
+
 // ── Refresh tokens ───────────────────────────────────────────────────────
 
 export async function insertRefreshToken(params: { userId: string; tokenHash: string; expiresAt: number }) {

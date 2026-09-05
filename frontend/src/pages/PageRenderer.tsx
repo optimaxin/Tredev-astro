@@ -46,7 +46,7 @@ import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesO
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
-import type { Review, UiAstrologer } from '../services/astrologerService';
+import type { EffectivePrice, Review, UiAstrologer } from '../services/astrologerService';
 import { consultationService, ConsultationApiError } from '../services/consultationService';
 import type { MyConsultation } from '../services/consultationService';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
@@ -1695,7 +1695,15 @@ function AstrologerProfilePage({ id }: { id: any }) {
             </div>
 
             <div style={{ color: 'var(--color-gold)', fontSize: '1.25rem', fontWeight: 500, marginBottom: '20px' }}>
-              ₹{astrologer.price} / min
+              {astrologer.activeOfferPercent > 0 ? (
+                <>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '0.75em', marginRight: 6 }}>₹{astrologer.price}</span>
+                  ₹{Math.round(astrologer.price * (1 - astrologer.activeOfferPercent / 100))} / min
+                  <span style={{ marginLeft: 8, fontSize: '0.6em', fontWeight: 700 }}>{astrologer.activeOfferPercent}% OFF</span>
+                </>
+              ) : (
+                <>₹{astrologer.price} / min</>
+              )}
             </div>
 
             <button className="btn btn-gold" style={{ width: '100%' }} onClick={() => setPage('consultation-booking')}>
@@ -1764,6 +1772,18 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
+  const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
+
+  // The real, offer/loyalty-adjusted price for this exact type — recomputed
+  // whenever the user switches format, so what they see here always matches
+  // what gets locked in the moment they actually start.
+  useEffect(() => {
+    if (!astrologer) return;
+    let cancelled = false;
+    setEffectivePrice(null);
+    astrologerService.getEffectivePrice(astrologer.id, activeType).then(p => { if (!cancelled) setEffectivePrice(p); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [astrologer?.id, activeType]);
 
   if (astrologerLoading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
   if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
@@ -1850,10 +1870,24 @@ function ConsultationBookingPage({ id }: { id: any }) {
                       onClick={() => setActiveType(opt.type as any)}
                     >
                       <span className={styles.optionName}>{opt.label}</span>
-                      <span className={styles.optionPrice}>₹{astrologer.price}/min</span>
+                      <span className={styles.optionPrice}>
+                        {opt.type === activeType && effectivePrice && effectivePrice.appliedOfferPercent > 0 ? (
+                          <>
+                            <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: 4 }}>₹{astrologer.price}</span>
+                            ₹{effectivePrice.pricePerMin}/min
+                          </>
+                        ) : (
+                          <>₹{astrologer.price}/min</>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
+                {effectivePrice && effectivePrice.appliedOfferPercent > 0 && (
+                  <p className={styles.reviewCount} style={{ marginTop: '4px', color: 'var(--color-gold)' }}>
+                    {effectivePrice.isLoyal ? `Loyalty discount applied — ${effectivePrice.appliedOfferPercent}% off` : `Offer applied — ${effectivePrice.appliedOfferPercent}% off`}
+                  </p>
+                )}
                 <h3 className={styles.contentSectionTitle} style={{ border: 'none', marginTop: '20px' }}>Select Duration</h3>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '8px 0' }}>
                   <button
@@ -1900,7 +1934,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
               </div>
               <div style={{ borderTop: '1px solid rgba(184,138,59,0.15)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--color-gold)' }}>
                 <span>Estimated Total</span>
-                <span>₹{astrologer.price * durationMinutes}</span>
+                <span>₹{(effectivePrice?.pricePerMin ?? astrologer.price) * durationMinutes}</span>
               </div>
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
               <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting} onClick={handleStartNow}>
@@ -2118,7 +2152,7 @@ function ConsultationWaitingPage() {
           {consultation.type === 'voice' ? (
             <CallWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} isInitiator />
           ) : (
-            <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} />
+            <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} allowMediaUpload />
           )}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
             <button className="btn btn-outline-light" disabled={ending} onClick={handleEnd}>{ending ? 'Ending…' : 'End Consultation'}</button>

@@ -8,6 +8,7 @@ import Overview from './sections/Overview';
 import CalendarSection from './sections/CalendarSection';
 import Consultations from './sections/Consultations';
 import Requests from './sections/Requests';
+import ChatInbox from './sections/ChatInbox';
 import Clients from './sections/Clients';
 import Reports from './sections/Reports';
 import Earnings from './sections/Earnings';
@@ -32,6 +33,7 @@ const NAV_GROUPS: { label: string; items: { key: SectionKey; label: string; icon
       { key: 'consultations', label: 'Consultations', icon: '◎' },
       { key: 'live-queue', label: 'Waiting Queue', icon: '⏣' },
       { key: 'requests', label: 'Requests', icon: '◉' },
+      { key: 'chat-inbox', label: 'Chat', icon: '💬' },
       { key: 'clients', label: 'Clients', icon: '☉' },
     ],
   },
@@ -60,6 +62,7 @@ const PAGE_TITLES: Record<SectionKey, string> = {
   consultations: 'Consultations',
   'live-queue': 'Waiting Queue',
   requests: 'Requests',
+  'chat-inbox': 'Chat',
   clients: 'Clients',
   reports: 'Reports',
   earnings: 'Earnings',
@@ -76,6 +79,7 @@ const SECTION_COMPONENTS: Record<SectionKey, React.ComponentType> = {
   consultations: Consultations,
   'live-queue': LiveQueue,
   requests: Requests,
+  'chat-inbox': ChatInbox,
   clients: Clients,
   reports: Reports,
   earnings: Earnings,
@@ -106,6 +110,7 @@ export default function AstrologistDashboard() {
   const isOnline = astrologerSync?.intent === 'ONLINE';
   const unread = astrologerNotifications.filter(n => !n.read).length + (astrologerSync?.notifications.filter(n => !n.read).length || 0);
   const pendingCount = consultationRequests.filter(r => r.status === 'PENDING').length;
+  const pendingChatCount = astrologerSync?.pendingAssignments.filter(p => p.type === 'chat').length || 0;
   const liveQueueCount = astrologerSync?.queue.length || 0;
 
   const Section = SECTION_COMPONENTS[section];
@@ -132,6 +137,7 @@ export default function AstrologistDashboard() {
                     <span className={styles.navIcon}>{item.icon}</span>
                     {item.label}
                     {item.key === 'requests' && pendingCount > 0 && <span className={styles.navBadge}>{pendingCount}</span>}
+                    {item.key === 'chat-inbox' && pendingChatCount > 0 && <span className={styles.navBadge}>{pendingChatCount}</span>}
                     {item.key === 'live-queue' && liveQueueCount > 0 && <span className={styles.navBadge}>{liveQueueCount}</span>}
                     {item.key === 'notifications' && unread > 0 && <span className={styles.navBadge}>{unread}</span>}
                   </button>

@@ -30,18 +30,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export type SenderRole = 'USER' | 'ASTROLOGIST';
 
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'SYSTEM';
+
 export interface ChatMessage {
   id: string;
   consultationId: string;
   senderEmail: string;
   senderRole: SenderRole;
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+  messageType: MessageType;
   content: string;
   createdAt: number;
 }
 
 export const chatService = {
   listMessages: (consultationId: string) => request<ChatMessage[]>(`/${consultationId}/messages`),
-  sendMessage: (consultationId: string, content: string) =>
-    request<ChatMessage>(`/${consultationId}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+  // `content` is plain text for TEXT, a base64 data URL for IMAGE/AUDIO/FILE
+  // (see the backend's sendMessageSchema comment — no upload/object-storage
+  // service exists in this app, so the data URL travels in the message body).
+  sendMessage: (consultationId: string, content: string, messageType: MessageType = 'TEXT') =>
+    request<ChatMessage>(`/${consultationId}/messages`, { method: 'POST', body: JSON.stringify({ content, messageType }) }),
 };

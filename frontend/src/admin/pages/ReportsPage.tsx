@@ -13,7 +13,7 @@ const BUNDLE_LABEL: Record<string, string> = {
 };
 
 export default function ReportsPage() {
-  const { t } = useAppContext();
+  const { t, currentUser } = useAppContext();
   const [purchases, setPurchases] = useState<ApiReportPurchase[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +31,10 @@ export default function ReportsPage() {
 
       <div className={styles.kpiGrid}>
         <StatCard icon="▤" label={t('admin_reports_kpi_total')} value={purchases.length} />
-        <StatCard icon="₹" label={t('admin_reports_kpi_revenue')} value={`₹${revenue.toLocaleString()}`} />
+        {/* Total revenue is Admin-only — a per-purchase price still shows in
+            the table below since Staff needs it for support, just not the
+            aggregate revenue figure. */}
+        {currentUser?.role !== 'STAFF' && <StatCard icon="₹" label={t('admin_reports_kpi_revenue')} value={`₹${revenue.toLocaleString()}`} />}
       </div>
 
       {!loading && (

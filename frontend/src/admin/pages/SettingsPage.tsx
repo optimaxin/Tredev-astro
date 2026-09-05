@@ -2,7 +2,61 @@ import { useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { AdminButton } from '../components/SharedControls';
 import { realtimeApi, type AdminConfig } from '../../realtime/api';
+import { adminService, AdminApiError } from '../../services/adminService';
 import styles from './AdminPages.module.css';
+
+// Staff-settable (per the Boost Feature spec — "hum us astrologer ko promote
+// kar rahe hai" is the platform's trade-off, not the astrologer's choice):
+// what an astrologer keeps on a session their Boost gets credit for. Locked
+// into each Boost at the moment it's activated (see boostRepository.ts), so
+// changing this never rewrites the split on a Boost already run.
+function BoostPayoutCard() {
+  const [percent, setPercent] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    adminService.getBoostPayoutShare().then(r => setPercent(r.percent)).catch(err => setError(err instanceof AdminApiError ? err.message : 'Could not load this setting.'));
+  }, []);
+
+  const save = async () => {
+    if (percent === null) return;
+    setSaving(true);
+    setError('');
+    try {
+      await adminService.updateBoostPayoutShare(percent);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof AdminApiError ? err.message : 'Could not save this setting.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={styles.settingsCard}>
+      <div className={styles.settingsCardTitle}>Boost Payout Share</div>
+      <p className={styles.settingsCardDesc}>
+        What an astrologer keeps on a session their active Boost gets credit for — the rest is the platform's share for promoting their profile to the top of listings. Never affects what the user pays.
+      </p>
+      {error && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: 12, marginTop: 8 }}>{error}</p>}
+      {percent !== null && (
+        <div className={styles.drawerField} style={{ marginTop: 12 }}>
+          <span className={styles.drawerFieldLabel}>Astrologer keeps<br /><small style={{ opacity: 0.6, fontWeight: 400 }}>Platform keeps the rest ({100 - percent}%)</small></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="number" min={0} max={100} className="input-field" style={{ width: 70 }} value={percent} onChange={e => setPercent(Number(e.target.value))} />
+            <span>%</span>
+          </div>
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <AdminButton variant="gold" disabled={saving || percent === null} onClick={save}>{saved ? 'Saved ✓' : saving ? '…' : 'Save'}</AdminButton>
+      </div>
+    </div>
+  );
+}
 
 function RealtimeConfigCard() {
   const [config, setConfig] = useState<AdminConfig | null>(null);
@@ -103,6 +157,10 @@ export default function SettingsPage() {
           <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_kpi_astrologers')}</span><span className={styles.drawerFieldValue}>{roleCounts.ASTROLOGIST}</span></div>
           <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_settings_admins')}</span><span className={styles.drawerFieldValue}>{roleCounts.ADMIN}</span></div>
         </div>
+      </div>
+
+      <div className={styles.settingsGrid} style={{ marginTop: 16 }}>
+        <BoostPayoutCard />
       </div>
 
       <div className={styles.settingsFullRow}>

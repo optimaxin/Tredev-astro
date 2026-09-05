@@ -30,6 +30,12 @@ export async function insertAstrologerForUser(userId: string, name: string, expe
     is_active: 1,
     created_at: Date.now(),
     user_id: userId,
+    active_offer_percent: 0,
+    price_increase_old_chat_price: null,
+    price_increase_old_call_price: null,
+    price_increase_old_video_price: null,
+    price_increase_expires_at: null,
+    boost_payout_override_percent: null,
   };
   await query(
     `INSERT INTO astrologers
@@ -46,6 +52,14 @@ export async function insertAstrologerForUser(userId: string, name: string, expe
 
 export function findAstrologerByUserId(userId: string): Promise<AstrologerCatalogRow | undefined> {
   return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE user_id = $1', [userId]);
+}
+
+// Staff-set per-astrologer Boost payout-share override — null clears it,
+// falling back to the platform default (see boostRepository.ts's
+// activateBoost and platformSettingsRepository.ts).
+export async function updateBoostPayoutOverride(id: number, percent: number | null): Promise<AstrologerCatalogRow | undefined> {
+  const rows = await query<AstrologerCatalogRow>('UPDATE astrologers SET boost_payout_override_percent = $1 WHERE id = $2 RETURNING *', [percent, id]);
+  return rows[0];
 }
 
 export interface AstrologerFilters {
@@ -90,10 +104,18 @@ export async function listAstrologers(filters: AstrologerFilters): Promise<{ row
   const total = Number(totalRow?.n ?? 0);
 
   const offset = (filters.page - 1) * filters.limit;
+  // Boost's whole point is visibility — an astrologer with a currently
+  // active Boost ranks first regardless of the chosen sort, ahead of the
+  // normal order-by. Not exposed as a column: the spec is explicit that a
+  // Boost must never be visible to (or otherwise affect) users, only rank
+  // them higher within whatever view they're already looking at.
+  const nowParam = addParam(Date.now());
   const limitParam = addParam(filters.limit);
   const offsetParam = addParam(offset);
   const rows = await query<AstrologerCatalogRow>(
-    `SELECT * FROM astrologers WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+    `SELECT * FROM astrologers WHERE ${whereSql}
+     ORDER BY (EXISTS (SELECT 1 FROM boosts b WHERE b.astrologer_id = astrologers.id AND b.ends_at > ${nowParam})) DESC, ${orderBy}
+     LIMIT ${limitParam} OFFSET ${offsetParam}`,
     params
   );
 
@@ -118,23 +140,69 @@ export interface AstrologerProfilePatch {
   experienceYears: number;
 }
 
+const PRICE_INCREASE_WINDOW_MS = 30 * 24 * 60 * 60_000;
+
 // The "complete your profile" follow-up insertAstrologerForUser's own
 // comment already flagged as not built yet — title/bio/languages/pricing/
 // experience were only ever set once at creation (or left at their zero
 // defaults) with no way to change them afterward. `name` is deliberately
 // not editable here: it mirrors the linked user account's name, which
 // AstrologersPage.tsx's admin UI matches catalog rows to accounts by.
+//
+// Also detects a price increase on any of the 3 per-type prices and, per
+// the Astrologer Offers Feature spec, grandfathers the OLD price for 30
+// days (a "Price Increase Offer" — auto-activated, not astrologer-toggled).
+// If one is already running, a further increase during that window doesn't
+// reset the grandfathered baseline — only the first increase's old price is
+// protected until it expires.
 export async function updateAstrologerProfile(id: number, patch: AstrologerProfilePatch): Promise<AstrologerCatalogRow | undefined> {
+  const before = await findAstrologerByIdRaw(id);
+  if (!before) return undefined;
+
+  const now = Date.now();
+  const increaseActive = before.price_increase_expires_at != null && now < Number(before.price_increase_expires_at);
+  let oldChat = before.price_increase_old_chat_price;
+  let oldCall = before.price_increase_old_call_price;
+  let oldVideo = before.price_increase_old_video_price;
+  let expiresAt = before.price_increase_expires_at;
+
+  // Only a genuine prior price (>0) can be "increased" — going from an
+  // unset/placeholder 0 to a real price for the first time is profile setup,
+  // not a price hike, and shouldn't grandfather ₹0 as a protected rate.
+  const chatIncreased = before.chat_price > 0 && patch.chatPrice > before.chat_price;
+  const callIncreased = before.call_price > 0 && patch.callPrice > before.call_price;
+  const videoIncreased = before.video_price > 0 && patch.videoPrice > before.video_price;
+  if ((chatIncreased || callIncreased || videoIncreased) && !increaseActive) {
+    oldChat = before.chat_price;
+    oldCall = before.call_price;
+    oldVideo = before.video_price;
+    expiresAt = String(now + PRICE_INCREASE_WINDOW_MS);
+  }
+
   const rows = await query<AstrologerCatalogRow>(
     `UPDATE astrologers SET
        title = $1, bio = $2, avatar = $3, languages = $4, categories = $5, expertise = $6,
-       consultation_types = $7, chat_price = $8, call_price = $9, video_price = $10, experience_years = $11
-     WHERE id = $12
+       consultation_types = $7, chat_price = $8, call_price = $9, video_price = $10, experience_years = $11,
+       price_increase_old_chat_price = $12, price_increase_old_call_price = $13, price_increase_old_video_price = $14,
+       price_increase_expires_at = $15
+     WHERE id = $16
      RETURNING *`,
     [
       patch.title, patch.bio, patch.avatar, JSON.stringify(patch.languages), JSON.stringify(patch.categories), JSON.stringify(patch.expertise),
-      JSON.stringify(patch.consultationTypes), patch.chatPrice, patch.callPrice, patch.videoPrice, patch.experienceYears, id,
+      JSON.stringify(patch.consultationTypes), patch.chatPrice, patch.callPrice, patch.videoPrice, patch.experienceYears,
+      oldChat, oldCall, oldVideo, expiresAt, id,
     ]
+  );
+  return rows[0];
+}
+
+// Astrologer self-service: turn a percentage offer on/off. Validation
+// (₹10-floor per tier) happens in the route via pricingEngine's
+// canActivateOffer, using this row's CURRENT prices.
+export async function setActiveOfferPercent(id: number, percent: number): Promise<AstrologerCatalogRow | undefined> {
+  const rows = await query<AstrologerCatalogRow>(
+    'UPDATE astrologers SET active_offer_percent = $1 WHERE id = $2 RETURNING *',
+    [percent, id]
   );
   return rows[0];
 }

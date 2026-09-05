@@ -1,5 +1,5 @@
 export type SenderRole = 'USER' | 'ASTROLOGIST';
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'SYSTEM';
 
 export interface ChatMessage {
   id: string;

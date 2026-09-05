@@ -18,8 +18,10 @@
   box-shadow: -12px 0 40px rgba(34, 30, 26, 0.18);
 }
 
+.drawerWide { width: min(640px, 100%); }
+
 @media (max-width: 640px) {
-  .drawer { width: 100%; }
+  .drawer, .drawerWide { width: 100%; }
 }
 
 .drawerHeader {

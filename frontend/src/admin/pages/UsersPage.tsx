@@ -3,7 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import type { AuthUser } from '../../context/AppContext';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
-import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton } from '../components/SharedControls';
+import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
 import { adminService } from '../../services/adminService';
 import type { ApiUserActivity } from '../../services/adminService';
 import { accountStatus, formatDate } from '../adminUtils';
@@ -134,6 +134,7 @@ export default function UsersPage() {
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.name || ''}
+        wide
         footer={selected ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {/* Promoting to Staff/Admin/Astrologer only makes sense starting
@@ -158,6 +159,15 @@ export default function UsersPage() {
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_status')}</span><span className={styles.drawerFieldValue}>{(() => { const s = accountStatus(selected.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; })()}</span></div>
             {activityError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{activityError}</p>}
             {roleError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{roleError}</p>}
+
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
+              <ChatAuditPanel
+                recentChats={activity ? activity.recentChats : activityError ? [] : null}
+                lastAction={activity?.lastAction ?? null}
+                loadError={activityError}
+                onRaiseWarning={note => adminService.logNote('audit.warning', `${selected.name} (${selected.email}): ${note}`).then(() => {})}
+              />
+            </div>
           </>
         )}
       </Drawer>

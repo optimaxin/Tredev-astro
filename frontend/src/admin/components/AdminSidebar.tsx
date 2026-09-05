@@ -4,6 +4,7 @@ import styles from './AdminSidebar.module.css';
 
 const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'overview', icon: '◈', labelKey: 'admin_sidebar_overview' },
+  { key: 'applications', icon: '✦', labelKey: 'admin_sidebar_applications' },
   { key: 'astrologers', icon: '☉', labelKey: 'admin_sidebar_astrologers' },
   { key: 'users', icon: '☰', labelKey: 'admin_sidebar_users' },
   { key: 'staff', icon: '◆', labelKey: 'admin_sidebar_staff' },
@@ -29,16 +30,17 @@ interface Props {
 }
 
 export default function AdminSidebar({ active, onNavigate, mobileOpen, allowedSections }: Props) {
-  const { t } = useAppContext();
+  const { t, currentUser } = useAppContext();
   const items = allowedSections ? NAV_ITEMS.filter(item => allowedSections.includes(item.key)) : NAV_ITEMS;
+  const isStaff = currentUser?.role === 'STAFF';
 
   return (
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ''}`}>
       <div className={styles.brand}>
         <div className={styles.brandMark}>त्र</div>
         <div className={styles.brandText}>
-          <div className={styles.brandName}>{t('admin_console_name')}</div>
-          <div className={styles.brandCaption}>{t('admin_console_caption')}</div>
+          <div className={styles.brandName}>{t(isStaff ? 'admin_console_name_staff' : 'admin_console_name')}</div>
+          <div className={styles.brandCaption}>{t(isStaff ? 'admin_console_caption_staff' : 'admin_console_caption')}</div>
         </div>
       </div>
 

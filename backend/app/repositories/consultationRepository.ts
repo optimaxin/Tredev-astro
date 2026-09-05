@@ -17,6 +17,9 @@ interface ConsultationDbRow {
   ended_at: string | null;
   duration_minutes: number;
   extended_minutes: number;
+  price_per_min: number;
+  applied_offer_percent: number;
+  boost_id: number | null;
 }
 
 function fromRow(row: ConsultationDbRow): Consultation {
@@ -36,6 +39,9 @@ function fromRow(row: ConsultationDbRow): Consultation {
     endedAt: row.ended_at ? Number(row.ended_at) : undefined,
     durationMinutes: row.duration_minutes,
     extendedMinutes: row.extended_minutes,
+    pricePerMin: row.price_per_min,
+    appliedOfferPercent: row.applied_offer_percent,
+    boostId: row.boost_id ?? undefined,
   };
 }
 
@@ -46,12 +52,12 @@ function fromRow(row: ConsultationDbRow): Consultation {
 export async function insertConsultation(c: Consultation, executor?: Executor) {
   await query(
     `INSERT INTO consultations
-      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes, price_per_min, applied_offer_percent, boost_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
     [
       c.id, c.astrologerId, c.userEmail.toLowerCase(), c.userName, c.category, c.type, c.status,
       c.fromQueue ? 1 : 0, c.requestId, c.createdAt, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null,
-      c.durationMinutes, c.extendedMinutes,
+      c.durationMinutes, c.extendedMinutes, c.pricePerMin, c.appliedOfferPercent, c.boostId ?? null,
     ],
     executor
   );
@@ -133,18 +139,29 @@ export async function countForUser(userEmail: string): Promise<number> {
 // "In flight" — this app only ever books immediate real-time consultations
 // (no scheduled-for-later slots), so this is the closest real equivalent to
 // the old mock's "today's consultations" KPI.
-// Grouped by astrologer + type — the admin Astrologers page's revenue
-// breakdown multiplies each group's count by that astrologer's CURRENT
-// per-type price (chat_price/call_price/video_price), same "estimate off
-// current pricing, not a captured-at-booking-time ledger" reasoning
-// chat.routes.ts's mine-as-astrologer already uses. Only COMPLETED
-// consultations count — an assigned-then-declined/cancelled one was never
-// actually delivered.
-export async function countCompletedByAstrologerAndType(): Promise<{ astrologerId: number; type: string; count: number }[]> {
-  const rows = await query<{ astrologer_id: number; type: string; n: string }>(
-    `SELECT astrologer_id, type, COUNT(*) AS n FROM consultations WHERE status = 'COMPLETED' GROUP BY astrologer_id, type`
+// Grouped by astrologer + type — sums each session's OWN locked price_per_min
+// (set once at session creation by pricingEngine.ts, reflecting whatever
+// offer/loyalty/Boost applied at the time) rather than the astrologer's
+// current catalog price, so the admin revenue breakdown actually reflects
+// offers/discounts instead of ignoring them. Only COMPLETED consultations
+// count — an assigned-then-declined/cancelled one was never delivered.
+// `revenue` is the gross figure (what users paid, summed) — unchanged
+// methodology. `astrologerPayout` additionally applies each boost-attributed
+// session's own LOCKED payout_share_percent (see boostRepository.ts's
+// activateBoost) on top of that; a non-boosted session pays the astrologer
+// its full price_per_min, since there's no general platform-commission model
+// for ordinary sessions — only Boost carries an explicit revenue split.
+export async function countCompletedByAstrologerAndType(): Promise<{ astrologerId: number; type: string; count: number; revenue: number; astrologerPayout: number }[]> {
+  const rows = await query<{ astrologer_id: number; type: string; n: string; revenue: string; astrologer_payout: string }>(
+    `SELECT c.astrologer_id, c.type, COUNT(*) AS n,
+       COALESCE(SUM(c.price_per_min), 0) AS revenue,
+       COALESCE(SUM(CASE WHEN b.payout_share_percent IS NOT NULL THEN c.price_per_min * b.payout_share_percent / 100.0 ELSE c.price_per_min END), 0) AS astrologer_payout
+     FROM consultations c
+     LEFT JOIN boosts b ON b.id = c.boost_id
+     WHERE c.status = 'COMPLETED'
+     GROUP BY c.astrologer_id, c.type`
   );
-  return rows.map(r => ({ astrologerId: r.astrologer_id, type: r.type, count: Number(r.n) }));
+  return rows.map(r => ({ astrologerId: r.astrologer_id, type: r.type, count: Number(r.n), revenue: Number(r.revenue), astrologerPayout: Math.round(Number(r.astrologer_payout)) }));
 }
 
 export async function countInProgress(): Promise<number> {

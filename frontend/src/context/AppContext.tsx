@@ -349,6 +349,10 @@ interface AppContextValue {
   // in-handler STAFF-vs-ADMIN check) — this just calls the endpoint; a 403
   // for an over-reaching STAFF caller surfaces as a thrown ApiError.
   updateAccountRole: (email: string, role: Role) => Promise<void>; // throws AdminApiError on 403 (e.g. STAFF trying to grant Staff/Admin)
+  // Self-service — the currently signed-in Admin/Staff account editing its
+  // own name/password (see admin.routes.ts's PATCH /me). Throws AdminApiError
+  // (e.g. wrong current password) on failure.
+  updateMyProfile: (patch: { name?: string; currentPassword?: string; newPassword?: string }) => Promise<void>;
   // Astrologist practice-management (mock prototype, scoped to currentUser.email)
   consultationRequests: ConsultationRequest[];
   consultations: Consultation[];
@@ -683,9 +687,17 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     // Admin Console
     admin_console_name: 'TredevAstro Admin',
     admin_console_caption: 'Administration Console',
+    admin_console_name_staff: 'TredevAstro Staff',
+    admin_console_caption_staff: 'Staff Console',
     admin_search_placeholder: 'Search...',
     admin_notifications: 'Notifications',
     admin_profile: 'Admin Profile',
+    admin_profile_staff: 'Staff Profile',
+    admin_profile_edit: 'Edit Profile',
+    admin_profile_edit_title: 'Edit Profile',
+    admin_profile_field_name: 'Name',
+    admin_profile_field_current_password: 'Current Password',
+    admin_profile_field_new_password: 'New Password (leave blank to keep current)',
     admin_logout: 'Logout',
     admin_sidebar_overview: 'Overview',
     admin_sidebar_applications: 'Applications',
@@ -813,6 +825,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_col_languages: 'Languages',
     admin_astro_col_consultations: 'Consultations',
     admin_astro_col_earnings: 'Earnings',
+    admin_astro_col_live_status: 'Live Status',
+    admin_astro_status_online_available: 'Available now',
+    admin_astro_status_online_busy: 'In a session',
+    admin_astro_status_away: 'Away',
+    admin_astro_status_offline: 'Offline',
     admin_astro_col_status: 'Status',
     admin_astro_add_title: 'Add Astrologer',
     admin_astro_add_name: 'Full Name',
@@ -833,6 +850,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_tab_reviews: 'Reviews',
     admin_astro_tab_earnings: 'Earnings',
     admin_astro_tab_consultations: 'Consultations',
+    admin_astro_tab_audit: 'Audit',
     admin_astro_tab_documents: 'Documents',
     admin_users_title: 'Users',
     admin_users_col_user: 'User',
@@ -1301,9 +1319,17 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     // Admin Console
     admin_console_name: 'त्रिदेव ज्योतिष एडमिन',
     admin_console_caption: 'प्रशासन कंसोल',
+    admin_console_name_staff: 'त्रिदेव ज्योतिष स्टाफ',
+    admin_console_caption_staff: 'स्टाफ कंसोल',
     admin_search_placeholder: 'खोजें...',
     admin_notifications: 'सूचनाएं',
     admin_profile: 'एडमिन प्रोफ़ाइल',
+    admin_profile_staff: 'स्टाफ प्रोफ़ाइल',
+    admin_profile_edit: 'प्रोफ़ाइल संपादित करें',
+    admin_profile_edit_title: 'प्रोफ़ाइल संपादित करें',
+    admin_profile_field_name: 'नाम',
+    admin_profile_field_current_password: 'वर्तमान पासवर्ड',
+    admin_profile_field_new_password: 'नया पासवर्ड (खाली छोड़ें यदि बदलना नहीं है)',
     admin_logout: 'लॉगआउट',
     admin_sidebar_overview: 'अवलोकन',
     admin_sidebar_applications: 'आवेदन',
@@ -1401,6 +1427,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_col_languages: 'भाषाएं',
     admin_astro_col_consultations: 'परामर्श',
     admin_astro_col_earnings: 'कमाई',
+    admin_astro_col_live_status: 'लाइव स्थिति',
+    admin_astro_status_online_available: 'अभी उपलब्ध',
+    admin_astro_status_online_busy: 'सत्र में व्यस्त',
+    admin_astro_status_away: 'दूर',
+    admin_astro_status_offline: 'ऑफ़लाइन',
     admin_astro_col_status: 'स्थिति',
     admin_astro_add_title: 'आचार्य जोड़ें',
     admin_astro_add_name: 'पूरा नाम',
@@ -1411,6 +1442,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_tab_reviews: 'समीक्षाएं',
     admin_astro_tab_earnings: 'कमाई',
     admin_astro_tab_consultations: 'परामर्श',
+    admin_astro_tab_audit: 'ऑडिट',
     admin_astro_tab_documents: 'दस्तावेज़',
     admin_users_title: 'उपयोगकर्ता',
     admin_users_col_user: 'उपयोगकर्ता',
@@ -1840,9 +1872,17 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     // Admin Console
     admin_console_name: 'त्रिदेव ज्योतिष अ‍ॅडमिन',
     admin_console_caption: 'प्रशासन कन्सोल',
+    admin_console_name_staff: 'त्रिदेव ज्योतिष स्टाफ',
+    admin_console_caption_staff: 'स्टाफ कन्सोल',
     admin_search_placeholder: 'शोधा...',
     admin_notifications: 'सूचना',
     admin_profile: 'अ‍ॅडमिन प्रोफाइल',
+    admin_profile_staff: 'स्टाफ प्रोफाइल',
+    admin_profile_edit: 'प्रोफाइल संपादित करा',
+    admin_profile_edit_title: 'प्रोफाइल संपादित करा',
+    admin_profile_field_name: 'नाव',
+    admin_profile_field_current_password: 'सध्याचा पासवर्ड',
+    admin_profile_field_new_password: 'नवीन पासवर्ड (बदलायचा नसल्यास रिकामे ठेवा)',
     admin_logout: 'लॉगआउट',
     admin_sidebar_overview: 'अवलोकन',
     admin_sidebar_applications: 'अर्ज',
@@ -1940,6 +1980,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_col_languages: 'भाषा',
     admin_astro_col_consultations: 'सल्लामसलत',
     admin_astro_col_earnings: 'कमाई',
+    admin_astro_col_live_status: 'लाइव्ह स्थिती',
+    admin_astro_status_online_available: 'सध्या उपलब्ध',
+    admin_astro_status_online_busy: 'सत्रात व्यस्त',
+    admin_astro_status_away: 'दूर',
+    admin_astro_status_offline: 'ऑफलाइन',
     admin_astro_col_status: 'स्थिती',
     admin_astro_add_title: 'आचार्य जोडा',
     admin_astro_add_name: 'पूर्ण नाव',
@@ -1950,6 +1995,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_astro_tab_reviews: 'अभिप्राय',
     admin_astro_tab_earnings: 'कमाई',
     admin_astro_tab_consultations: 'सल्लामसलत',
+    admin_astro_tab_audit: 'ऑडिट',
     admin_astro_tab_documents: 'कागदपत्रे',
     admin_users_title: 'वापरकर्ते',
     admin_users_col_user: 'वापरकर्ता',
@@ -2855,6 +2901,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshAdminData();
   };
 
+  const updateMyProfile = async (patch: { name?: string; currentPassword?: string; newPassword?: string }) => {
+    const updated = await adminService.updateMe(patch);
+    setCurrentUser(prev => prev ? { ...prev, name: updated.name } : prev);
+  };
+
   // ── Astrologist practice-management state (mock prototype, see comment on
   // seedAstrologistDemoData above) ──
   const [allConsultationRequests, setAllConsultationRequests] = useState<ConsultationRequest[]>(() => {
@@ -3076,7 +3127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       accounts, applyToBecomeAstrologer,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
-      suspendAccount, restoreAccount, updateAccountRole,
+      suspendAccount, restoreAccount, updateAccountRole, updateMyProfile,
       consultationRequests, consultations,
       acceptConsultationRequest, declineConsultationRequest, completeConsultation, cancelConsultation, saveConsultationNotes,
       blockedSlots, addBlockedSlot, removeBlockedSlot,

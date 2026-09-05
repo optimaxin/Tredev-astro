@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import styles from './sections.module.css';
 
 export type SectionKey =
-  | 'overview' | 'calendar' | 'consultations' | 'live-queue' | 'requests' | 'clients'
+  | 'overview' | 'calendar' | 'consultations' | 'live-queue' | 'requests' | 'chat-inbox' | 'clients'
   | 'reports' | 'earnings' | 'reviews'
   | 'profile' | 'availability' | 'notifications' | 'settings';
 
@@ -96,6 +96,25 @@ export function Panel({ title, actions, children, className }: { title?: string;
         </div>
       )}
       {children}
+    </div>
+  );
+}
+
+// Generic "are you sure?" modal — used by the Boost activation confirm
+// (Overview.tsx / Availability.tsx), reusable for anything similar later.
+export function ConfirmModal({ title, body, confirmLabel = 'Confirm', busy, onConfirm, onCancel }: {
+  title: string; body: React.ReactNode; confirmLabel?: string; busy?: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className={styles.confirmBackdrop} onClick={onCancel}>
+      <div className={styles.confirmCard} onClick={e => e.stopPropagation()}>
+        <div className={styles.confirmTitle}>{title}</div>
+        <div className={styles.confirmBody}>{body}</div>
+        <div className={styles.confirmActions}>
+          <button className={styles.iconBtn} onClick={onCancel}>Cancel</button>
+          <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busy} onClick={onConfirm}>{busy ? '…' : confirmLabel}</button>
+        </div>
+      </div>
     </div>
   );
 }

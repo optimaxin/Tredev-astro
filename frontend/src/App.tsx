@@ -12,6 +12,7 @@ import MonkWidget from './components/MonkWidget/MonkWidget';
 import { RealtimeProvider } from './realtime/RealtimeContext';
 import ToastStack from './realtime/ToastStack';
 import BroadcastBanner from './components/BroadcastBanner/BroadcastBanner';
+import ActiveSessionBanner from './components/ActiveSessionBanner/ActiveSessionBanner';
 
 function AppContent() {
   const { theme, language, page, currentUser } = useAppContext();
@@ -39,6 +40,7 @@ function AppContent() {
         <PageRenderer />
         <LoginModal />
         <ToastStack />
+        <ActiveSessionBanner />
       </div>
     );
   }
@@ -56,6 +58,7 @@ function AppContent() {
       <LoginModal />
       <MonkWidget />
       <ToastStack />
+      <ActiveSessionBanner />
     </div>
   );
 }

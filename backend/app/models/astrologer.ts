@@ -19,6 +19,15 @@ export interface AstrologerCatalogRow {
   is_active: number; // SQLite has no boolean type
   created_at: number;
   user_id: string | null;
+  active_offer_percent: number;
+  price_increase_old_chat_price: number | null;
+  price_increase_old_call_price: number | null;
+  price_increase_old_video_price: number | null;
+  price_increase_expires_at: string | null;
+  // Per-astrologer Boost payout-share override (staff-set) — NULL means
+  // "use the platform default" (platform_settings). Internal/staff-only,
+  // deliberately never exposed on PublicAstrologerProfile below.
+  boost_payout_override_percent: number | null;
 }
 
 // Public-safe astrologer profile — section 10: no phone/email/internal
@@ -40,6 +49,7 @@ export interface PublicAstrologerProfile {
   reviewCount: number;
   experienceYears: number;
   consultationCount: number;
+  activeOfferPercent: number;
 }
 
 export function toPublicAstrologerProfile(row: AstrologerCatalogRow): PublicAstrologerProfile {
@@ -60,5 +70,6 @@ export function toPublicAstrologerProfile(row: AstrologerCatalogRow): PublicAstr
     reviewCount: row.review_count,
     experienceYears: row.experience_years,
     consultationCount: row.consultation_count,
+    activeOfferPercent: row.active_offer_percent,
   };
 }

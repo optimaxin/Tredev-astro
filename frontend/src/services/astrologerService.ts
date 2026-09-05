@@ -22,6 +22,7 @@ export interface ApiAstrologerProfile {
   reviewCount: number;
   experienceYears: number;
   consultationCount: number;
+  activeOfferPercent: number;
 }
 
 export interface UiAstrologer {
@@ -38,6 +39,7 @@ export interface UiAstrologer {
   about: string;
   category: string[];
   specialization: string[];
+  activeOfferPercent: number;
 }
 
 function adapt(p: ApiAstrologerProfile): UiAstrologer {
@@ -55,6 +57,7 @@ function adapt(p: ApiAstrologerProfile): UiAstrologer {
     about: p.bio,
     category: p.categories,
     specialization: p.expertise,
+    activeOfferPercent: p.activeOfferPercent,
   };
 }
 
@@ -151,4 +154,40 @@ export const astrologerService = {
   submitApplication: (expertise: string, experience: string) =>
     authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify({ expertise, experience }) }),
   myApplication: () => authedRequest<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>('/api/astrologers/applications/mine'),
+
+  // ── Offers (percentage discounts, astrologer self-service) ──────────
+  setMyOffer: (percent: 0 | 20 | 50 | 75) =>
+    authedRequest<ApiAstrologerProfile>('/api/astrologers/me/offer', { method: 'PATCH', body: JSON.stringify({ percent }) }),
+
+  // ── Boost (visibility feature, astrologer self-service) ─────────────
+  getMyBoost: () => authedRequest<BoostStatus>('/api/astrologers/me/boost'),
+  activateMyBoost: () => authedRequest<BoostSummary>('/api/astrologers/me/boost', { method: 'POST' }),
+
+  // The exact price a booking would lock in right now — offer/loyalty
+  // adjusted. Works logged-out too (shows the advertised, non-loyal rate).
+  getEffectivePrice: (astrologerId: number, type: 'chat' | 'voice' | 'video') =>
+    authedRequest<EffectivePrice>(`/api/astrologers/${astrologerId}/effective-price?type=${type}`),
 };
+
+export interface EffectivePrice {
+  pricePerMin: number;
+  appliedOfferPercent: number;
+  isLoyal: boolean;
+}
+
+export interface BoostSummary {
+  id: number;
+  displayId: string;
+  startedAt: number;
+  endsAt: number;
+  payoutSharePercent: number;
+}
+
+export interface BoostStatus {
+  active: BoostSummary | null;
+  history: BoostSummary[];
+  // What activating right now would pay — this astrologer's own override if
+  // staff set one, else the platform default. Shown in the "are you sure?"
+  // confirmation before POSTing /me/boost.
+  pendingPayoutSharePercent: number;
+}

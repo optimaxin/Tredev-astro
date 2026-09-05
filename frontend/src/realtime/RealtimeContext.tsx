@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { io, Socket } from 'socket.io-client';
 import { useAppContext } from '../context/AppContext';
 import { realtimeApi, SERVER_URL } from './api';
-import { playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
+import { playExpiryWarningBeep, playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
 import type {
   AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
   RecommendedAstrologer, RequestResult, UserSyncSnapshot,
@@ -99,6 +99,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [publicStates, setPublicStates] = useState<Record<number, PublicAstrologerState>>({});
   const [astrologerSync, setAstrologerSync] = useState<AstrologerSyncSnapshot | null>(null);
   const [userSync, setUserSync] = useState<UserSyncSnapshot | null>(null);
+  const userSyncRef = useRef(userSync);
+  useEffect(() => { userSyncRef.current = userSync; }, [userSync]);
   const [idleWarning, setIdleWarning] = useState(false);
   const [recommendations, setRecommendations] = useState<RecommendedAstrologer[] | null>(null);
   const [queueExpired, setQueueExpired] = useState(false);
@@ -177,6 +179,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     socket.on('chat:expiring-soon', (payload: { consultationId: string; remainingSeconds: number }) => {
       setExpiringSoon(payload);
+      // A separate audio cue (not just the visual top-up banner) on the
+      // user's side specifically, ~1 min before their session runs out.
+      if (userSyncRef.current?.consultation?.id === payload.consultationId && notifPrefsRef.current.sound) {
+        playExpiryWarningBeep();
+      }
     });
     socket.on('chat:extended', (consultation) => {
       setAstrologerSync(prev => prev && prev.activeConsultation?.id === consultation.id ? { ...prev, activeConsultation: consultation } : prev);

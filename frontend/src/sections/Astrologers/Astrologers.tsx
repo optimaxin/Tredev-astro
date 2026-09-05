@@ -217,7 +217,15 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
         {/* Price + CTAs */}
         <div className={styles.bottom}>
           <div className={styles.priceWrap}>
-            <span className={styles.price}>₹{a.price}<span className={styles.perMin}>{t('lbl_per_min')}</span></span>
+            {a.activeOfferPercent > 0 ? (
+              <span className={styles.price}>
+                <span style={{ textDecoration: 'line-through', opacity: 0.55, fontSize: '0.85em', marginRight: 4 }}>₹{a.price}</span>
+                ₹{Math.round(a.price * (1 - a.activeOfferPercent / 100))}<span className={styles.perMin}>{t('lbl_per_min')}</span>
+                <span style={{ marginLeft: 6, fontSize: '0.7em', color: 'var(--gold-primary, #b58a3b)', fontWeight: 700 }}>{a.activeOfferPercent}% OFF</span>
+              </span>
+            ) : (
+              <span className={styles.price}>₹{a.price}<span className={styles.perMin}>{t('lbl_per_min')}</span></span>
+            )}
             {isOnline ? (
               <span className={styles.onlineStatus}>● {isBusy ? 'Busy' : t('lbl_online')}</span>
             ) : (

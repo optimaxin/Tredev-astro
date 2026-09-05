@@ -10,6 +10,7 @@ export interface Announcement {
 
 export type AdminSection =
   | 'overview'
+  | 'applications'
   | 'astrologers'
   | 'users'
   | 'staff'

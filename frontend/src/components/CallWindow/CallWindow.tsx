@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRealtime } from '../../realtime/RealtimeContext';
+import { startRingbackTone, stopRingbackTone } from '../../realtime/sound';
 import styles from './CallWindow.module.css';
 
 interface CallWindowProps {
@@ -139,6 +140,14 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
     if (status !== 'connected') return;
     const id = window.setInterval(() => setSeconds(s => s + 1), 1000);
     return () => window.clearInterval(id);
+  }, [status]);
+
+  // Ringback tone loops while the call is connecting, on BOTH sides — real
+  // phone calls ring for the caller too, not just once picked up.
+  useEffect(() => {
+    if (status === 'connecting') startRingbackTone();
+    else stopRingbackTone();
+    return () => stopRingbackTone();
   }, [status]);
 
   const toggleMute = () => {

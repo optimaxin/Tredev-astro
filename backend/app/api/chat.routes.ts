@@ -55,8 +55,11 @@ chatRouter.get('/mine-as-astrologer', requireAuth, async (req, res) => {
   const astro = await findAstrologerByUserId(req.user!.id);
   if (!astro) return fail(res, 404, 'NOT_FOUND', 'No astrologer catalog entry for this account');
   const rows = await findAllForAstrologer(astro.id);
-  const priceByType: Record<string, number> = { chat: astro.chat_price, voice: astro.call_price, video: astro.video_price };
-  const data = rows.map(c => ({ ...c, estimatedAmount: priceByType[c.type] ?? 0 }));
+  // Each consultation already carries its own locked-at-creation price
+  // (offer/loyalty/Boost-adjusted) — use that instead of the astrologer's
+  // current catalog price, so a past session's estimate doesn't drift when
+  // pricing changes later.
+  const data = rows.map(c => ({ ...c, estimatedAmount: c.pricePerMin || 0 }));
   res.json({ success: true, data });
 });
 
@@ -71,16 +74,24 @@ chatRouter.get('/:id/messages', requireAuth, async (req, res) => {
   }
 });
 
+// TEXT stays capped at 4000 chars; IMAGE/AUDIO/FILE content is a base64
+// data URL (no upload/object-storage service exists in this app, and this
+// is the least new infrastructure that gets the feature working) so it
+// needs a much larger ceiling — ~7M chars covers a ~5MB raw file.
 const sendMessageSchema = z.object({
-  content: z.string().trim().min(1).max(4000),
-});
+  content: z.string().trim().min(1),
+  messageType: z.enum(['TEXT', 'IMAGE', 'FILE', 'AUDIO']).default('TEXT'),
+}).refine(
+  b => b.content.length <= (b.messageType === 'TEXT' ? 4000 : 7_000_000),
+  { message: 'Message content is too large' }
+);
 
 chatRouter.post('/:id/messages', requireAuth, messageLimiter, async (req, res) => {
   const email = await requesterEmail(req, res);
   if (!email) return;
   try {
     const body = sendMessageSchema.parse(req.body);
-    const message = await sendMessage(String(req.params.id), email, body.content);
+    const message = await sendMessage(String(req.params.id), email, body.content, body.messageType);
     res.status(201).json({ success: true, data: message });
   } catch (e) {
     if (e instanceof ChatError) return fail(res, e.status, 'CHAT_ERROR', e.message);

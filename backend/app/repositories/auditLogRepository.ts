@@ -20,3 +20,10 @@ export async function logAdminAction(actorUserId: string, actorLabel: string, ac
 export function listAuditLog(page: number, limit: number): Promise<AuditLogRow[]> {
   return query<AuditLogRow>('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, (page - 1) * limit]);
 }
+
+// For a profile's "last action" audit trail (Users/Astrologers drawer) —
+// target is whatever label the action was logged against (email for a user,
+// catalog name for an astrologer — see admin.routes.ts's audit() calls).
+export function listAuditLogForTarget(target: string, limit: number): Promise<AuditLogRow[]> {
+  return query<AuditLogRow>('SELECT * FROM audit_log WHERE target = $1 ORDER BY created_at DESC LIMIT $2', [target, limit]);
+}

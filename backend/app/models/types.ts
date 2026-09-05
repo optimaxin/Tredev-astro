@@ -60,6 +60,9 @@ export interface Consultation {
   endedAt?: number;
   durationMinutes: number; // chosen by the user at booking time
   extendedMinutes: number; // accumulated top-ups added mid-call
+  pricePerMin: number; // locked in at session start (offer/loyalty/price-increase-adjusted)
+  appliedOfferPercent: number; // the discount % actually applied to pricePerMin, for display
+  boostId?: number; // set if this session was attributed to an astrologer Boost
 }
 
 export interface QueueEntry {

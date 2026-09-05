@@ -42,7 +42,10 @@ await rescheduleActiveConsultationTimers();
 
 const app = express();
 app.use(cors({ origin: corsOrigin }));
-app.use(express.json());
+// Default 100kb is fine for everything except chat's IMAGE/AUDIO messages,
+// which arrive as a base64 data URL (see chat.routes.ts's sendMessageSchema
+// for the actual per-message size cap this just needs to fit under).
+app.use(express.json({ limit: '8mb' }));
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);

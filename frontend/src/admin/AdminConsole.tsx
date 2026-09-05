@@ -9,6 +9,7 @@ import styles from './AdminConsole.module.css';
 
 import OverviewPage from './pages/OverviewPage';
 
+const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'));
 const AstrologersPage = lazy(() => import('./pages/AstrologersPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const StaffPage = lazy(() => import('./pages/StaffPage'));
@@ -55,9 +56,10 @@ export default function AdminConsole() {
     // Defense in depth — real enforcement is server-side (requireSection in
     // admin.routes.ts); this just stops a STAFF session from rendering a
     // page it could otherwise reach by calling navigate() directly.
-    if (allowedSections && !allowedSections.includes(section)) return <OverviewPage onNavigate={navigate} />;
+    if (allowedSections && !allowedSections.includes(section)) return <OverviewPage onNavigate={navigate} allowedSections={allowedSections} />;
     switch (section) {
-      case 'overview': return <OverviewPage onNavigate={navigate} />;
+      case 'overview': return <OverviewPage onNavigate={navigate} allowedSections={allowedSections} />;
+      case 'applications': return <ApplicationsPage />;
       case 'astrologers': return <AstrologersPage />;
       case 'users': return <UsersPage />;
       case 'staff': return <StaffPage />;

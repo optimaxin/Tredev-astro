@@ -1,9 +1,112 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { DURATION_OPTIONS, BUFFER_OPTIONS, formatDateShort, SectionHeader, Panel } from './shared';
+import { astrologerService, AstrologerApiError, type BoostStatus } from '../../../services/astrologerService';
+import { DURATION_OPTIONS, BUFFER_OPTIONS, formatDateShort, SectionHeader, Panel, ConfirmModal } from './shared';
 import styles from './sections.module.css';
 
 const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const OFFER_OPTIONS = [0, 20, 50, 75] as const;
+
+function OffersAndBoostPanel() {
+  const [activeOffer, setActiveOffer] = useState(0);
+  const [offerError, setOfferError] = useState('');
+  const [offerBusy, setOfferBusy] = useState(false);
+  const [boost, setBoost] = useState<BoostStatus | null>(null);
+  const [boostBusy, setBoostBusy] = useState(false);
+  const [boostError, setBoostError] = useState('');
+  const [boostConfirming, setBoostConfirming] = useState(false);
+
+  useEffect(() => {
+    astrologerService.getMyProfile().then(p => setActiveOffer(p.activeOfferPercent ?? 0)).catch(() => {});
+    astrologerService.getMyBoost().then(setBoost).catch(() => {});
+  }, []);
+
+  const selectOffer = async (percent: 0 | 20 | 50 | 75) => {
+    setOfferBusy(true);
+    setOfferError('');
+    try {
+      const updated = await astrologerService.setMyOffer(percent);
+      setActiveOffer(updated.activeOfferPercent ?? percent);
+    } catch (e) {
+      setOfferError(e instanceof AstrologerApiError ? e.message : 'Could not update offer');
+    } finally {
+      setOfferBusy(false);
+    }
+  };
+
+  const activateBoost = async () => {
+    setBoostBusy(true);
+    setBoostError('');
+    try {
+      await astrologerService.activateMyBoost();
+      setBoost(await astrologerService.getMyBoost());
+      setBoostConfirming(false);
+    } catch (e) {
+      setBoostError(e instanceof AstrologerApiError ? e.message : 'Could not activate Boost');
+    } finally {
+      setBoostBusy(false);
+    }
+  };
+
+  const active = boost?.active;
+  const remainingMin = active ? Math.max(0, Math.round((active.endsAt - Date.now()) / 60000)) : 0;
+  const keepPercent = boost?.pendingPayoutSharePercent ?? 70;
+
+  return (
+    <Panel title="Offers & Boost">
+      <div style={{ marginBottom: 18 }}>
+        <div className={styles.panelTitle} style={{ marginBottom: 4, fontSize: 12 }}>Discount Offer</div>
+        <div className={styles.tableMuted} style={{ marginBottom: 8 }}>
+          Loyal users (15+ min of past sessions with you) automatically get half this discount. Whatever is active when a session starts stays locked for that whole session.
+        </div>
+        <div className={styles.chipRow}>
+          {OFFER_OPTIONS.map(p => (
+            <button key={p} disabled={offerBusy} className={`${styles.chip} ${activeOffer === p ? styles.chipActive : ''}`} onClick={() => selectOffer(p)}>
+              {p === 0 ? 'No offer' : `${p}% OFF`}
+            </button>
+          ))}
+        </div>
+        {offerError && <div className={styles.tableMuted} style={{ color: 'var(--danger, #e05252)', marginTop: 8 }}>{offerError}</div>}
+      </div>
+
+      <div>
+        <div className={styles.panelTitle} style={{ marginBottom: 4, fontSize: 12 }}>Boost</div>
+        <div className={styles.tableMuted} style={{ marginBottom: 8 }}>
+          30 minutes of extra visibility. Any session that starts in that window — or that a user waitlists for and connects with you within 7 days — pays you a reduced share ({active?.payoutSharePercent ?? keepPercent}%) in exchange. Never changes what the user pays.
+        </div>
+        {active ? (
+          <div className={styles.tablePrimary}>● Boost {active.displayId} active — {remainingMin} min of visibility left</div>
+        ) : (
+          <button className={styles.btnSm} disabled={boostBusy} onClick={() => setBoostConfirming(true)}>Activate Boost</button>
+        )}
+        {boostError && <div className={styles.tableMuted} style={{ color: 'var(--danger, #e05252)', marginTop: 8 }}>{boostError}</div>}
+        {boostConfirming && (
+          <ConfirmModal
+            title="Activate Boost?"
+            body={(
+              <>
+                Your profile will jump to the top of listings for 30 minutes.<br /><br />
+                On any session this brings you, you'll get <strong>{keepPercent}%</strong> and the platform keeps <strong>{100 - keepPercent}%</strong> — this never changes what the user pays.
+              </>
+            )}
+            confirmLabel="Yes, Activate"
+            busy={boostBusy}
+            onConfirm={activateBoost}
+            onCancel={() => setBoostConfirming(false)}
+          />
+        )}
+        {!!boost?.history.length && (
+          <div style={{ marginTop: 12 }}>
+            <div className={styles.panelTitle} style={{ marginBottom: 6, fontSize: 12 }}>Boost History</div>
+            {boost.history.map(b => (
+              <div key={b.id} className={styles.tableMuted}>{b.displayId} · {new Date(b.startedAt).toLocaleString()} · {b.payoutSharePercent}% share</div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
 
 export default function Availability() {
   const { currentUser, availability, setAvailabilityStatus, updateAvailability, blockedSlots, addBlockedSlot, removeBlockedSlot } = useAppContext();
@@ -90,6 +193,8 @@ export default function Availability() {
           </div>
         </div>
       </Panel>
+
+      <OffersAndBoostPanel />
 
       <Panel title="Blocked Time">
         {blockedSlots.length === 0 && <p className={styles.tableMuted}>No blocked time periods.</p>}
