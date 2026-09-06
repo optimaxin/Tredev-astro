@@ -124,6 +124,13 @@
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
   width: 100%;
+  /* .card is a CSS Grid item (.grid / .recommendedCards); grid items default
+     to min-width:auto, i.e. they refuse to shrink below their content's
+     min-content width even with width:100% set. On the single-column mobile
+     track that min-content width (price + Chat/Call buttons row) was wider
+     than the track, so the card overflowed past the viewport edge, clipping
+     the Call button. */
+  min-width: 0;
 }
 
 :global([data-theme='light']) .card {
