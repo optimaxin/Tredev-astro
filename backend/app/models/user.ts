@@ -20,6 +20,8 @@ export interface UserRow extends BirthDetails {
   created_at: number;
   phone_number: string | null;
   phone_verified: boolean;
+  wallet_balance: number;
+  firebase_uid: string | null;
 }
 
 // Safe-to-expose shape — never send password_hash to a client.

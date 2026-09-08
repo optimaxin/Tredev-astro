@@ -268,7 +268,7 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
     return result;
   }
 
-  return withAstrologerLock(astro.id, async client => {
+  const result = await withAstrologerLock(astro.id, async client => {
     const cached = await processedRequestRepo.getProcessedResult(params.requestId, client);
     if (cached) return cached; // idempotency — retries/duplicate submits never double-book
 
@@ -300,6 +300,21 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
     await processedRequestRepo.saveProcessedResult(params.requestId, result, client);
     return result;
   });
+
+  // Re-emit now that withAstrologerLock's transaction is guaranteed
+  // committed. The emits inside the transaction above (chat:assigned via
+  // createConsultation, queue:position) fire before COMMIT — a resync they
+  // trigger (see sockets.ts's resyncAstrologer) reads via a SEPARATE pool
+  // connection and can race the still-open transaction, seeing stale data
+  // (this was exactly why a fresh assignment needed a manual dashboard
+  // refresh to show up). Re-emitting here is cheap and idempotent —
+  // RealtimeContext's handlers already dedupe by id/merge by field.
+  if (result.outcome === 'ASSIGNED') {
+    bus.emitTyped('chat:assigned', result.consultation);
+  } else if (result.outcome === 'QUEUED') {
+    bus.emitTyped('queue:position', { entry: result.entry, position: result.position, eta: result.eta });
+  }
+  return result;
 }
 
 async function createConsultation(astrologerId: number, params: Omit<RequestParams, 'astrologerId'>, fromQueue: boolean, executor?: Executor): Promise<Consultation> {
@@ -524,13 +539,13 @@ async function broadcastQueuePositions(astrologerId: number, executor?: Executor
 // single oldest QUEUED entry. Returns whether it promoted anyone, so
 // processQueue can keep calling this until either is false.
 async function promoteOneIfCapacity(astrologerId: number): Promise<boolean> {
-  return withAstrologerLock(astrologerId, async client => {
+  const promoted = await withAstrologerLock(astrologerId, async client => {
     const astro = astrologers.get(astrologerId);
-    if (!astro || astro.status === 'OFFLINE' || astro.intent !== 'ONLINE') return false;
-    if ((await countActive(astrologerId, client)) >= astro.maxConcurrent) return false;
+    if (!astro || astro.status === 'OFFLINE' || astro.intent !== 'ONLINE') return null;
+    if ((await countActive(astrologerId, client)) >= astro.maxConcurrent) return null;
 
     const [next] = await queueRepo.listQueuedForAstrologer(astrologerId, client);
-    if (!next) return false;
+    if (!next) return null;
 
     next.status = 'PROMOTED';
     await queueRepo.updateQueueEntry(next, client);
@@ -540,9 +555,15 @@ async function promoteOneIfCapacity(astrologerId: number): Promise<boolean> {
     }, true, client);
     next.promotedConsultationId = consultation.id;
     await queueRepo.updateQueueEntry(next, client);
-    bus.emitTyped('queue:promoted', { entry: next, consultation });
-    return true;
+    return { entry: next, consultation };
   });
+  if (!promoted) return false;
+  // Re-emit post-commit — same reasoning as requestConsultation's identical
+  // comment (a resync triggered by the emit inside createConsultation, still
+  // inside the transaction, can otherwise race an uncommitted read).
+  bus.emitTyped('queue:promoted', promoted);
+  bus.emitTyped('chat:assigned', promoted.consultation);
+  return true;
 }
 
 export async function processQueue(astrologerId: number) {

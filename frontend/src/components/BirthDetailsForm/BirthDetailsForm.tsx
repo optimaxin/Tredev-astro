@@ -24,6 +24,7 @@ export const TIMEZONES = [
 export interface BirthDetailsSubmitValue extends BirthDetailsInput {
   name: string;
   placeName: string;
+  gender?: 'Male' | 'Female';
 }
 
 export interface BirthDetailsInitialValues {
@@ -37,14 +38,16 @@ export interface BirthDetailsInitialValues {
 interface BirthDetailsFormProps {
   onSubmit: (details: BirthDetailsSubmitValue) => void;
   showNameField?: boolean;
+  showGenderField?: boolean;
   nameLabel?: string;
   submitLabel: string;
   idPrefix: string;
   initialValues?: BirthDetailsInitialValues;
 }
 
-export default function BirthDetailsForm({ onSubmit, showNameField = true, nameLabel = 'Full Name', submitLabel, idPrefix, initialValues }: BirthDetailsFormProps) {
+export default function BirthDetailsForm({ onSubmit, showNameField = true, showGenderField = false, nameLabel = 'Full Name', submitLabel, idPrefix, initialValues }: BirthDetailsFormProps) {
   const [name, setName] = useState(initialValues?.name || '');
+  const [gender, setGender] = useState<'Male' | 'Female' | ''>('');
   const [dob, setDob] = useState(initialValues?.date || '');
   const [tob, setTob] = useState(initialValues?.time || '');
   const [place, setPlace] = useState(initialValues?.place || '');
@@ -84,6 +87,7 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
         timezoneOffsetMinutes: timezoneOffset,
         latitude: geo.latitude,
         longitude: geo.longitude,
+        ...(gender ? { gender } : {}),
       });
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Something went wrong. Please try again.');
@@ -106,6 +110,25 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, nameL
               value={name}
               onChange={e => setName(e.target.value)}
             />
+          </div>
+        )}
+        {showGenderField && (
+          <div className={styles.field}>
+            <label className={styles.label} id={`${idPrefix}-gender-label`}>Gender</label>
+            <div className={styles.genderRow} role="radiogroup" aria-labelledby={`${idPrefix}-gender-label`}>
+              {(['Male', 'Female'] as const).map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  role="radio"
+                  aria-checked={gender === g}
+                  className={`${styles.genderOption} ${gender === g ? styles.genderOptionActive : ''}`}
+                  onClick={() => setGender(g)}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <div className={styles.field}>

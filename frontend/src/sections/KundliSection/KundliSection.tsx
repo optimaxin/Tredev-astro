@@ -670,7 +670,7 @@ export default function KundliSection() {
                 </div>
               )}
 
-              <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" initialValues={savedBirthDetails} />
+              <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" showGenderField initialValues={savedBirthDetails} />
               {savedBirthDetails && (
                 <p className={styles.privacy}>✦ Pre-filled from the birth details you gave at sign-up — edit any field if it's wrong.</p>
               )}

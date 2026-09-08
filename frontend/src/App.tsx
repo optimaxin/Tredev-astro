@@ -8,6 +8,7 @@ import Footer from './components/Footer/Footer';
 import PageRenderer from './pages/PageRenderer';
 import CosmicClouds from './components/CosmicClouds/CosmicClouds';
 import LoginModal from './components/LoginModal/LoginModal';
+import PaymentResultModal from './components/PaymentResultModal/PaymentResultModal';
 import MonkWidget from './components/MonkWidget/MonkWidget';
 import { RealtimeProvider } from './realtime/RealtimeContext';
 import ToastStack from './realtime/ToastStack';
@@ -39,6 +40,7 @@ function AppContent() {
         <BroadcastBanner />
         <PageRenderer />
         <LoginModal />
+        <PaymentResultModal />
         <ToastStack />
         <ActiveSessionBanner />
       </div>
@@ -56,6 +58,7 @@ function AppContent() {
 
       <Footer />
       <LoginModal />
+      <PaymentResultModal />
       <MonkWidget />
       <ToastStack />
       <ActiveSessionBanner />

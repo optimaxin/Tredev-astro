@@ -165,6 +165,14 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
     setPage('astrologer-profile');
   };
 
+  // Chat/Call go straight to the booking page (skips the profile page) —
+  // stopPropagation so the click doesn't also bubble to handleCardClick above.
+  const handleBookNow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedId(a.id);
+    setPage('consultation-booking');
+  };
+
   return (
     <div className={`${styles.card} ${compact ? styles.cardCompact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
       {/* Avatar */}
@@ -233,10 +241,10 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
             )}
           </div>
           <div className={styles.ctaBtns}>
-            <button className={`${styles.chatBtn} btn btn-outline-gold btn-sm`} id={`astrologer-chat-${a.id}`}>
+            <button className={`${styles.chatBtn} btn btn-outline-gold btn-sm`} id={`astrologer-chat-${a.id}`} onClick={handleBookNow}>
               {t('btn_chat')}
             </button>
-            <button className={`${styles.callBtn} btn btn-gold btn-sm`} id={`astrologer-call-${a.id}`}>
+            <button className={`${styles.callBtn} btn btn-gold btn-sm`} id={`astrologer-call-${a.id}`} onClick={handleBookNow}>
               {t('btn_call')}
             </button>
           </div>

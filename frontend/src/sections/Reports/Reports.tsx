@@ -74,7 +74,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
 
 
         {/* Report Cards */}
-        <div className={styles.reportsGrid}>
+        <div className={styles.reportsGrid} id="reports-grid">
           {(featured ? REPORTS.slice(0, 4) : REPORTS).map((report, i) => (
             <motion.div
               key={report.id}
@@ -179,6 +179,16 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
                     className={`btn btn-full ${bundle.popular ? 'btn-gold' : 'btn-outline-gold'}`}
                     style={{ marginTop: 'auto' }}
                     id={`bundle-${i}`}
+                    onClick={() => {
+                      // These tiers aren't tied to one specific report — the
+                      // actual report-only/+Q&A/+consult purchase (with real,
+                      // report-specific pricing) happens on ReportDetailPage,
+                      // so a mere in-page scroll never felt like it "did"
+                      // anything. This opens that flow directly on the
+                      // catalog's first report, same as clicking any report
+                      // card — a real navigation, not just a scroll.
+                      handleReportClick(REPORTS[0].id);
+                    }}
                   >
                     Choose This
                   </button>

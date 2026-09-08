@@ -21,7 +21,7 @@ function timeAgo(ts: number): string {
 }
 
 function LiveStatusCard() {
-  const { astrologerSync, goOnline, goOffline, endActiveConsultation, connected } = useRealtime();
+  const { astrologerSync, goOnline, goOffline, connected } = useRealtime();
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState('');
 
@@ -73,7 +73,6 @@ function LiveStatusCard() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--gold-primary)' }}>{elapsed}</div>
-              <button className={styles.iconBtn} style={{ marginTop: 4 }} onClick={endActiveConsultation}>End Consultation</button>
             </div>
           </div>
           <div style={{ marginTop: 16 }}>

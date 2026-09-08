@@ -6,8 +6,31 @@ import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePic
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { PanchangResult } from '../../services/calculatorService';
 import { istHourFraction } from '../../utils/istTime';
-import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime24 } from '../../utils/panchangHindi';
+import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime24, hindiOr } from '../../utils/panchangHindi';
 import styles from './Panchang.module.css';
+
+// Field labels for the dashboard card — this card (unlike the rest of the
+// site's t()-driven copy) was always hardcoded in Hindi, so these live here
+// rather than in AppContext's TRANSLATIONS table.
+const PANCHANG_LABEL = {
+  tithi: { hi: 'तिथि', en: 'Tithi' },
+  nakshatra: { hi: 'नक्षत्र', en: 'Nakshatra' },
+  moonRashi: { hi: 'चंद्र राशि', en: 'Moon Rashi' },
+  vara: { hi: 'वार', en: 'Weekday' },
+  yoga: { hi: 'योग', en: 'Yoga' },
+  karana: { hi: 'करण', en: 'Karana' },
+  sunrise: { hi: 'सूर्योदय', en: 'Sunrise' },
+  sunset: { hi: 'सूर्यास्त', en: 'Sunset' },
+  moonrise: { hi: 'चंद्रोदय', en: 'Moonrise' },
+  moonset: { hi: 'चंद्रास्त', en: 'Moonset' },
+  sunRashi: { hi: 'सूर्य राशि', en: 'Sun Rashi' },
+  abhijit: { hi: 'अभिजीत मुहूर्त', en: 'Abhijit Muhurat' },
+  vijaya: { hi: 'विजय मुहूर्त', en: 'Vijaya Muhurat' },
+  amritKaal: { hi: 'अमृत काल', en: 'Amrit Kaal' },
+  sarvarthaSiddhi: { hi: 'सर्वार्थ सिद्धि योग', en: 'Sarvartha Siddhi Yoga' },
+  rahuKaal: { hi: 'राहु काल', en: 'Rahu Kaal' },
+  yamagandaKaal: { hi: 'यमगंड काल', en: 'Yamaganda Kaal' },
+};
 
 function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -19,7 +42,7 @@ function todayDateString(): string {
 // Set-to-(next)Rise, so the marker always reflects the real current time
 // instead of parking at one end all night. Also names the current Prahar —
 // each of day and night classically divides into 4 equal Prahars.
-function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; sunsetHour: number; moonPhase: number }) {
+function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: number; sunsetHour: number; moonPhase: number; isHindi: boolean }) {
   const currentHour = istHourFraction(new Date().toISOString());
   const dayLength = Math.max(0.01, sunsetHour - sunriseHour);
   const nightLength = Math.max(0.01, 24 - dayLength);
@@ -29,7 +52,9 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; s
     ? (currentHour - sunriseHour) / dayLength
     : (((currentHour >= sunsetHour ? currentHour - sunsetHour : currentHour + 24 - sunsetHour)) / nightLength);
   const praharNumber = Math.min(4, Math.floor(progress * 4) + 1);
-  const praharLabel = isDay ? `दिन का ${praharNumber} प्रहर` : `रात्रि का ${praharNumber} प्रहर`;
+  const praharLabel = isHindi
+    ? (isDay ? `दिन का ${praharNumber} प्रहर` : `रात्रि का ${praharNumber} प्रहर`)
+    : `${isDay ? 'Day' : 'Night'} Prahar ${praharNumber}`;
 
   const angle = Math.PI * Math.min(1, Math.max(0, progress));
   const cx = 20 + Math.cos(Math.PI - angle) * 80;
@@ -105,6 +130,12 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase }: { sunriseHour: number; s
 
 export default function Panchang() {
   const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser } = useAppContext();
+  // Scoped to this card only — deliberately NOT the site-wide language
+  // toggle (AppContext's language/setLanguage), so switching this doesn't
+  // also change the rest of the site's language.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('hi');
+  const isHindi = panchangLang === 'hi';
+  const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
@@ -130,7 +161,7 @@ export default function Panchang() {
       const file = new File([blob], 'panchang.png', { type: 'image/png' });
       const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[]; title?: string }) => Promise<void> };
       if (nav.canShare?.({ files: [file] }) && nav.share) {
-        await nav.share({ files: [file], title: 'पावन पंचांग' });
+        await nav.share({ files: [file], title: isHindi ? 'पावन पंचांग' : 'Sacred Panchang' });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -144,7 +175,7 @@ export default function Panchang() {
     } finally {
       setSharing(false);
     }
-  }, [data]);
+  }, [data, isHindi]);
 
   const loadFor = useCallback((place: string, date: string) => {
     setChanging(true);
@@ -198,33 +229,35 @@ export default function Panchang() {
   const fullTithiNumber = data ? (data.tithi.paksha === 'Shukla' ? data.tithi.number : data.tithi.number + 15) : 1;
   const moonPhase = ((fullTithiNumber - 0.5) * 12) / 360; // 0 = new moon, 0.5 = full moon — derived from the real tithi, not hardcoded
 
-  const paksha = data ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : '';
+  const L = (key: keyof typeof PANCHANG_LABEL) => PANCHANG_LABEL[key][isHindi ? 'hi' : 'en'];
+  const toRange = (start: string, end: string) => `${hindiTime24(start)} ${isHindi ? 'से' : 'to'} ${hindiTime24(end)}`;
+  const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips
   // above the denser field grid instead of competing equally with everything else.
   const HERO_FIELDS = data ? [
-    { icon: '☽', label: 'तिथि', value: `${HINDI_TITHI[data.tithi.name] || data.tithi.name} (${paksha})` },
-    { icon: '✦', label: 'नक्षत्र', value: HINDI_NAKSHATRA[data.nakshatra.name] || data.nakshatra.name },
-    { icon: '☾', label: 'चंद्र राशि', value: HINDI_RASHI[data.moonRashi] || data.moonRashi },
+    { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})` },
+    { icon: '✦', label: L('nakshatra'), value: hindiOr(language, HINDI_NAKSHATRA, data.nakshatra.name) },
+    { icon: '☾', label: L('moonRashi'), value: hindiOr(language, HINDI_RASHI, data.moonRashi) },
   ] : [];
   const HINDI_FIELDS = data ? [
-    { icon: '◈', label: 'वार', value: HINDI_WEEKDAY[data.vara] || data.vara },
-    { icon: '◎', label: 'योग', value: HINDI_YOGA[data.yoga] || data.yoga },
-    { icon: '✧', label: 'करण', value: HINDI_KARANA[data.karana] || data.karana },
-    { icon: '☀', label: 'सूर्योदय', value: hindiTime24(data.sunrise) },
-    { icon: '◑', label: 'सूर्यास्त', value: hindiTime24(data.sunset) },
-    { icon: '☾', label: 'चंद्रोदय', value: hindiTime24(data.moonrise) },
-    { icon: '◐', label: 'चंद्रास्त', value: data.moonset ? hindiTime24(data.moonset) : 'चंद्रास्त नहीं' },
-    { icon: '☉', label: 'सूर्य राशि', value: HINDI_RASHI[data.sunRashi] || data.sunRashi },
+    { icon: '◈', label: L('vara'), value: hindiOr(language, HINDI_WEEKDAY, data.vara) },
+    { icon: '◎', label: L('yoga'), value: hindiOr(language, HINDI_YOGA, data.yoga) },
+    { icon: '✧', label: L('karana'), value: hindiOr(language, HINDI_KARANA, data.karana) },
+    { icon: '☀', label: L('sunrise'), value: hindiTime24(data.sunrise) },
+    { icon: '◑', label: L('sunset'), value: hindiTime24(data.sunset) },
+    { icon: '☾', label: L('moonrise'), value: hindiTime24(data.moonrise) },
+    { icon: '◐', label: L('moonset'), value: data.moonset ? hindiTime24(data.moonset) : (isHindi ? 'चंद्रास्त नहीं' : 'No moonset') },
+    { icon: '☉', label: L('sunRashi'), value: hindiOr(language, HINDI_RASHI, data.sunRashi) },
   ] : [];
   const SHUBH_FIELDS = data ? [
-    { label: 'अभिजीत मुहूर्त', value: data.abhijitMuhurat ? `${hindiTime24(data.abhijitMuhurat.start)} से ${hindiTime24(data.abhijitMuhurat.end)}` : null },
-    { label: 'विजय मुहूर्त', value: data.vijayaMuhurat ? `${hindiTime24(data.vijayaMuhurat.start)} से ${hindiTime24(data.vijayaMuhurat.end)}` : null },
-    { label: 'अमृत काल', value: data.amritKaal ? `${hindiTime24(data.amritKaal.start)} से ${hindiTime24(data.amritKaal.end)}` : null },
-    { label: 'सर्वार्थ सिद्धि योग', value: data.sarvarthaSiddhiYoga ? 'आज है' : null },
+    { label: L('abhijit'), value: data.abhijitMuhurat ? toRange(data.abhijitMuhurat.start, data.abhijitMuhurat.end) : null },
+    { label: L('vijaya'), value: data.vijayaMuhurat ? toRange(data.vijayaMuhurat.start, data.vijayaMuhurat.end) : null },
+    { label: L('amritKaal'), value: data.amritKaal ? toRange(data.amritKaal.start, data.amritKaal.end) : null },
+    { label: L('sarvarthaSiddhi'), value: data.sarvarthaSiddhiYoga ? (isHindi ? 'आज है' : 'Today') : null },
   ].filter(f => f.value) : [];
   const ASHUBH_FIELDS = data ? [
-    { label: 'राहु काल', value: data.rahuKaal ? `${hindiTime24(data.rahuKaal.start)} से ${hindiTime24(data.rahuKaal.end)}` : null },
-    { label: 'यमगंड काल', value: data.yamagandaKaal ? `${hindiTime24(data.yamagandaKaal.start)} से ${hindiTime24(data.yamagandaKaal.end)}` : null },
+    { label: L('rahuKaal'), value: data.rahuKaal ? toRange(data.rahuKaal.start, data.rahuKaal.end) : null },
+    { label: L('yamagandaKaal'), value: data.yamagandaKaal ? toRange(data.yamagandaKaal.start, data.yamagandaKaal.end) : null },
   ].filter(f => f.value) : [];
 
   return (
@@ -249,11 +282,21 @@ export default function Panchang() {
         >
           {/* Left: Header + Sun/Moon Visual */}
           <div className={styles.left}>
+            <button
+              type="button"
+              className={styles.changeLocationBtn}
+              style={{ marginBottom: '12px' }}
+              onClick={() => setPanchangLang(isHindi ? 'en' : 'hi')}
+              title="Switch Panchang language"
+            >
+              {isHindi ? 'English' : 'हिंदी'}
+            </button>
             <div className={styles.arcWrap}>
               <SunArc
                 sunriseHour={data?.sunrise ? istHourFraction(data.sunrise) : 6}
                 sunsetHour={data?.sunset ? istHourFraction(data.sunset) : 18}
                 moonPhase={moonPhase}
+                isHindi={isHindi}
               />
             </div>
 
@@ -338,13 +381,13 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.panchangDash} ref={cardRef} lang="hi">
+              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'}>
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
                 <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashHeader}>
                   <div>
-                    <p className={styles.panchangDashDate}>{data ? `${HINDI_WEEKDAY[data.vara] || data.vara}` : '...'}</p>
-                    <p className={styles.panchangDashBrand}>Tredev Astro · पावन पंचांग{currentUser ? ` · ${currentUser.name}` : ''}</p>
+                    <p className={styles.panchangDashDate}>{data ? hindiOr(language, HINDI_WEEKDAY, data.vara) : '...'}</p>
+                    <p className={styles.panchangDashBrand}>Tredev Astro · {isHindi ? 'पावन पंचांग' : 'Sacred Panchang'}{currentUser ? ` · ${currentUser.name}` : ''}</p>
                   </div>
                   <img src="/images/acharya.png" alt="" aria-hidden="true" className={styles.panchangDashFigure} />
                 </div>
@@ -380,12 +423,12 @@ export default function Panchang() {
                   ))}
                 </div>
 
-                <p className={styles.panchangDashFooter}>ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)</p>
+                <p className={styles.panchangDashFooter}>{isHindi ? 'ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)' : 'Om Sarve Bhavantu Sukhinah · Tredev Astro · Indian Standard Time (IST)'}</p>
                 </div>
               </div>
 
               <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>
-                <span aria-hidden="true">↗</span> {sharing ? 'तैयार हो रहा है...' : 'पंचांग शेयर करें'}
+                <span aria-hidden="true">↗</span> {sharing ? (isHindi ? 'तैयार हो रहा है...' : 'Preparing...') : (isHindi ? 'पंचांग शेयर करें' : 'Share Panchang')}
               </button>
             </motion.div>
           </AnimatePresence>

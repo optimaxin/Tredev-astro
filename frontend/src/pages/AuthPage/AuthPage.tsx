@@ -9,13 +9,20 @@ import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { GeocodeResult } from '../../services/calculatorService';
 import { authService } from '../../services/authService';
+import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164IndianNumber } from '../../services/firebaseClient';
+import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
 type TabType = 'login' | 'register';
 
 export default function AuthPage() {
-  const { setPage, login, register, t, pendingAction, setPendingAction } = useAppContext();
+  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, t, pendingAction, setPendingAction } = useAppContext();
   const [tab, setTab] = useState<TabType>('register');
+
+  // Google Sign-In — same handler for either tab (it's a full login/signup
+  // on its own, not part of the manual form).
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState('');
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
@@ -41,16 +48,17 @@ export default function AuthPage() {
   // guess entirely. Any further edit to the text invalidates it.
   const [selectedGeo, setSelectedGeo] = useState<GeocodeResult | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
-  // 'form' -> 'otp' (phone verification, right after account creation) -> 'done'
+  // 'form' -> 'otp' (phone verification, right after account creation, now
+  // via Firebase Phone Auth instead of the old custom OTP-over-SMS/AWS SNS)
+  // -> 'done'.
   const [registerStep, setRegisterStep] = useState<'form' | 'otp' | 'done'>('form');
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
-  const [otpResendLoading, setOtpResendLoading] = useState(false);
-  // Only ever set from a non-production API response (see authService.ts /
-  // backend authService.ts's sendPhoneOtp) — lets registration be tested
-  // end-to-end before real AWS SNS credentials are configured.
-  const [devOtpCode, setDevOtpCode] = useState<string | undefined>();
+  const [otpSendLoading, setOtpSendLoading] = useState(false);
+  // Firebase's handle for whichever OTP was most recently sent — its
+  // .confirm(code) call is what actually checks the code.
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Mirrors the resume behaviour the old LoginModal popup used to do —
   // some gated actions (ai-chat, panchang-location) don't map to a page of
@@ -87,6 +95,36 @@ export default function AuthPage() {
     redirectByRole(user.role);
   };
 
+  const handleGoogleSignIn = async () => {
+    setGoogleError('');
+    setGoogleLoading(true);
+    try {
+      const idToken = await signInWithGooglePopup();
+      const user = await loginWithFirebase(idToken);
+      if (!user) { setGoogleError('Could not sign in with Google. Please try again.'); return; }
+      redirectByRole(user.role);
+    } catch (err) {
+      setGoogleError(err instanceof Error ? err.message : 'Could not sign in with Google. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Fires the OTP via Firebase's own SMS delivery — used both right after
+  // registration and by the "Resend" button on the otp step.
+  const handleSendPhoneOtp = async () => {
+    setOtpError('');
+    setOtpSendLoading(true);
+    try {
+      const result = await sendFirebasePhoneOtp(toE164IndianNumber(form.phoneNumber), 'firebase-recaptcha-container');
+      setConfirmationResult(result);
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
+    } finally {
+      setOtpSendLoading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError('');
@@ -105,8 +143,8 @@ export default function AuthPage() {
         setRegisterError('An account with this email already exists, the password is too short, or the server could not be reached. Please try again.');
         return;
       }
-      setDevOtpCode(result.devOtpCode);
       setRegisterStep('otp');
+      await handleSendPhoneOtp();
     } catch (err) {
       setRegisterError(err instanceof CalculatorApiError ? `Place of birth: ${err.message}` : 'Something went wrong. Please try again.');
     } finally {
@@ -119,29 +157,15 @@ export default function AuthPage() {
     setOtpError('');
     setOtpLoading(true);
     try {
-      const accessToken = localStorage.getItem('auth_access_token');
-      if (!accessToken) { setOtpError('Session expired — please register again.'); return; }
-      await authService.verifyOtp(accessToken, otpCode.trim());
+      if (!confirmationResult) throw new Error('No active verification code — resend it and try again.');
+      const credential = await confirmationResult.confirm(otpCode.trim());
+      const idToken = await credential.user.getIdToken();
+      await verifyPhoneWithFirebase(idToken);
       setRegisterStep('done');
-    } catch {
-      setOtpError('Incorrect or expired code. Please try again.');
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : 'Incorrect or expired code. Please try again.');
     } finally {
       setOtpLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setOtpError('');
-    setOtpResendLoading(true);
-    try {
-      const accessToken = localStorage.getItem('auth_access_token');
-      if (!accessToken) { setOtpError('Session expired — please register again.'); return; }
-      const { devOtpCode: resent } = await authService.resendOtp(accessToken);
-      setDevOtpCode(resent);
-    } catch {
-      setOtpError('Could not resend the code — please wait a moment and try again.');
-    } finally {
-      setOtpResendLoading(false);
     }
   };
 
@@ -292,6 +316,11 @@ export default function AuthPage() {
               🗝️ {t('auth_tab_login')}
             </button>
           </div>
+
+          {/* Invisible reCAPTCHA anchor for Firebase Phone Auth — must stay
+              mounted regardless of which step is showing (see
+              firebaseClient.ts's sendFirebasePhoneOtp). */}
+          <div id="firebase-recaptcha-container" />
 
           <AnimatePresence mode="wait">
             {/* REGISTRATION INSCRIPTION FORM */}
@@ -469,6 +498,8 @@ export default function AuthPage() {
                   <div className={styles.sealEmblemInside}>ॐ</div>
                   <span>{registerLoading ? t('auth_btn_inscribing') : `मुद्रित करें · ${t('auth_btn_seal')}`}</span>
                 </button>
+
+                <GoogleSignInButton loading={googleLoading} error={googleError} onClick={handleGoogleSignIn} />
               </motion.form>
             )}
 
@@ -524,10 +555,12 @@ export default function AuthPage() {
                   <div className={styles.sealEmblemInside}>🗝️</div>
                   <span>{loginLoading ? t('auth_btn_unlocking') : `प्रवेश करें · ${t('auth_btn_signin_vault')}`}</span>
                 </button>
+
+                <GoogleSignInButton loading={googleLoading} error={googleError} onClick={handleGoogleSignIn} />
               </motion.form>
             )}
 
-            {/* PHONE OTP VERIFICATION STEP — shown right after account creation */}
+            {/* PHONE OTP VERIFICATION STEP — shown right after account creation, via Firebase Phone Auth */}
             {tab === 'register' && registerStep === 'otp' && (
               <motion.form
                 key="otp-script"
@@ -541,11 +574,6 @@ export default function AuthPage() {
                 <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
                   We sent a 6-digit code to {form.phoneNumber}. Enter it below to verify your number.
                 </p>
-                {devOtpCode && (
-                  <p style={{ color: '#8a6d3b', fontSize: '0.85rem', margin: '0 0 8px' }}>
-                    Dev mode (no SMS provider configured yet): your code is <strong>{devOtpCode}</strong>
-                  </p>
-                )}
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>Verification Code</label>
                   <input
@@ -566,18 +594,25 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   className={styles.waxSealBtn}
-                  disabled={otpLoading || otpCode.length !== 6}
+                  disabled={otpLoading || otpSendLoading || otpCode.length !== 6}
                   id="auth-otp-verify-btn"
                 >
                   <span>{otpLoading ? 'Verifying…' : 'Verify Phone Number'}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleResendOtp}
-                  disabled={otpResendLoading}
+                  onClick={handleSendPhoneOtp}
+                  disabled={otpSendLoading}
                   style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
                 >
-                  {otpResendLoading ? 'Resending…' : "Didn't get a code? Resend"}
+                  {otpSendLoading ? 'Sending…' : "Didn't get a code? Resend"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegisterStep('done')}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', marginTop: 'var(--space-2)', opacity: 0.7 }}
+                >
+                  Skip for now
                 </button>
               </motion.form>
             )}
@@ -629,5 +664,38 @@ export default function AuthPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// Deliberately plain (not manuscript-themed) — Google's own brand guidelines
+// want its sign-in button recognizable, not restyled into a site's theme.
+function GoogleSignInButton({ loading, error, onClick }: { loading: boolean; error: string; onClick: () => void }) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 'var(--space-3) 0' }}>
+        <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
+        <span style={{ fontSize: '0.75rem', color: '#8a6d3b' }}>or</span>
+        <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
+      </div>
+      {error && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{error}</p>}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={loading}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+          padding: '10px 16px', borderRadius: '6px', border: '1px solid #dadce0', background: '#fff',
+          color: '#3c4043', fontSize: '0.9rem', fontWeight: 500, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.87 2.7-6.62z" />
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z" />
+          <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.68 9c0-.59.1-1.16.27-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33z" />
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58z" />
+        </svg>
+        {loading ? 'Signing in…' : 'Continue with Google'}
+      </button>
+    </>
   );
 }

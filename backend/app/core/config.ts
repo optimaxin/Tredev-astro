@@ -31,19 +31,41 @@ export const config = {
     refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 7,
   },
   aws: {
-    // Genuinely optional (unlike jwt's secrets above) — geocoding.ts falls
-    // back to the free Nominatim provider when this isn't set, so local dev
-    // never needs an AWS account. Set both in backend/.env (local) and in
-    // Render's dashboard env vars (production) — never commit real values.
+    // Genuinely optional — geocoding.ts falls back to the free Nominatim
+    // provider when this isn't set, so local dev never needs an AWS
+    // account. Set in backend/.env (local) and Render's dashboard env vars
+    // (production) — never commit real values. (SNS/phone-OTP-by-SMS used
+    // to live here too — replaced by Firebase Phone Auth, see authService.ts.)
     locationApiKey: process.env.AWS_LOCATION_API_KEY,
     locationRegion: process.env.AWS_LOCATION_REGION || 'us-east-1',
-    // SNS (used by smsService.ts for OTP texts) needs real IAM credentials
-    // with sns:Publish permission — NOT the Location API key above, that
-    // key only works for Location's Places/Routes/Maps APIs. Set
-    // AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY as standard AWS SDK env vars
-    // (the SDK's default credential chain picks them up automatically —
-    // nothing in this codebase reads them directly); this region field is
-    // just where SNSClient is told to send the Publish call.
-    snsRegion: process.env.AWS_SNS_REGION || process.env.AWS_LOCATION_REGION || 'us-east-1',
+  },
+  cashfree: {
+    // No dev fallback (like databaseUrl) — a payment intent genuinely cannot
+    // be created without real sandbox/production keys. Routes that need
+    // these check for undefined and fail with a clear error instead of
+    // silently hitting Cashfree with empty credentials.
+    appId: process.env.CASHFREE_APP_ID,
+    secretKey: process.env.CASHFREE_SECRET_KEY,
+    env: process.env.CASHFREE_ENV || 'sandbox', // 'sandbox' | 'production'
+  },
+  razorpay: {
+    // Second gateway, selectable alongside Cashfree at checkout (see
+    // PaymentGatewayPicker.tsx) — same "undefined check, clear error"
+    // pattern as cashfree above, no dev fallback.
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+  },
+  firebase: {
+    // The whole service-account JSON (from Firebase Console → Project
+    // Settings → Service Accounts → Generate new private key), pasted as
+    // ONE env var — not a file path. Render (this backend's host) only
+    // offers plain string env vars, no file uploads, same reasoning as
+    // every other secret in this file. Used for Google/Phone sign-in
+    // verification (authService.ts's loginWithFirebase, via
+    // core/firebaseAdmin.ts) and, later, the Postgres→Firestore DB
+    // migration (core/firestore.ts) — same project, one credential. Read
+    // lazily (only when first actually used) so the rest of the app keeps
+    // running on Postgres in the meantime if this isn't set yet.
+    serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
   },
 };

@@ -10,7 +10,6 @@ const NAV_LINKS = [
   // broken/redundant. "Astrology" now goes to the real, already-built
   // Horoscope page, which had no nav entry of its own at all.
   { translationKey: 'nav_astrology', page: 'horoscope' },
-  { translationKey: 'nav_kundli', page: 'free-kundli' },
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },
   { translationKey: 'nav_panchang', page: 'panchang' },

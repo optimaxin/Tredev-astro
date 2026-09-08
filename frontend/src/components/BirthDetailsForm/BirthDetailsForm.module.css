@@ -33,6 +33,47 @@
   width: 100%;
 }
 
+.genderRow {
+  display: flex;
+  gap: 8px;
+}
+
+.genderOption {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1.5px solid #8a7358;
+  background: #fff;
+  color: #241b16;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.genderOption:hover {
+  border-color: var(--color-gold);
+}
+
+.genderOptionActive {
+  border-color: var(--color-gold-dark, var(--color-gold));
+  background: var(--color-gold, #B58A3B);
+  color: #fff;
+}
+
+:global([data-theme='dark']) .genderOption {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(200, 169, 107, 0.5);
+  color: var(--color-text-light, #f1e4c9);
+}
+
+:global([data-theme='dark']) .genderOptionActive {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: #1a1108;
+}
+
 .submitBtn {
   width: 100%;
 }

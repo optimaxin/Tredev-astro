@@ -63,7 +63,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const authService = {
   register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) =>
-    request<{ user: ApiUser; devOtpCode?: string } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password, phoneNumber, ...birthDetails }) }),
+    request<{ user: ApiUser } & AuthTokens>('/register', { method: 'POST', body: JSON.stringify({ name, email, password, phoneNumber, ...birthDetails }) }),
 
   login: (email: string, password: string) =>
     request<{ user: ApiUser } & AuthTokens>('/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -86,9 +86,14 @@ export const authService = {
   resetPassword: (token: string, newPassword: string) =>
     request<{ ok: boolean }>('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
 
-  verifyOtp: (accessToken: string, code: string) =>
-    request<ApiUser>('/me/verify-otp', { method: 'POST', body: JSON.stringify({ code }), headers: { Authorization: `Bearer ${accessToken}` } }),
+  // Google Sign-In / Phone Auth — frontend runs the actual Firebase popup/OTP
+  // flow and hands the resulting ID token here; replaced the old custom
+  // OTP-over-SMS verifyOtp/resendOtp (see backend/app/services/authService.ts).
+  firebaseLogin: (idToken: string) =>
+    request<{ user: ApiUser; isNewUser: boolean } & AuthTokens>('/firebase', { method: 'POST', body: JSON.stringify({ idToken }) }),
 
-  resendOtp: (accessToken: string) =>
-    request<{ devOtpCode?: string }>('/me/resend-otp', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }),
+  // Post-registration "verify your phone" step — attaches + verifies a
+  // phone number on the CURRENT (already logged-in) account.
+  linkFirebasePhone: (accessToken: string, idToken: string) =>
+    request<ApiUser>('/me/link-firebase-phone', { method: 'POST', body: JSON.stringify({ idToken }), headers: { Authorization: `Bearer ${accessToken}` } }),
 };

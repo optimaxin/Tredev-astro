@@ -7,7 +7,7 @@ import { adminService, AdminApiError } from '../../services/adminService';
 import type { ApiAstrologerRevenue, ApiAstrologerActivity, ApiAstrologerStatus } from '../../services/adminService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
-import { StatusBadge, SearchInput, EmptyState, AdminButton, ConfirmDialog, ChatAuditPanel } from '../components/SharedControls';
+import { StatusBadge, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
 import { accountStatus } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
@@ -70,7 +70,7 @@ const ZERO_REVENUE: ApiAstrologerRevenue = {
 };
 
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, currentUser } = useAppContext();
   // Revenue is an ADMIN-only view — Staff never sees it here regardless of
   // whether they've been granted the Astrologers section, mirrors the
   // backend's GET /astrologers/revenue being adminOnly now.
@@ -84,10 +84,6 @@ export default function AstrologersPage() {
   const [liveStatus, setLiveStatus] = useState<Record<number, ApiAstrologerStatus>>({});
   const [activity, setActivity] = useState<ApiAstrologerActivity | null>(null);
   const [activityError, setActivityError] = useState('');
-  const [removeTarget, setRemoveTarget] = useState<AuthUser | null>(null);
-  const [removing, setRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState('');
-
   // Staff-set per-astrologer Boost payout-share override — draft input for
   // whichever astrologer's drawer is currently open.
   const [boostPayoutDraft, setBoostPayoutDraft] = useState('');
@@ -161,21 +157,6 @@ export default function AstrologersPage() {
       setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes.');
     } finally {
       setEditSaving(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    if (!removeTarget) return;
-    setRemoving(true);
-    setRemoveError('');
-    try {
-      await updateAccountRole(removeTarget.email, 'USER');
-      setRemoveTarget(null);
-      if (selected?.email === removeTarget.email) setSelected(null);
-    } catch (err) {
-      setRemoveError(err instanceof Error ? err.message : 'Could not remove this astrologer.');
-    } finally {
-      setRemoving(false);
     }
   };
 
@@ -341,7 +322,6 @@ export default function AstrologersPage() {
                   {status === 'ACTIVE'
                     ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                     : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
-                  <AdminButton variant="danger" onClick={() => setRemoveTarget(a)}>{t('admin_action_remove')}</AdminButton>
                 </div>
               </div>
             );
@@ -376,7 +356,6 @@ export default function AstrologersPage() {
                     {s === 'ACTIVE'
                       ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
                       : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
-                    <AdminButton variant="danger" onClick={() => setRemoveTarget(a)}>{t('admin_action_remove')}</AdminButton>
                   </div>
                 );
               }
@@ -548,17 +527,6 @@ export default function AstrologersPage() {
         )}
       </Drawer>
 
-      <ConfirmDialog
-        open={!!removeTarget}
-        title={t('admin_astro_confirm_remove_title')}
-        description={t('admin_astro_confirm_remove_desc')}
-        confirmLabel={t('admin_action_remove')}
-        cancelLabel={t('admin_action_cancel')}
-        variant="danger"
-        onConfirm={handleRemove}
-        onCancel={() => setRemoveTarget(null)}
-      />
-      {removeError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem', marginTop: 8 }}>{removeError}</p>}
     </div>
   );
 }

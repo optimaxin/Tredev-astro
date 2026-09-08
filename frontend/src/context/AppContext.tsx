@@ -4,6 +4,7 @@ import { authService, ApiRequestError } from '../services/authService';
 import type { ApiUser, RegisterBirthDetails } from '../services/authService';
 import { adminService } from '../services/adminService';
 import { astrologerService } from '../services/astrologerService';
+import { paymentService } from '../services/paymentService';
 
 export interface BirthProfile {
   name: string;
@@ -34,6 +35,13 @@ export interface CartItem {
   quantity: number;
   category?: string;
   image?: string;
+}
+
+export interface PaymentResultInfo {
+  status: 'success' | 'failed';
+  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
+  amount: number;
+  message?: string;
 }
 
 // ── Role-based auth — backed by the real backend (backend/app/api/auth.routes.ts) ──
@@ -316,6 +324,11 @@ interface AppContextValue {
   setPage: (p: string) => void;
   selectedId: number | string | null;
   setSelectedId: (id: number | string | null) => void;
+  // Last completed/declined Cashfree payment — set right before navigating to
+  // the 'payment-status' page (see paymentService.pay() call sites in
+  // PageRenderer.tsx), so that page has something to render.
+  paymentResult: PaymentResultInfo | null;
+  setPaymentResult: (r: PaymentResultInfo | null) => void;
   // Cart state
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
@@ -329,7 +342,9 @@ interface AppContextValue {
   currentUser: AuthUser | null;
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
-  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser; devOtpCode?: string } | null>;
+  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser } | null>;
+  loginWithFirebase: (idToken: string) => Promise<AuthUser | null>;
+  verifyPhoneWithFirebase: (idToken: string) => Promise<void>;
   saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
   logout: () => void;
   pendingAction: string | null;
@@ -2690,6 +2705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedIdState] = useState<number | string | null>(() => {
     return (window.history.state && window.history.state.selectedId) || null;
   });
+  const [paymentResult, setPaymentResult] = useState<PaymentResultInfo | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const setPage = (p: string) => {
@@ -2879,16 +2895,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails): Promise<{ user: AuthUser; devOtpCode?: string } | null> => {
+  const register = async (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails): Promise<{ user: AuthUser } | null> => {
     try {
-      const { user, accessToken, refreshToken, devOtpCode } = await authService.register(name, email, password, phoneNumber, birthDetails);
+      const { user, accessToken, refreshToken } = await authService.register(name, email, password, phoneNumber, birthDetails);
       persistTokens(accessToken, refreshToken);
       const authUser = toAuthUser(user);
       setCurrentUser(authUser);
-      return { user: authUser, devOtpCode };
+      return { user: authUser };
     } catch {
       return null;
     }
+  };
+
+  // Google Sign-In / Phone Auth — caller already ran the Firebase client-side
+  // popup/OTP flow and has a verified ID token; this just exchanges it for
+  // this app's own session (see backend/app/services/authService.ts's
+  // loginWithFirebase, which creates the account on first sign-in).
+  const loginWithFirebase = async (idToken: string): Promise<AuthUser | null> => {
+    try {
+      const { user, accessToken, refreshToken } = await authService.firebaseLogin(idToken);
+      persistTokens(accessToken, refreshToken);
+      const authUser = toAuthUser(user);
+      setCurrentUser(authUser);
+      return authUser;
+    } catch {
+      return null;
+    }
+  };
+
+  // Post-registration "verify your phone" step — see authService.ts's
+  // linkFirebasePhone. Throws (rather than returning null) so AuthPage can
+  // show the real error message instead of a generic one.
+  const verifyPhoneWithFirebase = async (idToken: string): Promise<void> => {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) throw new ApiRequestError('AUTH_ERROR', 'Session expired — please log in again.');
+    const user = await authService.linkFirebasePhone(accessToken, idToken);
+    setCurrentUser(toAuthUser(user));
   };
 
   const saveBirthDetails = async (details: Required<RegisterBirthDetails>): Promise<boolean> => {
@@ -3153,6 +3195,90 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => setCart([]);
 
+  // Picks up after a gateway's hosted payment page (see paymentService.pay's
+  // redirect) redirects the browser back to `/?payment_id=...`
+  // (payments.routes.ts sets that as the return_url) — this is a fresh page
+  // load, not a client-side navigation, so it's the only place that can see
+  // the returning query param. Runs once on mount, confirms the real outcome
+  // with the backend (never trusts the redirect alone), scrubs the query
+  // param so a refresh doesn't re-fire, and sets paymentResult so
+  // PaymentResultModal (rendered globally in App.tsx) can show it.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentId = params.get('payment_id');
+    if (!paymentId) return;
+
+    // A full browser round-trip to the gateway and back resets every bit of
+    // React state (this is a brand-new page load, not a SPA navigation) —
+    // `page` would otherwise fall back to 'home'. paymentService.pay()
+    // stashes where the user actually was, in localStorage (survives a full
+    // reload, unlike React state), right before redirecting away.
+    let restoredPage: string | undefined;
+    let restoredSelectedId: number | string | null = null;
+    try {
+      const raw = localStorage.getItem('pending_payment_return');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        restoredPage = parsed.page;
+        restoredSelectedId = parsed.selectedId ?? null;
+      }
+    } catch {
+      // Malformed/missing — just falls through to whatever page loaded.
+    }
+    localStorage.removeItem('pending_payment_return');
+    if (restoredPage) {
+      setPage(restoredPage);
+      setSelectedId(restoredSelectedId);
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('payment_id');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+
+    // The gateway can take a few seconds to actually mark the payment PAID
+    // after redirecting back (webhook/settlement lag) — a single immediate
+    // check can catch it still 'CREATED' and wrongly look declined. Poll a
+    // few times before concluding either way.
+    const POLL_ATTEMPTS = 6;
+    const POLL_DELAY_MS = 1500;
+    (async () => {
+      for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+        try {
+          const { status, purpose, amount } = await paymentService.getStatus(paymentId);
+          if (status === 'PAID') {
+            if (purpose === 'STORE_ORDER') clearCart();
+            // A consultation is booked server-side only once the payment
+            // clears (see fulfillment.ts's CONSULTATION case) — the waiting
+            // page itself (driven by the realtime socket's userSync) is the
+            // real confirmation, so skip the generic success popup and go
+            // straight there instead of showing it over the booking page.
+            // A top-up (CONSULTATION_EXTEND) already stashed 'consultation-waiting'
+            // as the page to restore to (that's where the top-up button lives),
+            // so there's nothing extra to navigate — just skip the generic
+            // popup so it doesn't cover the resumed chat/call.
+            if (purpose === 'CONSULTATION' || purpose === 'CONSULTATION_EXTEND') { setPage('consultation-waiting'); return; }
+            setPaymentResult({ status: 'success', purpose, amount });
+            return;
+          }
+          if (status === 'FAILED') {
+            setPaymentResult({ status: 'failed', purpose, amount, message: 'Your payment could not be completed.' });
+            return;
+          }
+          // status === 'CREATED' — still pending, wait and retry.
+          if (attempt < POLL_ATTEMPTS - 1) await new Promise(r => setTimeout(r, POLL_DELAY_MS));
+          else setPaymentResult({ status: 'failed', purpose, amount, message: 'Still confirming your payment — check My Orders / My Reports in a few minutes.' });
+        } catch {
+          if (attempt === POLL_ATTEMPTS - 1) {
+            setPaymentResult({ status: 'failed', purpose: 'STORE_ORDER', amount: 0, message: 'Could not confirm your payment status. Check My Orders / My Reports shortly.' });
+          } else {
+            await new Promise(r => setTimeout(r, POLL_DELAY_MS));
+          }
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <AppContext.Provider value={{
       birthProfile, setBirthProfile,
@@ -3161,9 +3287,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       astrologerFilter, setAstrologerFilter,
       page, setPage,
       selectedId, setSelectedId,
+      paymentResult, setPaymentResult,
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
-      isLoggedIn, currentUser, authLoading, login, register, saveBirthDetails, logout,
+      isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
       accounts, applyToBecomeAstrologer,

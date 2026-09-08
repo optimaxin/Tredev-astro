@@ -16,6 +16,8 @@ import { kundliHistoryRouter } from './api/kundliHistory.routes.ts';
 import { ordersRouter } from './api/orders.routes.ts';
 import { adminRouter } from './api/admin.routes.ts';
 import { contentRouter } from './api/content.routes.ts';
+import { paymentsRouter } from './api/payments.routes.ts';
+import { config } from './core/config.ts';
 import { attachSockets } from './websocket/sockets.ts';
 import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 
@@ -52,7 +54,11 @@ app.use(cors({ origin: corsOrigin }));
 // Default 100kb is fine for everything except chat's IMAGE/AUDIO messages,
 // which arrive as a base64 data URL (see chat.routes.ts's sendMessageSchema
 // for the actual per-message size cap this just needs to fit under).
-app.use(express.json({ limit: '8mb' }));
+// `verify` stashes the exact raw bytes on req.rawBody — payments.routes.ts's
+// webhook needs those (not the re-serialized req.body) to check Cashfree's
+// HMAC signature, since JSON.stringify(parsed) is not guaranteed byte-for-byte
+// identical to what Cashfree actually sent and signed.
+app.use(express.json({ limit: '8mb', verify: (req, _res, buf) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf; } }));
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);
@@ -60,6 +66,7 @@ app.use('/api/calculators', calculatorsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/kundli-history', kundliHistoryRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/payments', paymentsRouter);
 app.use('/api', contentRouter);
 // `router` (legacy mock-trust realtime routes, including the unauthenticated
 // /admin/config and /admin/astrologers/:id/max-concurrent) MUST be mounted
@@ -86,4 +93,12 @@ setInterval(() => { runMaintenanceTick().catch(console.error); }, 20_000);
 
 httpServer.listen(PORT, () => {
   console.log(`[tredevastro-realtime] listening on http://localhost:${PORT}`);
+  // Loud, non-fatal — Cashfree is only used lazily (first checkout attempt),
+  // so a missing key would otherwise surface as a confusing 502 minutes later
+  // instead of right here at boot. `tsx watch` restarts on source-file
+  // changes but does NOT re-read backend/.env on its own — editing .env
+  // requires a manual restart of `npm run dev` for a new key to take effect.
+  if (!config.cashfree.appId || !config.cashfree.secretKey) {
+    console.warn('[payments] CASHFREE_APP_ID/CASHFREE_SECRET_KEY not set — checkout will fail until backend/.env has both and the server is restarted.');
+  }
 });

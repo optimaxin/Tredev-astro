@@ -167,6 +167,14 @@
   transform: translateY(-1px);
 }
 
+/* .active is shared with the plain text nav links, where it turns the text
+   gold on a transparent background — applied unmodified to this button (a
+   filled gold pill) it made the text gold-on-gold, i.e. invisible. Keep the
+   button's own dark text regardless of active state. */
+.ctaBtn.active {
+  color: var(--nav-ink) !important;
+}
+
 .ctaBtnSecondary {
   background: transparent;
   border: 1.5px solid var(--nav-gold);

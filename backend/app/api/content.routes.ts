@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.ts';
 import { findBlogPostById, listBlogPosts } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
@@ -9,8 +8,8 @@ import { findAstrologyReportById, listAstrologyReports } from '../repositories/a
 import { toPublicAstrologyReport } from '../models/astrologyReport.ts';
 import { listActiveBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
-import { createReportPurchase, listPurchasesForUser } from '../repositories/reportPurchaseRepository.ts';
-import { REPORT_BUNDLE_SURCHARGE, toPublicReportPurchase, type ReportBundle } from '../models/reportPurchase.ts';
+import { listPurchasesForUser } from '../repositories/reportPurchaseRepository.ts';
+import { toPublicReportPurchase } from '../models/reportPurchase.ts';
 
 // Read-only public content (journal posts, testimonials, the paid-report
 // catalog) — no auth, no writes. Editing this content is an admin/CMS
@@ -62,21 +61,7 @@ contentRouter.get('/reports/:id', async (req, res) => {
   res.json({ success: true, data: toPublicAstrologyReport(row) });
 });
 
-// Buying a report is an instant access grant, same trust model as the rest
-// of this app (no real payment gateway exists — see ChatMessage/consultation
-// booking). The bundle surcharge is computed server-side from a fixed table,
-// never trusted from the client, so the recorded amount is always real.
-const purchaseSchema = z.object({ bundle: z.enum(['report-only', 'report-qa', 'report-consult']) });
-
-contentRouter.post('/reports/:id/purchase', requireAuth, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
-  const parsed = purchaseSchema.safeParse(req.body);
-  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  const report = await findAstrologyReportById(id);
-  if (!report) return fail(res, 404, 'NOT_FOUND', 'Report not found');
-  const bundle = parsed.data.bundle as ReportBundle;
-  const amount = report.price + REPORT_BUNDLE_SURCHARGE[bundle];
-  const row = await createReportPurchase(req.user!.id, id, bundle, amount);
-  res.status(201).json({ success: true, data: toPublicReportPurchase({ ...row, report_title: report.title }) });
-});
+// Report purchase creation moved to payments.routes.ts (POST
+// /api/payments/orders with purpose: 'REPORT_PURCHASE') — a real Cashfree
+// payment now gates it, so a report_purchases row is only ever created from
+// a paid intent's fulfillment, never directly from a client POST.

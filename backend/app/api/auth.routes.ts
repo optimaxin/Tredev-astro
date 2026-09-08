@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AuthError, getPublicUser, login, logout, refresh, register, requestPasswordReset, resetPassword, sendPhoneOtp, verifyPhoneOtp } from '../services/authService.ts';
+import { AuthError, getPublicUser, linkFirebasePhone, login, loginWithFirebase, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { updateBirthDetails } from '../repositories/userRepository.ts';
@@ -102,28 +102,31 @@ authRouter.patch('/me/birth-details', requireAuth, async (req, res) => {
   res.json({ success: true, data: user });
 });
 
-// ── Phone OTP verification (post-registration) ──────────────────────────
-const otpLimiter = rateLimit({ windowMs: 15 * 60_000, max: 5 }); // tighter than authLimiter — each hit sends a real SMS
-const verifyOtpSchema = z.object({ code: z.string().trim().length(6) });
+// ── Firebase sign-in (Google, Phone Auth) ────────────────────────────────
+// The frontend runs the actual Google popup / phone-OTP flow with the
+// Firebase client SDK and sends us just the resulting ID token — see
+// authService.ts's loginWithFirebase for verification + account mapping.
+const firebaseLoginSchema = z.object({ idToken: z.string().min(1) });
 
-authRouter.post('/me/verify-otp', requireAuth, async (req, res) => {
+authRouter.post('/firebase', authLimiter, async (req, res) => {
   try {
-    const { code } = verifyOtpSchema.parse(req.body);
-    await verifyPhoneOtp(req.user!.id, code);
-    const user = await getPublicUser(req.user!.id);
-    res.json({ success: true, data: user });
+    const { idToken } = firebaseLoginSchema.parse(req.body);
+    const result = await loginWithFirebase(idToken);
+    res.json({ success: true, data: result });
   } catch (e) {
     handleAuthError(e, res);
   }
 });
 
-authRouter.post('/me/resend-otp', otpLimiter, requireAuth, async (req, res) => {
+// Post-registration "verify your phone" step — the logged-in user already
+// has an account (from /register); this attaches + verifies a phone number
+// on THAT account via Firebase Phone Auth, rather than logging in/creating
+// a separate one (see authService.ts's linkFirebasePhone).
+authRouter.post('/me/link-firebase-phone', requireAuth, async (req, res) => {
   try {
-    const user = await getPublicUser(req.user!.id);
-    if (!user?.phone_number) return fail(res, 400, 'VALIDATION_ERROR', 'No phone number on file');
-    if (user.phone_verified) return fail(res, 400, 'ALREADY_VERIFIED', 'Phone is already verified');
-    const { devOtpCode } = await sendPhoneOtp(user.id, user.phone_number);
-    res.json({ success: true, data: { devOtpCode } });
+    const { idToken } = firebaseLoginSchema.parse(req.body);
+    const user = await linkFirebasePhone(req.user!.id, idToken);
+    res.json({ success: true, data: user });
   } catch (e) {
     handleAuthError(e, res);
   }

@@ -162,6 +162,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     socket.on('chat:assigned', (consultation) => {
       setAstrologerSync(prev => prev ? { ...prev, pendingAssignments: [...prev.pendingAssignments.filter(p => p.id !== consultation.id), consultation] } : prev);
+      // Now also sent to the booking user's own room (see sockets.ts) — not
+      // just the astrologer's. Needed so "waiting for the astrologer" shows
+      // up live even when nothing round-tripped through this browser to set
+      // it directly (the payment-triggered booking flow: the consultation is
+      // created server-side after the user has already returned from the
+      // gateway, not from a request this tab made and awaited itself).
+      if (consultation.userEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+        setUserSync({ consultation, queueEntry: null, position: null, eta: null });
+      }
     });
     socket.on('chat:accepted', (consultation) => {
       setAstrologerSync(prev => prev ? { ...prev, activeConsultation: consultation, pendingAssignments: prev.pendingAssignments.filter(p => p.id !== consultation.id) } : prev);

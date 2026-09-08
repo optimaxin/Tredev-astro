@@ -49,7 +49,7 @@ export default function UsersPage() {
   // admin.routes.ts's PATCH /users/:id/role handler.
   const isAdmin = currentUser?.role === 'ADMIN';
 
-  const assignRole = async (role: 'ASTROLOGIST' | 'STAFF' | 'ADMIN') => {
+  const assignRole = async (role: 'STAFF' | 'ADMIN') => {
     if (!selected) return;
     setRoleError('');
     setRoleBusy(true);
@@ -137,10 +137,11 @@ export default function UsersPage() {
         wide
         footer={selected ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {/* Promoting to Staff/Admin/Astrologer only makes sense starting
-                from a plain User — Staff/Admin accounts already have a
-                dedicated page (Staff), and Astrologers have their own. */}
-            {selected.role === 'USER' && <AdminButton variant="gold" disabled={roleBusy} onClick={() => assignRole('ASTROLOGIST')}>Make Astrologer</AdminButton>}
+            {/* Promoting to Staff/Admin only makes sense starting from a plain
+                User — Staff/Admin accounts already have a dedicated page
+                (Staff). Astrologist accounts are no longer created or removed
+                from here — this console is view-only for astrologers (see
+                AstrologersPage's activity/audit tab). */}
             {selected.role === 'USER' && isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('STAFF')}>Make Staff</AdminButton>}
             {selected.role === 'USER' && isAdmin && <AdminButton variant="outline" disabled={roleBusy} onClick={() => assignRole('ADMIN')}>Make Admin</AdminButton>}
             {canModerate(selected) && (accountStatus(selected.status) === 'ACTIVE'

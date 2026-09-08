@@ -1,14 +1,14 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from '../core/config.ts';
 import {
-  createUser, findActivePasswordResetToken, findActivePhoneOtp, findActiveRefreshToken, findUserByEmail, findUserById,
-  incrementPhoneOtpAttempts, insertPasswordResetToken, insertPhoneOtp, insertRefreshToken, markPasswordResetTokenUsed,
-  markPhoneOtpUsed, markPhoneVerified, revokeAllRefreshTokensForUser, revokeRefreshToken, updatePasswordHash,
+  createUser, findActivePasswordResetToken, findActiveRefreshToken, findUserByEmail, findUserByFirebaseUid, findUserById,
+  insertPasswordResetToken, insertRefreshToken, linkFirebaseUid, markPasswordResetTokenUsed,
+  markPhoneVerified, revokeAllRefreshTokensForUser, revokeRefreshToken, setVerifiedPhone, updatePasswordHash,
 } from '../repositories/userRepository.ts';
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
-import { sendSms } from './smsService.ts';
+import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
 
 export class AuthError extends Error {
   status: number;
@@ -38,7 +38,7 @@ export async function register(params: {
   name: string; email: string; password: string; phoneNumber?: string; role?: Role;
   birthDate?: string; birthTime?: string; birthPlace?: string;
   birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
-}): Promise<{ user: PublicUser; devOtpCode?: string } & TokenPair> {
+}): Promise<{ user: PublicUser } & TokenPair> {
   if (await findUserByEmail(params.email)) throw new AuthError('An account with this email already exists', 409);
   const passwordHash = bcrypt.hashSync(params.password, BCRYPT_ROUNDS);
   const row = await createUser({
@@ -47,13 +47,10 @@ export async function register(params: {
     birthLatitude: params.birthLatitude, birthLongitude: params.birthLongitude, birthTimezoneOffsetMinutes: params.birthTimezoneOffsetMinutes,
   });
   const tokens = await issueTokenPair(row.id, row.role);
-  // Auto-send the first OTP so the client can go straight from "account
-  // created" into the verification screen without a separate request. Only
-  // public self-registration (auth.routes.ts) requires a phone number —
-  // internal flows like admin-created astrologer accounts don't collect
-  // one, so there's nothing to verify there.
-  const devOtpCode = params.phoneNumber ? (await sendPhoneOtp(row.id, params.phoneNumber)).devOtpCode : undefined;
-  return { user: toPublicUser(row), devOtpCode, ...tokens };
+  // Phone number is stored but not verified here — that only happens if/when
+  // this account signs in via Firebase Phone Auth (see loginWithFirebase),
+  // which replaced the old custom OTP-over-SMS verification step.
+  return { user: toPublicUser(row), ...tokens };
 }
 
 export async function login(email: string, password: string): Promise<{ user: PublicUser } & TokenPair> {
@@ -113,40 +110,75 @@ export async function resetPassword(rawToken: string, newPassword: string) {
   await revokeAllRefreshTokensForUser(record.user_id); // force re-login everywhere after a password reset
 }
 
-// ── Phone OTP verification ──────────────────────────────────────────────
-
-const OTP_TTL_MS = 10 * 60_000;
-const OTP_MAX_ATTEMPTS = 5;
-const generateOtpCode = () => String(randomInt(100_000, 1_000_000)); // 6 digits, 100000-999999
-
-// Returns the raw code only in non-production — same reasoning as
-// requestPasswordReset's devResetToken above: lets the whole flow be
-// tested end-to-end before real SNS credentials (AWS_ACCESS_KEY_ID/
-// AWS_SECRET_ACCESS_KEY, separate from the Location API key used for
-// geocoding) are wired up in production. The code is always generated,
-// hashed, and stored the same way regardless of environment; only whether
-// it's echoed back in the response — and whether a failed real send is
-// fatal — differs.
-export async function sendPhoneOtp(userId: string, phoneNumber: string): Promise<{ devOtpCode?: string }> {
-  const code = generateOtpCode();
-  await insertPhoneOtp({ userId, codeHash: hashToken(code), expiresAt: Date.now() + OTP_TTL_MS });
+// ── Firebase sign-in (Google, Phone Auth) ───────────────────────────────
+// The frontend does the actual Google popup / phone-OTP flow with the
+// Firebase client SDK and hands us the resulting ID token — Firebase itself
+// already verified the phone number (sent + checked the OTP) or the Google
+// account before minting that token, so this function only ever needs to
+// verify the token's signature and map it to a local account. Replaces the
+// old custom OTP-over-SMS verification (sendPhoneOtp/verifyPhoneOtp, AWS SNS).
+export async function loginWithFirebase(idToken: string): Promise<{ user: PublicUser; isNewUser: boolean } & TokenPair> {
+  const auth = await getFirebaseAuth();
+  let decoded;
   try {
-    await sendSms(phoneNumber, `Your TredevAstro verification code is ${code}. It expires in 10 minutes.`);
-  } catch (e) {
-    console.error('SMS send failed:', e);
-    if (config.nodeEnv === 'production') throw new AuthError('Could not send verification code. Please try again.', 502);
+    decoded = await auth.verifyIdToken(idToken);
+  } catch {
+    throw new AuthError('Invalid or expired sign-in token', 401);
   }
-  return config.nodeEnv === 'production' ? {} : { devOtpCode: code };
+  const uid = decoded.uid;
+  const email = decoded.email as string | undefined;
+  const phoneNumber = decoded.phone_number as string | undefined;
+  const name = decoded.name as string | undefined;
+  if (!email && !phoneNumber) throw new AuthError('This sign-in method did not provide an email or phone number', 400);
+
+  let row = await findUserByFirebaseUid(uid);
+  let isNewUser = false;
+  if (!row && email) row = await findUserByEmail(email);
+
+  if (!row) {
+    isNewUser = true;
+    // This account only ever signs in via Firebase — the password hash is
+    // unusable filler, same reasoning as every NOT NULL column that doesn't
+    // apply to a given signup path elsewhere in this file.
+    const passwordHash = bcrypt.hashSync(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
+    row = await createUser({
+      name: name || (email ? email.split('@')[0] : phoneNumber!),
+      email: email || `${uid}@firebase.local`,
+      passwordHash,
+      phoneNumber,
+      firebaseUid: uid,
+    });
+    if (phoneNumber) await markPhoneVerified(row.id);
+  } else if (!row.firebase_uid) {
+    await linkFirebaseUid(row.id, uid);
+  }
+
+  if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
+  const tokens = await issueTokenPair(row.id, row.role);
+  return { user: toPublicUser(row), isNewUser, ...tokens };
 }
 
-export async function verifyPhoneOtp(userId: string, code: string): Promise<void> {
-  const record = await findActivePhoneOtp(userId);
-  if (!record) throw new AuthError('No active verification code — request a new one', 400);
-  if (record.attempts >= OTP_MAX_ATTEMPTS) throw new AuthError('Too many incorrect attempts — request a new code', 429);
-  if (record.code_hash !== hashToken(code)) {
-    await incrementPhoneOtpAttempts(record.id);
-    throw new AuthError('Incorrect code', 400);
+// Post-registration phone verification (the "OTP" step) — the currently
+// logged-in user already has an account; this just attaches + verifies a
+// phone number to it via Firebase Phone Auth, rather than logging in as (or
+// creating) a different account the way loginWithFirebase does. Kept
+// separate from loginWithFirebase specifically so verifying your phone here
+// can never fork off a second account for the same person.
+export async function linkFirebasePhone(userId: string, idToken: string): Promise<PublicUser> {
+  const auth = await getFirebaseAuth();
+  let decoded;
+  try {
+    decoded = await auth.verifyIdToken(idToken);
+  } catch {
+    throw new AuthError('Invalid or expired verification code', 401);
   }
-  await markPhoneOtpUsed(record.id);
-  await markPhoneVerified(userId);
+  const phoneNumber = decoded.phone_number as string | undefined;
+  if (!phoneNumber) throw new AuthError('This did not verify a phone number', 400);
+
+  const existing = await findUserByFirebaseUid(decoded.uid);
+  if (existing && existing.id !== userId) throw new AuthError('This phone number is already linked to another account', 409);
+
+  await setVerifiedPhone(userId, phoneNumber, decoded.uid);
+  const row = await findUserById(userId);
+  return toPublicUser(row!);
 }

@@ -10,6 +10,7 @@ import {
 import { contentService, ContentApiError } from '../services/contentService';
 import type { AstrologyReport, BlogPost, ReportBundle, ReportPurchase } from '../services/contentService';
 import { PLANET_META } from '../data/planetMeta';
+import { NorthIndianChart, toChartPlanets, cap } from '../sections/KundliSection/KundliCharts';
 import PlanetIcon from '../components/PlanetIcon/PlanetIcon';
 import { useAstrologer } from '../hooks/useAstrologer';
 import styles from './PageRenderer.module.css';
@@ -42,7 +43,7 @@ import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
-import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliFullResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../services/calculatorService';
 import { formatIst } from '../utils/istTime';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
@@ -53,6 +54,7 @@ import ChatWindow from '../components/ChatWindow/ChatWindow';
 import CallWindow from '../components/CallWindow/CallWindow';
 import { orderService, OrderApiError } from '../services/orderService';
 import type { Order } from '../services/orderService';
+import { paymentService, PaymentApiError } from '../services/paymentService';
 
 export default function PageRenderer() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile } = useAppContext();
@@ -1764,7 +1766,7 @@ function AstrologerProfilePage({ id }: { id: any }) {
 // 4. Consultation Booking Page
 function ConsultationBookingPage({ id }: { id: any }) {
   const { setPage, currentUser, setShowLoginModal, setPendingAction } = useAppContext();
-  const { publicStates, requestConsultation } = useRealtime();
+  const { publicStates } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
   const [durationMinutes, setDurationMinutes] = useState(20);
@@ -1790,6 +1792,10 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
   const live = publicStates[astrologer.id];
   const liveLabel = !live ? null : live.status === 'ONLINE_AVAILABLE' ? '🟢 Available now' : live.status === 'ONLINE_BUSY' ? '🟡 Currently busy' : live.status === 'AWAY' ? '⚪ Away' : '⚪ Offline';
+  // Only a soft client-side hint — the backend re-checks availability for
+  // real at payment fulfillment time and auto-refunds to wallet if it turns
+  // out unavailable by then (see fulfillment.ts's CONSULTATION case).
+  const isUnavailable = live?.status === 'OFFLINE' || live?.status === 'AWAY';
 
   // Video call is coming later (WebRTC signaling isn't built yet) — chat and
   // voice already run on the real consultation queue/socket pipeline, so
@@ -1812,10 +1818,15 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
   const selectedOpt = OPTIONS.find(o => o.type === activeType)!;
 
-  const handleConfirm = () => {
-    alert(`Consultation booked successfully with ${astrologer.name} for ${SLOTS[activeSlot]}.`);
-    setPage('my-consultations');
-  };
+  // Scheduling a FUTURE slot needs real infrastructure this app doesn't have
+  // yet (a stored booking, a job to actually fire the request at that time,
+  // reminders...) — the realtime engine only ever handles "right now"
+  // requests. This used to fake a success (an alert + navigate) without
+  // charging anything or creating any real booking at all, which is exactly
+  // the "booked without payment" bug — replaced with an honest notice
+  // instead of pretending it worked.
+  const [scheduleNotice, setScheduleNotice] = useState(false);
+  const handleConfirm = () => setScheduleNotice(true);
 
   const handleStartNow = async () => {
     if (!currentUser) {
@@ -1827,15 +1838,13 @@ function ConsultationBookingPage({ id }: { id: any }) {
     setError(null);
     try {
       const category = astrologer.category[0] || astrologer.specialization[0];
-      const result = await requestConsultation(astrologer.id, category, activeType, durationMinutes);
-      if (result.outcome === 'UNAVAILABLE') {
-        setError(result.reason);
-      } else {
-        setPage('consultation-waiting');
-      }
+      // Booking itself now happens server-side, only after payment clears
+      // (see fulfillment.ts's CONSULTATION case) — this redirects the whole
+      // browser to the gateway and never resolves here on success; reaching
+      // the catch below means it failed before that redirect even happened.
+      await paymentService.pay({ purpose: 'CONSULTATION', astrologerId: astrologer.id, category, type: activeType, durationMinutes });
     } catch (e) {
-      setError((e as Error).message);
-    } finally {
+      setError(e instanceof PaymentApiError ? e.message : (e as Error).message);
       setStarting(false);
     }
   };
@@ -1937,8 +1946,9 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span>₹{(effectivePrice?.pricePerMin ?? astrologer.price) * durationMinutes}</span>
               </div>
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
-              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting} onClick={handleStartNow}>
-                {starting ? 'Connecting…' : 'Start Consultation Now'}
+              {isUnavailable && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>This astrologer appears to be unavailable right now.</p>}
+              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting || isUnavailable} onClick={handleStartNow}>
+                {starting ? 'Redirecting to payment…' : 'Pay & Start Consultation'}
               </button>
             </div>
           </div>
@@ -1999,6 +2009,11 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span>₹{selectedOpt.price}</span>
               </div>
 
+              {scheduleNotice && (
+                <p style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '12px' }}>
+                  Scheduling a future slot isn't available yet — please use "Consult Now" for an immediate session instead.
+                </p>
+              )}
               <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} onClick={handleConfirm}>
                 Confirm Booking
               </button>
@@ -2015,11 +2030,30 @@ function ConsultationBookingPage({ id }: { id: any }) {
 // computed client-side; it only renders what server/store.ts has decided.
 function ConsultationWaitingPage() {
   const { setPage, setSelectedId } = useAppContext();
-  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, extendConsultationById, expiringSoon } = useRealtime();
+  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, expiringSoon } = useRealtime();
   const [justReviewed, setJustReviewed] = useState(false);
   const [ending, setEnding] = useState(false);
   const [extending, setExtending] = useState(false);
+  const [extendError, setExtendError] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState('');
+
+  // Running elapsed-time display for the user's side, mirroring the
+  // astrologer-side one in AstrologistDashboard/sections/Overview.tsx's
+  // LiveStatusCard — this app only had it on the astrologer's side before.
+  useEffect(() => {
+    const startedAt = userSync?.consultation?.startedAt;
+    if (!startedAt) { setElapsed(''); return; }
+    const tick = () => {
+      const ms = Date.now() - startedAt;
+      const mins = Math.floor(ms / 60000);
+      const secs = Math.floor((ms % 60000) / 1000);
+      setElapsed(`${mins}:${String(secs).padStart(2, '0')}`);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [userSync?.consultation?.startedAt]);
 
   // expiringSoon starts at a fixed 60s from the server (see
   // realtimeStore.ts's scheduleExpiry) — ticked down client-side just for
@@ -2124,7 +2158,19 @@ function ConsultationWaitingPage() {
     };
     const handleExtend = async (extraMinutes: number) => {
       setExtending(true);
-      try { await extendConsultationById(consultation.id, extraMinutes); } finally { setExtending(false); }
+      setExtendError('');
+      try {
+        // Same pattern as booking: pay first, real minutes only get added by
+        // fulfillment.ts's CONSULTATION_EXTEND case once payment clears — a
+        // full gateway redirect away and back (this page is already
+        // `pending_payment_return`'s stashed page, so AppContext lands the
+        // visitor right back here; the modal is skipped for this purpose so
+        // it doesn't pop up over an active chat/call).
+        await paymentService.pay({ purpose: 'CONSULTATION_EXTEND', consultationId: consultation.id, extraMinutes });
+      } catch (e) {
+        setExtendError(e instanceof PaymentApiError ? e.message : (e as Error).message);
+        setExtending(false);
+      }
     };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -2132,6 +2178,9 @@ function ConsultationWaitingPage() {
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2>Your consultation with {astrologer?.name} is now active</h2>
             <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · {consultation.durationMinutes + consultation.extendedMinutes} min</p>
+            {elapsed && (
+              <p style={{ marginTop: '8px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-gold)' }}>{elapsed}</p>
+            )}
           </div>
 
           {showTopUp && (
@@ -2142,10 +2191,11 @@ function ConsultationWaitingPage() {
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 {[5, 10, 15].map(mins => (
                   <button key={mins} className="btn btn-gold btn-sm" disabled={extending} onClick={() => handleExtend(mins)}>
-                    +{mins} min
+                    {extending ? 'Redirecting…' : `+${mins} min`}
                   </button>
                 ))}
               </div>
+              {extendError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '10px' }}>{extendError}</p>}
             </div>
           )}
 
@@ -2206,7 +2256,7 @@ function ConsultationWaitingPage() {
 
 // 5. Report Detail Page
 function ReportDetailPage({ id }: { id: any }) {
-  const { setPage, isLoggedIn, setShowLoginModal } = useAppContext();
+  const { isLoggedIn, setShowLoginModal } = useAppContext();
   const [report, setReport] = useState<AstrologyReport | null>(null);
   const [buying, setBuying] = useState<ReportBundle | null>(null);
   const [buyError, setBuyError] = useState('');
@@ -2237,11 +2287,9 @@ function ReportDetailPage({ id }: { id: any }) {
     setBuying(bundle.key);
     setBuyError('');
     try {
-      await contentService.purchaseReport(report.id, bundle.key);
-      setPage('my-reports');
+      await paymentService.pay({ purpose: 'REPORT_PURCHASE', reportId: report.id, bundle: bundle.key });
     } catch (err) {
-      setBuyError(err instanceof ContentApiError ? err.message : 'Could not complete your purchase. Please try again.');
-    } finally {
+      setBuyError(err instanceof PaymentApiError ? err.message : 'Could not start payment. Please try again.');
       setBuying(null);
     }
   };
@@ -2304,7 +2352,7 @@ function ReportDetailPage({ id }: { id: any }) {
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 600, color: 'var(--color-gold-dark)', marginBottom: '8px' }}>₹{b.price}</div>
                     <button className="btn btn-gold btn-sm" disabled={!!buying} onClick={() => handleBuy(b)}>
-                      {buying === b.key ? 'Processing...' : 'Select'}
+                      {buying === b.key ? 'Redirecting…' : 'Select'}
                     </button>
                   </div>
                 </div>
@@ -2462,28 +2510,33 @@ function CartPage() {
 
 // 8. Checkout Page
 function CheckoutPage() {
-  const { clearCart, setPage, cart, currentUser } = useAppContext();
+  const { cart, currentUser } = useAppContext();
   const [formData, setFormData] = useState({ name: currentUser?.name || '', email: currentUser?.email || '', address: '', city: '', zip: '' });
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+  // On success this redirects the whole tab to the gateway's hosted payment
+  // page (which one — Cashfree vs Razorpay — is decided server-side from the
+  // visitor's IP, never a client choice, see payments.routes.ts) and never
+  // returns here — the cart is only cleared, and the result shown, once the
+  // browser comes back and AppContext's bootstrap effect confirms the
+  // outcome (see PaymentResultModal). Anything caught below happened BEFORE
+  // that redirect (e.g. the intent couldn't be created).
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cart.length || placing) return;
     setPlacing(true);
     setError('');
     try {
-      await orderService.place(
-        cart.map(item => ({ productId: item.id, name: item.name, price: item.price, quantity: item.quantity })),
-        { name: formData.name, address: formData.address, city: formData.city, zip: formData.zip }
-      );
-      clearCart();
-      setPage('my-orders');
+      await paymentService.pay({
+        purpose: 'STORE_ORDER',
+        items: cart.map(item => ({ productId: item.id, name: item.name, price: item.price, quantity: item.quantity })),
+        shipping: { name: formData.name, address: formData.address, city: formData.city, zip: formData.zip },
+      });
     } catch (err) {
-      setError(err instanceof OrderApiError ? err.message : 'Could not place your order. Please try again.');
-    } finally {
+      setError(err instanceof PaymentApiError ? err.message : 'Could not start payment. Please try again.');
       setPlacing(false);
     }
   };
@@ -2554,7 +2607,7 @@ function CheckoutPage() {
           <div className={styles.cartSumCard}>
             <h3 className={styles.partnerTitle} style={{ border: 'none', margin: '0 0 16px 0' }}>Payment Mode</h3>
             <div style={{ border: '1px solid var(--color-gold)', padding: '12px', background: 'rgba(184,138,59,0.02)', borderRadius: '4px', marginBottom: '16px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-gold-dark)' }}>🔒 Secured by UPI / Card Gateway</span>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-gold-dark)' }}>🔒 Secured Payment Gateway</span>
               <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: 'var(--color-text-dark-2)' }}>Pujas are scheduled dynamically under auspicious nakshatras.</p>
             </div>
             <div className={styles.totalRow} style={{ borderTop: 'none', marginTop: 0, paddingTop: 0, marginBottom: '20px' }}>
@@ -2563,7 +2616,7 @@ function CheckoutPage() {
             </div>
             {error && <p style={{ color: '#c0392b', fontSize: '12px', marginBottom: '12px' }}>{error}</p>}
             <button type="submit" className="btn btn-gold" style={{ width: '100%' }} disabled={placing || !cart.length}>
-              {placing ? 'Placing Order…' : 'Place Sacred Order'}
+              {placing ? 'Redirecting…' : 'Place Sacred Order'}
             </button>
           </div>
         </form>
@@ -2703,13 +2756,26 @@ function CourseLearningPage({ id }: { id: any }) {
 
 // 11. Profile Page
 function ProfilePage() {
-  const { birthProfile, setBirthProfile, setPage } = useAppContext();
-  const [formData, setFormData] = useState({ ...birthProfile });
+  const { setPage, currentUser, saveBirthDetails } = useAppContext();
+  const [saveMsg, setSaveMsg] = useState('');
+  // The real logged-in account's name — this used to read from
+  // `birthProfile`, a browser-local, account-independent "whichever Kundli
+  // was last generated on this browser" value (plain localStorage, not tied
+  // to any user), which is why it stayed stuck on a previous account's name
+  // after signing in as someone else. Same fix as ProfileDashboardPage.
+  const displayName = currentUser?.name || 'Yajamana';
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setBirthProfile(formData);
-    alert('Birth Profile updated successfully.');
+  const handleSave = async (details: BirthDetailsSubmitValue) => {
+    setSaveMsg('');
+    const ok = await saveBirthDetails({
+      birthDate: details.date,
+      birthTime: details.time,
+      birthPlace: details.placeName,
+      birthLatitude: details.latitude,
+      birthLongitude: details.longitude,
+      birthTimezoneOffsetMinutes: details.timezoneOffsetMinutes,
+    });
+    setSaveMsg(ok ? 'Birth details updated successfully.' : 'Could not save your birth details. Please try again.');
   };
 
   return (
@@ -2726,10 +2792,10 @@ function ProfilePage() {
           <div>
             <div className={styles.profileSidebar} style={{ background: '#fff', borderColor: 'rgba(154,107,47,0.15)', padding: '20px' }}>
               <div className={styles.profileAvatar} style={{ width: '80px', height: '80px', fontSize: '2rem' }}>
-                {birthProfile.name.charAt(0)}
+                {displayName.charAt(0)}
               </div>
-              <h3 className={styles.sidebarName} style={{ color: 'var(--color-text-dark)', fontSize: '1.2rem', marginTop: '10px' }}>{birthProfile.name}</h3>
-              <p className={styles.reviewCount} style={{ margin: '0 0 20px 0' }}>Birth Profile Yajamana</p>
+              <h3 className={styles.sidebarName} style={{ color: 'var(--color-text-dark)', fontSize: '1.2rem', marginTop: '10px' }}>{displayName}</h3>
+              <p className={styles.reviewCount} style={{ margin: '0 0 20px 0' }}>{currentUser?.email}</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
                 <button className={styles.toolItemLink} onClick={() => setPage('my-reports')}>My Granth Reports</button>
@@ -2739,52 +2805,19 @@ function ProfilePage() {
             </div>
           </div>
 
-          {/* Profile Form */}
+          {/* Profile Form — the account's own saved birth details (backend
+              `users.birth_*` columns), not the shared local `birthProfile`
+              mock other tools use for a quick one-off Kundli lookup. */}
           <div className={styles.partnerFormCard}>
-            <h3 className={styles.partnerTitle}>✦ Edit Coordinates</h3>
-            <form onSubmit={handleSave}>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Date of Birth</label>
-                  <AncientDatePicker
-                    className="input-field input-cosmos"
-                    value={formData.dob}
-                    onChange={val => setFormData({ ...formData, dob: val })}
-                    placeholder="Select Date of Birth"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Exact Birth Time</label>
-                  <input
-                    type="time"
-                    className="input-field input-cosmos"
-                    value={formData.tob}
-                    onChange={e => setFormData({ ...formData, tob: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label">Birth Place</label>
-                <input
-                  type="text"
-                  className="input-field input-cosmos"
-                  value={formData.place}
-                  onChange={e => setFormData({ ...formData, place: e.target.value })}
-                />
-              </div>
-              <button type="submit" className="btn btn-gold">
-                Save Birth Coordinates
-              </button>
-            </form>
+            <h3 className={styles.partnerTitle}>✦ Edit Birth Coordinates</h3>
+            <BirthDetailsForm
+              onSubmit={handleSave}
+              submitLabel="Save Birth Coordinates"
+              idPrefix="account-birth"
+              showNameField={false}
+              initialValues={toSavedBirthDetails(currentUser)}
+            />
+            {saveMsg && <p className={styles.reviewCount} style={{ marginTop: '12px' }}>{saveMsg}</p>}
           </div>
         </div>
       </div>
@@ -3152,10 +3185,14 @@ function SavedAstrologersPanel({ onView }: { onView: (id: number) => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileDashboardPage() {
   const {
-    birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction, kundliGenerated,
+    birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction,
     currentUser,
   } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
+  // Same fix as ProfilePage — birthProfile is a local, account-independent
+  // "last Kundli generated on this browser" value, not the logged-in
+  // account's identity. The real account name always wins when logged in.
+  const displayName = currentUser?.name || birthProfile.name;
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -3163,6 +3200,31 @@ function ProfileDashboardPage() {
       setShowLoginModal(true);
     }
   }, [isLoggedIn]);
+
+  // "My Kundli" recomputes the real D1 chart from the account's own saved
+  // birth details (currentUser.birth_*, precise lat/long/tz — unlike
+  // `birthProfile`, which only has display-only sun/moon/ascendant strings)
+  // instead of showing the old hardcoded KUNDLI_GRID mock.
+  const [myKundli, setMyKundli] = React.useState<KundliFullResult | null>(null);
+  const [myKundliLoading, setMyKundliLoading] = React.useState(false);
+  const [myKundliError, setMyKundliError] = React.useState('');
+  const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+
+  React.useEffect(() => {
+    if ((activeTab !== 'my-kundli' && activeTab !== 'my-jyotish') || !hasBirthDetails || myKundli || myKundliLoading) return;
+    setMyKundliLoading(true);
+    setMyKundliError('');
+    calculatorService.kundliFull({
+      date: currentUser!.birthDate!,
+      time: currentUser!.birthTime!,
+      latitude: currentUser!.birthLatitude!,
+      longitude: currentUser!.birthLongitude!,
+      timezoneOffsetMinutes: currentUser!.birthTimezoneOffsetMinutes!,
+    })
+      .then(setMyKundli)
+      .catch(err => setMyKundliError(err instanceof CalculatorApiError ? err.message : 'Could not load your Kundli chart.'))
+      .finally(() => setMyKundliLoading(false));
+  }, [activeTab, hasBirthDetails, currentUser, myKundli, myKundliLoading]);
 
   // Self-service "Become an Astrologer" was removed from here — assigning
   // the Astrologer role is now an admin/staff-only action (see UsersPage in
@@ -3178,30 +3240,6 @@ function ProfileDashboardPage() {
     { key: 'settings', label: 'Account Settings', icon: '⚙' },
   ];
 
-  const PLANETARY_PLACEMENTS = [
-    { planet: 'Surya (Sun)', rashi: 'Vrischika', bhava: '4th Bhava', degrees: "22°14'", symbol: '☉' },
-    { planet: 'Chandra (Moon)', rashi: 'Vrishabha', bhava: '10th Bhava', degrees: "08°32'", symbol: '☽' },
-    { planet: 'Mangala (Mars)', rashi: 'Simha', bhava: '1st Bhava', degrees: "14°56'", symbol: '♂' },
-    { planet: 'Budha (Mercury)', rashi: 'Tula', bhava: '3rd Bhava', degrees: "05°18'", symbol: '☿' },
-    { planet: 'Guru (Jupiter)', rashi: 'Karka', bhava: '12th Bhava', degrees: "28°44'", symbol: '♃' },
-    { planet: 'Shukra (Venus)', rashi: 'Dhanu', bhava: '5th Bhava', degrees: "11°22'", symbol: '♀' },
-    { planet: 'Shani (Saturn)', rashi: 'Makara', bhava: '6th Bhava', degrees: "17°09'", symbol: '♄' },
-    { planet: 'Rahu', rashi: 'Mithuna', bhava: '11th Bhava', degrees: "03°41'", symbol: '☊' },
-    { planet: 'Ketu', rashi: 'Dhanu', bhava: '5th Bhava', degrees: "03°41'", symbol: '☋' },
-  ];
-
-  const KUNDLI_GRID = [
-    { num: 12, sign: 'Pis', planets: 'Guru' },
-    { num: 9, sign: 'Sag', planets: 'Ketu' },
-    { num: 2, sign: 'Taurus', planets: 'Chandra' },
-    { num: 11, sign: 'Aqu', planets: '' },
-    { num: 'Lagna', sign: 'Leo', planets: 'Lagna' },
-    { num: 3, sign: 'Gem', planets: '' },
-    { num: 10, sign: 'Cap', planets: 'Shani' },
-    { num: 4, sign: 'Can', planets: 'Surya' },
-    { num: 5, sign: 'Leo', planets: 'Mangala' },
-  ];
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
       <div className={styles.profileLayout} style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
@@ -3209,7 +3247,7 @@ function ProfileDashboardPage() {
         <aside className={styles.profileSidebar}>
           <div className={styles.profileCard}>
             <div className={styles.profileAvatar}>✦</div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{birthProfile.name}</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{displayName}</div>
             <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>Simha Lagna · Vrishabha Chandra</div>
           </div>
           {SIDEBAR_ITEMS.map(item => (
@@ -3231,43 +3269,84 @@ function ProfileDashboardPage() {
               <div style={{ marginBottom: 'var(--space-8)' }}>
                 <span className="section-eyebrow">Meri Kundli</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Jyotish</h1>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {birthProfile.name} · Born {birthProfile.dob}</p>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}</p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-                {[{ label: 'Janma Rashi', value: 'Vrishabha (Taurus)', icon: '☽' }, { label: 'Lagna (Ascendant)', value: 'Simha (Leo)', icon: '↑' }, { label: 'Nakshatra', value: 'Rohini (4th Pada)', icon: '✦' }].map(item => (
-                  <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-                    <span style={{ fontSize: '1.5rem', color: 'var(--gold-primary)', display: 'block', marginBottom: 'var(--space-2)' }}>{item.icon}</span>
-                    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.label}</div>
-                    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{item.value}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: 'var(--space-8)' }}>
-                <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)' }}>Graha Placements</h3>
-                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Lahiri Ayanamsa</span>
+
+              {!hasBirthDetails ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
+                  <span style={{ fontSize: '3rem', opacity: 0.3 }}>✦</span>
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>Your Kundli has not been created yet.</h3>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>Generate your birth chart to unlock your Vedic blueprint.</p>
+                  <button className="btn btn-gold" onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Generate My Kundli</button>
                 </div>
-                {PLANETARY_PLACEMENTS.map((p, i) => (
-                  <div key={p.planet} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1.4fr) minmax(0, 1.6fr) auto', gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-6)', borderBottom: i < PLANETARY_PLACEMENTS.length - 1 ? '1px solid var(--border-subtle)' : 'none', alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.1rem', color: 'var(--gold-primary)', textAlign: 'center' }}>{p.symbol}</span>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{p.planet}</span>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{p.rashi} · {p.bhava}</span>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'right' }}>{p.degrees}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)', marginBottom: 'var(--space-5)' }}>Vimshottari Dasha</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-                  {[{ label: 'Current Mahadasha', value: 'Venus (Shukra)', period: '2018 – 2038', active: true }, { label: 'Current Antardasha', value: 'Mercury (Budha)', period: '2024 – 2027', active: true }, { label: 'Next Mahadasha', value: 'Sun (Surya)', period: '2038 – 2044', active: false }, { label: 'Pratyantardasha', value: 'Jupiter (Guru)', period: 'Dec 2024 – Mar 2025', active: false }].map(d => (
-                    <div key={d.label} style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: `1px solid ${d.active ? 'rgba(181,138,59,0.3)' : 'var(--border-subtle)'}`, background: d.active ? 'rgba(181,138,59,0.05)' : 'transparent' }}>
-                      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: d.active ? 'var(--gold-primary)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>{d.label}</div>
-                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{d.value}</div>
-                      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>{d.period}</div>
+              ) : myKundliError ? (
+                <p style={{ textAlign: 'center', color: '#c0392b' }}>{myKundliError}</p>
+              ) : !myKundli ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading your Kundli chart…</p>
+              ) : (() => {
+                const chartPlanets = toChartPlanets(myKundli.kundli, myKundli.bhavChalit);
+                const grahaRows = chartPlanets.filter(p => p.id !== 'asc');
+                const moonSign = chartPlanets.find(p => p.id === 'moon')?.sign || '—';
+                const activeIdx = myKundli.mahadashaTimeline.findIndex(m => m.active);
+                const activeMahadasha = activeIdx >= 0 ? myKundli.mahadashaTimeline[activeIdx] : undefined;
+                const nextMahadasha = activeIdx >= 0 ? myKundli.mahadashaTimeline[activeIdx + 1] : undefined;
+                const now = Date.now();
+                const activeAntardasha = activeMahadasha?.antardashas.find(a => {
+                  const s = Date.parse(a.startsAt), e = Date.parse(a.endsAt);
+                  return !Number.isNaN(s) && !Number.isNaN(e) && now >= s && now <= e;
+                }) ?? activeMahadasha?.antardashas[0];
+                const dashaCards = [
+                  activeMahadasha && { label: 'Current Mahadasha', value: `${cap(activeMahadasha.lord)}`, period: `${activeMahadasha.startsAt} – ${activeMahadasha.endsAt}`, active: true },
+                  activeAntardasha && { label: 'Current Antardasha', value: `${cap(activeAntardasha.lord)}`, period: `${activeAntardasha.startsAt} – ${activeAntardasha.endsAt}`, active: true },
+                  nextMahadasha && { label: 'Next Mahadasha', value: `${cap(nextMahadasha.lord)}`, period: `${nextMahadasha.startsAt} – ${nextMahadasha.endsAt}`, active: false },
+                ].filter((d): d is { label: string; value: string; period: string; active: boolean } => !!d);
+
+                return (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
+                      {[
+                        { label: 'Janma Rashi', value: moonSign, icon: '☽' },
+                        { label: 'Lagna (Ascendant)', value: myKundli.kundli.ascendant.rashi, icon: '↑' },
+                        { label: 'Nakshatra', value: `${myKundli.kundli.moonNakshatra.name} (${ordinal(myKundli.kundli.moonNakshatra.pada)} Pada)`, icon: '✦' },
+                      ].map(item => (
+                        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                          <span style={{ fontSize: '1.5rem', color: 'var(--gold-primary)', display: 'block', marginBottom: 'var(--space-2)' }}>{item.icon}</span>
+                          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.label}</div>
+                          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{item.value}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: 'var(--space-8)' }}>
+                      <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)' }}>Graha Placements</h3>
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Lahiri Ayanamsa</span>
+                      </div>
+                      {grahaRows.map((p, i) => (
+                        <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1.4fr) minmax(0, 1.6fr) auto', gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-6)', borderBottom: i < grahaRows.length - 1 ? '1px solid var(--border-subtle)' : 'none', alignItems: 'center' }}>
+                          <span style={{ fontSize: '1.1rem', color: 'var(--gold-primary)', textAlign: 'center' }}>{p.symbol}</span>
+                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{p.name}{p.retrograde ? ' ℞' : ''}</span>
+                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{p.sign} · {ordinal(p.house)} Bhava</span>
+                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'right' }}>{p.degree}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {dashaCards.length > 0 && (
+                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+                        <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontWeight: 400, color: 'var(--text-primary)', marginBottom: 'var(--space-5)' }}>Vimshottari Dasha</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                          {dashaCards.map(d => (
+                            <div key={d.label} style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: `1px solid ${d.active ? 'rgba(181,138,59,0.3)' : 'var(--border-subtle)'}`, background: d.active ? 'rgba(181,138,59,0.05)' : 'transparent' }}>
+                              <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: d.active ? 'var(--gold-primary)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>{d.label}</div>
+                              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{d.value}</div>
+                              <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>{d.period}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -3277,75 +3356,33 @@ function ProfileDashboardPage() {
                 <span className="section-eyebrow">Your Birth Blueprint</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Kundli Chart</h1>
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
-                  Janam Kundli for {birthProfile.name} · Born {birthProfile.dob}
+                  Janam Kundli for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}
                 </p>
               </div>
 
-              {!kundliGenerated ? (
+              {!hasBirthDetails ? (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-16)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
                   <span style={{ fontSize: '3rem', opacity: 0.3 }}>☉</span>
                   <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 300, color: 'var(--text-primary)' }}>Your Kundli has not been created yet.</h3>
                   <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: '300px' }}>Generate your birth chart to unlock your Vedic blueprint.</p>
                   <button className="btn btn-gold" onClick={() => { setPage('free-kundli'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Generate My Kundli</button>
                 </div>
+              ) : myKundliError ? (
+                <p style={{ textAlign: 'center', color: '#c0392b' }}>{myKundliError}</p>
+              ) : !myKundli ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading your Kundli chart…</p>
               ) : (
                 <div className={styles.chartPageGrid} style={{ gridTemplateColumns: '1fr' }}>
                   <div className={styles.ancientCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div className={styles.chartVisualSection} style={{ width: '100%', maxWidth: '420px' }}>
-                      <table className={styles.chartGridTable}>
-                        <tbody>
-                          <tr>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[0].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[0].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[0].planets}</span>
-                            </td>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[1].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[1].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[1].planets}</span>
-                            </td>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[2].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[2].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[2].planets}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[3].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[3].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[3].planets}</span>
-                            </td>
-                            <td style={{ background: 'rgba(184, 138, 59, 0.05)' }}>
-                              <span className={styles.houseSign} style={{ fontSize: '10px' }}>ASCENDANT</span>
-                              <span className={styles.housePlanets} style={{ color: 'var(--color-gold-dark)' }}>Simha</span>
-                            </td>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[5].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[5].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[5].planets}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[6].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[6].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[6].planets}</span>
-                            </td>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[7].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[7].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[7].planets}</span>
-                            </td>
-                            <td>
-                              <span className={styles.houseNumber}>{KUNDLI_GRID[8].num}</span>
-                              <span className={styles.houseSign}>{KUNDLI_GRID[8].sign}</span>
-                              <span className={styles.housePlanets}>{KUNDLI_GRID[8].planets}</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      <NorthIndianChart
+                        planets={toChartPlanets(myKundli.kundli, myKundli.bhavChalit)}
+                        ascendantRashi={myKundli.kundli.ascendant.rashi}
+                        onPlanetHover={() => {}}
+                        onPlanetLeave={() => {}}
+                        onHouseHover={() => {}}
+                        onHouseLeave={() => {}}
+                      />
                     </div>
                   </div>
                 </div>

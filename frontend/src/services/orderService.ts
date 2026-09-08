@@ -51,8 +51,7 @@ export interface Order {
 }
 
 export const orderService = {
-  place: (items: OrderItemInput[], shipping: ShippingInput) =>
-    request<Order>('/', { method: 'POST', body: JSON.stringify({ items, shipping }) }),
-
+  // Placing an order moved to paymentService.pay({ purpose: 'STORE_ORDER', ... })
+  // — a real Cashfree payment now gates it (see payments.routes.ts).
   listMine: () => request<Order[]>('/mine'),
 };

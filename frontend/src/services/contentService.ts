@@ -92,7 +92,7 @@ export const contentService = {
   listReports: () => request<AstrologyReport[]>('/api/reports'),
   getReport: (id: number) => request<AstrologyReport>(`/api/reports/${id}`),
   listActiveBroadcasts: () => request<Broadcast[]>('/api/broadcasts/active'),
-  purchaseReport: (id: number, bundle: ReportBundle) =>
-    request<ReportPurchase>(`/api/reports/${id}/purchase`, { method: 'POST', body: JSON.stringify({ bundle }) }),
+  // Purchasing moved to paymentService.pay({ purpose: 'REPORT_PURCHASE', ... })
+  // — a real Cashfree payment now gates it (see payments.routes.ts).
   listMyReportPurchases: () => request<ReportPurchase[]>('/api/reports/mine'),
 };

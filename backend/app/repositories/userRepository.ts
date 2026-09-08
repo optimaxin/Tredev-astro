@@ -12,8 +12,18 @@ export function findUserById(id: string): Promise<UserRow | undefined> {
   return queryOne<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
 }
 
+export function findUserByFirebaseUid(uid: string): Promise<UserRow | undefined> {
+  return queryOne<UserRow>('SELECT * FROM users WHERE firebase_uid = $1', [uid]);
+}
+
+// Links an existing account (found by email match) to a Firebase identity
+// on its first Google/Phone sign-in — see authService.ts's loginWithFirebase.
+export async function linkFirebaseUid(userId: string, uid: string): Promise<void> {
+  await query('UPDATE users SET firebase_uid = $1 WHERE id = $2', [uid, userId]);
+}
+
 export async function createUser(params: {
-  name: string; email: string; passwordHash: string; role?: Role; phoneNumber?: string;
+  name: string; email: string; passwordHash: string; role?: Role; phoneNumber?: string; firebaseUid?: string;
   birthDate?: string; birthTime?: string; birthPlace?: string;
   birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
 }): Promise<UserRow> {
@@ -33,13 +43,15 @@ export async function createUser(params: {
     birth_timezone_offset_minutes: params.birthTimezoneOffsetMinutes ?? null,
     phone_number: params.phoneNumber ?? null,
     phone_verified: false,
+    wallet_balance: 0,
+    firebase_uid: params.firebaseUid ?? null,
   };
   await query(
-    `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes, phone_number, phone_verified)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+    `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes, phone_number, phone_verified, firebase_uid)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
     [row.id, row.name, row.email, row.password_hash, row.role, row.status, row.created_at,
       row.birth_date, row.birth_time, row.birth_place, row.birth_latitude, row.birth_longitude, row.birth_timezone_offset_minutes,
-      row.phone_number, row.phone_verified]
+      row.phone_number, row.phone_verified, row.firebase_uid]
   );
   return row;
 }
@@ -130,34 +142,35 @@ export async function markPasswordResetTokenUsed(id: string) {
   await query('UPDATE password_reset_tokens SET used_at = $1 WHERE id = $2', [Date.now(), id]);
 }
 
-// ── Phone OTP verification ──────────────────────────────────────────────
+// ── Phone verification ──────────────────────────────────────────────────
+// OTP generation/verification used to be custom (hashed code + AWS SNS) —
+// replaced by Firebase Phone Auth (see authService.ts's loginWithFirebase),
+// which verifies the phone number itself before ever handing us an ID
+// token. This is now just the flag-setter, called once that token checks out.
 
 export async function markPhoneVerified(userId: string) {
   await query('UPDATE users SET phone_verified = TRUE WHERE id = $1', [userId]);
 }
 
-export async function insertPhoneOtp(params: { userId: string; codeHash: string; expiresAt: number }) {
-  const id = randomUUID();
-  await query(
-    'INSERT INTO phone_otp_codes (id, user_id, code_hash, expires_at, attempts, created_at) VALUES ($1, $2, $3, $4, 0, $5)',
-    [id, params.userId, params.codeHash, params.expiresAt, Date.now()]
+// Called right after a logged-in user completes Firebase Phone Auth to
+// verify THEIR OWN number (post-registration step, see
+// authService.ts's linkFirebasePhone) — distinct from markPhoneVerified
+// above, which just flips the flag when the number's already on file.
+export async function setVerifiedPhone(userId: string, phoneNumber: string, firebaseUid: string): Promise<void> {
+  await query('UPDATE users SET phone_number = $1, phone_verified = TRUE, firebase_uid = $2 WHERE id = $3', [phoneNumber, firebaseUid, userId]);
+}
+
+// ── Wallet (consultation prepaid balance, see payments.routes.ts) ─────────
+
+export async function creditWallet(userId: string, amount: number): Promise<number> {
+  const row = await queryOne<{ wallet_balance: number }>(
+    'UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2 RETURNING wallet_balance',
+    [amount, userId]
   );
-  return id;
+  return Number(row?.wallet_balance ?? 0);
 }
 
-// Only the most recent unused, unexpired code counts — a resend should
-// invalidate any earlier code rather than leave multiple valid ones around.
-export function findActivePhoneOtp(userId: string) {
-  return queryOne<{ id: string; code_hash: string; attempts: number }>(
-    'SELECT id, code_hash, attempts FROM phone_otp_codes WHERE user_id = $1 AND used_at IS NULL AND expires_at > $2 ORDER BY created_at DESC LIMIT 1',
-    [userId, Date.now()]
-  );
-}
-
-export async function incrementPhoneOtpAttempts(id: string) {
-  await query('UPDATE phone_otp_codes SET attempts = attempts + 1 WHERE id = $1', [id]);
-}
-
-export async function markPhoneOtpUsed(id: string) {
-  await query('UPDATE phone_otp_codes SET used_at = $1 WHERE id = $2', [Date.now(), id]);
+export async function getWalletBalance(userId: string): Promise<number> {
+  const row = await queryOne<{ wallet_balance: number }>('SELECT wallet_balance FROM users WHERE id = $1', [userId]);
+  return Number(row?.wallet_balance ?? 0);
 }

@@ -19,9 +19,8 @@ function timeAgo(ts: number): string {
 // already keeps ringing until one of these gets accepted — nothing extra
 // needed here for that.
 export default function ChatInbox() {
-  const { astrologerSync, acceptAssignment, endActiveConsultation } = useRealtime();
+  const { astrologerSync, acceptAssignment } = useRealtime();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [ending, setEnding] = useState(false);
 
   const pendingChats = (astrologerSync?.pendingAssignments || []).filter(p => p.type === 'chat');
   const active = astrologerSync?.activeConsultation;
@@ -32,11 +31,6 @@ export default function ChatInbox() {
     try { await acceptAssignment(id); } finally { setBusyId(null); }
   };
 
-  const handleEnd = async () => {
-    setEnding(true);
-    try { await endActiveConsultation(); } finally { setEnding(false); }
-  };
-
   return (
     <div>
       <SectionHeader title="Chat" subtitle="Incoming chat requests and your live chat, all in one place." />
@@ -45,7 +39,6 @@ export default function ChatInbox() {
         <Panel title={`Chatting with ${activeChat.userName}`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <span className={styles.tableMuted}>{activeChat.category}</span>
-            <button className={styles.iconBtn} disabled={ending} onClick={handleEnd}>End Consultation</button>
           </div>
           <ChatWindow consultationId={activeChat.id} otherPartyName={activeChat.userName} />
         </Panel>

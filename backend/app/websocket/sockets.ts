@@ -80,7 +80,16 @@ export function attachSockets(io: Server) {
   bus.onTyped('astrologer:away', ({ astrologerId }) => { io.to(astroRoom(astrologerId)).emit('astrologer:away'); resyncAstrologer(io, astrologerId).catch(console.error); });
   bus.onTyped('astrologer:idle-warning', ({ astrologerId }) => io.to(astroRoom(astrologerId)).emit('astrologer:idle-warning'));
 
-  bus.onTyped('chat:assigned', c => { io.to(astroRoom(c.astrologerId)).emit('chat:assigned', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
+  bus.onTyped('chat:assigned', c => {
+    io.to(astroRoom(c.astrologerId)).emit('chat:assigned', c);
+    // Was missing entirely — the user who just booked never learned their
+    // consultation was created except via the one-time snapshot sent at
+    // socket-connect, which can easily predate the booking actually landing
+    // (e.g. the payment-triggered booking flow, where nothing round-trips
+    // through the user's own browser the way a direct request does).
+    io.to(userRoom(c.userEmail)).emit('chat:assigned', c);
+    resyncAstrologer(io, c.astrologerId).catch(console.error);
+  });
   bus.onTyped('chat:accepted', c => { io.to(astroRoom(c.astrologerId)).emit('chat:accepted', c); io.to(userRoom(c.userEmail)).emit('chat:accepted', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
   bus.onTyped('chat:started', c => { io.to(astroRoom(c.astrologerId)).emit('chat:started', c); io.to(userRoom(c.userEmail)).emit('chat:started', c); });
   bus.onTyped('chat:declined', c => { io.to(userRoom(c.userEmail)).emit('chat:declined', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
