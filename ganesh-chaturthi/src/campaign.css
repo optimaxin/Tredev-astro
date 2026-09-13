@@ -1,0 +1,154 @@
+/* Campaign-specific chrome + landing layout. The actual design tokens
+   (--gold-primary, --bg-primary, fonts, .btn/.form-group/etc.) come from the
+   real main-site stylesheet imported in main.tsx — this file only adds what
+   the campaign shell itself needs on top of that. */
+
+.chromeRoot { min-height: 100vh; display: flex; flex-direction: column; }
+.chromeHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 50; background: var(--bg-primary);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+.chromeBrand { display: flex; align-items: center; gap: 0.5rem; color: var(--color-text-light); text-decoration: none; font-family: var(--font-serif); font-size: 1.25rem; }
+.chromeLogo { width: 32px; height: 32px; object-fit: contain; }
+.chromeBadge {
+  font-size: 0.875rem; color: var(--gold-soft); background: rgba(199, 161, 90, 0.12);
+  border: 1px solid var(--border-subtle); border-radius: 999px; padding: 0.35rem 0.9rem;
+}
+.chromeBadgeBtn { font-family: inherit; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.chromeBadgeBtn:hover { background: rgba(199, 161, 90, 0.22); border-color: var(--border-strong); }
+.chromeLogoutBtn {
+  font-family: inherit; font-size: 0.8rem; color: var(--color-text-muted); background: none;
+  border: 1px solid var(--border-subtle); border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.chromeLogoutBtn:hover { background: rgba(199, 161, 90, 0.12); color: var(--color-text-light); }
+.chromeFooter { margin-top: auto; text-align: center; padding: 1.5rem; color: var(--color-text-muted); font-size: 0.875rem; }
+.chromeSocials { display: flex; align-items: center; gap: 0.9rem; }
+.chromeSocials a { color: var(--gold-soft); display: flex; }
+.chromeSocials a:hover { color: var(--gold-primary); }
+
+/* Designed banner asset (Extra/Images/A26.png, resized/compressed to
+   public/images/hero-banner.jpg) replaces the earlier hand-coded hero.
+   The gradient section is capped to the same width as the rest of the
+   page's content column (.container) instead of running full-bleed edge to
+   edge — on a wide viewport that made the empty margin either side of the
+   (deliberately not-too-tall) image read as dead space rather than a
+   contained banner. */
+.hero {
+  display: flex; justify-content: center; padding: 1.5rem 1.25rem;
+  max-width: 1000px; margin: 0 auto;
+  background: linear-gradient(135deg, #7a4a1e 0%, #a4671f 45%, #8a5620 100%);
+}
+/* No border-radius/hard edge — that read as a photo pasted on top rather
+   than blending into the matching-color gradient behind it. Fading the
+   image's own edges to transparent via a mask (all 4 sides) lets the
+   identical-colored gradient show through smoothly at the boundary instead
+   of a crisp rectangle, which is what "doesn't blend" was actually about —
+   matching the background color alone wasn't enough while the image still
+   had a hard-edged outline. */
+.heroBannerImg {
+  display: block; width: auto; max-width: 100%; height: auto; max-height: 460px;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, black 4%, black 96%, transparent),
+    linear-gradient(to bottom, transparent, black 6%, black 94%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, black 4%, black 96%, transparent),
+    linear-gradient(to bottom, transparent, black 6%, black 94%, transparent);
+  mask-composite: intersect;
+}
+
+@media (max-width: 640px) {
+  .heroBannerImg { max-height: 320px; }
+}
+
+.container { max-width: 1000px; margin: 0 auto; padding: 0 1.25rem; }
+
+.toolGrid { padding: 2.5rem 0; }
+.toolCategory { margin-bottom: 2rem; }
+.toolCategory h2 { font-family: var(--font-serif); font-size: 1.3rem; color: var(--color-text-light); margin-bottom: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+.toolCategoryIcon { color: var(--gold-primary); }
+.toolCategoryCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
+.toolCard {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  background: var(--color-surface); border: 1px solid var(--border-subtle); border-radius: 10px;
+  padding: 0.9rem 1.1rem; color: var(--color-text-light); text-align: left; transition: border-color 0.15s, background 0.15s;
+  font-family: inherit; cursor: pointer;
+}
+.toolCard:hover { border-color: var(--border-strong); background: var(--color-surface-maroon); }
+.toolCardArrow { color: var(--gold-primary); }
+
+.comingSoon { padding: 3rem 1.5rem 4rem; text-align: center; }
+.comingSoonTitle { font-family: var(--font-serif); font-size: 1.4rem; margin-bottom: 1.75rem; color: var(--color-text-light); }
+.comingSoonGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; max-width: 760px; margin: 0 auto; }
+.comingSoonCard {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.25rem 1rem;
+  border: 1px dashed var(--border-subtle); border-radius: 12px; color: var(--color-text-muted); font-size: 0.9rem; opacity: 0.75;
+}
+.comingSoonIcon { font-size: 1.75rem; filter: grayscale(0.4); }
+
+.calcBack { background: none; border: none; color: var(--gold-soft); padding: 1.5rem 1.5rem 0; font-size: 0.95rem; cursor: pointer; }
+
+.onboardOverlay {
+  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+  background: rgba(6, 9, 20, 0.78); padding: 1.5rem; overflow-y: auto;
+}
+.onboardCard {
+  position: relative; width: 100%; max-width: 420px; background: var(--color-surface-maroon);
+  border: 1px solid var(--border-strong); border-radius: 16px; padding: 2rem 1.75rem 1.5rem;
+  text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.onboardTitle { font-family: var(--font-serif); color: var(--color-text-light); font-size: 1.4rem; margin: 0 0 0.6rem; }
+.onboardSubtitle { color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
+.onboardForm { text-align: left; display: flex; flex-direction: column; gap: 0.9rem; }
+.onboardError { color: #e07a7a; font-size: 0.85rem; margin: -0.25rem 0 0; }
+
+.offerBadge {
+  display: inline-block; font-size: 0.8rem; font-weight: 700; color: #1a1206; background: var(--gold-primary);
+  border-radius: 999px; padding: 0.3rem 0.9rem; margin-bottom: 1rem;
+}
+.offerPriceRow { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-top: 0.5rem; }
+.offerPriceStrike { font-size: 1.3rem; color: var(--color-text-muted); text-decoration: line-through; }
+.offerPriceNow { font-size: 2.5rem; font-weight: 800; color: var(--gold-primary); font-family: var(--font-serif); }
+.offerPriceLabel { color: var(--color-text-muted); font-size: 0.85rem; margin: 0.15rem 0 1.5rem; }
+
+.wishOverlay {
+  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+  background: rgba(6, 9, 20, 0.78); padding: 1.5rem; overflow-y: auto;
+}
+.wishCard {
+  position: relative; width: 100%; max-width: 680px; background: var(--color-surface-maroon);
+  border: 1px solid var(--border-strong); border-radius: 16px; padding: 2rem 1.75rem 1.5rem;
+  text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.wishClose {
+  position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--color-text-muted);
+  font-size: 1.1rem; cursor: pointer; line-height: 1;
+}
+.wishTitle { font-family: var(--font-serif); color: var(--color-text-light); font-size: 1.4rem; margin: 0 0 0.4rem; }
+.wishSubtitle { color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 1.25rem; }
+.wishLayout { display: flex; gap: 1.25rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
+.wishCanvasPreview {
+  width: 100%; max-width: 360px; aspect-ratio: 1600 / 1135; border-radius: 12px; display: block; margin: 0 auto 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); background: #000;
+}
+.wishTemplateGrid { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; min-width: 160px; }
+.wishTemplateCard {
+  border: 2px solid transparent; border-radius: 10px; padding: 0.9rem; cursor: pointer; font-weight: 600;
+  font-size: 0.95rem; text-align: left; background: var(--color-surface-maroon-light, rgba(255,255,255,0.06));
+  color: var(--color-text-light);
+}
+.wishTemplateCardActive { border-color: var(--gold-primary); box-shadow: 0 0 0 2px rgba(232, 197, 71, 0.25); }
+.wishActions { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+.wishActions .btn { flex: 1; }
+.wishHint { color: var(--color-text-muted); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.4; }
+.wishBackLink {
+  display: block; margin: 0.75rem auto 0; background: none; border: none; color: var(--color-text-muted);
+  font-size: 0.85rem; text-decoration: underline; cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .wishLayout { flex-direction: column; }
+}

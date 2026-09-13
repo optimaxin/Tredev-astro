@@ -39,6 +39,10 @@ export const HINDI_YOGA: Record<string, string> = {
   Indra: 'इन्द्र', Vaidhriti: 'वैधृति',
 };
 
+export const PAKSHA_HI: Record<string, string> = {
+  Shukla: 'शुक्ल', Krishna: 'कृष्ण',
+};
+
 export const HINDI_KARANA: Record<string, string> = {
   Bava: 'बव', Balava: 'बालव', Kaulava: 'कौलव', Taitila: 'तैतिल', Gara: 'गर', Vanija: 'वणिज',
   Vishti: 'विष्टि (भद्रा)', Kimstughna: 'किंस्तुघ्न', Shakuni: 'शकुनि', Chatushpada: 'चतुष्पद', Naga: 'नाग',

@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    "ganesh-chaturthi"
   ],
   "scripts": {
     "dev": "npm run dev --workspace frontend",
     "server": "npm run dev --workspace backend",
+    "campaign": "npm run dev --workspace ganesh-chaturthi-campaign",
     "dev:all": "concurrently -n web,api -c blue,magenta \"npm:dev\" \"npm:server\"",
     "build": "npm run build --workspace frontend",
     "lint": "npm run lint --workspace frontend",

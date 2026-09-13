@@ -48,6 +48,11 @@ const birthSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
 });
 
+// Only /kundli-full reads this — the Hindi/English download toggle. Every
+// other calculator endpoint stays English-only (out of scope for that
+// feature), so this isn't part of the shared birthSchema.
+const languageSchema = z.enum(['en', 'hi']).optional().default('en');
+
 function toUtcDate(b: z.infer<typeof birthSchema>): Date {
   const [year, month, day] = b.date.split('-').map(Number);
   const [hour, minute] = b.time.split(':').map(Number);
@@ -85,6 +90,7 @@ calculatorsRouter.post('/kundli', limiter, (req, res) => {
 calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
   handle(res, () => {
     const birth = birthSchema.parse(req.body);
+    const language = languageSchema.parse(req.body?.language);
     const utcDate = toUtcDate(birth);
     const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
     const moon = kundli.planets.find(p => p.id === 'moon')!;
@@ -121,13 +127,13 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
         sadeSati: checkSadeSati(moonRashiIndex, now),
         rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
       },
-      yogas: checkYogas(kundli),
-      analysis: buildKundliAnalysis(kundli),
-      ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi),
-      dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline),
-      avakhada: buildAvakhada(kundli),
-      gemstones: recommendGemstones(kundli),
-      rudraksha: recommendRudraksha(kundli),
+      yogas: checkYogas(kundli, language),
+      analysis: buildKundliAnalysis(kundli, language),
+      ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi, language),
+      dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline, language),
+      avakhada: buildAvakhada(kundli, language),
+      gemstones: recommendGemstones(kundli, language),
+      rudraksha: recommendRudraksha(kundli, language),
       panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
       ashtakavarga: calculateAshtakavarga(kundli),
       kp: buildKpTable(kundli, utcDate, houseCusps),

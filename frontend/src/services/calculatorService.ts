@@ -418,6 +418,20 @@ export const VARGA_LABELS: Record<string, string> = {
   D45: 'Akshavedamsa (D45) — Character', D60: 'Shashtiamsa (D60) — Overall Life',
 };
 
+// Parallel Hindi titles — shared by the on-screen Charts tab (KundliSection.tsx)
+// and the PDF's own "05 Charts" section (KundliPrintLayout.tsx), so both stay
+// in sync from one place instead of drifting apart.
+export const VARGA_LABELS_HI: Record<string, string> = {
+  D2: 'होरा (D2) — धन', D3: 'द्रेष्काण (D3) — भाई-बहन एवं साहस', D4: 'चतुर्थांश (D4) — घर एवं संपत्ति',
+  D5: 'पंचमांश (D5) — यश एवं अधिकार', D6: 'षष्ठांश (D6) — स्वास्थ्य एवं शत्रु',
+  D7: 'सप्तांश (D7) — संतान', D8: 'अष्टमांश (D8) — आयु एवं अचानक घटनाएं',
+  D10: 'दशमांश (D10) — करियर', D11: 'रुद्रांश (D11) — लाभ', D12: 'द्वादशांश (D12) — माता-पिता',
+  D16: 'षोडशांश (D16) — वाहन एवं सुख', D20: 'विंशांश (D20) — आध्यात्मिक प्रगति',
+  D24: 'चतुर्विंशांश (D24) — शिक्षा', D27: 'सप्तविंशांश (D27) — शक्ति एवं कमजोरियां',
+  D30: 'त्रिंशांश (D30) — दुर्भाग्य', D40: 'खवेदांश (D40) — सामान्य प्रभाव',
+  D45: 'अक्षवेदांश (D45) — चरित्र', D60: 'षष्टियांश (D60) — संपूर्ण जीवन',
+};
+
 export interface KundliFullResult {
   kundli: KundliResult;
   navamsaChart: NavamsaChart;
@@ -460,7 +474,7 @@ export const calculatorService = {
   placeSuggest: (query: string) => request<PlaceSuggestion[]>(`/api/calculators/place-suggest?q=${encodeURIComponent(query)}`),
   resolvePlace: (placeId: string) => request<GeocodeResult>(`/api/calculators/place-resolve?placeId=${encodeURIComponent(placeId)}`),
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
-  kundliFull: (birth: BirthDetailsInput) => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify(birth) }),
+  kundliFull: (birth: BirthDetailsInput, language?: 'en' | 'hi') => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify({ ...birth, language }) }),
   nakshatra: (birth: BirthDetailsInput) => request<NakshatraResult>('/api/calculators/nakshatra', { method: 'POST', body: JSON.stringify(birth) }),
   mangalDosha: (birth: BirthDetailsInput) => request<MangalDoshaResult>('/api/calculators/mangal-dosha', { method: 'POST', body: JSON.stringify(birth) }),
   sadeSati: (birth: BirthDetailsInput) => request<SadeSatiResult>('/api/calculators/sade-sati', { method: 'POST', body: JSON.stringify(birth) }),

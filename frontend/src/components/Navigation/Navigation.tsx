@@ -192,14 +192,23 @@ export default function Navigation() {
           {/* Notifications */}
           <NotificationBell />
 
-          {/* Language + Theme — grouped into one dropdown instead of two
-              separate always-visible buttons, so the header carries one
-              utility control here instead of two. */}
+          {/* Theme — its own always-visible icon button, not buried inside
+              the language dropdown. */}
+          <button
+            className={styles.themeBtn}
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+          </button>
+
+          {/* Language selector */}
           <div className={styles.langWrapper} ref={langRef}>
             <button
               className={styles.langBtn}
               onClick={() => setLangDropdownOpen(v => !v)}
-              aria-label="Language and theme settings"
+              aria-label="Language settings"
             >
               <span className={styles.langGlobe}>🌐</span>
               <span className={styles.langText}>{currentLangLabel}</span>
@@ -218,14 +227,6 @@ export default function Navigation() {
                     {lang.name}
                   </button>
                 ))}
-                <div className={styles.langDropdownDivider} />
-                <button
-                  className={styles.langDropdownItem}
-                  onClick={() => { toggleTheme(); setLangDropdownOpen(false); }}
-                >
-                  {theme === 'dark' ? <SunIcon size={14} /> : <MoonIcon size={14} />}
-                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                </button>
               </div>
             )}
           </div>

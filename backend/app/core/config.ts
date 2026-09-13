@@ -55,6 +55,11 @@ export const config = {
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_KEY_SECRET,
   },
+  // Gates GET /api/campaign-analytics/summary and the /campaign-analytics
+  // dashboard page — deliberately a single shared password, not full
+  // user/JWT auth, since this is a small internal "how many people clicked
+  // what" view for the campaign, not an account-scoped admin feature.
+  campaignAnalyticsPassword: required('CAMPAIGN_ANALYTICS_PASSWORD', 'ganesh-analytics-2026'),
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project
     // Settings → Service Accounts → Generate new private key), pasted as

@@ -37,13 +37,17 @@
 }
 
 :global([data-theme='dark']) .nav {
-  background: rgba(8, 12, 28, 0.4);
+  /* Higher alpha than the light theme's pill — dark theme's bright cream
+     section titles stayed legible (ghosting through) at the old 0.4 alpha
+     while scrolling underneath; a light background doesn't have that
+     problem since light-on-light already hides itself. */
+  background: rgba(8, 12, 28, 0.82);
   border-color: rgba(199, 161, 90, 0.25);
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
 }
 
 :global([data-theme='dark']) .nav.scrolled {
-  background: rgba(8, 12, 28, 0.65);
+  background: rgba(8, 12, 28, 0.92);
   top: 12px;
 }
 
@@ -316,6 +320,27 @@
 }
 
 .notifItemDismiss:hover {
+  color: var(--nav-gold);
+}
+
+/* Theme toggle */
+.themeBtn {
+  background: transparent;
+  border: 1px solid rgba(231, 165, 26, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.themeBtn:hover {
+  border-color: var(--nav-gold);
+  background: rgba(231, 165, 26, 0.06);
   color: var(--nav-gold);
 }
 

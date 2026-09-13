@@ -17,7 +17,7 @@ function houseOf(kundli: Kundli, planetId: string): number {
   return kundli.planets.find(p => p.id === planetId)!.house;
 }
 
-export function checkYogas(kundli: Kundli): YogaResult[] {
+export function checkYogas(kundli: Kundli, language: 'en' | 'hi' = 'en'): YogaResult[] {
   const moonHouse = houseOf(kundli, 'moon');
   const jupiterHouse = houseOf(kundli, 'jupiter');
   const marsHouse = houseOf(kundli, 'mars');
@@ -25,6 +25,26 @@ export function checkYogas(kundli: Kundli): YogaResult[] {
   const mercuryHouse = houseOf(kundli, 'mercury');
 
   const kendraDistance = ((jupiterHouse - moonHouse + 12) % 12) + 1;
+
+  if (language === 'hi') {
+    return [
+      {
+        name: 'गजकेसरी योग',
+        present: KENDRA_HOUSES.has(kendraDistance),
+        description: 'यह तब बनता है जब गुरु, चन्द्र से केंद्र (पहले, चौथे, सातवें या दसवें भाव) में स्थित हो — पारंपरिक रूप से बुद्धि, प्रतिष्ठा और स्थिर सफलता से जुड़ा हुआ है।',
+      },
+      {
+        name: 'चन्द्र-मंगल योग',
+        present: moonHouse === marsHouse,
+        description: 'यह तब बनता है जब चन्द्र और मंगल एक ही भाव में स्थित हों — पारंपरिक रूप से व्यावसायिक कुशलता और आर्थिक प्रेरणा से जुड़ा हुआ है।',
+      },
+      {
+        name: 'बुधादित्य योग',
+        present: sunHouse === mercuryHouse,
+        description: 'यह तब बनता है जब सूर्य और बुध एक ही भाव में स्थित हों — पारंपरिक रूप से तीक्ष्ण बुद्धि और संप्रेषण कौशल से जुड़ा हुआ है।',
+      },
+    ];
+  }
 
   return [
     {

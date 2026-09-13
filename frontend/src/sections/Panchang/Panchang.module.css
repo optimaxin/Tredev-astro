@@ -232,13 +232,10 @@
   padding: var(--space-8);
 }
 
-/* Always the clean, light "printed almanac" card — deliberately NOT
-   theme-adaptive (no dark-mode variant) anymore. Panchang content is
-   already hardcoded Hindi/IST regardless of the site's language toggle
-   (see lang="hi" below); the same reasoning applies to its look — a
-   classical printed Panchang reads the same regardless of what theme the
-   rest of the site is in. Replaces the earlier translucent "dark glass
-   dashboard" treatment with solid white cards, per direct reference. */
+/* The "printed almanac" card — light/ivory in light theme, dark surface
+   in dark theme (see the [data-theme='dark'] override below). All colors
+   are read from --panchang-* custom properties so each theme only needs
+   to override them once here rather than in every rule below. */
 .panchangDash {
   /* WCAG 2.2 AA (1.4.3): verified against solid white, not eyeballed —
      all 4 improved their margin versus the old translucent glass tint. */
@@ -257,6 +254,22 @@
   --panchang-gold: #B58A3B;
   padding: var(--space-2);
   position: relative;
+}
+
+/* Dark theme: swap the printed-almanac card from solid white to a dark
+   surface, contrast-checked the same way as the light values above —
+   users found the always-white card jarring against an otherwise dark
+   page. Every downstream rule already reads these custom properties, so
+   overriding them here is enough to re-theme the whole card. */
+:global([data-theme='dark']) .panchangDash {
+  --panchang-label: #B9B3A8; /* text-secondary, ~8.9:1 on the surface below */
+  --panchang-gold-text: #D2B978; /* gold-soft, ~8.4:1 */
+  --panchang-shubh-text: #4ADE80; /* ~10.9:1 */
+  --panchang-ashubh-text: #F87171; /* ~7.2:1 */
+  --panchang-glass: #151B31; /* surface-highlight */
+  --panchang-glass-border: rgba(199, 161, 90, 0.22);
+  --panchang-heading: #F1E9DC; /* text-primary, ~13.6:1 */
+  --panchang-gold: #D2B978; /* gold-soft */
 }
 
 /* Large brand mark behind the whole dashboard. */

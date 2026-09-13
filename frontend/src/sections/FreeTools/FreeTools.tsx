@@ -159,8 +159,8 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               <div className={styles.cardHeader}>
                 <ConstellationIcon size={48} className={styles.cardIconMedium} />
                 <div>
-                  <h3 className={styles.cardTitle}>Nakshatra Finder</h3>
-                  <p className={styles.cardDesc}>Discover your birth star and its ruling planet.</p>
+                  <h3 className={styles.cardTitle}>{t('tools_nakshatra_title')}</h3>
+                  <p className={styles.cardDesc}>{t('tools_nakshatra_desc')}</p>
                 </div>
               </div>
               <span className={styles.arrowLink}>{tOr('tools_nakshatra_cta', 'seek_card_cta')}</span>
@@ -177,7 +177,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="yantra" className={styles.cardOrnamentSmall} />
               <WealthIcon size={38} className={styles.cardIconSmall} />
-              <h3 className={styles.cardTitleSmall}>Mangal Dosha</h3>
+              <h3 className={styles.cardTitleSmall}>{t('tools_mangal_dosha_title')}</h3>
               <p className={styles.cardDescSmall}>{t('seek_card_marriage_desc')}</p>
             </motion.div>
 
@@ -192,7 +192,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="chandra" className={styles.cardOrnamentSmall} />
               <AcharyaIcon size={38} className={styles.cardIconSmall} />
-              <h3 className={styles.cardTitleSmall}>Sade Sati</h3>
+              <h3 className={styles.cardTitleSmall}>{t('tools_sade_sati_title')}</h3>
               <p className={styles.cardDescSmall}>{t('seek_card_spirituality_desc')}</p>
             </motion.div>
 
@@ -207,8 +207,8 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
             >
               <CelestialOrnament type="mandala" className={styles.cardOrnamentSmall} />
               <CareerIcon size={38} className={styles.cardIconSmall} />
-              <h3 className={styles.cardTitleSmall}>Numerology</h3>
-              <p className={styles.cardDescSmall}>Life path number forecast.</p>
+              <h3 className={styles.cardTitleSmall}>{t('tools_numerology_title')}</h3>
+              <p className={styles.cardDescSmall}>{t('tools_numerology_desc')}</p>
             </motion.div>
           </div>
         </div>

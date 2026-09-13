@@ -1,6 +1,7 @@
 import React from 'react';
 import { PLANET_META } from '../../data/planetMeta';
 import type { KundliResult } from '../../services/calculatorService';
+import { HINDI_PLANET, HINDI_RASHI } from '../../utils/panchangHindi';
 import styles from './KundliSection.module.css';
 
 // Shared chart-drawing/data-shaping pieces used both by the interactive
@@ -45,6 +46,19 @@ const PLANET_SHORT: Record<string, string> = {
   jupiter: 'Ju', saturn: 'Sa', uranus: 'Ur', neptune: 'Ne', pluto: 'Pl',
   rahu: 'Ra', ketu: 'Ke', asc: 'As',
 };
+
+// Same 2-letter-abbreviation convention as PLANET_SHORT above, in Devanagari
+// — matches how real printed Hindi Kundli charts label each wedge.
+const PLANET_SHORT_HI: Record<string, string> = {
+  sun: 'सू', moon: 'चं', mercury: 'बु', venus: 'शु', mars: 'मं',
+  jupiter: 'गु', saturn: 'श', uranus: 'यू', neptune: 'ने', pluto: 'प्लू',
+  rahu: 'रा', ketu: 'के', asc: 'ल',
+};
+
+function planetShortLabel(id: string, name: string, language: 'en' | 'hi'): string {
+  if (language === 'hi') return PLANET_SHORT_HI[id] || HINDI_PLANET[id] || name.slice(0, 2);
+  return PLANET_SHORT[id] || name.slice(0, 2);
+}
 
 // Short, word-boundary-safe preview of a longer prediction paragraph. Used
 // to intentionally withhold the full written reading from the free
@@ -219,6 +233,9 @@ interface KundliChartProps {
   onPlanetLeave: () => void;
   onHouseHover: (house: number, e: React.MouseEvent) => void;
   onHouseLeave: () => void;
+  // Only affects the labels drawn ON the chart itself (planet short-codes) —
+  // the rashi-number labels in each wedge are already language-neutral digits.
+  language?: 'en' | 'hi';
 }
 
 // Fixed zodiacal order, Aries first — used to convert a house POSITION
@@ -226,7 +243,7 @@ interface KundliChartProps {
 // sign actually sits there for this chart's Ascendant.
 const RASHI_ORDER = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
 
-export function NorthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave }: KundliChartProps) {
+export function NorthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave, onHouseHover, onHouseLeave, language = 'en' }: KundliChartProps) {
   const BOX = 400;
   const planetsByHouse: Record<number, ChartPlanet[]> = {};
   planets.forEach(p => { (planetsByHouse[p.house] ||= []).push(p); });
@@ -285,7 +302,7 @@ export function NorthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
         return (
           <g key={planet.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(planet, e)} onMouseLeave={onPlanetLeave}>
             <text x={px} y={py} textAnchor="middle" fontSize="12" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">
-              {PLANET_SHORT[planet.id] || planet.name.slice(0, 2)}
+              {planetShortLabel(planet.id, planet.name, language)}
             </text>
             {/* Degree only — no Bhav badge on the diagram itself anymore
                 (it was cluttering crowded houses); the real Bhav Chalit
@@ -313,7 +330,7 @@ const SOUTH_GRID: (string | null)[][] = [
   ['Sagittarius', 'Scorpio', 'Libra', 'Virgo'],
 ];
 
-export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave }: { planets: ChartPlanet[]; ascendantRashi: string; onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void; onPlanetLeave: () => void }) {
+export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPlanetLeave, language = 'en' }: { planets: ChartPlanet[]; ascendantRashi: string; onPlanetHover: (p: ChartPlanet, e: React.MouseEvent) => void; onPlanetLeave: () => void; language?: 'en' | 'hi' }) {
   const BOX = 400;
   const CELL = 100;
   const planetsByRashi: Record<string, ChartPlanet[]> = {};
@@ -333,7 +350,7 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
         return (
           <g key={rashi}>
             <rect x={x} y={y} width={CELL} height={CELL} fill="none" className={styles.chartBorder} strokeWidth="0.8" />
-            <text x={x + 6} y={y + 13} fontSize="9" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{rashi.slice(0, 3)}</text>
+            <text x={x + 6} y={y + 13} fontSize="9" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{language === 'hi' ? (HINDI_RASHI[rashi] || rashi) : rashi.slice(0, 3)}</text>
             {isAscendant && <line x1={x} y1={y} x2={x + 22} y2={y + 22} className={styles.chartLine} strokeWidth="1.4" />}
             {inHouse.map((p, i) => {
               const cols = inHouse.length > 2 ? 2 : 1;
@@ -341,7 +358,7 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
               const py = y + 45 + Math.floor(i / cols) * 22;
               return (
                 <g key={p.id} className={styles.planetGroup} onMouseEnter={e => onPlanetHover(p, e)} onMouseLeave={onPlanetLeave}>
-                  <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{PLANET_SHORT[p.id] || p.name.slice(0, 2)}</text>
+                  <text x={px} y={py} textAnchor="middle" fontSize="11" fontWeight="600" className={styles.planetSymbolText} fontFamily="DM Sans, sans-serif">{planetShortLabel(p.id, p.name, language)}</text>
                   <text x={px} y={py + 11} textAnchor="middle" fontSize="9" className={styles.planetNameText} fontFamily="DM Sans, sans-serif">
                     {p.decimalDegree || ''}{p.retrograde ? ' ℞' : ''}
                   </text>
@@ -352,8 +369,8 @@ export function SouthIndianChart({ planets, ascendantRashi, onPlanetHover, onPla
         );
       }))}
 
-      <text x={200} y={196} textAnchor="middle" fontSize="10" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">South Indian</text>
-      <text x={200} y={210} textAnchor="middle" fontSize="7" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">Asc: {ascendantRashi}</text>
+      <text x={200} y={196} textAnchor="middle" fontSize="10" className={styles.zodiacText} fontFamily="DM Sans, sans-serif">{language === 'hi' ? 'दक्षिण भारतीय' : 'South Indian'}</text>
+      <text x={200} y={210} textAnchor="middle" fontSize="7" className={styles.houseNumberText} fontFamily="DM Sans, sans-serif">{language === 'hi' ? `लग्न: ${HINDI_RASHI[ascendantRashi] || ascendantRashi}` : `Asc: ${ascendantRashi}`}</text>
     </svg>
   );
 }

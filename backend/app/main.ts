@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { runMigrations } from './core/db.ts';
 import { seedDemoAccounts } from './core/seedDemoAccounts.ts';
@@ -11,10 +13,12 @@ import { authRouter } from './api/auth.routes.ts';
 import { astrologersCatalogRouter } from './api/astrologers.routes.ts';
 import { chatRouter } from './api/chat.routes.ts';
 import { calculatorsRouter } from './api/calculators.routes.ts';
+import { kundliPdfRouter } from './api/kundliPdf.routes.ts';
 import { favoritesRouter } from './api/favorites.routes.ts';
 import { kundliHistoryRouter } from './api/kundliHistory.routes.ts';
 import { ordersRouter } from './api/orders.routes.ts';
 import { adminRouter } from './api/admin.routes.ts';
+import { campaignAnalyticsRouter } from './api/campaignAnalytics.routes.ts';
 import { contentRouter } from './api/content.routes.ts';
 import { paymentsRouter } from './api/payments.routes.ts';
 import { config } from './core/config.ts';
@@ -22,15 +26,18 @@ import { attachSockets } from './websocket/sockets.ts';
 import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+// Comma-separated so the main site and the separately-deployed Ganesh
+// Chaturthi campaign app (its own domain) can both be allowlisted, e.g.
+// CLIENT_ORIGIN="https://tredevastro.com,https://ganesh.tredevastro.com".
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
 // Vite bumps to the next free port (5174, 5175, 5176...) whenever a stale
 // dev-server process is still holding an earlier one, which kept breaking
 // CORS every time that happened — the old allowlist only covered exactly
 // 5173/5174. In local dev (no CLIENT_ORIGIN configured), allow any
 // localhost/127.0.0.1 origin regardless of port instead of hardcoding one.
-// Once CLIENT_ORIGIN IS set (Render), origin stays locked to that exact one.
-const corsOrigin: cors.CorsOptions['origin'] = CLIENT_ORIGIN
-  ? CLIENT_ORIGIN
+// Once CLIENT_ORIGIN IS set (Render), origin stays locked to that allowlist.
+const corsOrigin: cors.CorsOptions['origin'] = CLIENT_ORIGINS.length
+  ? (origin, callback) => callback(null, !origin || CLIENT_ORIGINS.includes(origin))
   : (origin, callback) => callback(null, !origin || /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
 
 // Order matters: tables must exist before anything seeds into them, and the
@@ -63,10 +70,18 @@ app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);
 app.use('/api/calculators', calculatorsRouter);
+app.use('/api/kundli-pdf', kundliPdfRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/kundli-history', kundliHistoryRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/campaign-analytics', campaignAnalyticsRouter);
+// The dashboard itself — a single static page (see public/campaign-analytics.html)
+// rather than a whole separate app, since it's just a password-gated view
+// over the /api/campaign-analytics/summary endpoint above.
+app.get('/campaign-analytics', (_req, res) => {
+  res.sendFile(join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'campaign-analytics.html'));
+});
 app.use('/api', contentRouter);
 // `router` (legacy mock-trust realtime routes, including the unauthenticated
 // /admin/config and /admin/astrologers/:id/max-concurrent) MUST be mounted

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppContext } from '../../context/AppContext';
+import { useAppContext, TRANSLATIONS } from '../../context/AppContext';
 import { HOUSE_MEANINGS } from '../../data/mockData';
 import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { KundliFullResult, KundliResult, DailyHoroscopeResult } from '../../services/calculatorService';
-import { VARGA_LABELS } from '../../services/calculatorService';
+import { VARGA_LABELS, VARGA_LABELS_HI } from '../../services/calculatorService';
+import { transliterateNameToHindi } from '../../utils/nameTransliterate';
 import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
@@ -20,7 +21,7 @@ import {
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
-import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, hindiOr } from '../../utils/panchangHindi';
+import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, HINDI_WEEKDAY, PAKSHA_HI, hindiOr } from '../../utils/panchangHindi';
 import styles from './KundliSection.module.css';
 
 // Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
@@ -38,6 +39,9 @@ import styles from './KundliSection.module.css';
 const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
 const CHART_LABELS: Record<string, string> = {
   D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
+};
+const CHART_LABELS_HI: Record<string, string> = {
+  D1: 'D1 — राशि (जन्म कुंडली)', BHAV_CHALIT: 'भाव चलित (वास्तविक केपी कस्प)', CHANDRA: 'चंद्र चार्ट', D9: 'D9 — नवांश (विवाह)',
 };
 
 // Consolidated from an earlier 9-tab layout (Overview/Charts/Dasha/
@@ -79,6 +83,147 @@ const RASHI_LORD_BY_NAME: Record<string, string> = {
   Libra: 'venus', Scorpio: 'mars', Sagittarius: 'jupiter', Capricorn: 'saturn', Aquarius: 'saturn', Pisces: 'jupiter',
 };
 
+// A handful of fixed English enum values the backend never localizes (they're
+// literal string constants, not language-aware prose) — translated here on
+// the frontend instead, the same "hindiOr a raw lookup" pattern already used
+// for rashi/nakshatra/planet names throughout this file.
+const METAL_HI: Record<string, string> = {
+  Gold: 'सोना', Silver: 'चांदी', 'Gold or Copper': 'सोना या तांबा', 'Gold or Silver': 'सोना या चांदी',
+  'Silver or Platinum': 'चांदी या प्लैटिनम', 'Silver or Panchdhatu': 'चांदी या पंचधातु',
+};
+const FINGER_HI: Record<string, string> = {
+  'Ring finger': 'अनामिका', 'Little finger': 'कनिष्ठा', 'Index finger': 'तर्जनी', 'Middle finger': 'मध्यमा',
+};
+const GEM_PURPOSE_HI: Record<string, string> = {
+  'Life Stone': 'जीवन रत्न', 'Lucky Stone': 'भाग्य रत्न', 'Fortune Stone': 'सौभाग्य रत्न',
+};
+const DOSHA_PHASE_HI: Record<string, string> = { rising: 'प्रारंभिक', peak: 'चरम', setting: 'अंतिम' };
+const YOGINI_HI: Record<string, string> = {
+  Mangala: 'मंगला', Pingala: 'पिंगला', Dhanya: 'धान्या', Bhramari: 'भ्रामरी',
+  Bhadrika: 'भद्रिका', Ulka: 'उल्का', Siddha: 'सिद्धा', Sankata: 'संकटा',
+};
+
+// The Timeline/Predictions/Remedies/Advanced tabs' own static labels — kept
+// as a local dictionary (like KundliPrintLayout's LABELS) rather than piped
+// through the site-wide t()/TRANSLATIONS system, since these are unique to
+// this one tool rather than shared site copy.
+const TAB_LABELS = {
+  en: {
+    mahadashaTimelineTitle: 'Your Vimshottari Mahadasha Timeline',
+    mahadashaTimelineDesc: "The nine planetary periods of your life, starting from your Moon's nakshatra at birth. Each period's summary below is a preview — see Predictions for the full note on your current period, or consult an astrologer for the complete picture.",
+    mahadasha: (lord: string, current: boolean) => `${cap(lord)} Mahadasha${current ? ' (current)' : ''}`,
+    antardasha: (lord: string) => `${cap(lord)} Antardasha`,
+    yoginiTimelineTitle: 'Your Yogini Dasha Timeline',
+    yoginiTimelineDesc: "An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.",
+    yoginiLine: (yogini: string, lord: string, current: boolean) => `${yogini} Yogini (${cap(lord)})${current ? ' (current)' : ''}`,
+    doshas: 'Doshas', mangalDosha: 'Mangal Dosha', kaalSarpDosha: 'Kaal Sarp Dosha', sadeSati: 'Sade Sati', rahuKetuTransit: 'Rahu-Ketu Transit',
+    present: 'Present', clear: 'Clear', notActive: 'Not active', activePhase: (phase: string) => `Active · ${phase}`,
+    marsHouseText: (h: string) => `Mars sits in your ${h} house from the Ascendant.`,
+    kaalSarpText: (r: string, k: string) => `Rahu in ${r}, Ketu in ${k}.`,
+    sadeSatiText: (s: string, m: string) => `Saturn is currently transiting ${s}; your Moon sign is ${m}.`,
+    rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `Rahu transiting ${rr} (${rh} from Moon), Ketu transiting ${kr} (${kh} from Moon).`,
+    ascendantPredictions: 'Ascendant Predictions',
+    ascendantIsPreview: (asc: string) => `Your Ascendant is ${asc} — a quick preview of each area is below.`,
+    personality: 'Personality', physical: 'Physical', health: 'Health', career: 'Career', relationship: 'Relationship',
+    quickPreviewNote: 'This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevAstro.',
+    consultAstrologer: 'Consult an Astrologer',
+    yogaCombinations: 'Yoga Combinations', formed: 'Present', notFormed: 'Not formed',
+    advancedNote: 'Technical, classical scoring behind your chart — useful if you want to go deeper, not required to understand your reading.',
+    shadbalaTitle: 'Shadbala (Planetary Strength)',
+    shadbalaDesc: 'Six-fold classical strength score per planet, in Rupas — a planet at or above its classical minimum is considered strong enough to deliver its significations well.',
+    colPlanet: 'Planet', colRupas: 'Rupas', colRequired: 'Required', colStatus: 'Status', strong: 'Strong', weak: 'Weak',
+    shadbalaFootnote: 'Ishta/Kashta Bala and the Sthana/Dig/Kaala/Cheshta/Naisargika/Drik breakdown are computed but not all shown here — ask if you want the full per-component view.',
+    bhavbalaTitle: 'Bhavbala (House Strength)', house: (n: number | string) => `House ${n}`,
+    kpSubLordTitle: 'KP Sub-Lord Table',
+    kpSubLordDesc: "Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.",
+    colPoint: 'Point', colSign: 'Sign', colStarLord: 'Star Lord', colSubLord: 'Sub Lord', ascendant: 'Ascendant',
+    kpCuspsTitle: 'KP Cusps (Bhav Chalit)',
+    kpCuspsDesc: "Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.",
+    colCusp: 'Cusp',
+    lagnaStarLord: 'Lagna Star Lord', lagnaSubLord: 'Lagna Sub Lord', moonStarLord: 'Moon Star Lord', moonSubLord: 'Moon Sub Lord', dayLord: 'Day Lord',
+    savTitle: 'Sarvashtakavarga (Bindu Strength)',
+    savDesc: 'Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.',
+    bindus: (n: number) => `${n} bindus`,
+    gemRemediesTitle: 'Gemstone & Rudraksha Remedies',
+    gemRemediesDesc: "Three classical gemstone picks — Life (Ascendant lord), Lucky (5th house/Purva Punya lord), and Fortune (9th house/Bhagya lord) — plus the Rudraksha ruled by your birth Nakshatra's lord.",
+    metal: 'Metal:', wearOn: 'Wear on:', rudraksha: 'Rudraksha', mukhi: (n: number, deity: string) => `${n} Mukhi (${deity})`,
+    precautions: 'Precautions before wearing any gemstone or Rudraksha',
+    remediesFootnote: 'These are classical, chart-derived starting points — not a substitute for a full consultation, since remedial choices can shift with other placements in your chart.',
+    consultAstrologerRemedies: 'Consult an Astrologer for Remedies',
+    verifyNote: "To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart above — including on any other Kundli tool given the same birth date, time, and place.",
+    avakhadaChakra: 'Avakhada Chakra',
+    chartsIntro: 'D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too, including a separate Bhav Chalit chart; click any of them to open it full-screen. The small number in each wedge\'s corner is that sign\'s fixed zodiac index (Aries=1 … Pisces=12) — the "house" a planet is actually in (counted from your Ascendant) is shown per-planet below the chart and in its hover tooltip.',
+    d1Title: 'D1 — Rashi (Birth Chart) · Planetary Placements', d9Title: 'D9 — Navamsa (Marriage) · Placements',
+    bhavChalitNote: 'The D1 chart above is positioned by whole-sign house (the fixed corner numbers), matching a standard Rashi/Lagna chart. Next to every planet, the gold "Bhav <n>" is its real cuspal house — computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person, and NOT the same as the whole-sign house it\'s sitting in. Open the separate "Bhav Chalit" chart below to see planets actually positioned by that real cuspal house instead.',
+    northIndian: 'North Indian', southIndian: 'South Indian', placements: 'Placements',
+    horaNote: "Hora (D2) is classically defined so every placement falls in ONLY Cancer or Leo (Moon's Hora / Sun's Hora) — never any other sign. That's why houses here cluster into just 1 and 7 (or 12, depending on your D2 Ascendant) instead of spreading across all 12 — it's the correct classical result for this chart, not a computation error.",
+    gocharTitle: "Gochar — Today's Real Transits on Your Chart",
+    gocharDesc: 'Where every planet is actually transiting right now, counted as houses from your own natal Lagna and from your own natal Moon — the two classical reference points Gochar is read from — compared against where it sits in your birth chart.',
+    gocharLoading: "Loading today's transits...",
+    sadeSatiActiveTitle: 'Sade Sati is currently active',
+    sadeSatiActiveText: (rashi: string, phase: string, moonRashi: string) => `Saturn is transiting ${rashi} — your ${phase} phase, counted from your natal Moon in ${moonRashi}.`,
+    rahuKetuTransitText: (rr: string, rh: string, kr: string, kh: string) => `Rahu is transiting ${rr} (${rh} house from your Moon), Ketu is transiting ${kr} (${kh} house from your Moon).`,
+    natal: 'Natal', transit: 'Transit', fromLagna: 'from Lagna', fromMoon: 'from Moon',
+  },
+  hi: {
+    mahadashaTimelineTitle: 'आपकी विंशोत्तरी महादशा समयरेखा',
+    mahadashaTimelineDesc: 'आपके जीवन की नौ ग्रह अवधियाँ, जन्म के समय आपके चन्द्र नक्षत्र से आरंभ होती हैं। नीचे हर अवधि का सारांश एक झलक मात्र है — अपनी वर्तमान अवधि के पूर्ण विवरण के लिए भविष्यवाणियाँ देखें, या संपूर्ण जानकारी के लिए किसी ज्योतिषी से सलाह लें।',
+    mahadasha: (lord: string, current: boolean) => `${HINDI_PLANET[lord] || cap(lord)} महादशा${current ? ' (वर्तमान)' : ''}`,
+    antardasha: (lord: string) => `${HINDI_PLANET[lord] || cap(lord)} अंतर्दशा`,
+    yoginiTimelineTitle: 'आपकी योगिनी दशा समयरेखा',
+    yoginiTimelineDesc: 'एक वैकल्पिक 36-वर्षीय, 8-अवधि दशा चक्र, जो भी जन्म के समय आपके चन्द्र नक्षत्र से गिना जाता है।',
+    yoginiLine: (yogini: string, lord: string, current: boolean) => `${YOGINI_HI[yogini] || yogini} योगिनी (${HINDI_PLANET[lord] || cap(lord)})${current ? ' (वर्तमान)' : ''}`,
+    doshas: 'दोष', mangalDosha: 'मांगलिक दोष', kaalSarpDosha: 'कालसर्प दोष', sadeSati: 'साढ़े साती', rahuKetuTransit: 'राहु-केतु गोचर',
+    present: 'उपस्थित', clear: 'अनुपस्थित', notActive: 'सक्रिय नहीं', activePhase: (phase: string) => `सक्रिय · ${DOSHA_PHASE_HI[phase] || phase}`,
+    marsHouseText: (h: string) => `मंगल आपके लग्न से ${h} भाव में स्थित है।`,
+    kaalSarpText: (r: string, k: string) => `राहु ${r} में, केतु ${k} में स्थित है।`,
+    sadeSatiText: (s: string, m: string) => `शनि वर्तमान में ${s} राशि में गोचर कर रहे हैं; आपकी चन्द्र राशि ${m} है।`,
+    rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `राहु ${rr} में गोचर कर रहा है (चन्द्र से ${rh} भाव), केतु ${kr} में गोचर कर रहा है (चन्द्र से ${kh} भाव)।`,
+    ascendantPredictions: 'लग्न भविष्यवाणियाँ',
+    ascendantIsPreview: (asc: string) => `आपका लग्न ${asc} है — हर क्षेत्र की एक झलक नीचे दी गई है।`,
+    personality: 'व्यक्तित्व', physical: 'शारीरिक', health: 'स्वास्थ्य', career: 'करियर', relationship: 'संबंध',
+    quickPreviewNote: 'यह आपकी कुंडली पर आधारित एक त्वरित झलक है, पूर्ण विवरण नहीं। अपनी संपूर्ण, व्यक्तिगत भविष्यवाणियों और मार्गदर्शन के लिए, TredevAstro पर किसी विशेषज्ञ ज्योतिषी से सलाह लें।',
+    consultAstrologer: 'ज्योतिषी से सलाह लें',
+    yogaCombinations: 'योग संयोजन', formed: 'उपस्थित', notFormed: 'नहीं बना',
+    advancedNote: 'आपकी कुंडली के पीछे की तकनीकी, शास्त्रीय गणना — यदि आप गहराई में जाना चाहते हैं तो उपयोगी है, आपकी रीडिंग समझने के लिए आवश्यक नहीं।',
+    shadbalaTitle: 'षड्बल (ग्रह शक्ति)',
+    shadbalaDesc: 'प्रति ग्रह छह-आयामी शास्त्रीय शक्ति स्कोर, रूपा में — जो ग्रह अपने शास्त्रीय न्यूनतम पर या उससे ऊपर हो, वह अपनी कारकताओं को अच्छी तरह प्रदान करने के लिए पर्याप्त मजबूत माना जाता है।',
+    colPlanet: 'ग्रह', colRupas: 'रूपा', colRequired: 'आवश्यक', colStatus: 'स्थिति', strong: 'मजबूत', weak: 'कमजोर',
+    shadbalaFootnote: 'इष्ट/कष्ट बल और स्थान/दिग्/काल/चेष्टा/नैसर्गिक/दृक् विभाजन की गणना की जाती है पर यहाँ सभी नहीं दिखाए गए — पूर्ण विवरण चाहिए तो पूछें।',
+    bhavbalaTitle: 'भावबल (भाव शक्ति)', house: (n: number | string) => `भाव ${n}`,
+    kpSubLordTitle: 'केपी उप-स्वामी तालिका',
+    kpSubLordDesc: 'हर बिंदु की राशि, राशि स्वामी, नक्षत्र स्वामी, और उप स्वामी — लग्न और हर ग्रह के लिए मूल केपी तकनीक।',
+    colPoint: 'बिंदु', colSign: 'राशि', colStarLord: 'नक्षत्र स्वामी', colSubLord: 'उप स्वामी', ascendant: 'लग्न',
+    kpCuspsTitle: 'केपी कस्प (भाव चलित)',
+    kpCuspsDesc: 'वास्तविक प्लासिडस भाव कस्प के उप-स्वामी — स्विस एफेमेरिस से गणना की गई यह तकनीक की वास्तविक कस्पल विश्लेषण है, न कि सम-राशि अनुमान।',
+    colCusp: 'कस्प',
+    lagnaStarLord: 'लग्न नक्षत्र स्वामी', lagnaSubLord: 'लग्न उप स्वामी', moonStarLord: 'चन्द्र नक्षत्र स्वामी', moonSubLord: 'चन्द्र उप स्वामी', dayLord: 'दिन स्वामी',
+    savTitle: 'सर्वाष्टकवर्ग (बिंदु शक्ति)',
+    savDesc: 'हर राशि को मिलने वाले कुल शास्त्रीय शक्ति बिंदु, सभी 7 ग्रहों के योग से — अधिक अंक का मतलब है कि उस राशि से ग्रहों/गोचर का गुजरना अधिक मजबूत है। सभी 12 राशियों का योग सदैव ठीक 337 होता है।',
+    bindus: (n: number) => `${n} बिंदु`,
+    gemRemediesTitle: 'रत्न एवं रुद्राक्ष उपाय',
+    gemRemediesDesc: 'तीन शास्त्रीय रत्न सुझाव — जीवन (लग्न स्वामी), भाग्य (पंचम भाव/पूर्व पुण्य स्वामी), और सौभाग्य (नवम भाव/भाग्य स्वामी) — साथ ही आपकी जन्म नक्षत्र के स्वामी द्वारा शासित रुद्राक्ष।',
+    metal: 'धातु:', wearOn: 'पहनें:', rudraksha: 'रुद्राक्ष', mukhi: (n: number, deity: string) => `${n} मुखी (${deity})`,
+    precautions: 'कोई भी रत्न या रुद्राक्ष पहनने से पहले सावधानियां',
+    remediesFootnote: 'ये शास्त्रीय, कुंडली-आधारित प्रारंभिक बिंदु हैं — पूर्ण परामर्श का विकल्प नहीं, क्योंकि उपचारात्मक विकल्प आपकी कुंडली की अन्य स्थितियों के साथ बदल सकते हैं।',
+    consultAstrologerRemedies: 'उपायों के लिए ज्योतिषी से सलाह लें',
+    verifyNote: 'पुष्टि के लिए: ऊपर बताई गई लग्न/चंद्र/सूर्य राशियाँ और भाव ऊपर के चार्ट में दिखाए गए से बिल्कुल मेल खाने चाहिए — यहां तक कि उसी जन्म तिथि, समय और स्थान के लिए किसी अन्य कुंडली उपकरण पर भी।',
+    avakhadaChakra: 'अवाखड़ा चक्र',
+    chartsIntro: 'D1 (राशि) और D9 (नवांश) — हर रीडिंग जिन दो चार्ट से शुरू होती है — नीचे पूर्ण आकार में दिखाए गए हैं। हर अन्य विभाजन चार्ट भी यहीं मौजूद है, साथ ही एक अलग भाव चलित चार्ट भी; किसी भी चार्ट को पूर्ण-स्क्रीन में खोलने के लिए क्लिक करें। हर वेज के कोने में छोटा अंक उस राशि का स्थिर राशि क्रमांक है (मेष=1 … मीन=12) — जिस भाव में ग्रह वास्तव में स्थित है (आपके लग्न से गिनकर) वह हर ग्रह के नीचे और उसके होवर टूलटिप में दिखाया गया है।',
+    d1Title: 'D1 — राशि (जन्म कुंडली) · ग्रह स्थिति', d9Title: 'D9 — नवांश (विवाह) · ग्रह स्थिति',
+    bhavChalitNote: 'ऊपर का D1 चार्ट सम-राशि भाव (स्थिर कोने के अंकों) के अनुसार स्थित है, जो मानक राशि/लग्न चार्ट से मेल खाता है। हर ग्रह के पास, सुनहरा "भाव <n>" उसका वास्तविक कस्पल भाव है — आपके सटीक जन्म समय से प्लासिडस भाव चलित द्वारा गणना किया गया, जो व्यक्ति-व्यक्ति में वास्तव में भिन्न होता है, और वह सम-राशि भाव जिसमें वह स्थित है उससे अलग है। ग्रहों को उनके वास्तविक कस्पल भाव के अनुसार देखने के लिए नीचे दिया गया अलग "भाव चलित" चार्ट खोलें।',
+    northIndian: 'उत्तर भारतीय', southIndian: 'दक्षिण भारतीय', placements: 'ग्रह स्थिति',
+    horaNote: 'होरा (D2) को शास्त्रीय रूप से इस तरह परिभाषित किया गया है कि हर स्थिति केवल कर्क या सिंह राशि में ही आती है (चन्द्र होरा / सूर्य होरा) — कभी किसी अन्य राशि में नहीं। इसीलिए यहाँ भाव केवल 1 और 7 (या 12, आपके D2 लग्न के अनुसार) में केंद्रित होते हैं, सभी 12 में नहीं फैलते — यह इस चार्ट का सही शास्त्रीय परिणाम है, गणना की त्रुटि नहीं।',
+    gocharTitle: 'गोचर — आपकी कुंडली पर आज के वास्तविक गोचर',
+    gocharDesc: 'हर ग्रह वर्तमान में वास्तव में कहाँ गोचर कर रहा है, आपके अपने जन्म लग्न और अपने जन्म चन्द्र से भाव गिनकर — गोचर पढ़ने के दो शास्त्रीय संदर्भ बिंदु — आपकी जन्म कुंडली में उसकी स्थिति की तुलना में।',
+    gocharLoading: 'आज के गोचर लोड हो रहे हैं...',
+    sadeSatiActiveTitle: 'साढ़े साती वर्तमान में सक्रिय है',
+    sadeSatiActiveText: (rashi: string, phase: string, moonRashi: string) => `शनि ${rashi} राशि में गोचर कर रहे हैं — आपकी ${phase} अवधि, आपके जन्म चन्द्र राशि ${moonRashi} से गिनकर।`,
+    rahuKetuTransitText: (rr: string, rh: string, kr: string, kh: string) => `राहु ${rr} में गोचर कर रहा है (आपके चन्द्र से ${rh} भाव), केतु ${kr} में गोचर कर रहा है (आपके चन्द्र से ${kh} भाव)।`,
+    natal: 'जन्म', transit: 'गोचर', fromLagna: 'लग्न से', fromMoon: 'चन्द्र से',
+  },
+} as const;
+
 // Panchang sunrise/sunset come back as UTC ISO instants — shift by the
 // birth's timezone offset to show the actual local clock time, matching how
 // a printed Panchang always states sunrise/sunset in local time.
@@ -89,21 +234,155 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
+// Strips characters illegal in Windows/macOS filenames so the birth-details
+// name can go straight into a download filename.
+function sanitizeFileName(name: string): string {
+  return name.replace(/[<>:"/\\|?*]/g, '').trim() || 'User';
+}
+
+// A single countdown, not an elapsed-time count-up plus a separate X/36
+// progress readout — two numbers moving independently next to each other
+// read as confusing/broken, not reassuring. Recomputed on every tick from
+// REAL observed pace (elapsedSec / WEIGHT done so far, not just block
+// COUNT) rather than a fixed guess, so it self-corrects as generation
+// actually runs — a slow/busy machine right now naturally gets a longer
+// countdown instead of a number that quietly stops meaning anything.
+// Weight (not a raw block count) is what actually made this stable: a
+// chart-capture block runs several times longer than a plain-text block,
+// so "elapsed / blocksDone" swung wildly depending on whether the one or
+// two blocks done so far happened to be a heavy chart or a quick text
+// card (01:30 -> 03:00 -> back down to 01:00, entirely from that noise) —
+// weighting each block by what it actually costs (see data-pdf-weight in
+// KundliPrintLayout.tsx) makes "cost done so far" a much steadier basis
+// for projecting the total. The 1.15x pad and the 2s floor both exist for
+// the same reason: this must reach the real "download ready" moment at or
+// before the displayed countdown hits zero, never after.
+function estimatePdfRemainingSec(elapsedSec: number, progress: { weightDone: number; totalWeight: number } | null): number {
+  const INITIAL_ESTIMATE_SEC = 240; // no blocks done yet — typical full-report fallback (measured ~4-5 min)
+  if (!progress || progress.weightDone === 0) return Math.max(Math.round(INITIAL_ESTIMATE_SEC - elapsedSec), 5);
+  const secPerWeight = elapsedSec / progress.weightDone;
+  const paddedTotalEstimate = secPerWeight * progress.totalWeight * 1.15;
+  return Math.max(Math.round(paddedTotalEstimate - elapsedSec), 2);
+}
+
+// Historically each PDF block is a plain <div data-pdf-block>; a costlier
+// one (a chart capture, several times slower than a text-only block) can
+// carry its own data-pdf-weight override so the countdown's pace estimate
+// (above) reflects real relative cost instead of treating every block as
+// equally cheap.
+function blockWeight(el: HTMLElement): number {
+  const declared = Number(el.dataset.pdfWeight);
+  return Number.isFinite(declared) && declared > 0 ? declared : 1;
+}
+
+// Rotated (shuffled, not in this fixed order) under the Download button
+// while generating — see the generation-effect comment below for why this
+// exists at all.
+const PDF_STATUS_MESSAGES = [
+  'Analysing your Grahas…',
+  'Reading your Dasha timeline…',
+  'Mapping your Nakshatras…',
+  'Weighing your planetary strengths…',
+  'Analysing your health outlook…',
+  'Checking your doshas…',
+  'Charting your divisional houses…',
+  'Consulting the stars…',
+  'Aligning your houses and lords…',
+  'Finalising your predictions…',
+];
+
 // Converts any divisional-chart shape (Navamsa or the D2-D60 varga charts —
 // which only carry a final sign + house, not the birth-degree D1 tracks)
 // into the same ChartPlanet shape the visual chart renders, so every
 // divisional chart gets an actual diagram, not just a text list.
-export default function KundliSection() {
-  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language, t } = useAppContext();
+interface KundliSectionProps {
+  // Main site gates PDF download behind login deliberately (lead capture —
+  // see AuthPage.tsx's 'kundli-pdf' pendingAction resume flow). The campaign
+  // microsite already collects the same birth details up front via this
+  // component's own form, so re-demanding login just to download is pure
+  // friction with no extra info gained — this prop lets that caller skip it.
+  skipPdfLoginGate?: boolean;
+  // Drops the "05 Charts" section (every D2-D60 varga chart) from the
+  // downloaded PDF — see KundliPrintLayout's own comment. D1 and Navamsa
+  // still appear (they're in "02 Kundli" regardless). Available if a
+  // future caller wants to trade the full chart set for a faster download;
+  // not currently used anywhere — the campaign microsite tried this and
+  // asked for the full charts back.
+  litePdf?: boolean;
+  // Shown on the PDF's cover and closing pages in place of the plain logo
+  // — the campaign microsite's own hero banner, so the downloaded report
+  // carries the same festive branding as the page it came from. Left unset,
+  // the main site keeps its plain logo-only cover/closing.
+  pdfBannerImageSrc?: string;
+  // When set, Download PDF POSTs birth details to this backend endpoint
+  // (backend/app/api/kundliPdf.routes.ts) instead of running the client-side
+  // html2canvas capture loop — a headless browser renders the exact same
+  // report server-side and returns a real PDF via native print, in seconds
+  // rather than minutes. Left unset (main site), the original client-side
+  // path is unchanged.
+  serverPdfUrl?: string;
+  // Hides the two "Consult an Astrologer" CTAs (Overview and Remedies
+  // tabs) — both call setPage('astrologers'), a real main-site route this
+  // microsite's own hash router doesn't know, so they're dead buttons here
+  // regardless. Left unset, the main site keeps them (they work there).
+  hideAstrologerCta?: boolean;
+  // Hides the "My Kundlis" history picker (form view) and the "Save to My
+  // Account" bar (chart view) — the campaign microsite's own onboarding
+  // already requires login up front and collects birth details fresh each
+  // time, so a saved-history/re-save feature doesn't add anything there.
+  // Left unset, the main site keeps both.
+  hideHistoryAndSave?: boolean;
+}
+
+export default function KundliSection({ skipPdfLoginGate = false, litePdf = false, pdfBannerImageSrc, serverPdfUrl, hideAstrologerCta = false, hideHistoryAndSave = false }: KundliSectionProps = {}) {
+  const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language } = useAppContext();
   const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
   const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
+  // The Kundli page's OWN Hindi/English toggle — deliberately scoped to just
+  // this page: it drives this page's own labels (via the local `tr()` below,
+  // not the site-wide `t()`), which language `fullResult` gets fetched in,
+  // and which language the downloaded PDF renders in. It does NOT call the
+  // site-wide `setLanguage` — switching it must never change any other
+  // page's language, only ever seeded once from the site's current language
+  // at mount (so a visitor already browsing in Hindi lands here in Hindi
+  // too), never written back out to it afterward.
+  const [pdfLanguage, setPdfLanguage] = useState<'en' | 'hi'>(() => (language === 'hi' ? 'hi' : 'en'));
+  // Local stand-in for the site-wide t() — same TRANSLATIONS table, but
+  // keyed off `pdfLanguage` instead of the site-wide `language`, so this
+  // page's own UI strings (tab labels, buttons) follow the toggle above
+  // without touching (or being touched by) the rest of the site.
+  const tr = (key: string) => TRANSLATIONS[pdfLanguage]?.[key] || TRANSLATIONS.en?.[key] || key;
   const [error, setError] = useState('');
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [zoomedChart, setZoomedChart] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  // Generation only ever starts from the Download click (see
+  // handleDownloadPdfClick) — an earlier version started this silently the
+  // moment the chart rendered, to make the eventual download instant. That
+  // traded a worse problem in: the heavy html2canvas work competed with the
+  // chart's OWN render for the main thread right as it appeared, which read
+  // as "the whole Kundli page lags" with no on-screen explanation (there's
+  // no visible UI for a prebuild nobody asked for yet). Back to only ever
+  // running when the user actually asked for it, so nothing runs — and
+  // nothing can lag the page — until they click Download.
   const [pdfState, setPdfState] = useState<'idle' | 'generating'>('idle');
-  const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null);
-  const [pdfElapsedSec, setPdfElapsedSec] = useState(0);
+  const [pdfProgress, setPdfProgress] = useState<{ weightDone: number; totalWeight: number } | null>(null);
+  // Mirrors pdfProgress for the countdown tick (below) to read without
+  // needing pdfProgress in its own effect's deps — that would restart the
+  // interval (and the elapsed-time clock it's timing from) every time a
+  // block finishes, instead of once per generation run.
+  const pdfProgressRef = useRef<{ weightDone: number; totalWeight: number } | null>(null);
+  useEffect(() => { pdfProgressRef.current = pdfProgress; }, [pdfProgress]);
+  // The single displayed countdown (see estimatePdfRemainingSec). Each tick
+  // steps toward the freshly-estimated remaining time by at most a few
+  // seconds rather than jumping straight to it — the weighted estimate
+  // itself is what fixed the big early swings (see that function's own
+  // comment); this step cap just keeps a still-noisy single tick from
+  // visibly jumping, while still letting the number move up as well as
+  // down when the real pace genuinely changes.
+  const pdfCountdownRef = useRef(0);
+  const [pdfCountdownSec, setPdfCountdownSec] = useState(0);
+  const [pdfStatusMsg, setPdfStatusMsg] = useState(PDF_STATUS_MESSAGES[0]);
   const [autoDownloadPending, setAutoDownloadPending] = useState(false);
   const [history, setHistory] = useState<KundliHistoryEntry[]>([]);
   const [gocharLagna, setGocharLagna] = useState<DailyHoroscopeResult | null>(null);
@@ -113,6 +392,14 @@ export default function KundliSection() {
 
   const kundliResult = fullResult?.kundli ?? null;
   const chartPlanets = kundliResult ? toChartPlanets(kundliResult, fullResult?.bhavChalit) : [];
+  const TL = TAB_LABELS[pdfLanguage === 'hi' ? 'hi' : 'en'];
+  const chartLabel = (key: string) => (pdfLanguage === 'hi' ? (CHART_LABELS_HI[key] || VARGA_LABELS_HI[key] || VARGA_LABELS[key] || key) : (CHART_LABELS[key] || VARGA_LABELS[key] || key));
+  // Best-effort Devanagari spelling of the visitor's own name — only for the
+  // on-screen chart header (real web fonts, renders fine); the PDF paths
+  // compute their own copy off `pdfLanguage` right where they need it below,
+  // since that toggle (not the site-wide `language`) is what actually
+  // decides the report's language.
+  const displayName = pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name;
 
   // Shared by the D1/D9 featured row, the "all charts" tile grid, and the
   // zoom modal — one place that knows how to turn any chart key into
@@ -137,7 +424,7 @@ export default function KundliSection() {
   const handleSubmit = async (details: BirthDetailsSubmitValue) => {
     setError('');
     try {
-      const result = await calculatorService.kundliFull(details);
+      const result = await calculatorService.kundliFull(details, pdfLanguage);
       setFullResult(result);
       setSubmittedDetails(details);
       setSaveState('idle');
@@ -150,7 +437,7 @@ export default function KundliSection() {
       // result (see kundliHistoryService.ts header comment for why).
       // Fire-and-forget: a failed save shouldn't block showing the chart.
       const accessToken = localStorage.getItem('auth_access_token');
-      if (accessToken) {
+      if (accessToken && !hideHistoryAndSave) {
         kundliHistoryService
           .save(accessToken, { name: details.name, date: details.date, time: details.time, timezoneOffsetMinutes: details.timezoneOffsetMinutes, latitude: details.latitude, longitude: details.longitude, placeLabel: details.placeName })
           .then(entry => setHistory(prev => [entry, ...prev]))
@@ -161,14 +448,28 @@ export default function KundliSection() {
     }
   };
 
+  // Re-fetches the whole report in the new language whenever the toggle
+  // flips AFTER a Kundli's already showing — the initial fetch (handleSubmit
+  // above) already uses whatever `pdfLanguage` was selected at generation
+  // time, so this only needs to fire on a later change, not on mount/submit.
+  useEffect(() => {
+    if (!submittedDetails) return;
+    let cancelled = false;
+    calculatorService.kundliFull(submittedDetails, pdfLanguage)
+      .then(result => { if (!cancelled) setFullResult(result); })
+      .catch(err => { if (!cancelled) setError(err instanceof CalculatorApiError ? err.message : 'Could not switch the report\'s language. Please try again.'); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfLanguage]);
+
   // Load the logged-in user's saved kundlis for the "My Kundlis" picker on
   // the form view.
   useEffect(() => {
-    if (!isLoggedIn) { setHistory([]); return; }
+    if (hideHistoryAndSave || !isLoggedIn) { setHistory([]); return; }
     const accessToken = localStorage.getItem('auth_access_token');
     if (!accessToken) return;
     kundliHistoryService.list(accessToken).then(setHistory).catch(() => {});
-  }, [isLoggedIn]);
+  }, [isLoggedIn, hideHistoryAndSave]);
 
   // Resume a PDF download after an anonymous user was sent to log in (see
   // handleDownloadPdfClick below) — the exact submitted birth details are
@@ -218,13 +519,70 @@ export default function KundliSection() {
 
   const handleDownloadPdfClick = () => {
     setError('');
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !skipPdfLoginGate) {
       if (submittedDetails) sessionStorage.setItem('kundliPdfResume', JSON.stringify(submittedDetails));
       setPendingAction('kundli-pdf');
       setShowLoginModal(true);
       return;
     }
+    if (serverPdfUrl) {
+      void downloadPdfFromServer();
+      return;
+    }
+    void downloadPdfClientSide();
+  };
+
+  // Client-side path (main site) — `fullResult` is already in whatever
+  // language the toggle currently has selected (see the refetch effect
+  // above), so there's nothing left to prepare here.
+  const downloadPdfClientSide = async () => {
     setPdfState('generating');
+  };
+
+  // Server-rendered path (see the serverPdfUrl prop comment above) — a
+  // single request/response, no client-side capture loop, no countdown
+  // math. `pdfState` still flips to 'generating' just to drive the
+  // button's disabled/label state; the effects below that actually run the
+  // OLD client-side capture are all separately guarded on `!serverPdfUrl`
+  // so they never also fire during this branch.
+  const downloadPdfFromServer = async () => {
+    if (!submittedDetails || !serverPdfUrl) return;
+    setPdfState('generating');
+    try {
+      const res = await fetch(serverPdfUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: submittedDetails.name,
+          // Kept separate from `name` — the backend still sanitizes `name`
+          // (Latin-only regex) into the download filename, which would come
+          // out empty if fed Devanagari; this is only for the text shown ON
+          // the report itself (cover title, running header).
+          displayName: pdfLanguage === 'hi' ? transliterateNameToHindi(submittedDetails.name) : submittedDetails.name,
+          dob: submittedDetails.date,
+          tob: submittedDetails.time,
+          place: submittedDetails.placeName,
+          latitude: submittedDetails.latitude,
+          longitude: submittedDetails.longitude,
+          timezoneOffsetMinutes: submittedDetails.timezoneOffsetMinutes,
+          language: pdfLanguage,
+        }),
+      });
+      if (!res.ok) throw new Error('Server PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFileName(submittedDetails.name)}_${pdfLanguage === 'hi' ? 'HIN' : 'ENG'}_Kundli.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('PDF generation failed — please try again.');
+    } finally {
+      setPdfState('idle');
+    }
   };
 
   const handleHistorySelect = (entry: KundliHistoryEntry) => {
@@ -275,19 +633,59 @@ export default function KundliSection() {
   // the slice boundary. Also adds a hard timeout: if generation ever hangs
   // (whatever the cause), the button unstucks itself instead of needing a
   // manual page refresh.
-  // Drives the loading overlay's elapsed-time readout — the report now
-  // covers every divisional chart with one topic per page, so generation
-  // routinely runs past a minute; showing real elapsed time (ticking every
-  // second) instead of just a block count keeps it from reading as hung.
+  // Drives the single "Preparing… MM:SS" countdown. Elapsed time is
+  // computed from wall-clock (`Date.now() - startedAt`) every tick, not
+  // incremented by 1 per tick — html2canvas's per-block rasterization runs
+  // synchronously on the main thread for a second or more at a time on the
+  // heavier chart SVGs, which starves setInterval and makes it fire late or
+  // skip ticks; re-deriving from wall-clock self-corrects on the very next
+  // tick regardless of how many were missed. That elapsed time then feeds
+  // estimatePdfRemainingSec (now weighted — see that function's comment)
+  // and steps the display toward it a few seconds at a time in either
+  // direction, rather than jumping straight there.
   useEffect(() => {
-    if (pdfState !== 'generating') { setPdfElapsedSec(0); return; }
-    setPdfElapsedSec(0);
-    const id = window.setInterval(() => setPdfElapsedSec(s => s + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [pdfState]);
+    // The server-rendered path (serverPdfUrl) finishes in seconds — this
+    // whole countdown/status-rotation machinery was built for a multi-minute
+    // client-side capture and would just show misleading numbers here.
+    if (pdfState !== 'generating' || serverPdfUrl) return;
+    const startedAt = Date.now();
+    pdfCountdownRef.current = estimatePdfRemainingSec(0, null);
+    setPdfCountdownSec(pdfCountdownRef.current);
+    const id = window.setInterval(() => {
+      const elapsedSec = (Date.now() - startedAt) / 1000;
+      const estimate = estimatePdfRemainingSec(elapsedSec, pdfProgressRef.current);
+      // Moves toward the real observed pace both up AND down (a genuinely
+      // slower machine right now must show a longer countdown, not get
+      // silently floored) — a step cap per tick, not the estimate itself,
+      // is what keeps this from jumping (the old bug this replaced: a single
+      // early noisy sample, e.g. one unusually slow/fast block out of ~30,
+      // swinging the display 01:30 -> 00:02 -> 03:58). Clamping the display
+      // to only ever decrease "fixed" that by hiding real slowdowns instead
+      // of smoothing them.
+      const step = Math.max(-3, Math.min(3, estimate - pdfCountdownRef.current));
+      pdfCountdownRef.current = Math.round(pdfCountdownRef.current + step);
+      setPdfCountdownSec(pdfCountdownRef.current);
+    }, 250);
+
+    // Purely cosmetic — this report already runs in the background with no
+    // way to show real per-block progress next to the button (see the
+    // countdown above for that), so a slow-changing, on-theme status line
+    // is what keeps a 1-2 minute wait from reading as the page having
+    // silently stopped doing anything. Order is shuffled once per
+    // generation, not fixed, so it doesn't read as scripted on repeat runs.
+    const shuffled = [...PDF_STATUS_MESSAGES].sort(() => Math.random() - 0.5);
+    setPdfStatusMsg(shuffled[0]);
+    let msgIndex = 0;
+    const msgId = window.setInterval(() => {
+      msgIndex = (msgIndex + 1) % shuffled.length;
+      setPdfStatusMsg(shuffled[msgIndex]);
+    }, 3200);
+
+    return () => { window.clearInterval(id); window.clearInterval(msgId); };
+  }, [pdfState, serverPdfUrl]);
 
   useEffect(() => {
-    if (pdfState !== 'generating' || !fullResult || !printRef.current) return;
+    if (pdfState !== 'generating' || !fullResult || !printRef.current || serverPdfUrl) return;
     let settled = false;
     // Read by the block loop below, which checks it once per iteration.
     // Before this existed, the timeout only reset React state (unmounting
@@ -299,10 +697,13 @@ export default function KundliSection() {
     // this actually stops the loop instead of leaving it to limp along
     // against a DOM that's disappeared out from under it.
     let cancelled = false;
-    // The report now includes every divisional chart with one topic per
-    // page (a real full-length report, not a condensed summary) — more
-    // captures and more pages than the earlier condensed version, so this
-    // window is generous rather than tuned tight.
+    // The report includes every divisional chart, one topic per page (a
+    // real full-length report, not a condensed summary) — measured at
+    // ~4.5-5 minutes on a clean machine, so 300s cut real, successful runs
+    // off right at the edge (one measured completion landed at 296s; a
+    // second, slightly busier run was still going at 315s and got killed).
+    // 7 minutes gives genuine real-machine variance actual room instead of
+    // gambling on the best case every time.
     const safetyTimer = window.setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -310,7 +711,7 @@ export default function KundliSection() {
       setPdfState('idle');
       setPdfProgress(null);
       setError('PDF generation took too long — please try again.');
-    }, 300000);
+    }, 420000);
 
     (async () => {
       try {
@@ -373,7 +774,9 @@ export default function KundliSection() {
         // failure mode. `data-pdf-newpage`/`data-pdf-closing` still force a
         // fresh page exactly as before (read directly off each block below).
         const blocks = rawBlocks;
-        setPdfProgress({ done: 0, total: blocks.length });
+        const weights = blocks.map(blockWeight);
+        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+        setPdfProgress({ weightDone: 0, totalWeight });
 
         let cursorY = contentTopFor(1);
         let pageNum = 1;
@@ -516,9 +919,23 @@ export default function KundliSection() {
         // spent on everything before it. Now it's logged and skipped —
         // worst case, one section is missing from an otherwise-complete PDF
         // instead of the whole generation failing.
+        let weightDone = 0;
         for (let i = 0; i < blocks.length; i++) {
           if (cancelled) break; // safety timer fired — stop instead of capturing against a DOM React already unmounted
           const el = blocks[i];
+          // Hands control back to the browser between every block. html2canvas
+          // itself is mostly synchronous main-thread work (DOM walk + canvas
+          // draws), and a plain `await html2canvas(...)` doesn't actually give
+          // the browser a chance to paint or handle input between iterations —
+          // it just chains microtasks, which a busy main thread still runs
+          // back-to-back without yielding. That's what made the entire page
+          // (this now starts automatically the moment the chart renders, not
+          // just on click) feel completely frozen for the whole generation
+          // instead of just slow. A `setTimeout` schedules a real macrotask,
+          // so the event loop gets a turn to repaint/handle clicks/scroll
+          // before the next capture starts.
+          await new Promise(resolve => window.setTimeout(resolve, 0));
+          if (cancelled) break;
           // One retry before giving up — the report was intermittently
           // coming out with fewer pages than it should on some machines,
           // and a transient html2canvas failure on a single block (a chart
@@ -529,19 +946,18 @@ export default function KundliSection() {
           let canvas: HTMLCanvasElement | null = null;
           for (let attempt = 0; attempt < 2 && !canvas; attempt++) {
             try {
-              // scale 1.25 (was 1.5): still crisp at print size, but this
-              // report's slowest thing to rasterize by far is the North
-              // Indian chart SVGs (a real html2canvas weak spot), and there
-              // are ~20 of them — a lower scale is a direct, meaningful cut
-              // to total generation time, which matters more here than the
-              // last bit of sharpness.
+              // scale 1.25: legible print quality (0.8/1 both visibly blurred
+              // once printed/zoomed) — quality matters more than shaving a
+              // few more seconds off a generation that already runs silently
+              // in the background instead of blocking the click.
               canvas = await html2canvas(el, { scale: 1.25, backgroundColor: '#FAF7F0', logging: false });
             } catch (e) {
               if (attempt === 1) console.error(`PDF block ${i + 1}/${blocks.length} failed to capture (after retry), skipping:`, e);
             }
           }
+          weightDone += weights[i];
           if (!canvas) {
-            setPdfProgress({ done: i + 1, total: blocks.length });
+            setPdfProgress({ weightDone, totalWeight });
             continue;
           }
           const imgHeight = (canvas.height * usableWidth) / canvas.width;
@@ -552,7 +968,7 @@ export default function KundliSection() {
           // and the final pdf.save() (a real PNG-heavy 70+ page report was
           // getting into the tens of MB; that's real save/download time too).
           const imgData = canvas.toDataURL('image/jpeg', 0.82);
-          setPdfProgress({ done: i + 1, total: blocks.length });
+          setPdfProgress({ weightDone, totalWeight });
 
           // Every new topic (data-pdf-newpage) and the closing "thank you"
           // block always get their own fresh page, same as the cover
@@ -596,7 +1012,7 @@ export default function KundliSection() {
         if (!cancelled) {
           drawWatermark();
           drawFooter();
-          pdf.save(`${birthProfile.name || 'kundli'}-janam-kundli.pdf`);
+          pdf.save(`${sanitizeFileName(birthProfile.name)}_${pdfLanguage === 'hi' ? 'HIN' : 'ENG'}_Kundli.pdf`);
         }
       } catch (e) {
         if (!cancelled) {
@@ -629,7 +1045,7 @@ export default function KundliSection() {
       cancelled = true;
       window.clearTimeout(safetyTimer);
     };
-  }, [pdfState, fullResult, birthProfile.name]);
+  }, [pdfState, fullResult, birthProfile.name, pdfLanguage, serverPdfUrl]);
 
   return (
     <section className={styles.section} id="kundli">
@@ -656,7 +1072,7 @@ export default function KundliSection() {
                 </p>
               </div>
 
-              {isLoggedIn && history.length > 0 && (
+              {!hideHistoryAndSave && isLoggedIn && history.length > 0 && (
                 <div className={styles.overview} style={{ maxWidth: 700, margin: '0 auto var(--space-8)', textAlign: 'left' }}>
                   <h2 className={styles.overviewTitle}>My Kundlis</h2>
                   <div className={styles.timelineList}>
@@ -689,13 +1105,38 @@ export default function KundliSection() {
               <div className={styles.chartHeader}>
                 <div>
                   <span className={`section-eyebrow ${styles.chartHeaderEyebrow}`}>Birth Chart</span>
-                  <h1 className="section-title-cosmos">{birthProfile.name}&apos;s Kundli</h1>
+                  <h1 className="section-title-cosmos">{pdfLanguage === 'hi' ? `${displayName} की कुंडली` : <>{displayName}&apos;s Kundli</>}</h1>
                   <p className={styles.chartMeta}>
                     {birthProfile.dob} · {birthProfile.tob} · {birthProfile.place}
                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div
+                      role="group"
+                      aria-label="PDF report language"
+                      style={{ display: 'flex', border: '1px solid var(--color-gold, #c9a227)', borderRadius: '999px', overflow: 'hidden' }}
+                    >
+                      {(['en', 'hi'] as const).map(lang => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setPdfLanguage(lang)}
+                          disabled={pdfState === 'generating'}
+                          style={{
+                            padding: '0.35rem 0.9rem',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            border: 'none',
+                            cursor: pdfState === 'generating' ? 'default' : 'pointer',
+                            background: pdfLanguage === lang ? 'var(--color-gold, #c9a227)' : 'transparent',
+                            color: pdfLanguage === lang ? '#1a1206' : 'var(--color-text-muted)',
+                          }}
+                        >
+                          {lang === 'en' ? 'English' : 'हिन्दी'}
+                        </button>
+                      ))}
+                    </div>
                     <button
                       className="btn btn-gold"
                       onClick={handleDownloadPdfClick}
@@ -703,39 +1144,26 @@ export default function KundliSection() {
                       id="kundli-download-pdf-btn"
                     >
                       {pdfState === 'generating'
-                        ? `Preparing… ${String(Math.floor(pdfElapsedSec / 60)).padStart(2, '0')}:${String(pdfElapsedSec % 60).padStart(2, '0')}`
-                        : isLoggedIn ? t('kundli_download_pdf') : `${t('kundli_download_pdf')} (login required)`}
+                        ? (serverPdfUrl ? 'Generating…' : `Preparing… ${String(Math.floor(pdfCountdownSec / 60)).padStart(2, '0')}:${String(pdfCountdownSec % 60).padStart(2, '0')}`)
+                        : isLoggedIn || skipPdfLoginGate ? tr('kundli_download_pdf') : `${tr('kundli_download_pdf')} (login required)`}
                     </button>
                     <button
                       className="btn btn-outline-gold"
                       onClick={() => setFullResult(null)}
                       id="kundli-edit-btn"
                     >
-                      {t('kundli_edit_details')}
+                      {tr('kundli_edit_details')}
                     </button>
                   </div>
-                  {/* Loading lives only in this block, right under the
-                      button that triggered it — a real report (every chart,
-                      one topic per page) routinely takes a while, so a
-                      ticking timer + progress bar here keep it from reading
-                      as frozen without taking over the whole screen the way
-                      a full-page overlay used to. */}
-                  {pdfState === 'generating' && (
-                    <div style={{ width: 220 }}>
-                      <div style={{ height: 4, borderRadius: 999, background: 'rgba(181,138,59,0.15)', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', borderRadius: 999, background: 'var(--gold-primary, #b58a3b)', width: `${pdfProgress ? Math.round((pdfProgress.done / Math.max(pdfProgress.total, 1)) * 100) : 4}%`, transition: 'width 0.3s ease' }} />
-                      </div>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary, #9a9488)', margin: '4px 0 0', textAlign: 'right' }}>
-                        {pdfProgress ? `${pdfProgress.done}/${pdfProgress.total} sections` : 'Starting up…'}
-                      </p>
-                    </div>
+                  {pdfState === 'generating' && !serverPdfUrl && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{pdfStatusMsg}</span>
                   )}
                 </div>
               </div>
 
               {error && pdfState === 'idle' && <p className={styles.chartNote} style={{ color: '#d64545', marginTop: 'calc(-1 * var(--space-6))', marginBottom: 'var(--space-6)' }}>{error}</p>}
 
-              {pdfState === 'generating' && fullResult && (
+              {pdfState === 'generating' && fullResult && !serverPdfUrl && (
                 // A large negative left offset (the old approach) is a known
                 // trouble spot for html2canvas — some browsers report a huge
                 // scrollable viewport when a captured ancestor sits far
@@ -746,7 +1174,7 @@ export default function KundliSection() {
                 // into extreme negative space.
                 <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
-                    <KundliPrintLayout name={birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} />
+                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
                   </div>
                 </div>
               )}
@@ -771,7 +1199,7 @@ export default function KundliSection() {
                       }}
                     >
                       <TabIcon size={16} />
-                      {t(tab.labelKey)}
+                      {tr(tab.labelKey)}
                     </button>
                   );
                 })}
@@ -780,56 +1208,57 @@ export default function KundliSection() {
               {activeTab === 'overview' && (
                 <>
                   <ChartDisplay
-                    title={t('kundli_planetary_placements')}
+                    title={tr('kundli_planetary_placements')}
                     planets={chartPlanets}
                     ascendantRashi={kundliResult?.ascendant.rashi ?? ''}
                     allowPlacementsToggle={false}
+                    language={pdfLanguage}
                     footer={
                       <>
-                        <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult ? hindiOr(language, HINDI_RASHI, kundliResult.ascendant.rashi) : '—'} />
-                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()} />
-                        <HighlightChip icon={SunIcon} label="Sun Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'sun')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()} />
-                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult ? hindiOr(language, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : '—'} />
-                        <HighlightChip icon={LotusIcon} label="Tithi" value={`${fullResult.panchang.tithi.paksha} ${fullResult.panchang.tithi.name}`} />
-                        <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'} />
+                        <HighlightChip icon={RashiChakraIcon} label="Ascendant" value={kundliResult ? hindiOr(pdfLanguage, HINDI_RASHI, kundliResult.ascendant.rashi) : '—'} />
+                        <HighlightChip icon={MoonIcon} label="Moon Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(pdfLanguage, HINDI_RASHI, s) : '—'; })()} />
+                        <HighlightChip icon={SunIcon} label="Sun Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'sun')?.sign; return s ? hindiOr(pdfLanguage, HINDI_RASHI, s) : '—'; })()} />
+                        <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult ? hindiOr(pdfLanguage, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : '—'} />
+                        <HighlightChip icon={LotusIcon} label="Tithi" value={`${hindiOr(pdfLanguage, PAKSHA_HI, fullResult.panchang.tithi.paksha)} ${hindiOr(pdfLanguage, HINDI_TITHI, fullResult.panchang.tithi.name)}`} />
+                        <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? (pdfLanguage === 'hi' ? 'मांगलिक' : 'Present') : (pdfLanguage === 'hi' ? 'अनुपस्थित' : 'Clear')} />
                       </>
                     }
                   />
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>{t('kundli_panchang_at_birth')}</h2>
+                    <h2 className={styles.overviewTitle}>{tr('kundli_panchang_at_birth')}</h2>
                     <div className={styles.infoGrid}>
-                      <InfoCard icon={RashiChakraIcon} label="Tithi">{fullResult.panchang.tithi.paksha} {fullResult.panchang.tithi.name}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult ? hindiOr(language, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : ''} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
-                      <InfoCard icon={LotusIcon} label="Yoga">{fullResult.panchang.yoga}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Karana">{fullResult.panchang.karana}</InfoCard>
+                      <InfoCard icon={RashiChakraIcon} label="Tithi">{hindiOr(pdfLanguage, PAKSHA_HI, fullResult.panchang.tithi.paksha)} {hindiOr(pdfLanguage, HINDI_TITHI, fullResult.panchang.tithi.name)}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra">{kundliResult ? hindiOr(pdfLanguage, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : ''} (Pada {kundliResult?.moonNakshatra.pada})</InfoCard>
+                      <InfoCard icon={LotusIcon} label="Yoga">{hindiOr(pdfLanguage, HINDI_YOGA, fullResult.panchang.yoga)}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Karana">{hindiOr(pdfLanguage, HINDI_KARANA, fullResult.panchang.karana)}</InfoCard>
                       {fullResult.panchang.sunrise && <InfoCard icon={SunIcon} label="Sunrise">{formatLocalTime(fullResult.panchang.sunrise, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.sunset && <InfoCard icon={SunsetIcon} label="Sunset">{formatLocalTime(fullResult.panchang.sunset, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.rahuKaal && <InfoCard icon={ClockIcon} label="Rahu Kalam">{formatLocalTime(fullResult.panchang.rahuKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.rahuKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.yamagandaKaal && <InfoCard icon={ClockIcon} label="Yamaganda">{formatLocalTime(fullResult.panchang.yamagandaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.yamagandaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.gulikaKaal && <InfoCard icon={ClockIcon} label="Gulika Kalam">{formatLocalTime(fullResult.panchang.gulikaKaal.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.gulikaKaal.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
                       {fullResult.panchang.abhijitMuhurat && <InfoCard icon={CheckCircleIcon} label="Abhijit Muhurat">{formatLocalTime(fullResult.panchang.abhijitMuhurat.start, submittedDetails?.timezoneOffsetMinutes ?? 0)} – {formatLocalTime(fullResult.panchang.abhijitMuhurat.end, submittedDetails?.timezoneOffsetMinutes ?? 0)}</InfoCard>}
-                      <InfoCard icon={ConstellationIcon} label="Vara (Weekday)">{fullResult.panchang.vara}</InfoCard>
-                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{language === 'hi' ? (HINDI_PLANET[kundliResult?.moonNakshatra.lord ?? ''] || cap(kundliResult?.moonNakshatra.lord ?? '')) : cap(kundliResult?.moonNakshatra.lord ?? '')}</InfoCard>
-                      <InfoCard icon={MoonIcon} label="Moon Rashi">{(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(language, HINDI_RASHI, s) : '—'; })()}</InfoCard>
-                      {kundliResult && <InfoCard icon={RashiChakraIcon} label="Ascendant Lord">{cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</InfoCard>}
+                      <InfoCard icon={ConstellationIcon} label="Vara (Weekday)">{hindiOr(pdfLanguage, HINDI_WEEKDAY, fullResult.panchang.vara)}</InfoCard>
+                      <InfoCard icon={ConstellationIcon} label="Nakshatra Lord">{pdfLanguage === 'hi' ? (HINDI_PLANET[kundliResult?.moonNakshatra.lord ?? ''] || cap(kundliResult?.moonNakshatra.lord ?? '')) : cap(kundliResult?.moonNakshatra.lord ?? '')}</InfoCard>
+                      <InfoCard icon={MoonIcon} label="Moon Rashi">{(() => { const s = chartPlanets.find(p => p.id === 'moon')?.sign; return s ? hindiOr(pdfLanguage, HINDI_RASHI, s) : '—'; })()}</InfoCard>
+                      {kundliResult && <InfoCard icon={RashiChakraIcon} label="Ascendant Lord">{pdfLanguage === 'hi' ? (HINDI_PLANET[RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi]] || cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')) : cap(RASHI_LORD_BY_NAME[kundliResult.ascendant.rashi] || '')}</InfoCard>}
                     </div>
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>{t('kundli_what_chart_means')}</h2>
+                    <h2 className={styles.overviewTitle}>{tr('kundli_what_chart_means')}</h2>
                     <p className={styles.overviewText}><strong>Ascendant.</strong> {fullResult.analysis.lagna}</p>
                     <p className={styles.overviewText}><strong>Moon.</strong> {fullResult.analysis.moon}</p>
                     {fullResult.analysis.planets.filter(p => p.id !== 'moon').map(p => (
                       <p key={p.id} className={styles.overviewText}><strong>{PLANET_META[p.id]?.name || cap(p.id)}.</strong> {p.text}</p>
                     ))}
                     <p className={styles.chartNote}>
-                      To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart above — including on any other Kundli tool given the same birth date, time, and place.
+                      {TL.verifyNote}
                     </p>
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Avakhada Chakra</h2>
+                    <h2 className={styles.overviewTitle}>{TL.avakhadaChakra}</h2>
                     <div className={styles.infoGrid}>
                       <div className={styles.infoCard}><div className={styles.infoLabel}>Varna</div><div className={styles.infoValue}>{fullResult.avakhada.varna}</div></div>
                       <div className={styles.infoCard}><div className={styles.infoLabel}>Vashya</div><div className={styles.infoValue}>{fullResult.avakhada.vashya}</div></div>
@@ -848,34 +1277,34 @@ export default function KundliSection() {
 
               {activeTab === 'charts' && (
                 <div className={styles.overview}>
-                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>D1 (Rashi) and D9 (Navamsa) — the two charts every reading starts with — shown full-size below. Every other divisional chart is right there too, including a separate Bhav Chalit chart; click any of them to open it full-screen. The small number in each wedge's corner is that sign's fixed zodiac index (Aries=1 … Pisces=12) — the "house" a planet is actually in (counted from your Ascendant) is shown per-planet below the chart and in its hover tooltip.</p>
+                  <p className={styles.chartNote} style={{ textAlign: 'left' }}>{TL.chartsIntro}</p>
 
                   {/* D1 + D9, side by side, full detail (diagram + planet list) — no dropdown needed to see either. */}
                   <div className={styles.featuredChartsRow}>
                     <div onClick={() => setZoomedChart('D1')} className={styles.featuredChartClickable}>
-                      <ChartDisplay title="D1 — Rashi (Birth Chart) · Planetary Placements" planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} allowPlacementsToggle={false} />
+                      <ChartDisplay title={TL.d1Title} planets={chartPlanets} ascendantRashi={kundliResult?.ascendant.rashi ?? ''} allowPlacementsToggle={false} language={pdfLanguage} />
                     </div>
                     <div onClick={() => setZoomedChart('D9')} className={styles.featuredChartClickable}>
-                      <ChartDisplay title="D9 — Navamsa (Marriage) · Placements" planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} allowPlacementsToggle={false} />
+                      <ChartDisplay title={TL.d9Title} planets={toSimpleChartPlanets(fullResult.navamsaChart)} ascendantRashi={fullResult.navamsaChart.ascendant.rashi} allowPlacementsToggle={false} language={pdfLanguage} />
                     </div>
                   </div>
                   {chartPlanets.some(p => p.bhavHouse !== undefined) && (
                     <p className={styles.chartNote}>
-                      The D1 chart above is positioned by whole-sign house (the fixed corner numbers), matching a standard Rashi/Lagna chart. Next to every planet, the gold "Bhav &lt;n&gt;" is its real cuspal house — computed from your exact birth time via Placidus Bhav Chalit, genuinely different person-to-person, and NOT the same as the whole-sign house it's sitting in. Open the separate "Bhav Chalit" chart below to see planets actually positioned by that real cuspal house instead.
+                      {TL.bhavChalitNote}
                     </p>
                   )}
 
                   {/* Every other chart — click any tile to open it full-screen. */}
-                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>{t('kundli_all_divisional_charts')}</h2>
+                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>{tr('kundli_all_divisional_charts')}</h2>
                   <div className={styles.chartTileGrid}>
                     {CHART_KEYS.filter(k => k !== 'D1' && k !== 'D9').map(key => {
                       const { planets, ascendantRashi } = resolveChart(key);
                       return (
                         <button key={key} type="button" className={styles.chartTile} onClick={() => setZoomedChart(key)}>
                           <div className={styles.chartTilePreview}>
-                            <NorthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={() => {}} onPlanetLeave={() => {}} onHouseHover={() => {}} onHouseLeave={() => {}} />
+                            <NorthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={() => {}} onPlanetLeave={() => {}} onHouseHover={() => {}} onHouseLeave={() => {}} language={pdfLanguage} />
                           </div>
-                          <span className={styles.chartTileLabel}>{CHART_LABELS[key] || VARGA_LABELS[key] || key}</span>
+                          <span className={styles.chartTileLabel}>{chartLabel(key)}</span>
                         </button>
                       );
                     })}
@@ -889,14 +1318,13 @@ export default function KundliSection() {
                   <div className={styles.chartZoomOverlay} onClick={() => setZoomedChart(null)}>
                     <div className={styles.chartZoomPanel} onClick={e => e.stopPropagation()}>
                       <button type="button" className={styles.chartZoomClose} onClick={() => setZoomedChart(null)} aria-label="Close">✕</button>
-                      <h2 className={styles.overviewTitle}>{CHART_LABELS[zoomedChart] || VARGA_LABELS[zoomedChart] || zoomedChart}</h2>
+                      <h2 className={styles.overviewTitle}>{chartLabel(zoomedChart)}</h2>
                       {zoomedChart === 'D2' && (
                         <p className={styles.chartNote}>
-                          Hora (D2) is classically defined so every placement falls in ONLY Cancer or Leo (Moon's Hora / Sun's Hora) — never any other sign.
-                          That's why houses here cluster into just 1 and 7 (or 12, depending on your D2 Ascendant) instead of spreading across all 12 — it's the correct classical result for this chart, not a computation error.
+                          {TL.horaNote}
                         </p>
                       )}
-                      <ChartDisplay title="Placements" planets={planets} ascendantRashi={ascendantRashi} />
+                      <ChartDisplay title={TL.placements} planets={planets} ascendantRashi={ascendantRashi} language={pdfLanguage} />
                     </div>
                   </div>
                 );
@@ -904,21 +1332,26 @@ export default function KundliSection() {
 
               {activeTab === 'gochar' && (
                 <div className={styles.overview}>
-                  <h2 className={styles.overviewTitle}>Gochar — Today's Real Transits on Your Chart</h2>
+                  <h2 className={styles.overviewTitle}>{TL.gocharTitle}</h2>
                   <p className={styles.chartNote} style={{ textAlign: 'left' }}>
-                    Where every planet is actually transiting right now, counted as houses from your own natal Lagna and from your own natal Moon — the two classical reference points Gochar is read from — compared against where it sits in your birth chart.
+                    {TL.gocharDesc}
                   </p>
                   {gocharError && <p style={{ color: '#d64545' }}>{gocharError}</p>}
-                  {!gocharLagna && !gocharError && <p className={styles.chartNote} style={{ textAlign: 'left' }}>Loading today's transits...</p>}
+                  {!gocharLagna && !gocharError && <p className={styles.chartNote} style={{ textAlign: 'left' }}>{TL.gocharLoading}</p>}
                   {fullResult.doshas.sadeSati.active && (
                     <div className={styles.doshaCard}>
-                      <h3 className={styles.doshaCardTitle}>Sade Sati is currently active</h3>
-                      <p className={styles.doshaCardText}>Saturn is transiting {fullResult.doshas.sadeSati.saturnTransitRashi} — your {fullResult.doshas.sadeSati.phase === 'rising' ? 'rising' : fullResult.doshas.sadeSati.phase === 'peak' ? 'peak' : 'setting'} phase, counted from your natal Moon in {fullResult.doshas.sadeSati.moonRashi}.</p>
+                      <h3 className={styles.doshaCardTitle}>{TL.sadeSatiActiveTitle}</h3>
+                      <p className={styles.doshaCardText}>{TL.sadeSatiActiveText(hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.sadeSati.saturnTransitRashi ?? ''), (pdfLanguage === 'hi' ? (DOSHA_PHASE_HI[fullResult.doshas.sadeSati.phase ?? ''] || fullResult.doshas.sadeSati.phase) : fullResult.doshas.sadeSati.phase) ?? '', hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.sadeSati.moonRashi ?? ''))}</p>
                     </div>
                   )}
                   <div className={styles.doshaCard}>
-                    <h3 className={styles.doshaCardTitle}>Rahu-Ketu Transit</h3>
-                    <p className={styles.doshaCardText}>Rahu is transiting {fullResult.doshas.rahuKetuTransit.rahuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon)} house from your Moon), Ketu is transiting {fullResult.doshas.rahuKetuTransit.ketuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon)} house from your Moon).</p>
+                    <h3 className={styles.doshaCardTitle}>{TL.rahuKetuTransit}</h3>
+                    <p className={styles.doshaCardText}>{TL.rahuKetuTransitText(
+                      hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.rahuKetuTransit.rahuTransitRashi),
+                      pdfLanguage === 'hi' ? String(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon) : ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon),
+                      hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.rahuKetuTransit.ketuTransitRashi),
+                      pdfLanguage === 'hi' ? String(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon) : ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon),
+                    )}</p>
                   </div>
                   {gocharLagna && (
                     <div className={styles.infoGrid} style={{ marginTop: 'var(--space-4)' }}>
@@ -927,9 +1360,9 @@ export default function KundliSection() {
                         const fromMoon = gocharMoon?.transits.find(t => t.id === natal.id);
                         if (!fromLagna) return null;
                         return (
-                          <InfoCard key={natal.id} icon={ConstellationIcon} label={natal.name}>
-                            Natal: {natal.sign} ({natal.house}H)<br />
-                            Transit: {fromLagna.rashi}{fromLagna.retrograde ? ' ℞' : ''} — {ordinal(fromLagna.house)}H from Lagna{fromMoon ? `, ${ordinal(fromMoon.house)}H from Moon` : ''}
+                          <InfoCard key={natal.id} icon={ConstellationIcon} label={pdfLanguage === 'hi' ? (HINDI_PLANET[natal.id] || natal.name) : natal.name}>
+                            {TL.natal}: {hindiOr(pdfLanguage, HINDI_RASHI, natal.sign)} ({natal.house}H)<br />
+                            {TL.transit}: {hindiOr(pdfLanguage, HINDI_RASHI, fromLagna.rashi)}{fromLagna.retrograde ? ' ℞' : ''} — {pdfLanguage === 'hi' ? fromLagna.house : ordinal(fromLagna.house)}H {TL.fromLagna}{fromMoon ? `, ${pdfLanguage === 'hi' ? fromMoon.house : ordinal(fromMoon.house)}H ${TL.fromMoon}` : ''}
                           </InfoCard>
                         );
                       })}
@@ -941,13 +1374,13 @@ export default function KundliSection() {
               {activeTab === 'timeline' && (
                 <>
                   <div className={styles.timelinePanel}>
-                    <h2 className={styles.overviewTitle}>Your Vimshottari Mahadasha Timeline</h2>
-                    <p className={styles.overviewText}>The nine planetary periods of your life, starting from your Moon's nakshatra at birth. Each period's summary below is a preview — see Predictions for the full note on your current period, or consult an astrologer for the complete picture.</p>
+                    <h2 className={styles.overviewTitle}>{TL.mahadashaTimelineTitle}</h2>
+                    <p className={styles.overviewText}>{TL.mahadashaTimelineDesc}</p>
                     <div className={styles.timelineList}>
                       {fullResult.mahadashaTimeline.map((period, i) => (
                         <div key={i}>
                           <div className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
-                            <span className={styles.timelineLord}>{cap(period.lord)} Mahadasha{period.active ? ' (current)' : ''}</span>
+                            <span className={styles.timelineLord}>{TL.mahadasha(period.lord, period.active)}</span>
                             <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                           </div>
                           {fullResult.dashaPredictions.find(d => d.lord === period.lord) && (
@@ -957,7 +1390,7 @@ export default function KundliSection() {
                             <div className={styles.antardashaList}>
                               {period.antardashas.map((sub, j) => (
                                 <div key={j} className={styles.antardashaItem}>
-                                  <span>{cap(sub.lord)} Antardasha</span>
+                                  <span>{TL.antardasha(sub.lord)}</span>
                                   <span>{sub.startsAt} → {sub.endsAt}</span>
                                 </div>
                               ))}
@@ -969,12 +1402,12 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.timelinePanel}>
-                    <h2 className={styles.overviewTitle}>Your Yogini Dasha Timeline</h2>
-                    <p className={styles.overviewText}>An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.</p>
+                    <h2 className={styles.overviewTitle}>{TL.yoginiTimelineTitle}</h2>
+                    <p className={styles.overviewText}>{TL.yoginiTimelineDesc}</p>
                     <div className={styles.timelineList}>
                       {fullResult.yoginiDashaTimeline.map((period, i) => (
                         <div key={i} className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
-                          <span className={styles.timelineLord}>{period.yogini} Yogini ({cap(period.lord)}){period.active ? ' (current)' : ''}</span>
+                          <span className={styles.timelineLord}>{TL.yoginiLine(period.yogini, period.lord, period.active)}</span>
                           <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                         </div>
                       ))}
@@ -982,40 +1415,45 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Doshas</h2>
+                    <h2 className={styles.overviewTitle}>{TL.doshas}</h2>
                     <div className={styles.doshaYogaGrid}>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
-                          <span className={styles.doshaCardTitle}>Mangal Dosha</span>
+                          <span className={styles.doshaCardTitle}>{TL.mangalDosha}</span>
                           <span className={`${styles.statusBadge} ${fullResult.doshas.mangal.isManglik ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                            {fullResult.doshas.mangal.isManglik ? 'Present' : 'Clear'}
+                            {fullResult.doshas.mangal.isManglik ? TL.present : TL.clear}
                           </span>
                         </div>
-                        <p className={styles.doshaCardText}>Mars sits in your {ordinal(fullResult.doshas.mangal.marsHouse)} house from the Ascendant.</p>
+                        <p className={styles.doshaCardText}>{TL.marsHouseText(pdfLanguage === 'hi' ? String(fullResult.doshas.mangal.marsHouse) : ordinal(fullResult.doshas.mangal.marsHouse))}</p>
                       </div>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
-                          <span className={styles.doshaCardTitle}>Kaal Sarp Dosha</span>
+                          <span className={styles.doshaCardTitle}>{TL.kaalSarpDosha}</span>
                           <span className={`${styles.statusBadge} ${fullResult.doshas.kaalSarp.isKaalSarp ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                            {fullResult.doshas.kaalSarp.isKaalSarp ? 'Present' : 'Clear'}
+                            {fullResult.doshas.kaalSarp.isKaalSarp ? TL.present : TL.clear}
                           </span>
                         </div>
-                        <p className={styles.doshaCardText}>Rahu in {fullResult.doshas.kaalSarp.rahuRashi}, Ketu in {fullResult.doshas.kaalSarp.ketuRashi}.</p>
+                        <p className={styles.doshaCardText}>{TL.kaalSarpText(hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.kaalSarp.rahuRashi), hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.kaalSarp.ketuRashi))}</p>
                       </div>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
-                          <span className={styles.doshaCardTitle}>Sade Sati</span>
+                          <span className={styles.doshaCardTitle}>{TL.sadeSati}</span>
                           <span className={`${styles.statusBadge} ${fullResult.doshas.sadeSati.active ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                            {fullResult.doshas.sadeSati.active ? `Active · ${fullResult.doshas.sadeSati.phase}` : 'Not active'}
+                            {fullResult.doshas.sadeSati.active ? TL.activePhase(fullResult.doshas.sadeSati.phase ?? '') : TL.notActive}
                           </span>
                         </div>
-                        <p className={styles.doshaCardText}>Saturn is currently transiting {fullResult.doshas.sadeSati.saturnTransitRashi}; your Moon sign is {fullResult.doshas.sadeSati.moonRashi}.</p>
+                        <p className={styles.doshaCardText}>{TL.sadeSatiText(hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.sadeSati.saturnTransitRashi), hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.sadeSati.moonRashi))}</p>
                       </div>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
-                          <span className={styles.doshaCardTitle}>Rahu-Ketu Transit</span>
+                          <span className={styles.doshaCardTitle}>{TL.rahuKetuTransit}</span>
                         </div>
-                        <p className={styles.doshaCardText}>Rahu transiting {fullResult.doshas.rahuKetuTransit.rahuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon)} from Moon), Ketu transiting {fullResult.doshas.rahuKetuTransit.ketuTransitRashi} ({ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon)} from Moon).</p>
+                        <p className={styles.doshaCardText}>{TL.rahuKetuText(
+                          hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.rahuKetuTransit.rahuTransitRashi),
+                          pdfLanguage === 'hi' ? String(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon) : ordinal(fullResult.doshas.rahuKetuTransit.rahuHouseFromMoon),
+                          hindiOr(pdfLanguage, HINDI_RASHI, fullResult.doshas.rahuKetuTransit.ketuTransitRashi),
+                          pdfLanguage === 'hi' ? String(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon) : ordinal(fullResult.doshas.rahuKetuTransit.ketuHouseFromMoon),
+                        )}</p>
                       </div>
                     </div>
                   </div>
@@ -1025,16 +1463,16 @@ export default function KundliSection() {
               {activeTab === 'predictions' && (
                 <>
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Ascendant Predictions</h2>
+                    <h2 className={styles.overviewTitle}>{TL.ascendantPredictions}</h2>
                     <p className={styles.overviewText}>{fullResult.ascendantPredictions.description}</p>
-                    <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>Your Ascendant is {fullResult.ascendantPredictions.ascendant} — a quick preview of each area is below.</p>
+                    <p className={styles.chartNote} style={{ marginBottom: 'var(--space-4)' }}>{TL.ascendantIsPreview(hindiOr(pdfLanguage, HINDI_RASHI, fullResult.ascendantPredictions.ascendant))}</p>
                     <div className={styles.predictionGrid}>
                       {([
-                        ['Personality', fullResult.ascendantPredictions.personality],
-                        ['Physical', fullResult.ascendantPredictions.physical],
-                        ['Health', fullResult.ascendantPredictions.health],
-                        ['Career', fullResult.ascendantPredictions.career],
-                        ['Relationship', fullResult.ascendantPredictions.relationship],
+                        [TL.personality, fullResult.ascendantPredictions.personality],
+                        [TL.physical, fullResult.ascendantPredictions.physical],
+                        [TL.health, fullResult.ascendantPredictions.health],
+                        [TL.career, fullResult.ascendantPredictions.career],
+                        [TL.relationship, fullResult.ascendantPredictions.relationship],
                       ] as const).map(([label, text]) => (
                         <div key={label} className={styles.predictionCard}>
                           <div className={styles.predictionCardTitle}>{label}</div>
@@ -1042,21 +1480,23 @@ export default function KundliSection() {
                         </div>
                       ))}
                     </div>
-                    <div className={styles.saveBar} style={{ marginTop: 'var(--space-6)' }}>
-                      <span className={styles.saveText}>This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevAstro.</span>
-                      <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Consult an Astrologer</button>
-                    </div>
+                    {!hideAstrologerCta && (
+                      <div className={styles.saveBar} style={{ marginTop: 'var(--space-6)' }}>
+                        <span className={styles.saveText}>{TL.quickPreviewNote}</span>
+                        <button className="btn btn-gold" onClick={() => setPage('astrologers')}>{TL.consultAstrologer}</button>
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Yoga Combinations</h2>
+                    <h2 className={styles.overviewTitle}>{TL.yogaCombinations}</h2>
                     <div className={styles.doshaYogaGrid}>
                       {fullResult.yogas.map(y => (
                         <div key={y.name} className={styles.doshaCard}>
                           <div className={styles.doshaCardHead}>
                             <span className={styles.doshaCardTitle}>{y.name}</span>
                             <span className={`${styles.statusBadge} ${y.present ? styles.statusBadgeClear : styles.statusBadgeActive}`}>
-                              {y.present ? 'Present' : 'Not formed'}
+                              {y.present ? TL.formed : TL.notFormed}
                             </span>
                           </div>
                           <p className={styles.doshaCardText}>{y.description}</p>
@@ -1070,34 +1510,34 @@ export default function KundliSection() {
               {activeTab === 'advanced' && (
                 <>
                   <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-2)' }}>
-                    Technical, classical scoring behind your chart — useful if you want to go deeper, not required to understand your reading.
+                    {TL.advancedNote}
                   </p>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Shadbala (Planetary Strength)</h2>
-                    <p className={styles.overviewText}>Six-fold classical strength score per planet, in Rupas — a planet at or above its classical minimum is considered strong enough to deliver its significations well.</p>
+                    <h2 className={styles.overviewTitle}>{TL.shadbalaTitle}</h2>
+                    <p className={styles.overviewText}>{TL.shadbalaDesc}</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHead}`}>
-                        <span>Planet</span><span>Rupas</span><span>Required</span><span>Status</span>
+                        <span>{TL.colPlanet}</span><span>{TL.colRupas}</span><span>{TL.colRequired}</span><span>{TL.colStatus}</span>
                       </div>
                       {fullResult.shadbala.planets.map(p => (
                         <div key={p.planet} className={styles.dataRow}>
-                          <span className={styles.dataRowPlanet}><span className={styles.planetSymbol}><PlanetIcon id={p.planet} size={18} /></span>{PLANET_META[p.planet]?.name || p.planet}</span>
+                          <span className={styles.dataRowPlanet}><span className={styles.planetSymbol}><PlanetIcon id={p.planet} size={18} /></span>{pdfLanguage === 'hi' ? (HINDI_PLANET[p.planet] || PLANET_META[p.planet]?.name || p.planet) : (PLANET_META[p.planet]?.name || p.planet)}</span>
                           <span>{p.rupas.toFixed(2)}</span>
                           <span>{p.minRequiredRupas.toFixed(1)}</span>
-                          <span className={`${styles.statusBadge} ${p.isStrong ? styles.statusBadgeClear : styles.statusBadgeActive}`}>{p.isStrong ? 'Strong' : 'Weak'}</span>
+                          <span className={`${styles.statusBadge} ${p.isStrong ? styles.statusBadgeClear : styles.statusBadgeActive}`}>{p.isStrong ? TL.strong : TL.weak}</span>
                         </div>
                       ))}
                     </div>
-                    <p className={styles.chartNote}>Ishta/Kashta Bala and the Sthana/Dig/Kaala/Cheshta/Naisargika/Drik breakdown are computed but not all shown here — ask if you want the full per-component view.</p>
+                    <p className={styles.chartNote}>{TL.shadbalaFootnote}</p>
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Bhavbala (House Strength)</h2>
+                    <h2 className={styles.overviewTitle}>{TL.bhavbalaTitle}</h2>
                     <div className={styles.infoGrid}>
                       {fullResult.shadbala.houses.map(h => (
                         <div key={h.house} className={styles.infoCard}>
-                          <div className={styles.infoLabel}>House {h.house}</div>
+                          <div className={styles.infoLabel}>{TL.house(h.house)}</div>
                           <div className={styles.infoValue}>{h.total.toFixed(1)}</div>
                         </div>
                       ))}
@@ -1105,54 +1545,54 @@ export default function KundliSection() {
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>KP Sub-Lord Table</h2>
-                    <p className={styles.overviewText}>Each point's Sign, Sign Lord, Star (Nakshatra) Lord, and Sub Lord — the core KP technique, for the Ascendant and every planet.</p>
+                    <h2 className={styles.overviewTitle}>{TL.kpSubLordTitle}</h2>
+                    <p className={styles.overviewText}>{TL.kpSubLordDesc}</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
-                        <span>Point</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
+                        <span>{TL.colPoint}</span><span>{TL.colSign}</span><span>{TL.colStarLord}</span><span>{TL.colSubLord}</span>
                       </div>
                       {fullResult.kp.table.map(row => (
                         <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
-                          <span className={styles.dataRowPlanet}>{row.id === 'asc' ? 'Ascendant' : (PLANET_META[row.id]?.name || row.id)}</span>
-                          <span>{row.rashi} ({cap(row.signLord)})</span>
-                          <span>{cap(row.starLord)}</span>
-                          <span>{cap(row.subLord)}</span>
+                          <span className={styles.dataRowPlanet}>{row.id === 'asc' ? TL.ascendant : (pdfLanguage === 'hi' ? (HINDI_PLANET[row.id] || PLANET_META[row.id]?.name || row.id) : (PLANET_META[row.id]?.name || row.id))}</span>
+                          <span>{hindiOr(pdfLanguage, HINDI_RASHI, row.rashi)} ({pdfLanguage === 'hi' ? (HINDI_PLANET[row.signLord] || cap(row.signLord)) : cap(row.signLord)})</span>
+                          <span>{pdfLanguage === 'hi' ? (HINDI_PLANET[row.starLord] || cap(row.starLord)) : cap(row.starLord)}</span>
+                          <span>{pdfLanguage === 'hi' ? (HINDI_PLANET[row.subLord] || cap(row.subLord)) : cap(row.subLord)}</span>
                         </div>
                       ))}
                     </div>
 
-                    <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>KP Cusps (Bhav Chalit)</h2>
-                    <p className={styles.overviewText}>Sub-lords of the real Placidus house cusps — the technique's genuine cuspal analysis, computed from Swiss Ephemeris rather than a whole-sign approximation.</p>
+                    <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>{TL.kpCuspsTitle}</h2>
+                    <p className={styles.overviewText}>{TL.kpCuspsDesc}</p>
                     <div className={styles.dataTable}>
                       <div className={`${styles.dataRow} ${styles.dataRowHeadKp}`}>
-                        <span>Cusp</span><span>Sign</span><span>Star Lord</span><span>Sub Lord</span>
+                        <span>{TL.colCusp}</span><span>{TL.colSign}</span><span>{TL.colStarLord}</span><span>{TL.colSubLord}</span>
                       </div>
                       {fullResult.kp.cusps.map(row => (
                         <div key={row.id} className={`${styles.dataRow} ${styles.dataRowKp}`}>
-                          <span className={styles.dataRowPlanet}>House {row.id.replace('cusp', '')}</span>
-                          <span>{row.rashi} ({cap(row.signLord)})</span>
-                          <span>{cap(row.starLord)}</span>
-                          <span>{cap(row.subLord)}</span>
+                          <span className={styles.dataRowPlanet}>{TL.house(row.id.replace('cusp', ''))}</span>
+                          <span>{hindiOr(pdfLanguage, HINDI_RASHI, row.rashi)} ({pdfLanguage === 'hi' ? (HINDI_PLANET[row.signLord] || cap(row.signLord)) : cap(row.signLord)})</span>
+                          <span>{pdfLanguage === 'hi' ? (HINDI_PLANET[row.starLord] || cap(row.starLord)) : cap(row.starLord)}</span>
+                          <span>{pdfLanguage === 'hi' ? (HINDI_PLANET[row.subLord] || cap(row.subLord)) : cap(row.subLord)}</span>
                         </div>
                       ))}
                     </div>
                     <div className={styles.infoGrid}>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaStarLord)}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Lagna Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.lagnaSubLord)}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Star Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonStarLord)}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Moon Sub Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.moonSubLord)}</div></div>
-                      <div className={styles.infoCard}><div className={styles.infoLabel}>Day Lord</div><div className={styles.infoValue}>{cap(fullResult.kp.rulingPlanets.dayLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>{TL.lagnaStarLord}</div><div className={styles.infoValue}>{pdfLanguage === 'hi' ? (HINDI_PLANET[fullResult.kp.rulingPlanets.lagnaStarLord] || cap(fullResult.kp.rulingPlanets.lagnaStarLord)) : cap(fullResult.kp.rulingPlanets.lagnaStarLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>{TL.lagnaSubLord}</div><div className={styles.infoValue}>{pdfLanguage === 'hi' ? (HINDI_PLANET[fullResult.kp.rulingPlanets.lagnaSubLord] || cap(fullResult.kp.rulingPlanets.lagnaSubLord)) : cap(fullResult.kp.rulingPlanets.lagnaSubLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>{TL.moonStarLord}</div><div className={styles.infoValue}>{pdfLanguage === 'hi' ? (HINDI_PLANET[fullResult.kp.rulingPlanets.moonStarLord] || cap(fullResult.kp.rulingPlanets.moonStarLord)) : cap(fullResult.kp.rulingPlanets.moonStarLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>{TL.moonSubLord}</div><div className={styles.infoValue}>{pdfLanguage === 'hi' ? (HINDI_PLANET[fullResult.kp.rulingPlanets.moonSubLord] || cap(fullResult.kp.rulingPlanets.moonSubLord)) : cap(fullResult.kp.rulingPlanets.moonSubLord)}</div></div>
+                      <div className={styles.infoCard}><div className={styles.infoLabel}>{TL.dayLord}</div><div className={styles.infoValue}>{pdfLanguage === 'hi' ? (HINDI_PLANET[fullResult.kp.rulingPlanets.dayLord] || cap(fullResult.kp.rulingPlanets.dayLord)) : cap(fullResult.kp.rulingPlanets.dayLord)}</div></div>
                     </div>
                   </div>
 
                   <div className={styles.overview}>
-                    <h2 className={styles.overviewTitle}>Sarvashtakavarga (Bindu Strength)</h2>
-                    <p className={styles.overviewText}>Total classical strength points (bindus) each sign receives, summed across all 7 grahas — higher means a stronger sign to have planets or transits pass through. The 12 signs always sum to exactly 337.</p>
+                    <h2 className={styles.overviewTitle}>{TL.savTitle}</h2>
+                    <p className={styles.overviewText}>{TL.savDesc}</p>
                     <div className={styles.infoGrid}>
                       {fullResult.ashtakavarga.sarva.map(s => (
                         <div key={s.rashi} className={styles.infoCard}>
-                          <div className={styles.infoLabel}>{s.rashi}</div>
-                          <div className={styles.infoValue}>{s.bindus} bindus</div>
+                          <div className={styles.infoLabel}>{hindiOr(pdfLanguage, HINDI_RASHI, s.rashi)}</div>
+                          <div className={styles.infoValue}>{TL.bindus(s.bindus)}</div>
                         </div>
                       ))}
                     </div>
@@ -1168,22 +1608,22 @@ export default function KundliSection() {
                    matching how the reference report itself only ever links to
                    "Chat with Astrologer" rather than any third-party seller. */
                 <div className={styles.overview}>
-                  <h2 className={styles.overviewTitle}>Gemstone &amp; Rudraksha Remedies</h2>
-                  <p className={styles.overviewText}>Three classical gemstone picks — Life (Ascendant lord), Lucky (5th house/Purva Punya lord), and Fortune (9th house/Bhagya lord) — plus the Rudraksha ruled by your birth Nakshatra's lord.</p>
+                  <h2 className={styles.overviewTitle}>{TL.gemRemediesTitle}</h2>
+                  <p className={styles.overviewText}>{TL.gemRemediesDesc}</p>
                   <div className={styles.gemGrid}>
                     {[fullResult.gemstones.life, fullResult.gemstones.lucky, fullResult.gemstones.fortune].map(g => (
                       <div key={g.purpose} className={styles.gemCard}>
                         <div className={styles.gemCardHead}>
                           <GemIcon color={g.color} />
                           <div>
-                            <div className={styles.gemCardPurpose}>{g.purpose}</div>
-                            <div className={styles.gemCardName}>{g.gemstone} ({g.sanskritName})</div>
+                            <div className={styles.gemCardPurpose}>{pdfLanguage === 'hi' ? (GEM_PURPOSE_HI[g.purpose] || g.purpose) : g.purpose}</div>
+                            <div className={styles.gemCardName}>{g.gemstone}{g.sanskritName !== g.gemstone ? ` (${g.sanskritName})` : ''}</div>
                           </div>
                         </div>
                         <p className={styles.doshaCardText}>{g.reason}</p>
                         <div className={styles.gemCardMeta}>
-                          <span><strong>Metal:</strong> {g.metal}</span>
-                          <span><strong>Wear on:</strong> {g.finger}</span>
+                          <span><strong>{TL.metal}</strong> {pdfLanguage === 'hi' ? (METAL_HI[g.metal] || g.metal) : g.metal}</span>
+                          <span><strong>{TL.wearOn}</strong> {pdfLanguage === 'hi' ? (FINGER_HI[g.finger] || g.finger) : g.finger}</span>
                         </div>
                         <p className={styles.gemMantra}>{g.mantra}</p>
                       </div>
@@ -1192,8 +1632,8 @@ export default function KundliSection() {
                       <div className={styles.gemCardHead}>
                         <RudrakshaIcon mukhi={fullResult.rudraksha.mukhi} />
                         <div>
-                          <div className={styles.gemCardPurpose}>Rudraksha</div>
-                          <div className={styles.gemCardName}>{fullResult.rudraksha.mukhi} Mukhi ({fullResult.rudraksha.deity})</div>
+                          <div className={styles.gemCardPurpose}>{TL.rudraksha}</div>
+                          <div className={styles.gemCardName}>{TL.mukhi(fullResult.rudraksha.mukhi, fullResult.rudraksha.deity)}</div>
                         </div>
                       </div>
                       <p className={styles.doshaCardText}>{fullResult.rudraksha.reason}</p>
@@ -1204,20 +1644,22 @@ export default function KundliSection() {
                     </div>
                   </div>
                   <details className={styles.precautionsBox}>
-                    <summary>Precautions before wearing any gemstone or Rudraksha</summary>
+                    <summary>{TL.precautions}</summary>
                     <ul className={styles.gemBenefitList}>
                       {fullResult.rudraksha.precautions.map((p, i) => <li key={i}>{p}</li>)}
                     </ul>
                   </details>
-                  <p className={styles.chartNote}>These are classical, chart-derived starting points — not a substitute for a full consultation, since remedial choices can shift with other placements in your chart.</p>
-                  <button className="btn btn-gold" style={{ marginTop: 'var(--space-4)' }} onClick={() => setPage('astrologers')}>
-                    Consult an Astrologer for Remedies
-                  </button>
+                  <p className={styles.chartNote}>{TL.remediesFootnote}</p>
+                  {!hideAstrologerCta && (
+                    <button className="btn btn-gold" style={{ marginTop: 'var(--space-4)' }} onClick={() => setPage('astrologers')}>
+                      {TL.consultAstrologerRemedies}
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Save birth details to account, so the next visit prefills automatically */}
-              {isLoggedIn && submittedDetails && !alreadySavedThisProfile && (
+              {!hideHistoryAndSave && isLoggedIn && submittedDetails && !alreadySavedThisProfile && (
                 <div className={styles.saveBar}>
                   <span className={styles.saveText}>
                     {saveState === 'saved' ? '✓ Saved to your account — this will prefill automatically next time.' : 'Save these birth details to your account so you never have to re-enter them.'}
@@ -1270,8 +1712,11 @@ function HighlightChip({ icon: Icon, label, value }: { icon: React.ComponentType
 // (D1, Chandra, D9, and every D2-D60 varga chart) — each instance owns its
 // own tooltip state and North/South style toggle, so multiple charts can
 // sit on the same tab without interfering with each other. ----
-function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowPlacementsToggle = true }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode; allowPlacementsToggle?: boolean }) {
-  const { language, t } = useAppContext();
+function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowPlacementsToggle = true, language }: { title: string; subtitle?: string; planets: ChartPlanet[]; ascendantRashi: string; footer?: React.ReactNode; allowPlacementsToggle?: boolean; language: 'en' | 'hi' }) {
+  // `language` here is the Kundli page's OWN toggle (passed down by the
+  // caller as `pdfLanguage`), not the site-wide one — this component is
+  // Kundli-only, so it never touches useAppContext()'s language directly.
+  const tr = (key: string) => TRANSLATIONS[language]?.[key] || TRANSLATIONS.en?.[key] || key;
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [houseTooltip, setHouseTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [style, setStyle] = useState<'north' | 'south'>('north');
@@ -1292,8 +1737,8 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
     <div className={`${styles.chartLayout} ${!showPlacements ? styles.chartLayoutSingle : ''}`}>
       <div>
         <div className={styles.chartStyleToggle}>
-          <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>North Indian</button>
-          <button className={`${styles.chartStyleBtn} ${style === 'south' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('south')}>South Indian</button>
+          <button className={`${styles.chartStyleBtn} ${style === 'north' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('north')}>{language === 'hi' ? 'उत्तर भारतीय' : 'North Indian'}</button>
+          <button className={`${styles.chartStyleBtn} ${style === 'south' ? styles.chartStyleBtnActive : ''}`} onClick={() => setStyle('south')}>{language === 'hi' ? 'दक्षिण भारतीय' : 'South Indian'}</button>
         </div>
         <div className={styles.svgWrap}>
           {style === 'north' ? (
@@ -1309,9 +1754,10 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
                 setHouseTooltip({ text: HOUSE_MEANINGS[house] || '', x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top });
               }}
               onHouseLeave={() => setHouseTooltip(null)}
+              language={language === 'hi' ? 'hi' : 'en'}
             />
           ) : (
-            <SouthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={handlePlanetHover} onPlanetLeave={() => setTooltip(null)} />
+            <SouthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={handlePlanetHover} onPlanetLeave={() => setTooltip(null)} language={language === 'hi' ? 'hi' : 'en'} />
           )}
 
           {tooltip && (
@@ -1340,7 +1786,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
             className={styles.placementsToggle}
             onClick={e => { e.stopPropagation(); setShowPlacements(true); }}
           >
-            {t('kundli_show_placements')}
+            {tr('kundli_show_placements')}
           </button>
         )}
       </div>
@@ -1355,7 +1801,7 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
               style={{ marginTop: 0 }}
               onClick={e => { e.stopPropagation(); setShowPlacements(false); }}
             >
-              {t('kundli_hide')}
+              {tr('kundli_hide')}
             </button>
           </div>
           {subtitle && <p className={styles.chartNote} style={{ textAlign: 'left', marginBottom: 'var(--space-3)' }}>{subtitle}</p>}
