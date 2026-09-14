@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env app/main.ts",
     "start": "tsx --env-file-if-exists=.env app/main.ts",
+    "postinstall": "playwright install --with-deps chromium",
     "test": "tsx --env-file-if-exists=.env tests/auth.test.ts",
     "test:e2e": "node tests/e2e-smoke.mjs",
     "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs"

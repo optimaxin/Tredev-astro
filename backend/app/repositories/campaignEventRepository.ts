@@ -5,7 +5,6 @@ export interface CampaignEventSummaryRow {
   event_type: string;
   event_label: string;
   total: string; // pg returns COUNT(*) as a string (bigint)
-  last_24h: string;
 }
 
 export interface CampaignEventUserRow {
@@ -30,19 +29,15 @@ export async function logCampaignEvent(eventType: string, eventLabel: string, me
   );
 }
 
-// One query, grouped by (event_type, event_label) — both the all-time total
-// and a rolling last-24h count, so the dashboard can show "what's popular
-// overall" next to "what's happening right now" without a second round trip.
+// One query, grouped by (event_type, event_label) — an all-time total with
+// no time window at all; the only way this data ever clears is the
+// dashboard's explicit "Reset All Data" action (resetCampaignEvents below).
 export function summarizeCampaignEvents(): Promise<CampaignEventSummaryRow[]> {
-  const since24h = Date.now() - 24 * 60 * 60 * 1000;
   return query<CampaignEventSummaryRow>(
-    `SELECT event_type, event_label,
-            COUNT(*)::text AS total,
-            COUNT(*) FILTER (WHERE created_at >= $1)::text AS last_24h
+    `SELECT event_type, event_label, COUNT(*)::text AS total
      FROM campaign_events
      GROUP BY event_type, event_label
-     ORDER BY COUNT(*) DESC`,
-    [since24h]
+     ORDER BY COUNT(*) DESC`
   );
 }
 

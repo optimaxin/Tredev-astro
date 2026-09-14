@@ -80,7 +80,7 @@ function loadImageFile(file: File): Promise<HTMLImageElement> {
   });
 }
 
-const CAPTION = 'श्री गणेशाय नमः 🙏 Wishing you and your family a very Happy Ganesh Chaturthi!';
+const CAPTION = '🙏 श्री गणेशाय नमः 🙏\n\nMay Lord Ganesha bless you and your family with happiness, prosperity, good health, and success.Wishing you and your loved ones a very Happy and Blessed Ganesh Chaturthi! 🐘🌺✨\n\nगणपति बप्पा मोरया! 🙏❤️\n\n#GaneshChaturthi #GanpatiBappaMorya #SpiritualJourney #FestiveWishes #TredevAstro';
 
 export default function WishCustomizer({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('templates');

@@ -132,8 +132,11 @@ export default function Panchang() {
   const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser } = useAppContext();
   // Scoped to this card only — deliberately NOT the site-wide language
   // toggle (AppContext's language/setLanguage), so switching this doesn't
-  // also change the rest of the site's language.
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('hi');
+  // also change the rest of the site's language. Defaults to English (not
+  // Hindi) to match the rest of the home page's default — a visitor who
+  // hasn't touched any language toggle shouldn't see this one card start in
+  // a different language than everything else.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');

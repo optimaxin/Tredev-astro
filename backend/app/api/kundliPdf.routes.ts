@@ -20,7 +20,17 @@ const CAMPAIGN_APP_URL = (process.env.CAMPAIGN_APP_URL || 'http://localhost:1409
 let browserPromise: Promise<Browser> | null = null;
 function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    browserPromise = chromium.launch({ headless: true }).catch(err => {
+    browserPromise = chromium.launch({
+      headless: true,
+      // Small/free-tier hosts (Render's free plan included) give containers
+      // a tiny /dev/shm — Chromium's default shared-memory usage overflows
+      // that and crashes the whole browser process (not just the page),
+      // which is what was actually behind the 502s, not merely a missing
+      // browser binary. --disable-dev-shm-usage makes it fall back to disk
+      // instead of /dev/shm; --no-sandbox is required in most containers
+      // that don't grant the extra privileges Chromium's sandbox wants.
+      args: ['--disable-dev-shm-usage', '--no-sandbox'],
+    }).catch(err => {
       browserPromise = null; // let the next request retry instead of caching a permanent failure
       throw err;
     });
