@@ -154,7 +154,7 @@ export const FREE_TOOLS_CATEGORIES = [
     description: 'Identify doshas in your kundli.',
     icon: '◎',
     color: FREE_TOOLS_ACCENT,
-    tools: ['Mangal Dosha', 'Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
+    tools: ['Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
   },
   {
     id: 'numerology',
@@ -344,7 +344,7 @@ export const CONCERN_CONTENT: Record<string, { free: string[]; paid: string[] }>
     paid: ['Love & Relationships Report (₹499)', 'Chat with Love Specialist', '30-min Relationship Reading'],
   },
   'Marriage': {
-    free: ['Kundli Matching (Guna Milan)', 'Mangal Dosha Check', 'Marriage Timing Indicator'],
+    free: ['Kundli Matching (Guna Milan)', 'Marriage Timing Indicator'],
     paid: ['Marriage Report (₹699)', 'Kundli Matching Deep Analysis', 'Marriage Astrologer Consultation'],
   },
   'Career & Business': {

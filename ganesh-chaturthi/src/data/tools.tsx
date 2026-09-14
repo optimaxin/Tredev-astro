@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import {
   HoroscopePage, ChoghadiyaPage, MuhuratFinderPage, AbhijitMuhuratPage, KundliMatchingPage,
-  NakshatraFinderPage, MangalDoshaPage, SadeSatiPage, LuckyPage, BabyNamePage, LalKitabPage,
+  NakshatraFinderPage, SadeSatiPage, LuckyPage, BabyNamePage, LalKitabPage,
   KaalSarpDoshaPage, RahuKetuTransitPage, MoonSignPage, NumerologyPage,
   LifePathNumberPage, NameNumerologyPage,
   NumerologyMatchPage, FlamesPage, ChineseZodiacPage, NumerologyHoroscopePage,
@@ -60,7 +60,6 @@ export const TOOLS: ToolConfig[] = [
   { id: 'flames', label: 'FLAMES', category: 'compatibility', render: () => <FlamesPage /> },
 
   // Doshas
-  { id: 'mangal-dosha', label: 'Mangal Dosha', category: 'doshas', render: () => <MangalDoshaPage currentUser={null} /> },
   { id: 'kaal-sarp-dosha', label: 'Kaal Sarp Dosha', category: 'doshas', render: () => <KaalSarpDoshaPage currentUser={null} /> },
   { id: 'sade-sati', label: 'Sade Sati', category: 'doshas', render: () => <SadeSatiPage currentUser={null} /> },
   { id: 'rahu-ketu-transit', label: 'Rahu Ketu Transit', category: 'doshas', render: () => <RahuKetuTransitPage currentUser={null} /> },

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import { RashiChakraIcon, MarriageIcon, ConstellationIcon, WealthIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon } from '../../components/Icons/Icons';
+import { RashiChakraIcon, MarriageIcon, ConstellationIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon } from '../../components/Icons/Icons';
 import type { IconProps } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
@@ -28,7 +28,6 @@ const TOOL_ROUTES: Record<string, string> = {
   'Lucky Color & Date': 'lucky',
   'Baby Name Calculator': 'baby-name',
   'Lal Kitab': 'lal-kitab',
-  'Mangal Dosha': 'mangal-dosha',
   'Kaal Sarp Dosha': 'kaal-sarp-dosha',
   'Sade Sati': 'sade-sati',
   'Rahu Ketu Transit': 'rahu-ketu-transit',
@@ -164,21 +163,6 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
                 </div>
               </div>
               <span className={styles.arrowLink}>{tOr('tools_nakshatra_cta', 'seek_card_cta')}</span>
-            </motion.div>
-
-            {/* SMALL: Mangal Dosha */}
-            <motion.div
-              className={`${styles.featuredCard} ${styles.cardSmall}`}
-              onClick={() => handleToolClick('Mangal Dosha')}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.24, duration: 0.55 }}
-            >
-              <CelestialOrnament type="yantra" className={styles.cardOrnamentSmall} />
-              <WealthIcon size={38} className={styles.cardIconSmall} />
-              <h3 className={styles.cardTitleSmall}>{t('tools_mangal_dosha_title')}</h3>
-              <p className={styles.cardDescSmall}>{t('seek_card_marriage_desc')}</p>
             </motion.div>
 
             {/* SMALL: Sade Sati */}

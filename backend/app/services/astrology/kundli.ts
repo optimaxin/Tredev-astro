@@ -32,7 +32,7 @@ export interface Kundli {
 
 // The one place everything built so far (ephemeris + rashi/nakshatra +
 // whole-sign houses) comes together into an actual chart. Every other
-// calculator (Mangal Dosha, Sade Sati, Kundli Matching) is built from this.
+// calculator (Sade Sati, Kaal Sarp Dosha, Kundli Matching) is built from this.
 export function generateKundli(birth: BirthDetails): Kundli {
   const ascendantLongitude = getAscendant(birth.utcDate, birth.latitude, birth.longitude);
   const ascendantRashi = getRashi(ascendantLongitude);

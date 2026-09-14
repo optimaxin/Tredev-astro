@@ -16,7 +16,7 @@ import { PLANET_META } from '../../data/planetMeta';
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
-  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon, DoshaShieldIcon,
+  SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon,
 } from '../../components/Icons/Icons';
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
@@ -116,9 +116,8 @@ const TAB_LABELS = {
     yoginiTimelineTitle: 'Your Yogini Dasha Timeline',
     yoginiTimelineDesc: "An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.",
     yoginiLine: (yogini: string, lord: string, current: boolean) => `${yogini} Yogini (${cap(lord)})${current ? ' (current)' : ''}`,
-    doshas: 'Doshas', mangalDosha: 'Mangal Dosha', kaalSarpDosha: 'Kaal Sarp Dosha', sadeSati: 'Sade Sati', rahuKetuTransit: 'Rahu-Ketu Transit',
+    doshas: 'Doshas', kaalSarpDosha: 'Kaal Sarp Dosha', sadeSati: 'Sade Sati', rahuKetuTransit: 'Rahu-Ketu Transit',
     present: 'Present', clear: 'Clear', notActive: 'Not active', activePhase: (phase: string) => `Active · ${phase}`,
-    marsHouseText: (h: string) => `Mars sits in your ${h} house from the Ascendant.`,
     kaalSarpText: (r: string, k: string) => `Rahu in ${r}, Ketu in ${k}.`,
     sadeSatiText: (s: string, m: string) => `Saturn is currently transiting ${s}; your Moon sign is ${m}.`,
     rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `Rahu transiting ${rr} (${rh} from Moon), Ketu transiting ${kr} (${kh} from Moon).`,
@@ -173,9 +172,8 @@ const TAB_LABELS = {
     yoginiTimelineTitle: 'आपकी योगिनी दशा समयरेखा',
     yoginiTimelineDesc: 'एक वैकल्पिक 36-वर्षीय, 8-अवधि दशा चक्र, जो भी जन्म के समय आपके चन्द्र नक्षत्र से गिना जाता है।',
     yoginiLine: (yogini: string, lord: string, current: boolean) => `${YOGINI_HI[yogini] || yogini} योगिनी (${HINDI_PLANET[lord] || cap(lord)})${current ? ' (वर्तमान)' : ''}`,
-    doshas: 'दोष', mangalDosha: 'मांगलिक दोष', kaalSarpDosha: 'कालसर्प दोष', sadeSati: 'साढ़े साती', rahuKetuTransit: 'राहु-केतु गोचर',
+    doshas: 'दोष', kaalSarpDosha: 'कालसर्प दोष', sadeSati: 'साढ़े साती', rahuKetuTransit: 'राहु-केतु गोचर',
     present: 'उपस्थित', clear: 'अनुपस्थित', notActive: 'सक्रिय नहीं', activePhase: (phase: string) => `सक्रिय · ${DOSHA_PHASE_HI[phase] || phase}`,
-    marsHouseText: (h: string) => `मंगल आपके लग्न से ${h} भाव में स्थित है।`,
     kaalSarpText: (r: string, k: string) => `राहु ${r} में, केतु ${k} में स्थित है।`,
     sadeSatiText: (s: string, m: string) => `शनि वर्तमान में ${s} राशि में गोचर कर रहे हैं; आपकी चन्द्र राशि ${m} है।`,
     rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `राहु ${rr} में गोचर कर रहा है (चन्द्र से ${rh} भाव), केतु ${kr} में गोचर कर रहा है (चन्द्र से ${kh} भाव)।`,
@@ -227,9 +225,12 @@ const TAB_LABELS = {
 // Panchang sunrise/sunset come back as UTC ISO instants — shift by the
 // birth's timezone offset to show the actual local clock time, matching how
 // a printed Panchang always states sunrise/sunset in local time.
+// timezoneOffsetMinutes uses this app's "local = UTC + offset" convention
+// (IST = +330, matching every birth-details form on the site) — local time
+// is UTC PLUS the offset, not minus it.
 function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string {
   const utcMs = new Date(isoUtc).getTime();
-  const localMs = utcMs - timezoneOffsetMinutes * 60_000;
+  const localMs = utcMs + timezoneOffsetMinutes * 60_000;
   const d = new Date(localMs);
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
@@ -1174,7 +1175,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                 // into extreme negative space.
                 <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
-                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
+                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} timezoneOffsetMinutes={submittedDetails?.timezoneOffsetMinutes ?? 0} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
                   </div>
                 </div>
               )}
@@ -1220,7 +1221,6 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                         <HighlightChip icon={SunIcon} label="Sun Sign" value={(() => { const s = chartPlanets.find(p => p.id === 'sun')?.sign; return s ? hindiOr(pdfLanguage, HINDI_RASHI, s) : '—'; })()} />
                         <HighlightChip icon={ConstellationIcon} label="Nakshatra" value={kundliResult ? hindiOr(pdfLanguage, HINDI_NAKSHATRA, kundliResult.moonNakshatra.name) : '—'} />
                         <HighlightChip icon={LotusIcon} label="Tithi" value={`${hindiOr(pdfLanguage, PAKSHA_HI, fullResult.panchang.tithi.paksha)} ${hindiOr(pdfLanguage, HINDI_TITHI, fullResult.panchang.tithi.name)}`} />
-                        <HighlightChip icon={DoshaShieldIcon} label="Manglik" value={fullResult.doshas.mangal.isManglik ? (pdfLanguage === 'hi' ? 'मांगलिक' : 'Present') : (pdfLanguage === 'hi' ? 'अनुपस्थित' : 'Clear')} />
                       </>
                     }
                   />
@@ -1419,15 +1419,6 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                     <div className={styles.doshaYogaGrid}>
                       <div className={styles.doshaCard}>
                         <div className={styles.doshaCardHead}>
-                          <span className={styles.doshaCardTitle}>{TL.mangalDosha}</span>
-                          <span className={`${styles.statusBadge} ${fullResult.doshas.mangal.isManglik ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
-                            {fullResult.doshas.mangal.isManglik ? TL.present : TL.clear}
-                          </span>
-                        </div>
-                        <p className={styles.doshaCardText}>{TL.marsHouseText(pdfLanguage === 'hi' ? String(fullResult.doshas.mangal.marsHouse) : ordinal(fullResult.doshas.mangal.marsHouse))}</p>
-                      </div>
-                      <div className={styles.doshaCard}>
-                        <div className={styles.doshaCardHead}>
                           <span className={styles.doshaCardTitle}>{TL.kaalSarpDosha}</span>
                           <span className={`${styles.statusBadge} ${fullResult.doshas.kaalSarp.isKaalSarp ? styles.statusBadgeActive : styles.statusBadgeClear}`}>
                             {fullResult.doshas.kaalSarp.isKaalSarp ? TL.present : TL.clear}
@@ -1614,7 +1605,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                     {[fullResult.gemstones.life, fullResult.gemstones.lucky, fullResult.gemstones.fortune].map(g => (
                       <div key={g.purpose} className={styles.gemCard}>
                         <div className={styles.gemCardHead}>
-                          <GemIcon color={g.color} />
+                          <GemIcon rulingPlanet={g.rulingPlanet} />
                           <div>
                             <div className={styles.gemCardPurpose}>{pdfLanguage === 'hi' ? (GEM_PURPOSE_HI[g.purpose] || g.purpose) : g.purpose}</div>
                             <div className={styles.gemCardName}>{g.gemstone}{g.sanskritName !== g.gemstone ? ` (${g.sanskritName})` : ''}</div>
@@ -1630,7 +1621,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                     ))}
                     <div className={styles.gemCard}>
                       <div className={styles.gemCardHead}>
-                        <RudrakshaIcon mukhi={fullResult.rudraksha.mukhi} />
+                        <RudrakshaIcon />
                         <div>
                           <div className={styles.gemCardPurpose}>{TL.rudraksha}</div>
                           <div className={styles.gemCardName}>{TL.mukhi(fullResult.rudraksha.mukhi, fullResult.rudraksha.deity)}</div>
@@ -1823,35 +1814,22 @@ function ChartDisplay({ title, subtitle, planets, ascendantRashi, footer, allowP
   );
 }
 
-// Simple self-contained SVG "image" for a gemstone — a faceted gem shape
-// tinted with that stone's real color, so each recommendation card has a
-// visual without depending on any external image/icon library or URL.
-function GemIcon({ color }: { color: string }) {
+// Real product photo of the actual gemstone (background removed), one per
+// classical graha — /images/gems/<planet>.png. `rulingPlanet` is always one
+// of the 7 classical grahas (backend's GEMSTONE_BY_PLANET only ever returns
+// one of those), so there's always a matching photo.
+function GemIcon({ rulingPlanet }: { rulingPlanet: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
-      <polygon points="24,4 40,16 34,44 14,44 8,16" fill={color} stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
-      <polygon points="24,4 40,16 24,20 8,16" fill="rgba(255,255,255,0.35)" />
-      <line x1="24" y1="4" x2="24" y2="44" stroke="rgba(0,0,0,0.15)" strokeWidth="0.75" />
-      <line x1="8" y1="16" x2="40" y2="16" stroke="rgba(0,0,0,0.15)" strokeWidth="0.75" />
-    </svg>
+    <img src={`/images/gems/${rulingPlanet}.png`} alt="" width={40} height={40} style={{ objectFit: 'contain' }} />
   );
 }
 
-// A Rudraksha bead icon — a round bead with radial facet lines equal to the
-// mukhi (face) count, so the count itself is visually legible.
-function RudrakshaIcon({ mukhi }: { mukhi: number }) {
-  const lines = Array.from({ length: mukhi }, (_, i) => {
-    const angle = (i / mukhi) * Math.PI * 2;
-    return { x2: 24 + Math.cos(angle) * 18, y2: 24 + Math.sin(angle) * 18 };
-  });
+// Real Rudraksha bead photo (background removed) — one generic photo used
+// regardless of mukhi count, since that's the only Rudraksha product photo
+// available.
+function RudrakshaIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
-      <circle cx="24" cy="24" r="19" fill="#5c3a21" stroke="#2e1c0f" strokeWidth="1.5" />
-      {lines.map((l, i) => (
-        <line key={i} x1="24" y1="24" x2={l.x2} y2={l.y2} stroke="#8d5a35" strokeWidth="1" />
-      ))}
-      <circle cx="24" cy="24" r="3" fill="#c7a15a" />
-    </svg>
+    <img src="/images/gems/rudraksha.png" alt="" width={40} height={40} style={{ objectFit: 'contain' }} />
   );
 }
 

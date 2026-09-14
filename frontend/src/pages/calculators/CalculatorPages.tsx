@@ -4,7 +4,7 @@
 // AppContext was `currentUser`, for prefilling a logged-in user's saved
 // birth details — now passed in as a prop instead, so this file has zero
 // dependency on AppContext itself.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { AuthUser } from '../../context/AppContext';
 import { PLANET_META } from '../../data/planetMeta';
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
@@ -18,7 +18,8 @@ import PanchangDetailsForm from '../../components/PanchangDetailsForm/PanchangDe
 import type { PanchangDetailsSubmitValue } from '../../components/PanchangDetailsForm/PanchangDetailsForm';
 import LocationAutocomplete from '../../components/LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GeocodeResult, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GeocodeResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliMatchingReport, KundliResult, LalKitabResult, LuckyAttributes, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
+import KundliMatchingResult from './KundliMatchingResult';
 import { formatIst } from '../../utils/istTime';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 
@@ -433,12 +434,6 @@ interface PartnerBirthValue {
   place: string;
   geo: GeocodeResult | null;
 }
-function verdictForScore(total: number): string {
-  if (total >= 32) return 'Excellent Match — a highly auspicious pairing by classical Ashtakoot standards.';
-  if (total >= 24) return 'Good Match — favourable compatibility with strong long-term potential.';
-  if (total >= 18) return 'Average Match — workable, but review the Nadi and Bhakoot scores below with an astrologer.';
-  return 'Not Recommended — this pairing scores below the classical minimum (18/36).';
-}
 
 function PartnerBirthFields({ idPrefix, title, value, onChange }: { idPrefix: string; title: string; value: PartnerBirthValue; onChange: (v: PartnerBirthValue) => void }) {
   return (
@@ -476,9 +471,17 @@ const EMPTY_PARTNER: PartnerBirthValue = { name: '', dob: '', tob: '', place: ''
 export function KundliMatchingPage() {
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<GunMilanResult | null>(null);
+  const [result, setResult] = useState<KundliMatchingReport | null>(null);
   const [boy, setBoy] = useState<PartnerBirthValue>(EMPTY_PARTNER);
   const [girl, setGirl] = useState<PartnerBirthValue>(EMPTY_PARTNER);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // Jump straight to the output as soon as it's ready — on mobile the two
+  // stacked partner forms push the result far below the fold, so without
+  // this the user has to manually scroll past both to see anything.
+  useEffect(() => {
+    if (result) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [result]);
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -527,7 +530,7 @@ export function KundliMatchingPage() {
             <PartnerBirthFields idPrefix="km-boy" title="Partner 1 (Boy)" value={boy} onChange={setBoy} />
             <PartnerBirthFields idPrefix="km-girl" title="Partner 2 (Girl)" value={girl} onChange={setGirl} />
 
-            <div style={{ gridColumn: 'span 2', textAlign: 'center', marginTop: '16px' }}>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', marginTop: '16px' }}>
               {error && <p style={{ color: '#d64545', marginBottom: '12px' }}>{error}</p>}
               <button type="submit" className="btn btn-gold btn-lg" disabled={calculating}>
                 {calculating ? 'Analyzing Charts...' : 'Calculate Guna Match'}
@@ -537,32 +540,8 @@ export function KundliMatchingPage() {
 
           {/* Results Output */}
           {result && (
-            <div className={styles.compatibilityResult}>
-              <div className={styles.compatHeader}>
-                <div>
-                  <h3 className={styles.partnerTitle} style={{ border: 'none', margin: 0 }}>Guna Milan Result</h3>
-                  <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', margin: 0 }}>
-                    Match between {boy.name.trim() || 'Partner 1'} &amp; {girl.name.trim() || 'Partner 2'} — {result.brideMoonRashi} Moon &amp; {result.groomMoonRashi} Moon
-                  </p>
-                </div>
-                <div className={styles.scoreCircle}>
-                  <span className={styles.scoreVal}>{result.totalPoints}</span>
-                  <span className={styles.scoreLabel}>Out of 36</span>
-                </div>
-              </div>
-
-              <div className={styles.compatGrid}>
-                {result.kootas.map(k => (
-                  <div className={styles.compatBox} key={k.name}>
-                    <span className={styles.compatLabel}>{k.name}</span>
-                    <span className={styles.compatVal}>{k.points} / {k.maxPoints}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className={styles.compatVerdict}>
-                <strong>Vedic Verdict:</strong> {verdictForScore(result.totalPoints)}
-              </div>
+            <div ref={resultRef}>
+              <KundliMatchingResult result={result} brideName={girl.name.trim()} groomName={boy.name.trim()} />
             </div>
           )}
         </div>
@@ -571,7 +550,7 @@ export function KundliMatchingPage() {
   );
 }
 
-// Nakshatra Finder, Mangal Dosha, Sade Sati, Numerology — one shared shell:
+// Nakshatra Finder, Sade Sati, Numerology — one shared shell:
 // a single BirthDetailsForm feeding a calculator endpoint, with the result
 // shown alongside the raw computed values (not just a verdict), so the
 // numbers can be independently cross-checked against any other Kundli tool.
@@ -626,40 +605,6 @@ export function NakshatraFinderPage({ currentUser = null }: { currentUser?: Mayb
           </p>
           <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
             You can cross-check this against any other Kundli tool using the same birth date, time, and place — the Moon's longitude above should match closely.
-          </p>
-        </ResultCard>
-      )}
-    </CalculatorPageShell>
-  );
-}
-
-export function MangalDoshaPage({ currentUser = null }: { currentUser?: MaybeUser } = {}) {
-  const [result, setResult] = useState<MangalDoshaResult | null>(null);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
-    setError('');
-    setResult(null);
-    try {
-      setResult(await calculatorService.mangalDosha(details));
-    } catch (err) {
-      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
-    }
-  };
-
-  return (
-    <CalculatorPageShell eyebrow="Mangal Dosha" title="Mangal Dosha (Manglik) Check" description="Checks whether Mars falls in a Manglik-causing house counted from your Ascendant.">
-      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Mangal Dosha" idPrefix="mangal" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
-      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
-      {result && (
-        <ResultCard>
-          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{result.isManglik ? 'You are Manglik' : 'You are Not Manglik'}</h3>
-          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
-            Mars is placed in your {result.marsHouse}{ordinal(result.marsHouse)} house from the Ascendant. Mangal Dosha applies when Mars is in house
-            1, 2, 4, 7, 8, or 12 from the Ascendant — {result.isManglik ? 'and that is the case here.' : 'which is not the case here.'}
-          </p>
-          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
-            Some traditions also check Mars's house from the Moon or Venus — this result uses the Ascendant-based rule, the most widely used version.
           </p>
         </ResultCard>
       )}

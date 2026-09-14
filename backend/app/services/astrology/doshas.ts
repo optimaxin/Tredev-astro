@@ -2,16 +2,6 @@ import { getPlanetaryPositions } from './ephemeris.ts';
 import { getHouseFromAscendant, getRashi } from './zodiac.ts';
 import type { Kundli } from './kundli.ts';
 
-// Mangal Dosha (Manglik) analysis lives in its own module — it's a large
-// enough feature (three reference points, Mars strength, marriage-house
-// analysis, cancellation grading, Navamsa cross-check) to deserve isolation
-// from the other, much smaller dosha checks below.
-export { checkMangalDosha } from './manglikDosha.ts';
-export type {
-  MangalDoshaResult, ReferencePointResult, CancellationCheck,
-  MarsAnalysis, MarriageHouseAnalysis, NavamsaManglikSupport,
-} from './manglikDosha.ts';
-
 // Sade Sati — Saturn's transit through the 12th, 1st, or 2nd rashi counted
 // from the natal Moon's rashi; a ~7.5 year period traditionally split into
 // three phases (rising/peak/setting).

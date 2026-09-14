@@ -74,77 +74,6 @@ export interface NakshatraResult {
   lord: string;
 }
 
-export interface ManglikReferencePoint {
-  referencePoint: 'lagna' | 'moon' | 'venus';
-  referenceSign: string;
-  marsSign: string;
-  house: number;
-  inManglikHouse: boolean;
-  rawIsManglik: boolean;
-  dignityCancelled: boolean;
-  isManglik: boolean;
-}
-
-export interface ManglikCancellationCheck {
-  rule: string;
-  satisfied: boolean;
-  explanation: string;
-  effect: 'cancels' | 'reduces' | 'none';
-}
-
-export interface MangalDoshaResult {
-  // Lagna-based, post-cancellation — the primary/default verdict.
-  isManglik: boolean;
-  marsHouse: number;
-  cancelled: boolean;
-  rule: 'from-ascendant';
-
-  convention: string;
-  housesUsed: number[];
-
-  referencePoints: { lagna: ManglikReferencePoint; moon: ManglikReferencePoint; venus: ManglikReferencePoint };
-  basicManglikStatus: boolean;
-
-  marsAnalysis: {
-    sign: string;
-    dignity: 'exalted' | 'debilitated' | 'own-sign' | 'neutral';
-    rulesHouses: number[];
-    conjunctPlanets: string[];
-    aspectedByPlanets: string[];
-    aspectsHouses: number[];
-    beneficInfluence: string[];
-    maleficInfluence: string[];
-  };
-
-  marriageHouseAnalysis: {
-    seventhHouseSign: string;
-    seventhLord: string;
-    seventhLordHouse: number;
-    venusHouse: number;
-    venusSign: string;
-    jupiterHouse: number;
-    jupiterSign: string;
-    marsAspectsSeventhHouse: boolean;
-    marsAspectsSeventhLord: boolean;
-    marsAspectsVenus: boolean;
-    marsConjunctSeventhLord: boolean;
-    marsConjunctVenus: boolean;
-  };
-
-  cancellationChecks: ManglikCancellationCheck[];
-  cancellationGrade: 'NONE' | 'PARTIAL' | 'STRONG' | 'COMPLETE';
-  severity: 'LOW' | 'MODERATE' | 'STRONG';
-
-  navamsa: {
-    marsSign: string;
-    marsHouse: number;
-    seventhHouseSign: string;
-    seventhLord: string;
-    venusSign: string;
-    jupiterSign: string;
-  };
-}
-
 export interface SadeSatiResult {
   active: boolean;
   phase: 'rising' | 'peak' | 'setting' | null;
@@ -216,6 +145,53 @@ export interface GunMilanResult {
   groomMoonRashi: string;
   brideNakshatra: string;
   groomNakshatra: string;
+}
+
+export interface SeventhHouseAnalysis {
+  sign: string;
+  lord: string;
+  lordHouse: number;
+  lordSign: string;
+  occupants: string[];
+}
+
+export interface KundliMatchPartnerReport {
+  kundli: KundliResult;
+  navamsaChart: NavamsaChart;
+  currentMahadasha: MahadashaPeriod;
+  mahadashaTimeline: MahadashaPeriod[];
+  dashaPredictions: DashaPrediction[];
+  seventhHouse: SeventhHouseAnalysis;
+}
+
+export interface DoshaVerdict {
+  status: 'Present' | 'Absent' | 'Partially applicable';
+  severity: 'Low' | 'Moderate' | 'Strong';
+  cancellation: 'None' | 'Partial' | 'Strong' | 'Complete' | 'Not applicable';
+  reason: string;
+  points: number;
+  maxPoints: number;
+}
+
+export interface PlanetaryCompatibilityRow {
+  label: string;
+  bride: { sign: string; house: number };
+  groom: { sign: string; house: number };
+  relation: 'same-sign' | 'friend' | 'neutral' | 'enemy';
+  note: string;
+}
+
+export type FinalGrade = 'VERY WEAK' | 'WEAK' | 'MODERATE' | 'GOOD' | 'STRONG';
+
+export interface KundliMatchingReport {
+  ayanamsa: string;
+  bride: KundliMatchPartnerReport;
+  groom: KundliMatchPartnerReport;
+  gunMilan: GunMilanResult;
+  bhakoot: DoshaVerdict;
+  nadi: DoshaVerdict;
+  planetaryCompatibility: PlanetaryCompatibilityRow[];
+  finalAssessment: { grade: FinalGrade; reasoning: string[] };
 }
 
 export interface ChoghadiyaSegment {
@@ -506,7 +482,6 @@ export interface KundliFullResult {
   mahadashaTimeline: MahadashaPeriod[];
   yoginiDashaTimeline: YoginiPeriod[];
   doshas: {
-    mangal: MangalDoshaResult;
     kaalSarp: KaalSarpDoshaResult;
     sadeSati: SadeSatiResult;
     rahuKetuTransit: RahuKetuTransitResult;
@@ -541,11 +516,10 @@ export const calculatorService = {
   kundli: (birth: BirthDetailsInput) => request<KundliResult>('/api/calculators/kundli', { method: 'POST', body: JSON.stringify(birth) }),
   kundliFull: (birth: BirthDetailsInput, language?: 'en' | 'hi') => request<KundliFullResult>('/api/calculators/kundli-full', { method: 'POST', body: JSON.stringify({ ...birth, language }) }),
   nakshatra: (birth: BirthDetailsInput) => request<NakshatraResult>('/api/calculators/nakshatra', { method: 'POST', body: JSON.stringify(birth) }),
-  mangalDosha: (birth: BirthDetailsInput) => request<MangalDoshaResult>('/api/calculators/mangal-dosha', { method: 'POST', body: JSON.stringify(birth) }),
   sadeSati: (birth: BirthDetailsInput) => request<SadeSatiResult>('/api/calculators/sade-sati', { method: 'POST', body: JSON.stringify(birth) }),
   numerology: (name: string, date: string) => request<NumerologyResult>('/api/calculators/numerology', { method: 'POST', body: JSON.stringify({ name, date }) }),
   kundliMatching: (bride: BirthDetailsInput, groom: BirthDetailsInput) =>
-    request<GunMilanResult>('/api/calculators/kundli-matching', { method: 'POST', body: JSON.stringify({ bride, groom }) }),
+    request<KundliMatchingReport>('/api/calculators/kundli-matching', { method: 'POST', body: JSON.stringify({ bride, groom }) }),
   kaalSarpDosha: (birth: BirthDetailsInput) => request<KaalSarpDoshaResult>('/api/calculators/kaal-sarp-dosha', { method: 'POST', body: JSON.stringify(birth) }),
   rahuKetuTransit: (birth: BirthDetailsInput) => request<RahuKetuTransitResult>('/api/calculators/rahu-ketu-transit', { method: 'POST', body: JSON.stringify(birth) }),
   numerologyMatch: (person1: { name: string; date: string }, person2: { name: string; date: string }) =>

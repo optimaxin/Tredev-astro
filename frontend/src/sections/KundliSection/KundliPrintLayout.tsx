@@ -65,9 +65,6 @@ const DIVISIONAL_ORDER = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D10', 'D11'
 type SimplePlanets = Parameters<typeof NorthIndianChart>[0]['planets'];
 type Language = 'en' | 'hi';
 
-// House numbers only ever run 1-12 (whole-sign houses) — a plain lookup is
-// simpler than a Hindi ordinal-formatting function.
-const HOUSE_ORDINAL_HI = ['', 'पहले', 'दूसरे', 'तीसरे', 'चौथे', 'पांचवें', 'छठे', 'सातवें', 'आठवें', 'नौवें', 'दसवें', 'ग्यारहवें', 'बारहवें'];
 const YOGINI_HI: Record<string, string> = {
   Mangala: 'मंगला', Pingala: 'पिंगला', Dhanya: 'धान्या', Bhramari: 'भ्रामरी',
   Bhadrika: 'भद्रिका', Ulka: 'उल्का', Siddha: 'सिद्धा', Sankata: 'संकटा',
@@ -111,9 +108,7 @@ const LABELS = {
     rudrakshaRecommendation: 'Rudraksha Recommendation', mukhiRudraksha: (mukhi: number, deity: string) => `${mukhi}-Mukhi Rudraksha — ${deity}`,
     ruledBy: (planet: string) => `Ruled by ${planet}.`, howToWear: 'How to wear:', benefits: 'Benefits', precautions: 'Precautions',
     gemstoneRecommendations: 'Gemstone Recommendations', finger: 'finger',
-    doshaAnalysis: 'Dosha Analysis',
-    manglikDosha: 'Manglik Dosha', manglikActive: 'Manglik', notPresent: 'Not Present',
-    manglikText: (n: string, h: string) => `${n} is Manglik — Mars is in the ${h} house.`, manglikFreeText: (n: string) => `${n}'s chart is free from Manglik Dosha.`,
+    doshaAnalysis: 'Dosha Analysis', notPresent: 'Not Present',
     kaalSarpDosha: 'Kaal Sarp Dosha', present: 'Present',
     kaalSarpText: (r: string, k: string) => `All planets fall between Rahu (${r}) and Ketu (${k}).`, kaalSarpFreeText: 'Kundli is free from Kaal Sarp Dosha.',
     sadeSati: 'Sade Sati', sadeSatiActive: (p: string) => `Active — ${p}`, notActive: 'Not Active',
@@ -153,9 +148,7 @@ const LABELS = {
     rudrakshaRecommendation: 'रुद्राक्ष सुझाव', mukhiRudraksha: (mukhi: number, deity: string) => `${mukhi}-मुखी रुद्राक्ष — ${deity}`,
     ruledBy: (planet: string) => `${planet} द्वारा शासित।`, howToWear: 'कैसे पहनें:', benefits: 'लाभ', precautions: 'सावधानियां',
     gemstoneRecommendations: 'रत्न सुझाव', finger: 'उंगली',
-    doshaAnalysis: 'दोष विश्लेषण',
-    manglikDosha: 'मांगलिक दोष', manglikActive: 'मांगलिक', notPresent: 'अनुपस्थित',
-    manglikText: (n: string, h: string) => `${n} मांगलिक है — मंगल ${h} भाव में है।`, manglikFreeText: (n: string) => `${n} की कुंडली मांगलिक दोष से मुक्त है।`,
+    doshaAnalysis: 'दोष विश्लेषण', notPresent: 'अनुपस्थित',
     kaalSarpDosha: 'कालसर्प दोष', present: 'उपस्थित',
     kaalSarpText: (r: string, k: string) => `सभी ग्रह राहु (${r}) और केतु (${k}) के बीच स्थित हैं।`, kaalSarpFreeText: 'कुंडली कालसर्प दोष से मुक्त है।',
     sadeSati: 'साढ़े साती', sadeSatiActive: (p: string) => `सक्रिय — ${p}`, notActive: 'सक्रिय नहीं',
@@ -170,6 +163,9 @@ interface KundliPrintLayoutProps {
   dob: string;
   tob: string;
   place: string;
+  // For converting the Panchang's UTC sunrise/sunset instants back to the
+  // birth place's local clock time — see formatLocalTime below.
+  timezoneOffsetMinutes: number;
   result: KundliFullResult;
   // "05 Charts" (Chandra + every D2-D60 varga chart, one full html2canvas
   // capture EACH) is by far the single biggest cost in this report — ~19 of
@@ -194,7 +190,7 @@ interface KundliPrintLayoutProps {
   language?: Language;
 }
 
-export default function KundliPrintLayout({ name, dob, tob, place, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
+export default function KundliPrintLayout({ name, dob, tob, place, timezoneOffsetMinutes, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
   const L = LABELS[language];
   const isHi = language === 'hi';
 
@@ -205,7 +201,6 @@ export default function KundliPrintLayout({ name, dob, tob, place, result, skipE
   const rashiText = (r: string) => (isHi ? HINDI_RASHI[r] || r : r);
   const nakshatraText = (n: string) => (isHi ? HINDI_NAKSHATRA[n] || n : n);
   const planetText = (id: string) => (isHi ? HINDI_PLANET[id] || cap(id) : cap(id));
-  const houseOrdinalText = (h: number) => (isHi ? HOUSE_ORDINAL_HI[h] || String(h) : ordinal(h));
   const yesNoText = (b: boolean) => (b ? L.yes : L.no);
   const yoginiText = (y: string) => (isHi ? YOGINI_HI[y] || y : cap(y));
   const phaseText = (p: string) => (isHi ? DOSHA_PHASE_HI[p] || p : p);
@@ -293,8 +288,8 @@ export default function KundliPrintLayout({ name, dob, tob, place, result, skipE
             <KVRow label={L.nakshatra}>{nakshatraText(result.kundli.moonNakshatra.name)}</KVRow>
             <KVRow label={L.nakshatraLord}>{planetText(result.kundli.moonNakshatra.lord)}</KVRow>
             <KVRow label={L.ascendant}>{rashiText(result.kundli.ascendant.rashi)}</KVRow>
-            {result.panchang.sunrise && <KVRow label={L.sunrise}>{result.panchang.sunrise}</KVRow>}
-            {result.panchang.sunset && <KVRow label={L.sunset}>{result.panchang.sunset}</KVRow>}
+            {result.panchang.sunrise && <KVRow label={L.sunrise}>{formatLocalTime(result.panchang.sunrise, timezoneOffsetMinutes)}</KVRow>}
+            {result.panchang.sunset && <KVRow label={L.sunset}>{formatLocalTime(result.panchang.sunset, timezoneOffsetMinutes)}</KVRow>}
           </KVGrid>
 
           <SubHeading>{L.avakhadaDetails}</SubHeading>
@@ -596,9 +591,6 @@ export default function KundliPrintLayout({ name, dob, tob, place, result, skipE
 
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>{L.doshaAnalysis}</SubHeading>
-          <DoshaRow label={L.manglikDosha} active={result.doshas.mangal.isManglik} activeText={L.manglikActive} inactiveText={L.notPresent}>
-            {result.doshas.mangal.isManglik ? L.manglikText(name, houseOrdinalText(result.doshas.mangal.marsHouse)) : L.manglikFreeText(name)}
-          </DoshaRow>
           <DoshaRow label={L.kaalSarpDosha} active={result.doshas.kaalSarp.isKaalSarp} activeText={L.present} inactiveText={L.notPresent}>
             {result.doshas.kaalSarp.isKaalSarp ? L.kaalSarpText(rashiText(result.doshas.kaalSarp.rahuRashi), rashiText(result.doshas.kaalSarp.ketuRashi)) : L.kaalSarpFreeText}
           </DoshaRow>
@@ -669,6 +661,15 @@ function formatDeg(degreeInSign: number): string {
   const deg = Math.floor(degreeInSign);
   const min = Math.round((degreeInSign - deg) * 60);
   return `${deg}° ${min}′`;
+}
+
+// Panchang sunrise/sunset come back as UTC ISO instants — shift to the
+// birth place's local clock time before printing. timezoneOffsetMinutes
+// uses this app's "local = UTC + offset" convention (IST = +330).
+function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string {
+  const localMs = new Date(isoUtc).getTime() + timezoneOffsetMinutes * 60_000;
+  const d = new Date(localMs);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 // A chart + its title, sized to sit several-to-a-block (NOT its own capture

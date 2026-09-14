@@ -81,6 +81,7 @@ export default function PrintKundliPage() {
         dob={dob}
         tob={tob}
         place={place}
+        timezoneOffsetMinutes={timezoneOffsetMinutes}
         result={result}
         bannerImageSrc="/images/hero-banner.jpg"
         language={language}

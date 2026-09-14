@@ -77,8 +77,7 @@ function isRetrograde(lonNow: number, lonNextDay: number): boolean {
 
 // Ascendant (Lagna) — the ecliptic degree rising on the eastern horizon at
 // birth. Needed for whole-sign house placement (getHouseFromAscendant in
-// zodiac.ts) and Mangal Dosha, which is defined by Mars's house *from the
-// Ascendant*, not just its sign.
+// zodiac.ts), which every planet's house placement in the chart is built on.
 //
 // Formula (standard spherical-astronomy derivation, used by open natal-chart
 // implementations): asc = atan2(cos(RAMC), -(sin(ε)·tan(φ) + cos(ε)·sin(RAMC)))

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { generateKundli, getNavamsaChart, getChandraChart } from '../services/astrology/kundli.ts';
-import { checkKaalSarpDosha, checkMangalDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
+import { checkKaalSarpDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
 import type { PlanetId } from '../services/astrology/ephemeris.ts';
@@ -10,7 +10,7 @@ import { calculateNumerology, calculateNumerologyMatch, calculatePersonalCycle }
 import { getUpcomingTransits } from '../services/astrology/upcomingTransits.ts';
 import { getChineseZodiac } from '../services/astrology/chineseZodiac.ts';
 import { calculateFlames } from '../services/astrology/flames.ts';
-import { calculateGunMilan } from '../services/astrology/gunMilan.ts';
+import { buildKundliMatchingReport } from '../services/astrology/kundliMatching.ts';
 import { calculatePanchang } from '../services/astrology/panchang.ts';
 import { getDailyHoroscope } from '../services/astrology/dailyHoroscope.ts';
 import { getCurrentMahadasha, getMahadashaTimeline } from '../services/astrology/vimshottariDasha.ts';
@@ -122,7 +122,6 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
         dateOnly: birth.date, latitude: birth.latitude, longitude: birth.longitude,
       }),
       doshas: {
-        mangal: checkMangalDosha(kundli),
         kaalSarp: checkKaalSarpDosha(kundli),
         sadeSati: checkSadeSati(moonRashiIndex, now),
         rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
@@ -148,14 +147,6 @@ calculatorsRouter.post('/nakshatra', limiter, (req, res) => {
     const positions = getPlanetaryPositions({ utcDate: toUtcDate(birth) });
     const moon = positions.find(p => p.id === 'moon')!;
     return { moonLongitude: moon.longitude, rashi: getRashi(moon.longitude).name, ...getNakshatra(moon.longitude) };
-  });
-});
-
-calculatorsRouter.post('/mangal-dosha', limiter, (req, res) => {
-  handle(res, () => {
-    const birth = birthSchema.parse(req.body);
-    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
-    return checkMangalDosha(kundli);
   });
 });
 
@@ -258,9 +249,10 @@ const matchingSchema = z.object({
 calculatorsRouter.post('/kundli-matching', limiter, (req, res) => {
   handle(res, () => {
     const body = matchingSchema.parse(req.body);
-    const brideMoon = getPlanetaryPositions({ utcDate: toUtcDate(body.bride) }).find(p => p.id === 'moon')!;
-    const groomMoon = getPlanetaryPositions({ utcDate: toUtcDate(body.groom) }).find(p => p.id === 'moon')!;
-    return calculateGunMilan(brideMoon.longitude, groomMoon.longitude);
+    return buildKundliMatchingReport(
+      { utcDate: toUtcDate(body.bride), latitude: body.bride.latitude, longitude: body.bride.longitude },
+      { utcDate: toUtcDate(body.groom), latitude: body.groom.latitude, longitude: body.groom.longitude },
+    );
   });
 });
 

@@ -395,7 +395,7 @@
 }
 
 /* The hardcoded dark-navy background above never adapted to light theme —
-   every calculator result (Mangal Dosha, Kaal Sarp, Numerology, etc. — all
+   every calculator result (Kaal Sarp, Sade Sati, Numerology, etc. — all
    share this one card) rendered its already-theme-aware text colors against
    a background that stayed dark regardless, producing low-contrast, washed
    out text on the light theme. */

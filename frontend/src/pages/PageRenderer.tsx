@@ -41,7 +41,7 @@ import type { KundliFullResult } from '../services/calculatorService';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import {
   HoroscopePage, ChoghadiyaPage, MuhuratFinderPage, AbhijitMuhuratPage, KundliMatchingPage,
-  NakshatraFinderPage, MangalDoshaPage, SadeSatiPage, LuckyPage, BabyNamePage, LalKitabPage,
+  NakshatraFinderPage, SadeSatiPage, LuckyPage, BabyNamePage, LalKitabPage,
   KaalSarpDoshaPage, RahuKetuTransitPage, MoonSignPage, AscendantPage, NumerologyPage,
   LifePathNumberPage, NameNumerologyPage, NumerologyMatchPage, FlamesPage, ChineseZodiacPage,
   NumerologyHoroscopePage, ordinal,
@@ -158,8 +158,6 @@ export default function PageRenderer() {
     case 'nakshatra-finder':
       return <NakshatraFinderPage currentUser={currentUser} />;
 
-    case 'mangal-dosha':
-      return <MangalDoshaPage currentUser={currentUser} />;
 
     case 'sade-sati':
       return <SadeSatiPage currentUser={currentUser} />;

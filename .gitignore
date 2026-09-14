@@ -13,6 +13,10 @@ dist-ssr
 *.local
 backend/data/
 
+# Personal/scratch workspace — sample kundli PDFs, reference repos, ad-hoc
+# assets. Never meant for the shared repo (real names, unrelated projects).
+Extra/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

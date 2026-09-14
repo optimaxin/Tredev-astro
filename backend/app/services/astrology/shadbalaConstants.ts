@@ -30,8 +30,8 @@ export type PlanetDignity = 'exalted' | 'debilitated' | 'own-sign' | 'neutral';
 
 // Classical sign-level dignity — debilitation is always the sign exactly
 // opposite exaltation (180° away). Shared by anything that needs to know
-// how comfortably a graha is placed: Manglik cancellation (manglikDosha.ts),
-// written chart analysis (kundliAnalysis.ts), etc.
+// how comfortably a graha is placed: written chart analysis
+// (kundliAnalysis.ts, dashaPredictions.ts), etc.
 export function planetDignity(planet: ShadPlanet, signIndex: number): PlanetDignity {
   const exaltSign = Math.floor(EXALTATION_DEGREES[planet] / 30) % 12;
   const debilSign = (exaltSign + 6) % 12;
