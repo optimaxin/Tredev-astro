@@ -36,7 +36,7 @@ const CARDS = [
   },
   {
     id: 'ai',
-    title: 'Ask TredevAstro',
+    title: 'Ask TredevaAstro',
     desc: 'Get quick chart-based answers using intelligent astrology guidance.',
     cta: 'Ask Now',
     href: '#ai',

@@ -70,7 +70,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('store'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              {t('cta_explore')} TredevStore →
+              {t('cta_explore')} TredevaStore →
             </button>
           )}
         </div>
@@ -151,7 +151,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
               className="btn btn-outline-light"
               onClick={() => { setPage('store'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore TredevStore →
+              Explore TredevaStore →
             </button>
           </div>
         )}

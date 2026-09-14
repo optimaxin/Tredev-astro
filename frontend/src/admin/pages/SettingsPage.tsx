@@ -136,7 +136,7 @@ export default function SettingsPage() {
       <div className={styles.settingsGrid}>
         <div className={styles.settingsCard}>
           <div className={styles.settingsCardTitle}>{t('admin_settings_general')}</div>
-          <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_settings_platform')}</span><span className={styles.drawerFieldValue}>TredevAstro</span></div>
+          <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_settings_platform')}</span><span className={styles.drawerFieldValue}>TredevaAstro</span></div>
           <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_settings_support_email')}</span><span className={styles.drawerFieldValue}>support@tredevastro.com</span></div>
         </div>
 

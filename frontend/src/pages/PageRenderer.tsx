@@ -1016,7 +1016,7 @@ function ReportDetailPage({ id }: { id: any }) {
               <img src="/logo.png" alt="" className={styles.manuscriptLogoImg} />
               <div className={styles.manuscriptBottom}>
                 <span className={styles.manuscriptLogo}>✦</span>
-                <div className={styles.manuscriptSeal}>TREDEVASTRO GRANTH</div>
+                <div className={styles.manuscriptSeal}>TREDEVAASTRO GRANTH</div>
               </div>
             </div>
             <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', marginTop: '24px' }}>
@@ -1811,12 +1811,12 @@ function AboutPage() {
       <div className={styles.container} style={{ maxWidth: '800px' }}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">Our Lineage</span>
-          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>About TredevAstro</h1>
+          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>About TredevaAstro</h1>
           <div className={styles.divider}>✦ ❖ ✦</div>
         </div>
 
         <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-base)', lineHeight: 1.75, color: 'var(--color-text-dark)' }}>
-          <p>TredevAstro was founded to bridge ancient Vedic wisdom with modern digital clarity. Rather than generating generic commercial predictions, our platform is built on classical Indian astronomical observations (Jyotish Shastra).</p>
+          <p>TredevaAstro was founded to bridge ancient Vedic wisdom with modern digital clarity. Rather than generating generic commercial predictions, our platform is built on classical Indian astronomical observations (Jyotish Shastra).</p>
           <p style={{ marginTop: '16px' }}>All calculations follow the Lahiri Ayanamsa, matching planetary alignments to the exact degrees of the stars. We partner with respected Acharyas initiated into authentic lineages to ensure all consultations and Pujas follow precise shastric codes.</p>
           <p style={{ marginTop: '16px' }}>Explore your birth blueprint, balance energies through energized remedies, and walk your path with alignment, purpose and dharma.</p>
         </div>

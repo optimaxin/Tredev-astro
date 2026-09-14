@@ -139,10 +139,10 @@ export default function Navigation() {
         <button
           className={styles.logo}
           onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-          aria-label="TredevAstro home"
+          aria-label="TredevaAstro home"
         >
           <img src="/logo.png" alt="" className={styles.logoStar} />
-          <span className={styles.logoText}>TredevAstro</span>
+          <span className={styles.logoText}>TredevaAstro</span>
         </button>
 
         {/* Desktop Navigation */}

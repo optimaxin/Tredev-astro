@@ -51,10 +51,10 @@ const SLIDES = [
   },
   {
     id: 3,
-    category: 'TREDEVSTORE',
+    category: 'TREDEVASTORE',
     title: 'Sacred Objects Chosen\nfor Your Journey.',
     description: 'Authentic gemstones, Rudraksha, Yantras and sacred objects — energized for your Kundli.',
-    cta: 'Explore TredevStore',
+    cta: 'Explore TredevaStore',
     ctaAction: 'store',
     accentColor: '#C7A15A',
     bgColor: 'linear-gradient(135deg, #1A1008 0%, #241810 40%, #1A1508 100%)',
@@ -66,7 +66,7 @@ const SLIDES = [
   },
   {
     id: 4,
-    category: 'TREDEVASTRO GURUKUL',
+    category: 'TREDEVAASTRO GURUKUL',
     title: 'Learn the Language\nof Jyotish.',
     description: 'Study Vedic astrology from foundation to mastery through structured courses taught by expert Acharyas.',
     cta: 'Explore Gurukul',

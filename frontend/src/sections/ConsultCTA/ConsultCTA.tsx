@@ -26,7 +26,7 @@ export default function ConsultCTA() {
           <div className={styles.portraitGlow} />
           <img
             src="/Astrologist/Astrologist-welcome.jpeg"
-            alt="Astrologist welcoming you to TredevAstro"
+            alt="Astrologist welcoming you to TredevaAstro"
             className={styles.portraitImg}
             draggable={false}
           />

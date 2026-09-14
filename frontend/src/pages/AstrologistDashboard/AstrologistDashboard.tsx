@@ -124,7 +124,7 @@ export default function AstrologistDashboard() {
 
         <aside className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ''}`}>
           <div className={styles.brand}>
-            <div className={styles.brandName}>TredevAstro</div>
+            <div className={styles.brandName}>TredevaAstro</div>
             <div className={styles.brandLabel}>Astrologer Workspace</div>
           </div>
 
@@ -194,7 +194,7 @@ export default function AstrologistDashboard() {
             </div>
           </header>
 
-          {isSuspended && <div className={styles.suspendedBanner}>Your account has been suspended by TredevAstro. You cannot accept new bookings or appear in public search until it is reactivated.</div>}
+          {isSuspended && <div className={styles.suspendedBanner}>Your account has been suspended by TredevaAstro. You cannot accept new bookings or appear in public search until it is reactivated.</div>}
 
           <main className={styles.content}>
             <NotificationPermissionOnboarding />

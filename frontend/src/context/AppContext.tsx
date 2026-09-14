@@ -281,7 +281,7 @@ function seedAstrologistDemoData() {
       { id: 'an-seed-2', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'New consultation request from Karan Malhotra.', at: iso(0, 9, 30), read: false, kind: 'request' },
       { id: 'an-seed-3', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'Nalini S. left you a 5★ review.', at: iso(-12, 13, 0), read: true, kind: 'review' },
       { id: 'an-seed-4', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'Payout of ₹1,470 was completed.', at: iso(-5, 16, 0), read: true, kind: 'payment' },
-      { id: 'an-seed-5', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'TredevAstro platform maintenance scheduled for this weekend.', at: iso(-2, 9, 0), read: true, kind: 'system' },
+      { id: 'an-seed-5', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'TredevaAstro platform maintenance scheduled for this weekend.', at: iso(-2, 9, 0), read: true, kind: 'system' },
       { id: 'an-seed-6', recipientEmail: DEMO_ASTROLOGER_EMAIL, message: 'Your astrologer profile was approved and is now publicly visible.', at: iso(-30, 10, 0), read: true, kind: 'profile' },
     );
     localStorage.setItem('astro_notifications', JSON.stringify(notifs));
@@ -446,11 +446,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     section_horoscope_desc: 'Real, freshly-computed planetary transits for your Moon Sign — updated every day.',
     section_astrologers_title: 'Consult an Astrologist',
     section_astrologers_desc: 'Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.',
-    section_store_title: 'TredevStore',
+    section_store_title: 'TredevaStore',
     section_store_desc: 'Authentic, energized gemstones, yantras and spiritual tools, carefully curated.',
-    section_academy_title: 'TredevAstro Gurukul',
+    section_academy_title: 'TredevaAstro Gurukul',
     section_academy_desc: 'Structured, in-depth courses in Vedic astrology and Jyotish, guided by lineage Acharyas.',
-    section_ai_title: 'Ask TredevAstro',
+    section_ai_title: 'Ask TredevaAstro',
     section_ai_desc: 'Have a question about your chart? Get insights grounded in classical Vedic astrology.',
 
     // CTA & button actions
@@ -636,7 +636,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_privacy_policy: 'Privacy Policy',
     footer_terms_of_service: 'Terms of Service',
     footer_contact_us: 'Contact Us',
-    footer_copyright: '© 2026 TredevAstro. All rights reserved.',
+    footer_copyright: '© 2026 TredevaAstro. All rights reserved.',
     footer_privacy_short: 'Privacy',
     footer_terms_short: 'Terms',
     footer_cookies_short: 'Cookies',
@@ -708,9 +708,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     auth_footer_stamp: 'ENCRYPTED ANCIENT VEDIC ARCHIVE',
 
     // Admin Console
-    admin_console_name: 'TredevAstro Admin',
+    admin_console_name: 'TredevaAstro Admin',
     admin_console_caption: 'Administration Console',
-    admin_console_name_staff: 'TredevAstro Staff',
+    admin_console_name_staff: 'TredevaAstro Staff',
     admin_console_caption_staff: 'Staff Console',
     admin_search_placeholder: 'Search...',
     admin_notifications: 'Notifications',
@@ -999,7 +999,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     astro_console_sub: 'Manage your consultations, availability & earnings',
     astro_role_label: 'Astrologist',
     astro_sign_out: 'Sign Out',
-    astro_suspended_banner: 'Your account has been suspended by TredevAstro. You cannot accept new bookings or appear in public search until it is reactivated.',
+    astro_suspended_banner: 'Your account has been suspended by TredevaAstro. You cannot accept new bookings or appear in public search until it is reactivated.',
     astro_status_available: 'Available',
     astro_status_busy: 'Busy',
     astro_status_offline: 'Offline',

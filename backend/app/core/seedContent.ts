@@ -49,7 +49,7 @@ const TESTIMONIALS = [
     text: 'I came in with questions about my business direction. The guidance was thoughtful, grounded in my chart details and not generic at all. It gave me a new way to think about my timing. This is placeholder demo content.' },
   { name: 'Sunita Patel', location: 'Ahmedabad', service: 'Marriage Report + Kundli Matching', rating: 5, avatar: 'SP',
     text: 'The Kundli matching report was detailed and sensitive. It didn\'t just look at Gunas — it considered personality compatibility, chart strength and potential challenges. Very thoughtful approach. Demo content.' },
-  { name: 'Arjun Nambiar', location: 'Kochi', service: 'Ask TredevAstro (AI)', rating: 4, avatar: 'AN',
+  { name: 'Arjun Nambiar', location: 'Kochi', service: 'Ask TredevaAstro (AI)', rating: 4, avatar: 'AN',
     text: 'The AI astrology feature gave surprisingly relevant answers about my current Mahadasha. I appreciated that it was honest about being chart-based guidance rather than making absolute predictions. Refreshing. Demo content.' },
   { name: 'Kavya Sharma', location: 'Jaipur', service: 'Premium Kundli Report', rating: 5, avatar: 'KS',
     text: 'The 120-page Kundli report is extraordinary. Every divisional chart was explained clearly. I\'ve had Kundli readings before but nothing at this depth. The design of the report itself is beautiful. This is demo content.' },

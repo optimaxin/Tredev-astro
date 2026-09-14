@@ -390,7 +390,7 @@ export default function Panchang() {
                 <div className={styles.panchangDashHeader}>
                   <div>
                     <p className={styles.panchangDashDate}>{data ? hindiOr(language, HINDI_WEEKDAY, data.vara) : '...'}</p>
-                    <p className={styles.panchangDashBrand}>Tredev Astro · {isHindi ? 'पावन पंचांग' : 'Sacred Panchang'}{currentUser ? ` · ${currentUser.name}` : ''}</p>
+                    <p className={styles.panchangDashBrand}>Tredeva Astro · {isHindi ? 'पावन पंचांग' : 'Sacred Panchang'}{currentUser ? ` · ${currentUser.name}` : ''}</p>
                   </div>
                   <img src="/images/acharya.png" alt="" aria-hidden="true" className={styles.panchangDashFigure} />
                 </div>
@@ -426,7 +426,7 @@ export default function Panchang() {
                   ))}
                 </div>
 
-                <p className={styles.panchangDashFooter}>{isHindi ? 'ॐ सर्वे भवन्तु सुखिनः · Tredev Astro · भारतीय समयानुसार (IST)' : 'Om Sarve Bhavantu Sukhinah · Tredev Astro · Indian Standard Time (IST)'}</p>
+                <p className={styles.panchangDashFooter}>{isHindi ? 'ॐ सर्वे भवन्तु सुखिनः · Tredeva Astro · भारतीय समयानुसार (IST)' : 'Om Sarve Bhavantu Sukhinah · Tredeva Astro · Indian Standard Time (IST)'}</p>
                 </div>
               </div>
 

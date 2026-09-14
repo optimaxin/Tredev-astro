@@ -43,7 +43,7 @@ export default function Blog() {
           transition={{ duration: 0.7 }}
         >
           <span className="section-eyebrow">The Journal</span>
-          <h2 className={styles.title}>From the TredevAstro Journal</h2>
+          <h2 className={styles.title}>From the TredevaAstro Journal</h2>
         </motion.div>
 
         <div className={styles.layout}>

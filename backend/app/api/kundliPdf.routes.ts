@@ -120,7 +120,7 @@ function buildHeaderTemplate(name: string, logoDataUri: string, acharyaDataUri: 
       <div style="display: flex; align-items: center; gap: 14px; padding-bottom: 12px;">
         <img src="${logoDataUri}" style="width: 54px; height: 54px; object-fit: contain;" />
         <div>
-          <div style="font-size: 20px; font-weight: bold; color: #5A4628;">TredevAstro</div>
+          <div style="font-size: 20px; font-weight: bold; color: #5A4628;">TredevaAstro</div>
           <div style="font-size: 13px; color: #968C78;">${tagline}</div>
         </div>
       </div>
@@ -144,7 +144,7 @@ function buildCoverHeaderTemplate(logoDataUri: string, language: 'en' | 'hi'): s
       <div style="display: flex; align-items: center; gap: 14px;">
         <img src="${logoDataUri}" style="width: 54px; height: 54px; object-fit: contain;" />
         <div>
-          <div style="font-size: 20px; font-weight: bold; color: #5A4628;">TredevAstro</div>
+          <div style="font-size: 20px; font-weight: bold; color: #5A4628;">TredevaAstro</div>
           <div style="font-size: 13px; color: #968C78;">${tagline}</div>
         </div>
       </div>

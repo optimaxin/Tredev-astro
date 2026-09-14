@@ -142,7 +142,7 @@ export default function AIAstrology() {
   };
 
   return (
-    <section className={styles.section} id="ai" aria-label="Ask TredevAstro AI">
+    <section className={styles.section} id="ai" aria-label="Ask TredevaAstro AI">
       <CelestialBackdrop variant="surya_chandra" intensity="subtle" />
       <div className={styles.container}>
         <div className={styles.layout}>

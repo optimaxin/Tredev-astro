@@ -125,7 +125,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     pushToast(n.message, n.kind === 'chat_request' ? 'success' : 'info');
     if (notifPrefsRef.current.sound) playNotificationChime();
     if (notifPrefsRef.current.browser && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('TredevAstro', { body: n.message });
+      new Notification('TredevaAstro', { body: n.message });
     }
   }, [pushToast]);
 

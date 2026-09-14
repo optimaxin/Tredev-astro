@@ -80,8 +80,8 @@ const DOSHA_PHASE_HI: Record<string, string> = { rising: 'प्रारंभ�
 // keep in sync as this file's content changes.
 const LABELS = {
   en: {
-    brand: 'TredevAstro · Vedic Astrology Report', generated: 'Generated',
-    thankYou: 'Thank You For Reading', brandFooter: 'TREDEVASTRO · YOUR SKY. YOUR STORY.',
+    brand: 'TredevaAstro · Vedic Astrology Report', generated: 'Generated',
+    thankYou: 'Thank You For Reading', brandFooter: 'TREDEVAASTRO · YOUR SKY. YOUR STORY.',
     basic: 'Basic', birthDetails: 'Birth Details', name: 'Name', dob: 'Date of Birth', tob: 'Time of Birth', pob: 'Place of Birth',
     panchang: 'Panchang', tithi: 'Tithi', karana: 'Karana', yoga: 'Yoga', nakshatra: 'Nakshatra', nakshatraLord: 'Nakshatra Lord',
     ascendant: 'Ascendant', sunrise: 'Sunrise', sunset: 'Sunset',
@@ -122,8 +122,8 @@ const LABELS = {
     coverTitle: (n: string) => `${n}'s Kundli`,
   },
   hi: {
-    brand: 'TredevAstro · वैदिक ज्योतिष रिपोर्ट', generated: 'तैयार किया गया',
-    thankYou: 'पढ़ने के लिए धन्यवाद', brandFooter: 'TREDEVASTRO · आपका आकाश। आपकी कहानी।',
+    brand: 'TredevaAstro · वैदिक ज्योतिष रिपोर्ट', generated: 'तैयार किया गया',
+    thankYou: 'पढ़ने के लिए धन्यवाद', brandFooter: 'TREDEVAASTRO · आपका आकाश। आपकी कहानी।',
     basic: 'मूल विवरण', birthDetails: 'जन्म विवरण', name: 'नाम', dob: 'जन्म तिथि', tob: 'जन्म समय', pob: 'जन्म स्थान',
     panchang: 'पंचांग', tithi: 'तिथि', karana: 'करण', yoga: 'योग', nakshatra: 'नक्षत्र', nakshatraLord: 'नक्षत्र स्वामी',
     ascendant: 'लग्न', sunrise: 'सूर्योदय', sunset: 'सूर्यास्त',

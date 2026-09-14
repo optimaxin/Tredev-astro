@@ -26,7 +26,7 @@ export default function MeetAcharya() {
             <div className={styles.portraitGlow} />
             <img
               src="/Astrologist/Astrologist-composed.jpeg"
-              alt="Astrologist TredevAstro — Jyotish Pandit"
+              alt="Astrologist TredevaAstro — Jyotish Pandit"
               className={styles.portraitImg}
               draggable={false}
             />
@@ -48,7 +48,7 @@ export default function MeetAcharya() {
         >
           <span className={styles.eyebrow}>Meet Your Astrologist</span>
 
-          <h2 className={styles.name}>Pandit TredevAstro</h2>
+          <h2 className={styles.name}>Pandit TredevaAstro</h2>
           <p className={styles.tradition}>Jyotish Astrologist · Kerala Tradition</p>
 
           <div className={styles.divider} />

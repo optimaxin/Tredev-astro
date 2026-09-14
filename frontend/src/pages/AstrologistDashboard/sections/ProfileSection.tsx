@@ -33,7 +33,7 @@ export default function ProfileSection() {
 
   return (
     <div>
-      <SectionHeader title="My Profile" subtitle="Manage how clients see you across TredevAstro." />
+      <SectionHeader title="My Profile" subtitle="Manage how clients see you across TredevaAstro." />
 
       <Panel title="Profile Completion" actions={<span style={{ fontWeight: 700, color: 'var(--gold-primary)' }}>{completionPct}%</span>}>
         <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${completionPct}%` }} /></div>
@@ -77,7 +77,7 @@ export default function ProfileSection() {
 
       <Panel title="Services">
         <div className={styles.statRow}><span className={styles.statRowLabel}>Standard duration</span><span className={styles.statRowValue}>{profile.price ? `${profile.price}/min` : '—'}</span></div>
-        <p className={styles.tableMuted}>Pricing is set by TredevAstro's platform business rules and can't be edited here.</p>
+        <p className={styles.tableMuted}>Pricing is set by TredevaAstro's platform business rules and can't be edited here.</p>
       </Panel>
 
       <button className={styles.btnSm} onClick={() => { setSelectedId(profile.id); setPage('astrologer-profile'); }}>View Public Profile</button>

@@ -58,7 +58,7 @@ export default function AdminSidebar({ active, onNavigate, mobileOpen, allowedSe
         ))}
       </nav>
 
-      <div className={styles.foot}>© 2026 TredevAstro</div>
+      <div className={styles.foot}>© 2026 TredevaAstro</div>
     </aside>
   );
 }

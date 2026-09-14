@@ -12,8 +12,8 @@ const TOOL_IDS = new Set(TOOLS.map(t => t.id));
 
 const COMING_SOON = [
   { icon: '📜', label: 'Detailed Jyotish Reports' },
-  { icon: '💎', label: 'TredevStore — Gemstones & Rudraksha' },
-  { icon: '🎓', label: 'TredevAstro Gurukul' },
+  { icon: '💎', label: 'TredevaStore — Gemstones & Rudraksha' },
+  { icon: '🎓', label: 'TredevaAstro Gurukul' },
 ];
 
 // Real brand marks (not emoji) — inline so there's no extra asset request.
@@ -124,7 +124,7 @@ function AppShell() {
       <header className="chromeHeader">
         <a href="#" className="chromeBrand" onClick={e => { e.preventDefault(); goHome(); }}>
           <img src="/logo.png" alt="" className="chromeLogo" />
-          <span>TredevAstro</span>
+          <span>TredevaAstro</span>
         </a>
         <div className="chromeSocials">
           <a href="https://www.instagram.com/raghu_astrologer_" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon /></a>
@@ -157,7 +157,7 @@ function AppShell() {
                 !important }` as a dark-mode reset, and only exempts sections
                 with this exact id (see Hero.tsx). */}
             <section className="hero" id="hero">
-              <img src="/images/hero-banner.jpg" alt="Ganesh Chaturthi Special — Free Vedic astrology calculators from TredevAstro" className="heroBannerImg" />
+              <img src="/images/hero-banner.jpg" alt="Ganesh Chaturthi Special — Free Vedic astrology calculators from TredevaAstro" className="heroBannerImg" />
             </section>
 
             {/* Free Kundli is the hero product — `featured` is the exact
@@ -174,7 +174,7 @@ function AppShell() {
             </div>
 
             <section className="comingSoon">
-              <h2 className="comingSoonTitle">The Full TredevAstro Experience — Coming Soon</h2>
+              <h2 className="comingSoonTitle">The Full TredevaAstro Experience — Coming Soon</h2>
               <div className="comingSoonGrid">
                 {COMING_SOON.map(item => (
                   <div key={item.label} className="comingSoonCard">
@@ -189,7 +189,7 @@ function AppShell() {
       </main>
 
       <footer className="chromeFooter">
-        <p>&copy; {new Date().getFullYear()} TredevAstro — Ganesh Chaturthi Special</p>
+        <p>&copy; {new Date().getFullYear()} TredevaAstro — Ganesh Chaturthi Special</p>
       </footer>
 
       <LoginModal />

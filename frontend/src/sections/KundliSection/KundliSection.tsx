@@ -125,7 +125,7 @@ const TAB_LABELS = {
     ascendantPredictions: 'Ascendant Predictions',
     ascendantIsPreview: (asc: string) => `Your Ascendant is ${asc} — a quick preview of each area is below.`,
     personality: 'Personality', physical: 'Physical', health: 'Health', career: 'Career', relationship: 'Relationship',
-    quickPreviewNote: 'This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevAstro.',
+    quickPreviewNote: 'This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevaAstro.',
     consultAstrologer: 'Consult an Astrologer',
     yogaCombinations: 'Yoga Combinations', formed: 'Present', notFormed: 'Not formed',
     advancedNote: 'Technical, classical scoring behind your chart — useful if you want to go deeper, not required to understand your reading.',
@@ -182,7 +182,7 @@ const TAB_LABELS = {
     ascendantPredictions: 'लग्न भविष्यवाणियाँ',
     ascendantIsPreview: (asc: string) => `आपका लग्न ${asc} है — हर क्षेत्र की एक झलक नीचे दी गई है।`,
     personality: 'व्यक्तित्व', physical: 'शारीरिक', health: 'स्वास्थ्य', career: 'करियर', relationship: 'संबंध',
-    quickPreviewNote: 'यह आपकी कुंडली पर आधारित एक त्वरित झलक है, पूर्ण विवरण नहीं। अपनी संपूर्ण, व्यक्तिगत भविष्यवाणियों और मार्गदर्शन के लिए, TredevAstro पर किसी विशेषज्ञ ज्योतिषी से सलाह लें।',
+    quickPreviewNote: 'यह आपकी कुंडली पर आधारित एक त्वरित झलक है, पूर्ण विवरण नहीं। अपनी संपूर्ण, व्यक्तिगत भविष्यवाणियों और मार्गदर्शन के लिए, TredevaAstro पर किसी विशेषज्ञ ज्योतिषी से सलाह लें।',
     consultAstrologer: 'ज्योतिषी से सलाह लें',
     yogaCombinations: 'योग संयोजन', formed: 'उपस्थित', notFormed: 'नहीं बना',
     advancedNote: 'आपकी कुंडली के पीछे की तकनीकी, शास्त्रीय गणना — यदि आप गहराई में जाना चाहते हैं तो उपयोगी है, आपकी रीडिंग समझने के लिए आवश्यक नहीं।',
@@ -830,7 +830,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(16);
           pdf.setTextColor(90, 70, 40);
-          pdf.text('TredevAstro', textLeft, HEADER_LINE_Y / 2 + 6);
+          pdf.text('TredevaAstro', textLeft, HEADER_LINE_Y / 2 + 6);
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(11);
           pdf.setTextColor(150, 140, 120);

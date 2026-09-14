@@ -81,11 +81,11 @@ export default function Footer() {
             <button
               className={styles.logo}
               onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              aria-label="TredevAstro home"
+              aria-label="TredevaAstro home"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               <img src="/logo.png" alt="" className={styles.logoStar} />
-              <span className={styles.logoText}>TredevAstro</span>
+              <span className={styles.logoText}>TredevaAstro</span>
             </button>
             <p className={styles.brandTagline}>
               {t('footer_tagline')}

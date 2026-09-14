@@ -8,7 +8,7 @@ const PILLARS = [
   {
     icon: <AcharyaIcon size={26} />,
     title: 'Verified Experts',
-    desc: 'Every astrologer on TredevAstro is manually reviewed, assessed and verified for their knowledge, accuracy and approach.',
+    desc: 'Every astrologer on TredevaAstro is manually reviewed, assessed and verified for their knowledge, accuracy and approach.',
     accent: 'gold',
   },
   {
@@ -43,7 +43,7 @@ export default function WhyTredevAstro() {
           transition={{ duration: 0.7 }}
         >
           <span className="section-eyebrow">Our Promise</span>
-          <h2 className={styles.title}>Why TredevAstro</h2>
+          <h2 className={styles.title}>Why TredevaAstro</h2>
         </motion.div>
 
         <div className={styles.grid}>

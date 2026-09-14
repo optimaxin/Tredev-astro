@@ -144,7 +144,7 @@ export default function MySky() {
           <div className={styles.ecosystemLabel}>
             <span className={styles.ecosystemBadge}>ONE BIRTH PROFILE</span>
             <span className={styles.ecosystemArrow}>→</span>
-            <span className={styles.ecosystemText}>Powers your entire TredevAstro experience</span>
+            <span className={styles.ecosystemText}>Powers your entire TredevaAstro experience</span>
           </div>
           <div className={styles.ecosystemItems}>
             {['Kundli', 'Panchang', 'Margdarshan AI', 'Reports', 'Acharyas', 'Jyotish Upay', 'Ved Gurukul'].map(item => (
