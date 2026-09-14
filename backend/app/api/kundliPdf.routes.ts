@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { PDFDocument } from 'pdf-lib';
 import { rateLimit } from '../middleware/rateLimit.ts';
 
@@ -14,33 +14,43 @@ export const kundliPdfRouter = Router();
 // does (that path is untouched for the main site).
 const CAMPAIGN_APP_URL = (process.env.CAMPAIGN_APP_URL || 'http://localhost:1409').replace(/\/+$/, '');
 
-// One browser process reused across requests — launching Chromium fresh
-// per request would dwarf the few seconds this is meant to save. A new
-// *page* (tab) per request keeps requests isolated from each other.
-let browserPromise: Promise<Browser> | null = null;
-function getBrowser(): Promise<Browser> {
-  if (!browserPromise) {
-    browserPromise = chromium.launch({
-      headless: true,
-      // Small/free-tier hosts (Render's free plan included) give containers
-      // a tiny /dev/shm — Chromium's default shared-memory usage overflows
-      // that and crashes the whole browser process (not just the page),
-      // which is what was actually behind the 502s, not merely a missing
-      // browser binary. --disable-dev-shm-usage makes it fall back to disk
-      // instead of /dev/shm; --no-sandbox is required in most containers
-      // that don't grant the extra privileges Chromium's sandbox wants.
-      args: ['--disable-dev-shm-usage', '--no-sandbox'],
-    }).catch(err => {
-      browserPromise = null; // let the next request retry instead of caching a permanent failure
-      throw err;
-    });
-  }
-  return browserPromise;
+// A fresh browser process per request, closed in the route's `finally` —
+// NOT reused across requests. On a 512MB host (Render's free tier), a
+// long-lived shared Chromium process sits resident the entire time the
+// server is up, permanently eating the memory every other request also
+// needs, which was tipping the whole instance into an OOM kill (not just
+// this endpoint failing). Launching fresh and closing immediately after
+// means Chromium's memory cost is only ever paid during an actual PDF
+// request, not as a constant background tax.
+function launchBrowser(): Promise<Browser> {
+  return chromium.launch({
+    headless: true,
+    // Small/free-tier hosts (Render's free plan included) give containers
+    // a tiny /dev/shm — Chromium's default shared-memory usage overflows
+    // that and crashes the whole browser process (not just the page),
+    // which is what was actually behind the 502s, not merely a missing
+    // browser binary. --disable-dev-shm-usage makes it fall back to disk
+    // instead of /dev/shm; --no-sandbox is required in most containers
+    // that don't grant the extra privileges Chromium's sandbox wants.
+    args: ['--disable-dev-shm-usage', '--no-sandbox'],
+  });
 }
 
 // Launching a real browser per request is real server resource cost —
 // tighter than the general calculator limiter (30/min).
 const limiter = rateLimit({ windowMs: 60_000, max: 6 });
+
+// Serializes every PDF request onto one queue so at most one Chromium
+// instance is ever alive at once. On a 512MB host, two people generating a
+// PDF at the same moment is enough on its own to OOM-kill the whole
+// instance even with everything else above in place — this trades a bit of
+// wait time under concurrent load for not going down entirely.
+let pdfQueue: Promise<unknown> = Promise.resolve();
+function withPdfLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = pdfQueue.then(fn, fn);
+  pdfQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -205,13 +215,16 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
   });
   const targetUrl = `${CAMPAIGN_APP_URL}/print-kundli?${qs.toString()}`;
 
-  let page;
+  let browser: Browser | undefined;
+  let page: Page | undefined;
+  await withPdfLock(async () => {
   try {
-    const [browser, logoDataUri, acharyaDataUri] = await Promise.all([
-      getBrowser(),
+    const [launchedBrowser, logoDataUri, acharyaDataUri] = await Promise.all([
+      launchBrowser(),
       getImageDataUri('/logo.png'),
       getImageDataUri('/images/acharya.png'),
     ]);
+    browser = launchedBrowser;
     page = await browser.newPage();
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     // PrintKundliPage flips document.title once its own kundli-full fetch
@@ -285,5 +298,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
     res.status(500).json({ error: 'PDF generation failed — please try again.' });
   } finally {
     if (page) await page.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
   }
+  });
 });
