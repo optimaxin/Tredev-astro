@@ -20,9 +20,28 @@ function handleAuthError(e: unknown, res: import('express').Response) {
   fail(res, 500, 'INTERNAL_ERROR', 'Something went wrong');
 }
 
+// Signup is restricted to mainstream email providers — blocks throwaway/
+// temp-mail addresses (a common fake-account vector) without maintaining an
+// ever-growing disposable-domain blocklist. Deliberately NOT applied to
+// login/forgot-password: an already-registered account must keep working
+// regardless of its email's domain.
+const ALLOWED_SIGNUP_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com',
+  'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+  'yahoo.com', 'yahoo.co.in', 'yahoo.co.uk', 'ymail.com', 'rocketmail.com',
+  'icloud.com', 'me.com', 'mac.com',
+  'aol.com',
+  'protonmail.com', 'proton.me',
+  'zoho.com', 'zohomail.com',
+  'rediffmail.com',
+]);
+
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email(),
+  email: z.string().trim().toLowerCase().email().refine(
+    email => ALLOWED_SIGNUP_EMAIL_DOMAINS.has(email.split('@')[1] ?? ''),
+    { message: 'Invalid Email' },
+  ),
   password: z.string().min(8).max(200),
   phoneNumber: z.string().trim().min(8).max(20),
   birthDate: z.string().optional(),

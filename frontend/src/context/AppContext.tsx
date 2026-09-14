@@ -342,7 +342,7 @@ interface AppContextValue {
   currentUser: AuthUser | null;
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
-  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser } | null>;
+  register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser }>;
   loginWithFirebase: (idToken: string) => Promise<AuthUser | null>;
   verifyPhoneWithFirebase: (idToken: string) => Promise<void>;
   saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
@@ -2937,16 +2937,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails): Promise<{ user: AuthUser } | null> => {
-    try {
-      const { user, accessToken, refreshToken } = await authService.register(name, email, password, phoneNumber, birthDetails);
-      persistTokens(accessToken, refreshToken);
-      const authUser = toAuthUser(user);
-      setCurrentUser(authUser);
-      return { user: authUser };
-    } catch {
-      return null;
-    }
+  // Throws (rather than swallowing into a null return) so callers can show
+  // the real backend error — e.g. "use a Gmail/Outlook/Yahoo address" for
+  // the email-provider allowlist, not just a generic failure message.
+  const register = async (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails): Promise<{ user: AuthUser }> => {
+    const { user, accessToken, refreshToken } = await authService.register(name, email, password, phoneNumber, birthDetails);
+    persistTokens(accessToken, refreshToken);
+    const authUser = toAuthUser(user);
+    setCurrentUser(authUser);
+    return { user: authUser };
   };
 
   // Google Sign-In / Phone Auth — caller already ran the Firebase client-side

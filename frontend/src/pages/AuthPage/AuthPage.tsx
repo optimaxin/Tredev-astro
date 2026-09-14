@@ -8,7 +8,7 @@ import LocationAutocomplete from '../../components/LocationAutocomplete/Location
 import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { GeocodeResult } from '../../services/calculatorService';
-import { authService } from '../../services/authService';
+import { authService, ApiRequestError } from '../../services/authService';
 import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164IndianNumber } from '../../services/firebaseClient';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
@@ -131,7 +131,7 @@ export default function AuthPage() {
     setRegisterLoading(true);
     try {
       const geo = selectedGeo ?? await calculatorService.geocode(form.placeOfBirth.trim());
-      const result = await register(form.fullName, form.email, form.password, form.phoneNumber.trim(), {
+      await register(form.fullName, form.email, form.password, form.phoneNumber.trim(), {
         birthDate: form.dob,
         birthTime: form.timeOfBirth,
         birthPlace: geo.displayName,
@@ -139,14 +139,12 @@ export default function AuthPage() {
         birthLongitude: geo.longitude,
         birthTimezoneOffsetMinutes: form.timezoneOffset,
       });
-      if (!result) {
-        setRegisterError('An account with this email already exists, the password is too short, or the server could not be reached. Please try again.');
-        return;
-      }
       setRegisterStep('otp');
       await handleSendPhoneOtp();
     } catch (err) {
-      setRegisterError(err instanceof CalculatorApiError ? `Place of birth: ${err.message}` : 'Something went wrong. Please try again.');
+      if (err instanceof CalculatorApiError) setRegisterError(`Place of birth: ${err.message}`);
+      else if (err instanceof ApiRequestError) setRegisterError(err.message);
+      else setRegisterError('Something went wrong. Please try again.');
     } finally {
       setRegisterLoading(false);
     }

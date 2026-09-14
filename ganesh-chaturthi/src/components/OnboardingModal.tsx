@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useAppContext } from '../../../frontend/src/context/AppContext';
+import { ApiRequestError } from '../../../frontend/src/services/authService';
 
 type Step = 'offer' | 'login';
 
@@ -31,11 +32,15 @@ export default function OnboardingModal() {
     setError('');
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setSubmitting(true);
-    const result = await register(name.trim(), email.trim(), password, phone.trim());
-    setSubmitting(false);
-    if (!result) { setError('Could not create your account — that email may already be registered.'); return; }
-    setShowLoginModal(false);
-    setPendingAction(null);
+    try {
+      await register(name.trim(), email.trim(), password, phone.trim());
+      setShowLoginModal(false);
+      setPendingAction(null);
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Could not create your account — that email may already be registered.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
