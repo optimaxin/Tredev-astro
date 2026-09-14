@@ -116,7 +116,14 @@ export default function WishCustomizer({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const getBlob = (): Promise<Blob | null> => new Promise(resolve => canvasRef.current?.toBlob(b => resolve(b), 'image/png'));
+  // JPEG, not PNG — the finished card is a flat poster with zero need for
+  // transparency, and several phones' share sheets / WhatsApp's own image
+  // pipeline handle a PNG's alpha channel unpredictably (reports of the
+  // shared image losing its background even though the source canvas is
+  // fully opaque). A JPEG can't carry an alpha channel at all, which
+  // removes that whole class of problem outright rather than chasing which
+  // specific app/OS combination mishandles PNGs.
+  const getBlob = (): Promise<Blob | null> => new Promise(resolve => canvasRef.current?.toBlob(b => resolve(b), 'image/jpeg', 0.92));
 
   const handleDownload = async () => {
     const blob = await getBlob();
@@ -124,7 +131,7 @@ export default function WishCustomizer({ onClose }: { onClose: () => void }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'ganesh-chaturthi-wishes.png';
+    a.download = 'ganesh-chaturthi-wishes.jpg';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -143,7 +150,7 @@ export default function WishCustomizer({ onClose }: { onClose: () => void }) {
   const handleShare = async () => {
     const blob = await getBlob();
     if (!blob) return;
-    const file = new File([blob], 'ganesh-chaturthi-wishes.png', { type: 'image/png' });
+    const file = new File([blob], 'ganesh-chaturthi-wishes.jpg', { type: 'image/jpeg' });
     const shareData = { files: [file], text: `${CAPTION}\n${window.location.origin}`, title: 'Ganesh Chaturthi Wishes' };
     if (navigator.canShare?.({ files: [file] })) {
       setShareState('sharing');
