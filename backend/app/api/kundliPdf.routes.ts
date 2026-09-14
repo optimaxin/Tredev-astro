@@ -280,6 +280,15 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
       pageRanges: '2-',
     });
 
+    // Chromium's own footprint (the dominant cost on a 512MB host) is only
+    // needed up to this point — both PDF buffers are already captured, so
+    // close it now instead of holding it open through the pdf-lib merge
+    // below, rather than leaving that to the `finally` at the very end.
+    await page.close().catch(() => {});
+    await browser.close().catch(() => {});
+    page = undefined;
+    browser = undefined;
+
     const merged = await PDFDocument.create();
     const [coverDoc, restDoc] = await Promise.all([PDFDocument.load(coverPdf), PDFDocument.load(restPdf)]);
     const [coverPage] = await merged.copyPages(coverDoc, [0]);
