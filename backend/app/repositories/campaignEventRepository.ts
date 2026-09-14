@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { query } from '../core/db.ts';
+import { MAINSTREAM_EMAIL_DOMAINS } from '../core/mainstreamEmailDomains.ts';
+
+const MAINSTREAM_DOMAINS_ARRAY = [...MAINSTREAM_EMAIL_DOMAINS];
 
 export interface CampaignEventSummaryRow {
   event_type: string;
@@ -34,8 +37,22 @@ export interface RegisteredUserRow {
 // tracked event. summarizeCampaignEventsByUser below only has rows for
 // users with at least one event, which silently dropped anyone who
 // registered but never clicked a tracked calculator/wish action.
+//
+// Restricted to the same mainstream-provider domains signup itself now
+// requires (auth.routes.ts) — years of dev/QA testing left hundreds of
+// @example.com, @tredevastro.local and similar throwaway accounts in this
+// table, which would otherwise flood a dashboard meant to show real
+// campaign visitors. Also drops anything named "sparsh" — one developer's
+// several dozen real-Gmail-domain test signups, which the domain filter
+// above can't catch since they're legitimate gmail.com addresses.
 export function listRegisteredUsers(): Promise<RegisteredUserRow[]> {
-  return query<RegisteredUserRow>('SELECT name, email, phone_number FROM users ORDER BY name');
+  return query<RegisteredUserRow>(
+    `SELECT name, email, phone_number FROM users
+     WHERE split_part(email, '@', 2) = ANY($1::text[])
+       AND name NOT ILIKE '%sparsh%'
+     ORDER BY name`,
+    [MAINSTREAM_DOMAINS_ARRAY]
+  );
 }
 
 export async function logCampaignEvent(eventType: string, eventLabel: string, meta?: Record<string, unknown>, user?: CampaignEventUser) {
@@ -61,15 +78,20 @@ export function summarizeCampaignEvents(): Promise<CampaignEventSummaryRow[]> {
 // combination with its count; the dashboard pivots this into a name/email/
 // phone + one-column-per-feature table. Only events fired after a real
 // login carry user_email, so anonymous rows (there shouldn't be many, now
-// that login is required before browsing) are simply left out here.
+// that login is required before browsing) are simply left out here. Same
+// mainstream-domain filter as listRegisteredUsers above, so a dev/test
+// account's clicks don't show up here even though listRegisteredUsers no
+// longer lists that account either.
 export function summarizeCampaignEventsByUser(): Promise<CampaignEventUserRow[]> {
   return query<CampaignEventUserRow>(
     `SELECT user_email, MAX(user_name) AS user_name, MAX(user_phone) AS user_phone,
             event_type, event_label, COUNT(*)::text AS total
      FROM campaign_events
-     WHERE user_email IS NOT NULL
+     WHERE user_email IS NOT NULL AND split_part(user_email, '@', 2) = ANY($1::text[])
+       AND (user_name IS NULL OR user_name NOT ILIKE '%sparsh%')
      GROUP BY user_email, event_type, event_label
-     ORDER BY user_email, event_type, event_label`
+     ORDER BY user_email, event_type, event_label`,
+    [MAINSTREAM_DOMAINS_ARRAY]
   );
 }
 
