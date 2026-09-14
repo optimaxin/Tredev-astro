@@ -2,23 +2,15 @@ import { getPlanetaryPositions } from './ephemeris.ts';
 import { getHouseFromAscendant, getRashi } from './zodiac.ts';
 import type { Kundli } from './kundli.ts';
 
-// Mangal Dosha (Manglik status) — the traditional rule: a chart is Manglik
-// when Mars sits in house 1, 2, 4, 7, 8, or 12 counted from the Ascendant.
-// (Some schools also check from the Moon or Venus; this implements the most
-// widely-used Ascendant-based rule and says so explicitly rather than
-// silently picking one convention.)
-const MANGLIK_HOUSES = new Set([1, 2, 4, 7, 8, 12]);
-
-export interface MangalDoshaResult {
-  isManglik: boolean;
-  marsHouse: number;
-  rule: 'from-ascendant';
-}
-
-export function checkMangalDosha(kundli: Kundli): MangalDoshaResult {
-  const mars = kundli.planets.find(p => p.id === 'mars')!;
-  return { isManglik: MANGLIK_HOUSES.has(mars.house), marsHouse: mars.house, rule: 'from-ascendant' };
-}
+// Mangal Dosha (Manglik) analysis lives in its own module — it's a large
+// enough feature (three reference points, Mars strength, marriage-house
+// analysis, cancellation grading, Navamsa cross-check) to deserve isolation
+// from the other, much smaller dosha checks below.
+export { checkMangalDosha } from './manglikDosha.ts';
+export type {
+  MangalDoshaResult, ReferencePointResult, CancellationCheck,
+  MarsAnalysis, MarriageHouseAnalysis, NavamsaManglikSupport,
+} from './manglikDosha.ts';
 
 // Sade Sati — Saturn's transit through the 12th, 1st, or 2nd rashi counted
 // from the natal Moon's rashi; a ~7.5 year period traditionally split into

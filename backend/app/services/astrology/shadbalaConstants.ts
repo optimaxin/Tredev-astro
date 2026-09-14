@@ -26,6 +26,21 @@ export const OWN_SIGNS: Record<ShadPlanet, number[]> = {
   sun: [4], moon: [3], mars: [0, 7], mercury: [2, 5], jupiter: [8, 11], venus: [1, 6], saturn: [9, 10],
 };
 
+export type PlanetDignity = 'exalted' | 'debilitated' | 'own-sign' | 'neutral';
+
+// Classical sign-level dignity — debilitation is always the sign exactly
+// opposite exaltation (180° away). Shared by anything that needs to know
+// how comfortably a graha is placed: Manglik cancellation (manglikDosha.ts),
+// written chart analysis (kundliAnalysis.ts), etc.
+export function planetDignity(planet: ShadPlanet, signIndex: number): PlanetDignity {
+  const exaltSign = Math.floor(EXALTATION_DEGREES[planet] / 30) % 12;
+  const debilSign = (exaltSign + 6) % 12;
+  if (signIndex === exaltSign) return 'exalted';
+  if (signIndex === debilSign) return 'debilitated';
+  if (OWN_SIGNS[planet].includes(signIndex)) return 'own-sign';
+  return 'neutral';
+}
+
 export const NATURAL_BENEFIC_SHADBALA: ShadPlanet[] = ['jupiter', 'venus', 'moon'];
 export const NATURAL_MALEFIC_SHADBALA: ShadPlanet[] = ['sun', 'mars', 'saturn']; // Mercury is neuter, excluded
 

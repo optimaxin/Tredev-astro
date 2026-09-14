@@ -7,7 +7,21 @@
 import type { Kundli } from './kundli.ts';
 import type { MahadashaPeriod } from './vimshottariDasha.ts';
 import { PLANET_SIGNIFICATIONS, PLANET_SIGNIFICATIONS_HI, HOUSE_LIFE_AREA, HOUSE_LIFE_AREA_HI, ordinal, cap } from './kundliAnalysis.ts';
-import { HINDI_PLANET, HINDI_RASHI, HINDI_HOUSE_ORDINAL } from './hindiVocab.ts';
+import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_HOUSE_ORDINAL } from './hindiVocab.ts';
+import { getRashi } from './zodiac.ts';
+import { SHAD_PLANETS, planetDignity, type ShadPlanet, type PlanetDignity } from './shadbalaConstants.ts';
+
+const DASHA_DIGNITY_NOTE: Partial<Record<PlanetDignity, (planet: string) => string>> = {
+  exalted: planet => ` ${planet} is exalted in its natal sign, its strongest classical placement — during this Mahadasha, that strength generally lets its significations play out with more ease and less struggle than an average dasha would.`,
+  debilitated: planet => ` ${planet} is debilitated in its natal sign, its weakest classical placement — during this Mahadasha, its significations may demand more visible effort before showing results, though the rest of the chart can offset this.`,
+  'own-sign': planet => ` ${planet} sits in its own sign natally, a position of natural strength — this Mahadasha tends to run with steadier, more self-directed confidence than an average one.`,
+};
+
+const DASHA_DIGNITY_NOTE_HI: Partial<Record<PlanetDignity, (planet: string) => string>> = {
+  exalted: planet => ` ${planet} अपनी जन्म राशि में उच्च का है, इसकी सबसे मज़बूत शास्त्रीय स्थिति — इस महादशा के दौरान, यह बल सामान्यतः इसके फलों को औसत दशा की तुलना में अधिक सहजता से प्रकट होने देता है।`,
+  debilitated: planet => ` ${planet} अपनी जन्म राशि में नीच का है, इसकी सबसे कमज़ोर शास्त्रीय स्थिति — इस महादशा के दौरान, इसके फल दिखने से पहले अधिक स्पष्ट प्रयास की मांग कर सकते हैं, हालांकि कुंडली के अन्य कारक इसे संतुलित कर सकते हैं।`,
+  'own-sign': planet => ` ${planet} जन्म कुंडली में अपनी ही राशि में स्थित है, जो स्वाभाविक बल की स्थिति है — यह महादशा सामान्य दशा की तुलना में अधिक स्थिर और आत्म-निर्देशित आत्मविश्वास के साथ चलती है।`,
+};
 
 const SIGN_TONE: Record<string, string> = {
   Aries: 'a bold, fast-moving, initiating energy',
@@ -44,6 +58,12 @@ export interface DashaPrediction {
   text: string;
 }
 
+// Dignity only exists in this classical system for the 7 traditional
+// grahas — Rahu/Ketu and the outer planets have no exaltation/own-sign table.
+function isClassical(lord: string): lord is ShadPlanet {
+  return (SHAD_PLANETS as readonly string[]).includes(lord);
+}
+
 export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: MahadashaPeriod[], language: 'en' | 'hi' = 'en'): DashaPrediction[] {
   return mahadashaTimeline.map(period => {
     const planet = kundli.planets.find(p => p.id === period.lord);
@@ -54,7 +74,9 @@ export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: Mahadas
       }
       const houseAreaHi = HOUSE_LIFE_AREA_HI[planet.house];
       const toneHi = SIGN_TONE_HI[planet.rashi] || 'अपनी विशिष्ट ऊर्जा';
-      const text = `${lordHi} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${HINDI_RASHI[planet.rashi] || planet.rashi} राशि में स्थित है। शास्त्रीय रूप से, ${lordHi} ${PLANET_SIGNIFICATIONS_HI[period.lord as keyof typeof PLANET_SIGNIFICATIONS_HI]} का कारक है — इस महादशा के दौरान, यह विषय विशेष रूप से ${houseAreaHi} के इर्द-गिर्द उभरता है, जिसमें ${planet.rashi ? HINDI_RASHI[planet.rashi] || planet.rashi : ''} राशि में स्थिति से ${toneHi} का पुट रहता है।`;
+      const nakshatraSentenceHi = ` यह ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}) में भी स्थित है, जो इस महादशा को एक अतिरिक्त, अधिक सूक्ष्म भावनात्मक रंग देता है।`;
+      const dignityHi = isClassical(period.lord) ? (DASHA_DIGNITY_NOTE_HI[planetDignity(period.lord as ShadPlanet, getRashi(planet.longitude).index)]?.(lordHi) ?? '') : '';
+      const text = `${lordHi} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${HINDI_RASHI[planet.rashi] || planet.rashi} राशि में स्थित है। शास्त्रीय रूप से, ${lordHi} ${PLANET_SIGNIFICATIONS_HI[period.lord as keyof typeof PLANET_SIGNIFICATIONS_HI]} का कारक है — इस महादशा के दौरान, यह विषय विशेष रूप से ${houseAreaHi} के इर्द-गिर्द उभरता है, जिसमें ${planet.rashi ? HINDI_RASHI[planet.rashi] || planet.rashi : ''} राशि में स्थिति से ${toneHi} का पुट रहता है।` + nakshatraSentenceHi + dignityHi;
       return { lord: period.lord, text };
     }
     if (!planet) {
@@ -62,7 +84,9 @@ export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: Mahadas
     }
     const houseArea = HOUSE_LIFE_AREA[planet.house];
     const tone = SIGN_TONE[planet.rashi] || 'its own distinct energy';
-    const text = `${cap(period.lord)} sits in your ${ordinal(planet.house)} house (${houseArea}) in ${planet.rashi}. Classically, ${cap(period.lord)} governs ${PLANET_SIGNIFICATIONS[period.lord as keyof typeof PLANET_SIGNIFICATIONS]} — during this Mahadasha, that theme comes forward specifically around ${houseArea}, carried with ${tone} from its placement in ${planet.rashi}.`;
+    const nakshatraSentence = ` It is also placed in the ${planet.nakshatra} nakshatra (pada ${planet.nakshatraPada}), which lends this Mahadasha an extra, finer-grained emotional undertone.`;
+    const dignitySentence = isClassical(period.lord) ? (DASHA_DIGNITY_NOTE[planetDignity(period.lord as ShadPlanet, getRashi(planet.longitude).index)]?.(cap(period.lord)) ?? '') : '';
+    const text = `${cap(period.lord)} sits in your ${ordinal(planet.house)} house (${houseArea}) in ${planet.rashi}. Classically, ${cap(period.lord)} governs ${PLANET_SIGNIFICATIONS[period.lord as keyof typeof PLANET_SIGNIFICATIONS]} — during this Mahadasha, that theme comes forward specifically around ${houseArea}, carried with ${tone} from its placement in ${planet.rashi}.` + nakshatraSentence + dignitySentence;
     return { lord: period.lord, text };
   });
 }

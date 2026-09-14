@@ -5,7 +5,21 @@
 // forecast, matching the framing already used by aiGuidance.ts.
 import type { ChartPlanet, Kundli } from './kundli.ts';
 import type { PlanetId } from './ephemeris.ts';
+import { getRashi } from './zodiac.ts';
+import { SHAD_PLANETS, planetDignity, type ShadPlanet } from './shadbalaConstants.ts';
 import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_HOUSE_ORDINAL } from './hindiVocab.ts';
+
+const DIGNITY_NOTE: Partial<Record<ReturnType<typeof planetDignity>, (planet: string, rashi: string) => string>> = {
+  exalted: (planet, rashi) => ` ${planet} is exalted in ${rashi} here — its most comfortable and empowered placement, delivering these results with unusual strength and ease.`,
+  debilitated: (planet, rashi) => ` ${planet} is debilitated in ${rashi} here — its most uncomfortable placement, where it can struggle to express these themes smoothly (other factors elsewhere in the chart can still offset this).`,
+  'own-sign': (planet, rashi) => ` ${planet} is in its own sign (${rashi}) here, a position of natural strength and confidence.`,
+};
+
+const DIGNITY_NOTE_HI: Partial<Record<ReturnType<typeof planetDignity>, (planet: string, rashi: string) => string>> = {
+  exalted: (planet, rashi) => ` ${planet} यहाँ ${rashi} राशि में उच्च का है — इसकी सबसे सहज और सशक्त स्थिति, जो इन परिणामों को असाधारण बल और सरलता के साथ देती है।`,
+  debilitated: (planet, rashi) => ` ${planet} यहाँ ${rashi} राशि में नीच का है — इसकी सबसे असहज स्थिति, जहाँ यह इन विषयों को सहजता से व्यक्त करने में संघर्ष कर सकता है (कुंडली के अन्य कारक इसे संतुलित कर सकते हैं)।`,
+  'own-sign': (planet, rashi) => ` ${planet} यहाँ अपनी ही राशि (${rashi}) में है, जो स्वाभाविक बल और आत्मविश्वास की स्थिति है।`,
+};
 
 export const PLANET_SIGNIFICATIONS: Record<PlanetId, string> = {
   sun: 'self-confidence, authority, vitality and one\'s father',
@@ -108,14 +122,28 @@ export function cap(s: string): string {
 }
 
 function planetParagraph(planet: ChartPlanet, language: 'en' | 'hi'): string {
+  const signIndex = getRashi(planet.longitude).index;
+  const isClassical = (SHAD_PLANETS as readonly PlanetId[]).includes(planet.id);
+  const dignity = isClassical ? planetDignity(planet.id as ShadPlanet, signIndex) : null;
+
   if (language === 'hi') {
     const houseAreaHi = HOUSE_LIFE_AREA_HI[planet.house];
-    const retroHi = planet.retrograde ? ', और वर्तमान में वक्री है' : '';
-    return `आपका ${HINDI_PLANET[planet.id]} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में स्थित है, जो ${HINDI_RASHI[planet.rashi] || planet.rashi} राशि में है${retroHi}। शास्त्रीय ज्योतिष के अनुसार, ${HINDI_PLANET[planet.id]} ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक है — यहाँ स्थित होकर यह इस ऊर्जा को विशेष रूप से ${houseAreaHi} से संबंधित विषयों पर प्रदान करता है।`;
+    const rashiHi = HINDI_RASHI[planet.rashi] || planet.rashi;
+    const planetHi = HINDI_PLANET[planet.id];
+    const base = `आपका ${planetHi} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में स्थित है, जो ${rashiHi} राशि में है। शास्त्रीय ज्योतिष के अनुसार, ${planetHi} ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक है — यहाँ स्थित होकर यह इस ऊर्जा को विशेष रूप से ${houseAreaHi} से संबंधित विषयों पर प्रदान करता है।`;
+    const nakshatraSentence = ` यह ${rashiHi} राशि के ${planet.degreeInSign.toFixed(1)}° पर, ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}, स्वामी ${HINDI_PLANET[planet.nakshatraLord as PlanetId] || planet.nakshatraLord}) में स्थित है — ज्योतिष में नक्षत्र, राशि की व्यापक प्रकृति पर एक सूक्ष्म भावनात्मक और व्यवहारिक छटा जोड़ता है।`;
+    const dignitySentence = dignity ? (DIGNITY_NOTE_HI[dignity]?.(planetHi, rashiHi) ?? '') : '';
+    const retroSentence = planet.retrograde ? ` यह वर्तमान में वक्री भी है — शास्त्रीय ग्रंथ इसे ${planetHi} के विषयों को बाहर की बजाय भीतर की ओर मोड़ने, या उनके प्रभाव में देरी व पुनर्विचार लाने के रूप में पढ़ते हैं।` : '';
+    return base + nakshatraSentence + dignitySentence + retroSentence;
   }
+
   const houseArea = HOUSE_LIFE_AREA[planet.house];
-  const retro = planet.retrograde ? ', and is currently retrograde' : '';
-  return `Your ${cap(planet.id)} sits in your ${ordinal(planet.house)} house (${houseArea}), placed in ${planet.rashi}${retro}. In classical Vedic astrology, ${cap(planet.id)} governs ${PLANET_SIGNIFICATIONS[planet.id]} — placed here, it lends that energy specifically to matters of ${houseArea}.`;
+  const planetName = cap(planet.id);
+  const base = `Your ${planetName} sits in your ${ordinal(planet.house)} house (${houseArea}), placed in ${planet.rashi}. In classical Vedic astrology, ${planetName} governs ${PLANET_SIGNIFICATIONS[planet.id]} — placed here, it lends that energy specifically to matters of ${houseArea}.`;
+  const nakshatraSentence = ` It sits at ${planet.degreeInSign.toFixed(1)}° of ${planet.rashi}, within the ${planet.nakshatra} nakshatra (pada ${planet.nakshatraPada}, ruled by ${cap(planet.nakshatraLord)}) — Vedic astrology reads the nakshatra as adding a finer emotional and behavioral texture on top of the sign's broader theme.`;
+  const dignitySentence = dignity ? (DIGNITY_NOTE[dignity]?.(planetName, planet.rashi) ?? '') : '';
+  const retroSentence = planet.retrograde ? ` It is also currently retrograde, a placement classical texts read as turning ${planetName}'s themes inward or delaying and reconsidering their outward expression rather than acting on them directly.` : '';
+  return base + nakshatraSentence + dignitySentence + retroSentence;
 }
 
 export interface KundliAnalysis {
