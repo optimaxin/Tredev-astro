@@ -67,8 +67,15 @@ export function hindiOr(language: string, table: Record<string, string>, english
   return language === 'hi' ? (table[english] || english) : english;
 }
 
-export function hindiTime24(iso: string | null): string {
+// 12-hour + AM/PM — a bare 24h "07:09" reads as ambiguous to most casual
+// readers (is that morning or could it be misread as evening?); AM/PM
+// removes the ambiguity outright without needing the reader to already be
+// fluent in 24h-clock conventions.
+export function hindiTime12(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(new Date(iso).getTime() + 5.5 * 3_600_000); // IST offset
-  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  const h24 = d.getUTCHours();
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${period}`;
 }
