@@ -158,10 +158,19 @@ export default function Panchang() {
       // were desktop-width, so the shared image always looks like the
       // laptop layout (3-column hero row etc.) regardless of what device —
       // phone, tablet, desktop — actually triggered the share.
-      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null, windowWidth: 1280 });
-      const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      // backgroundColor: null told html2canvas to leave anything it doesn't
+      // capture a background for (the gradient/CSS-variable-driven page
+      // background behind this card, which html2canvas doesn't reliably
+      // render) fully transparent — the shared image came out as a
+      // checkerboard-transparent PNG because of it. This card's own colors
+      // are fixed to the light/parchment look regardless of site theme (see
+      // the --panchang-* comment above), so filling with that same solid
+      // antique-paper tone (styles/globals.css's light-mode --surface)
+      // guarantees an opaque image that still matches the card's design.
+      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: '#FAF7F0', windowWidth: 1280 });
+      const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
       if (!blob) return;
-      const file = new File([blob], 'panchang.png', { type: 'image/png' });
+      const file = new File([blob], 'panchang.jpg', { type: 'image/jpeg' });
       const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[]; title?: string }) => Promise<void> };
       if (nav.canShare?.({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title: isHindi ? 'पावन पंचांग' : 'Sacred Panchang' });
@@ -169,7 +178,7 @@ export default function Panchang() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `panchang-${data?.date ?? todayDateString()}.png`;
+        a.download = `panchang-${data?.date ?? todayDateString()}.jpg`;
         a.click();
         URL.revokeObjectURL(url);
       }
