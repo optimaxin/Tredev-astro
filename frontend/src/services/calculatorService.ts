@@ -74,10 +74,75 @@ export interface NakshatraResult {
   lord: string;
 }
 
+export interface ManglikReferencePoint {
+  referencePoint: 'lagna' | 'moon' | 'venus';
+  referenceSign: string;
+  marsSign: string;
+  house: number;
+  inManglikHouse: boolean;
+  rawIsManglik: boolean;
+  dignityCancelled: boolean;
+  isManglik: boolean;
+}
+
+export interface ManglikCancellationCheck {
+  rule: string;
+  satisfied: boolean;
+  explanation: string;
+  effect: 'cancels' | 'reduces' | 'none';
+}
+
 export interface MangalDoshaResult {
+  // Lagna-based, post-cancellation — the primary/default verdict.
   isManglik: boolean;
   marsHouse: number;
+  cancelled: boolean;
   rule: 'from-ascendant';
+
+  convention: string;
+  housesUsed: number[];
+
+  referencePoints: { lagna: ManglikReferencePoint; moon: ManglikReferencePoint; venus: ManglikReferencePoint };
+  basicManglikStatus: boolean;
+
+  marsAnalysis: {
+    sign: string;
+    dignity: 'exalted' | 'debilitated' | 'own-sign' | 'neutral';
+    rulesHouses: number[];
+    conjunctPlanets: string[];
+    aspectedByPlanets: string[];
+    aspectsHouses: number[];
+    beneficInfluence: string[];
+    maleficInfluence: string[];
+  };
+
+  marriageHouseAnalysis: {
+    seventhHouseSign: string;
+    seventhLord: string;
+    seventhLordHouse: number;
+    venusHouse: number;
+    venusSign: string;
+    jupiterHouse: number;
+    jupiterSign: string;
+    marsAspectsSeventhHouse: boolean;
+    marsAspectsSeventhLord: boolean;
+    marsAspectsVenus: boolean;
+    marsConjunctSeventhLord: boolean;
+    marsConjunctVenus: boolean;
+  };
+
+  cancellationChecks: ManglikCancellationCheck[];
+  cancellationGrade: 'NONE' | 'PARTIAL' | 'STRONG' | 'COMPLETE';
+  severity: 'LOW' | 'MODERATE' | 'STRONG';
+
+  navamsa: {
+    marsSign: string;
+    marsHouse: number;
+    seventhHouseSign: string;
+    seventhLord: string;
+    venusSign: string;
+    jupiterSign: string;
+  };
 }
 
 export interface SadeSatiResult {
@@ -163,7 +228,7 @@ export interface ChoghadiyaSegment {
 export interface PanchangResult {
   date: string;
   vara: string;
-  tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number };
+  tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number; start: string; end: string };
   nakshatra: { name: string; pada: number; lord: string };
   yoga: string;
   karana: string;

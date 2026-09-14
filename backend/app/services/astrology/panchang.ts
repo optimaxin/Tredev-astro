@@ -79,6 +79,29 @@ function findMoonLongitudeCrossing(targetLongitude: number, guessDate: Date): Da
   return new Date((lo + hi) / 2);
 }
 
+// Finds the UTC instant the Moon-minus-Sun angular difference (the tithi
+// "clock") crosses `targetDiff` near `guessDate` — same binary-search idea
+// as findMoonLongitudeCrossing above, but tracking both bodies since a
+// tithi boundary is about their relative angle, not the Moon alone. A tithi
+// lasts roughly 19-26h, so a ±2 day search window around any instant inside
+// it comfortably contains both its start and end crossings.
+function findTithiBoundaryCrossing(targetDiff: number, guessDate: Date): Date {
+  let lo = guessDate.getTime() - 2 * 86_400_000;
+  let hi = guessDate.getTime() + 2 * 86_400_000;
+  const signedDiff = (ms: number) => {
+    const pos = getPlanetaryPositions({ utcDate: new Date(ms) });
+    const s = pos.find(p => p.id === 'sun')!.longitude;
+    const m = pos.find(p => p.id === 'moon')!.longitude;
+    const d = ((m - s) % 360 + 360) % 360;
+    return (((d - targetDiff + 540) % 360) + 360) % 360 - 180; // negative before crossing, positive after
+  };
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (signedDiff(mid) <= 0) lo = mid; else hi = mid;
+  }
+  return new Date((lo + hi) / 2);
+}
+
 // Rahu Kaal, Yamaganda Kaal, and Gulika Kaal all use the same mechanic —
 // one fixed 1-of-8 segment of daylight hours depending on the weekday —
 // just with three different, independently standard weekday tables.
@@ -121,7 +144,7 @@ function buildChoghadiyaSegments(startIndex: number, step: number, anchor: Date,
 export interface PanchangResult {
   date: string;
   vara: string;
-  tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number };
+  tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number; start: string; end: string };
   nakshatra: { name: string; pada: number; lord: string };
   yoga: string;
   karana: string;
@@ -162,11 +185,17 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   const nextMidnightUtc = new Date(Date.UTC(year, month - 1, day + 1));
   const nextSunriseDate = new sunriseModule.Sunrise(new julian.Calendar(nextMidnightUtc), latitude, -longitude).rise()?.toDate() ?? null;
 
-  // Classical definition: "today's" tithi/yoga/karana/nakshatra are the ones
-  // prevailing at sunrise, not at some arbitrary hour — so compute Sun/Moon
-  // positions at the moment of sunrise (falling back to midnight UTC if
-  // sunrise couldn't be computed, e.g. near the poles).
-  const positions = getPlanetaryPositions({ utcDate: sunriseDate ?? midnightUtc });
+  // The traditional almanac convention is "today's" tithi/yoga/karana/
+  // nakshatra are whichever ones prevail at sunrise — fine for a printed
+  // almanac, but wrong for a live "as of right now" dashboard card: a tithi
+  // that started before sunrise and ends mid-morning (e.g. Tritiya until
+  // 7am, Chaturthi after) would show as Tritiya all day even after it's
+  // actually changed. So: for TODAY's date specifically, use the actual
+  // current instant; for any other (past/future, browsed-via-date-picker)
+  // date there's no "now" to speak of, so keep the sunrise convention.
+  const isRequestingToday = dateOnly === new Date().toISOString().slice(0, 10);
+  const angaInstant = isRequestingToday ? new Date() : (sunriseDate ?? midnightUtc);
+  const positions = getPlanetaryPositions({ utcDate: angaInstant });
   const sun_ = positions.find(p => p.id === 'sun')!;
   const moon = positions.find(p => p.id === 'moon')!;
 
@@ -175,6 +204,11 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   const paksha: 'Shukla' | 'Krishna' = tithiNumber <= 15 ? 'Shukla' : 'Krishna';
   const tithiInPaksha = tithiNumber <= 15 ? tithiNumber : tithiNumber - 15;
   const tithiName = tithiInPaksha === 15 ? (paksha === 'Shukla' ? 'Purnima' : 'Amavasya') : TITHI_NAMES[tithiInPaksha - 1];
+
+  // This tithi's own start/end instants — lets the UI show "until HH:MM"
+  // instead of silently going stale the moment it actually changes.
+  const tithiStart = findTithiBoundaryCrossing(((tithiNumber - 1) * 12) % 360, angaInstant);
+  const tithiEnd = findTithiBoundaryCrossing((tithiNumber * 12) % 360, angaInstant);
 
   const yogaIndex = Math.floor(((sun_.longitude + moon.longitude) % 360 + 360) % 360 / (360 / 27));
   const karanaHalfTithi = Math.floor(diff / 6); // 0-59
@@ -249,7 +283,7 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   return {
     date: dateOnly,
     vara: WEEKDAY_NAMES[weekday],
-    tithi: { name: tithiName, paksha, number: tithiInPaksha },
+    tithi: { name: tithiName, paksha, number: tithiInPaksha, start: tithiStart.toISOString(), end: tithiEnd.toISOString() },
     nakshatra: { name: nakshatra.name, pada: nakshatra.pada, lord: nakshatra.lord },
     yoga: YOGA_NAMES[yogaIndex],
     karana: karanaName(karanaHalfTithi),

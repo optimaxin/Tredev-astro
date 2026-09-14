@@ -237,10 +237,15 @@ export default function Panchang() {
   const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips
   // above the denser field grid instead of competing equally with everything else.
+  // Sub-line under the Tithi tile — the tithi shown is the one active RIGHT
+  // NOW (not a fixed "as of sunrise" value that could already be stale by
+  // the time someone's looking at this), so the window it's valid for is
+  // shown alongside it rather than left implicit.
+  const tithiSub = data ? toRange(data.tithi.start, data.tithi.end) : '';
   const HERO_FIELDS = data ? [
-    { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})` },
-    { icon: '✦', label: L('nakshatra'), value: hindiOr(language, HINDI_NAKSHATRA, data.nakshatra.name) },
-    { icon: '☾', label: L('moonRashi'), value: hindiOr(language, HINDI_RASHI, data.moonRashi) },
+    { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})`, sub: tithiSub },
+    { icon: '✦', label: L('nakshatra'), value: hindiOr(language, HINDI_NAKSHATRA, data.nakshatra.name), sub: undefined as string | undefined },
+    { icon: '☾', label: L('moonRashi'), value: hindiOr(language, HINDI_RASHI, data.moonRashi), sub: undefined as string | undefined },
   ] : [];
   const HINDI_FIELDS = data ? [
     { icon: '◈', label: L('vara'), value: hindiOr(language, HINDI_WEEKDAY, data.vara) },
@@ -401,6 +406,7 @@ export default function Panchang() {
                       <span className={styles.panchangDashHeroIcon}>{f.icon}</span>
                       <span className={styles.panchangDashHeroLabel}>{f.label}</span>
                       <span className={styles.panchangDashHeroValue}>{f.value}</span>
+                      {f.sub && <span className={styles.panchangDashHeroSub}>{f.sub}</span>}
                     </div>
                   ))}
                 </div>
