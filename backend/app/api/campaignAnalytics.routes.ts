@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { logCampaignEvent, summarizeCampaignEvents, summarizeCampaignEventsByUser, resetCampaignEvents } from '../repositories/campaignEventRepository.ts';
+import { logCampaignEvent, summarizeCampaignEvents, summarizeCampaignEventsByUser, listRegisteredUsers, resetCampaignEvents } from '../repositories/campaignEventRepository.ts';
 import { config } from '../core/config.ts';
 
 export const campaignAnalyticsRouter = Router();
@@ -69,8 +69,8 @@ campaignAnalyticsRouter.get('/summary', async (req, res) => {
     res.status(401).json({ error: 'Incorrect username or password' });
     return;
   }
-  const [events, byUser] = await Promise.all([summarizeCampaignEvents(), summarizeCampaignEventsByUser()]);
-  res.json({ events, byUser });
+  const [events, byUser, users] = await Promise.all([summarizeCampaignEvents(), summarizeCampaignEventsByUser(), listRegisteredUsers()]);
+  res.json({ events, byUser, users });
 });
 
 // Wipes every recorded event — the dashboard gates this behind its own "are

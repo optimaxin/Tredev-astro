@@ -15,6 +15,10 @@
   .sub { color: #7a6f5d; font-size: 0.9rem; margin: 0 0 1.5rem; }
   .gate { max-width: 360px; margin: 3rem auto; background: #fff; border: 1px solid #e4dccb; border-radius: 12px; padding: 1.75rem; text-align: center; }
   .gate input { width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #d8cdb6; border-radius: 8px; font-size: 1rem; margin: 1rem 0 0.75rem; }
+  .pw-field { position: relative; margin: 1rem 0 0.75rem; }
+  .pw-field input { padding-right: 2.5rem; margin: 0; }
+  .pw-toggle { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; padding: 0.25rem; line-height: 1; opacity: 0.6; }
+  .pw-toggle:hover { opacity: 1; background: none; }
   button { background: #b58a3b; color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.95rem; cursor: pointer; font-weight: 600; }
   button:hover { background: #9c7530; }
   button.secondary { background: #fff; color: #2a2118; border: 1px solid #d8cdb6; }
@@ -49,7 +53,10 @@
       <h1>Campaign Analytics</h1>
       <p class="sub">Enter the dashboard ID and password to continue.</p>
       <input id="username" type="text" placeholder="ID" autofocus autocomplete="username" />
-      <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="pw-field">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+        <button type="button" id="toggle-password" class="pw-toggle" aria-label="Show password">👁</button>
+      </div>
       <div><button id="unlock">View Dashboard</button></div>
       <p class="error" id="gate-error"></p>
     </div>
@@ -189,7 +196,7 @@
   // not just whichever ones happen to have been used already. Other features
   // (the wish-card flow) stay reactive: a column only appears once someone's
   // actually used it.
-  function pivotByUser(byUser) {
+  function pivotByUser(byUser, allUsers) {
     const users = new Map();
     const featureKeys = [];
     const featureLabels = new Map();
@@ -197,6 +204,13 @@
       const key = 'tool_open::' + id;
       featureKeys.push(key);
       featureLabels.set(key, 'Calculator: ' + TOOL_LABELS[id]);
+    }
+    // Seed every registered user first (0s across the board) — otherwise a
+    // user who signed up but never triggered a tracked event (no calculator
+    // opened, no wish-card action) simply never appears below, even though
+    // they're a real registered user.
+    for (const u of allUsers || []) {
+      if (!users.has(u.email)) users.set(u.email, { name: u.name || '', phone: u.phone_number || '', features: new Map() });
     }
     for (const r of byUser) {
       if (!users.has(r.user_email)) users.set(r.user_email, { name: r.user_name || '', phone: r.user_phone || '', features: new Map() });
@@ -213,8 +227,8 @@
 
   let lastPivot = null;
 
-  function renderUsers(byUser) {
-    const pivot = pivotByUser(byUser);
+  function renderUsers(byUser, allUsers) {
+    const pivot = pivotByUser(byUser, allUsers);
     lastPivot = pivot;
     if (!pivot.users.size) {
       usersContent.innerHTML = '<div class="empty">No logged-in user activity recorded yet.</div>';
@@ -267,11 +281,18 @@
       gate.hidden = true;
       dashboard.hidden = false;
       renderEvents(data.events);
-      renderUsers(data.byUser || []);
+      renderUsers(data.byUser || [], data.users || []);
     } catch (err) {
       gateError.textContent = err.message === 'unauthorized' ? 'Incorrect ID or password.' : 'Could not load data — check the backend is running.';
     }
   }
+
+  document.getElementById('toggle-password').addEventListener('click', () => {
+    const showing = passwordInput.type === 'text';
+    passwordInput.type = showing ? 'password' : 'text';
+    document.getElementById('toggle-password').textContent = showing ? '👁' : '🙈';
+    document.getElementById('toggle-password').setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+  });
 
   document.getElementById('unlock').addEventListener('click', () => tryUnlock(usernameInput.value, passwordInput.value));
   for (const el of [usernameInput, passwordInput]) {
@@ -284,7 +305,7 @@
       const { username, password } = getStoredCredentials();
       const data = await loadSummary(username, password);
       renderEvents(data.events);
-      renderUsers(data.byUser || []);
+      renderUsers(data.byUser || [], data.users || []);
     } catch { /* credentials expired mid-session — ignore, next full load will re-gate */ }
   });
 
@@ -301,8 +322,9 @@
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) throw new Error('failed');
-      renderEvents([]);
-      renderUsers([]);
+      const data = await loadSummary(username, password);
+      renderEvents(data.events);
+      renderUsers(data.byUser || [], data.users || []);
     } catch {
       actionError.textContent = 'Could not reset data — please try again.';
     }

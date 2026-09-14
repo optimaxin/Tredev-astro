@@ -22,6 +22,22 @@ export interface CampaignEventUser {
   phone?: string;
 }
 
+export interface RegisteredUserRow {
+  name: string;
+  email: string;
+  phone_number: string | null;
+}
+
+// Every registered account on the platform (name/email/phone only — never
+// password_hash or anything else sensitive), so the dashboard's per-user
+// table can list EVERY user, not just the ones who happened to trigger a
+// tracked event. summarizeCampaignEventsByUser below only has rows for
+// users with at least one event, which silently dropped anyone who
+// registered but never clicked a tracked calculator/wish action.
+export function listRegisteredUsers(): Promise<RegisteredUserRow[]> {
+  return query<RegisteredUserRow>('SELECT name, email, phone_number FROM users ORDER BY name');
+}
+
 export async function logCampaignEvent(eventType: string, eventLabel: string, meta?: Record<string, unknown>, user?: CampaignEventUser) {
   await query(
     'INSERT INTO campaign_events (id, event_type, event_label, meta, created_at, user_name, user_email, user_phone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
