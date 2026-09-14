@@ -16,8 +16,9 @@ import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm
 import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
 import PanchangDetailsForm from '../../components/PanchangDetailsForm/PanchangDetailsForm';
 import type { PanchangDetailsSubmitValue } from '../../components/PanchangDetailsForm/PanchangDetailsForm';
+import LocationAutocomplete from '../../components/LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GeocodeResult, GunMilanResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliResult, LalKitabResult, LuckyAttributes, MangalDoshaResult, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
 import { formatIst } from '../../utils/istTime';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
 
@@ -419,9 +420,19 @@ export function ordinal(n: number): string {
   return 'th';
 }
 
-// 2. Kundli Matching (Guna Milan) Page — real Ashtakoot calculation, both
-// partners' places are geocoded server-side (see BirthDetailsForm) rather
-// than trusting a free-text city name.
+// 2. Kundli Matching (Guna Milan) Page — real Ashtakoot calculation. `geo`
+// is set only when the user actually picks a LocationAutocomplete
+// suggestion (carrying its exact coordinates, same pattern as
+// BirthDetailsForm's selectedGeo) — any further edit to the place text
+// clears it, since it no longer necessarily matches what's in the box, and
+// handleMatch below falls back to a plain geocode() of the typed text.
+interface PartnerBirthValue {
+  name: string;
+  dob: string;
+  tob: string;
+  place: string;
+  geo: GeocodeResult | null;
+}
 function verdictForScore(total: number): string {
   if (total >= 32) return 'Excellent Match — a highly auspicious pairing by classical Ashtakoot standards.';
   if (total >= 24) return 'Good Match — favourable compatibility with strong long-term potential.';
@@ -429,13 +440,13 @@ function verdictForScore(total: number): string {
   return 'Not Recommended — this pairing scores below the classical minimum (18/36).';
 }
 
-function PartnerBirthFields({ title, value, onChange }: { title: string; value: { name: string; dob: string; tob: string; place: string }; onChange: (v: typeof value) => void }) {
+function PartnerBirthFields({ idPrefix, title, value, onChange }: { idPrefix: string; title: string; value: PartnerBirthValue; onChange: (v: PartnerBirthValue) => void }) {
   return (
     <div className={styles.partnerFormCard}>
       <h3 className={styles.partnerTitle}>✦ {title}</h3>
       <div className="form-group" style={{ marginBottom: '12px' }}>
         <label className="form-label">Name</label>
-        <input type="text" className="input-field input-cosmos" value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} />
+        <input type="text" className="input-field input-cosmos" placeholder="Full name" value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} />
       </div>
       <div className="form-group" style={{ marginBottom: '12px' }}>
         <label className="form-label">Date of Birth</label>
@@ -447,18 +458,27 @@ function PartnerBirthFields({ title, value, onChange }: { title: string; value: 
       </div>
       <div className="form-group">
         <label className="form-label">Place of Birth</label>
-        <input type="text" className="input-field input-cosmos" placeholder="City, Country" value={value.place} onChange={e => onChange({ ...value, place: e.target.value })} />
+        <LocationAutocomplete
+          id={`${idPrefix}-place`}
+          className="input-field input-cosmos"
+          placeholder="Start typing a city..."
+          value={value.place}
+          onChange={place => onChange({ ...value, place, geo: null })}
+          onSelect={geo => onChange({ ...value, place: geo.displayName, geo })}
+        />
       </div>
     </div>
   );
 }
 
+const EMPTY_PARTNER: PartnerBirthValue = { name: '', dob: '', tob: '', place: '', geo: null };
+
 export function KundliMatchingPage() {
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<GunMilanResult | null>(null);
-  const [boy, setBoy] = useState({ name: 'Rohit', dob: '1992-04-14', tob: '08:30', place: 'Mumbai, India' });
-  const [girl, setGirl] = useState({ name: 'Meera', dob: '1993-07-20', tob: '14:45', place: 'Pune, India' });
+  const [boy, setBoy] = useState<PartnerBirthValue>(EMPTY_PARTNER);
+  const [girl, setGirl] = useState<PartnerBirthValue>(EMPTY_PARTNER);
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,7 +487,14 @@ export function KundliMatchingPage() {
     setError('');
     setResult(null);
     try {
-      const [boyGeo, girlGeo] = await Promise.all([calculatorService.geocode(boy.place), calculatorService.geocode(girl.place)]);
+      // A place picked from the autocomplete dropdown already carries exact
+      // coordinates (boy.geo/girl.geo) — only fall back to a fresh geocode
+      // of the typed text if they typed a place without picking a
+      // suggestion from the list.
+      const [boyGeo, girlGeo] = await Promise.all([
+        boy.geo ?? calculatorService.geocode(boy.place),
+        girl.geo ?? calculatorService.geocode(girl.place),
+      ]);
       // India Standard Time (UTC+5:30) — matches the timezone assumption
       // used elsewhere on this form; a full per-partner timezone picker
       // would be the next refinement if international users need it.
@@ -497,8 +524,8 @@ export function KundliMatchingPage() {
 
         <div className={styles.matchingLayout}>
           <form onSubmit={handleMatch} className={styles.matchingGrid}>
-            <PartnerBirthFields title="Partner 1 (Boy)" value={boy} onChange={setBoy} />
-            <PartnerBirthFields title="Partner 2 (Girl)" value={girl} onChange={setGirl} />
+            <PartnerBirthFields idPrefix="km-boy" title="Partner 1 (Boy)" value={boy} onChange={setBoy} />
+            <PartnerBirthFields idPrefix="km-girl" title="Partner 2 (Girl)" value={girl} onChange={setGirl} />
 
             <div style={{ gridColumn: 'span 2', textAlign: 'center', marginTop: '16px' }}>
               {error && <p style={{ color: '#d64545', marginBottom: '12px' }}>{error}</p>}
@@ -515,7 +542,7 @@ export function KundliMatchingPage() {
                 <div>
                   <h3 className={styles.partnerTitle} style={{ border: 'none', margin: 0 }}>Guna Milan Result</h3>
                   <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', margin: 0 }}>
-                    Match between {boy.name} &amp; {girl.name} — {result.brideMoonRashi} Moon &amp; {result.groomMoonRashi} Moon
+                    Match between {boy.name.trim() || 'Partner 1'} &amp; {girl.name.trim() || 'Partner 2'} — {result.brideMoonRashi} Moon &amp; {result.groomMoonRashi} Moon
                   </p>
                 </div>
                 <div className={styles.scoreCircle}>
