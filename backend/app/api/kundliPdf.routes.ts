@@ -14,15 +14,31 @@ export const kundliPdfRouter = Router();
 // does (that path is untouched for the main site).
 const CAMPAIGN_APP_URL = (process.env.CAMPAIGN_APP_URL || 'http://localhost:1409').replace(/\/+$/, '');
 
-// A fresh browser process per request, closed in the route's `finally` —
-// NOT reused across requests. On a 512MB host (Render's free tier), a
-// long-lived shared Chromium process sits resident the entire time the
-// server is up, permanently eating the memory every other request also
-// needs, which was tipping the whole instance into an OOM kill (not just
-// this endpoint failing). Launching fresh and closing immediately after
-// means Chromium's memory cost is only ever paid during an actual PDF
-// request, not as a constant background tax.
+// Optional: a hosted-browser service (e.g. Browserless.io) exposing a
+// Playwright-compatible WebSocket endpoint. When set, PDF generation
+// connects to a Chromium instance running on THEIR infrastructure instead
+// of launching one locally — the actual fix for small hosts like Render's
+// free 512MB tier, where a real Chromium process (150-300MB+) competes with
+// everything else for the same tiny RAM budget no matter how carefully its
+// lifecycle here is managed. Example: wss://chrome.browserless.io?token=...
+// Local dev (and any host with enough RAM to spare) can leave this unset —
+// launchBrowser() below falls back to a real local launch either way, so
+// nothing about the request-handling code downstream needs to know or care
+// which path is active.
+const BROWSERLESS_WS_ENDPOINT = process.env.BROWSERLESS_WS_ENDPOINT;
+
+// A fresh browser per request, closed in the route's `finally` — NOT reused
+// across requests, whichever path below is active. For the local-launch
+// path specifically: on a 512MB host, a long-lived shared Chromium process
+// sits resident the entire time the server is up, permanently eating the
+// memory every other request also needs, which was tipping the whole
+// instance into an OOM kill (not just this endpoint failing). Launching
+// fresh and closing immediately after means its memory cost is only ever
+// paid during an actual PDF request, not as a constant background tax.
 function launchBrowser(): Promise<Browser> {
+  if (BROWSERLESS_WS_ENDPOINT) {
+    return chromium.connect(BROWSERLESS_WS_ENDPOINT);
+  }
   return chromium.launch({
     headless: true,
     // Small/free-tier hosts (Render's free plan included) give containers
