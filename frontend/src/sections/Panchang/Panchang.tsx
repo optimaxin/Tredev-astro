@@ -7,6 +7,7 @@ import { calculatorService, CalculatorApiError } from '../../services/calculator
 import type { PanchangResult } from '../../services/calculatorService';
 import { istHourFraction } from '../../utils/istTime';
 import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime12, hindiOr } from '../../utils/panchangHindi';
+import PanchangSharePoster from './PanchangSharePoster';
 import styles from './Panchang.module.css';
 
 // Field labels for the dashboard card — this card (unlike the rest of the
@@ -129,7 +130,7 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
   // Scoped to this card only — deliberately NOT the site-wide language
   // toggle (AppContext's language/setLanguage), so switching this doesn't
   // also change the rest of the site's language. Defaults to English (not
@@ -148,26 +149,27 @@ export default function Panchang() {
   const [changing, setChanging] = useState(false);
   const [sharing, setSharing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  // The shared image is deliberately NOT a screenshot of the on-page card —
+  // it captures PanchangSharePoster instead, an off-screen traditional
+  // almanac-poster layout built for sharing. The site keeps its own
+  // dashboard look; only what leaves the site changes.
+  const posterRef = useRef<HTMLDivElement>(null);
 
   const shareCard = useCallback(async () => {
-    if (!cardRef.current) return;
+    if (!posterRef.current) return;
     setSharing(true);
     try {
       const { default: html2canvas } = await import('html2canvas');
-      // Forces html2canvas's offscreen clone to lay out as if the window
-      // were desktop-width, so the shared image always looks like the
-      // laptop layout (3-column hero row etc.) regardless of what device —
-      // phone, tablet, desktop — actually triggered the share.
-      // backgroundColor: null told html2canvas to leave anything it doesn't
-      // capture a background for (the gradient/CSS-variable-driven page
-      // background behind this card, which html2canvas doesn't reliably
-      // render) fully transparent — the shared image came out as a
-      // checkerboard-transparent PNG because of it. This card's own colors
-      // are fixed to the light/parchment look regardless of site theme (see
-      // the --panchang-* comment above), so filling with that same solid
-      // antique-paper tone (styles/globals.css's light-mode --surface)
-      // guarantees an opaque image that still matches the card's design.
-      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: '#FAF7F0', windowWidth: 1280 });
+      // Fixed 900px-wide poster, so no windowWidth override is needed — it
+      // lays out identically on phone and desktop. The explicit opaque
+      // background still matters: backgroundColor: null once produced a
+      // fully transparent PNG here, since html2canvas won't reliably paint
+      // a background it didn't capture itself — and it has to match the
+      // poster's own theme, not a fixed colour.
+      const canvas = await html2canvas(posterRef.current, {
+        scale: 2,
+        backgroundColor: theme === 'light' ? '#faf5e9' : '#1a0c04',
+      });
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
       if (!blob) return;
       const file = new File([blob], 'panchang.jpg', { type: 'image/jpeg' });
@@ -187,7 +189,7 @@ export default function Panchang() {
     } finally {
       setSharing(false);
     }
-  }, [data, isHindi]);
+  }, [data, isHindi, theme]);
 
   const loadFor = useCallback((place: string, date: string) => {
     setChanging(true);
@@ -270,12 +272,9 @@ export default function Panchang() {
     { icon: '◈', label: L('vara'), value: hindiOr(language, HINDI_WEEKDAY, data.vara) },
     { icon: '◎', label: L('yoga'), value: hindiOr(language, HINDI_YOGA, data.yoga) },
     { icon: '✧', label: L('karana'), value: hindiOr(language, HINDI_KARANA, data.karana) },
-    { icon: '☀', label: L('sunrise'), value: hindiTime12(data.sunrise) },
-    { icon: '◑', label: L('sunset'), value: hindiTime12(data.sunset) },
-    { icon: '☾', label: L('moonrise'), value: hindiTime12(data.moonrise) },
-    { icon: '◐', label: L('moonset'), value: data.moonset ? hindiTime12(data.moonset) : (isHindi ? 'चंद्रास्त नहीं' : 'No moonset') },
     { icon: '☉', label: L('sunRashi'), value: hindiOr(language, HINDI_RASHI, data.sunRashi) },
   ] : [];
+  const brandTagline = isHindi ? 'आपका आकाश। आपकी कहानी।' : 'Your Sky. Your Story.';
   const SHUBH_FIELDS = data ? [
     { label: L('abhijit'), value: data.abhijitMuhurat ? toRange(data.abhijitMuhurat.start, data.abhijitMuhurat.end) : null },
     { label: L('vijaya'), value: data.vijayaMuhurat ? toRange(data.vijayaMuhurat.start, data.vijayaMuhurat.end) : null },
@@ -411,10 +410,16 @@ export default function Panchang() {
               <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'}>
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
                 <div className={styles.panchangDashContent}>
+                <div className={styles.panchangDashBrandBlock}>
+                  <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashBrandLogo} />
+                  <p className={styles.panchangDashBrandName}>TredevaAstro</p>
+                  <p className={styles.panchangDashBrandTagline}>{brandTagline}</p>
+                </div>
+
                 <div className={styles.panchangDashHeader}>
                   <div>
                     <p className={styles.panchangDashDate}>{data ? hindiOr(language, HINDI_WEEKDAY, data.vara) : '...'}</p>
-                    <p className={styles.panchangDashBrand}>Tredeva Astro · {isHindi ? 'पावन पंचांग' : 'Sacred Panchang'}{currentUser ? ` · ${currentUser.name}` : ''}</p>
+                    <p className={styles.panchangDashBrand}>{isHindi ? 'पावन पंचांग' : 'Sacred Panchang'}{currentUser ? ` · ${currentUser.name}` : ''}</p>
                   </div>
                   <img src="/images/acharya.png" alt="" aria-hidden="true" className={styles.panchangDashFigure} />
                 </div>
@@ -442,6 +447,23 @@ export default function Panchang() {
                   ))}
                 </div>
 
+                <div className={styles.panchangDashRiseSetRow}>
+                  <div className={styles.panchangDashRiseSetBox}>
+                    <span className={styles.panchangDashRiseSetTitle}>☀ {isHindi ? 'सूर्योदय एवं सूर्यास्त' : 'Sunrise & Sunset'}</span>
+                    <div className={styles.panchangDashRiseSetPair}>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('sunrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.sunrise) : '—'}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('sunset')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.sunset) : '—'}</span></div>
+                    </div>
+                  </div>
+                  <div className={styles.panchangDashRiseSetBox}>
+                    <span className={styles.panchangDashRiseSetTitle}>☾ {isHindi ? 'चंद्रोदय एवं चंद्रास्त' : 'Moonrise & Moonset'}</span>
+                    <div className={styles.panchangDashRiseSetPair}>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('moonrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.moonrise) : '—'}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('moonset')}</span><span className={styles.panchangDashDetailValue}>{data?.moonset ? hindiTime12(data.moonset) : (isHindi ? 'नहीं' : 'None')}</span></div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className={styles.panchangDashMuhuratRow}>
                   {SHUBH_FIELDS.map(f => (
                     <span key={f.label} className={`${styles.panchangDashPill} ${styles.panchangDashPillShubh}`}>✓ {f.label} · {f.value}</span>
@@ -458,6 +480,8 @@ export default function Panchang() {
               <button className={styles.shareButton} onClick={shareCard} disabled={!data || sharing}>
                 <span aria-hidden="true">↗</span> {sharing ? (isHindi ? 'तैयार हो रहा है...' : 'Preparing...') : (isHindi ? 'पंचांग शेयर करें' : 'Share Panchang')}
               </button>
+
+              {data && <PanchangSharePoster data={data} isHindi={isHindi} location={location} theme={theme} posterRef={posterRef} />}
             </motion.div>
           </AnimatePresence>
         </motion.div>

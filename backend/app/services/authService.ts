@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from '../core/config.ts';
 import {
-  createUser, findActivePasswordResetToken, findActiveRefreshToken, findUserByEmail, findUserByFirebaseUid, findUserById,
+  createUser, findActivePasswordResetToken, findActiveRefreshToken, findUserByEmail, findUserByFirebaseUid, findUserById, findUserByPhone,
   insertPasswordResetToken, insertRefreshToken, linkFirebaseUid, markPasswordResetTokenUsed,
   markPhoneVerified, revokeAllRefreshTokensForUser, revokeRefreshToken, setVerifiedPhone, updatePasswordHash,
 } from '../repositories/userRepository.ts';
@@ -40,6 +40,12 @@ export async function register(params: {
   birthLatitude?: number; birthLongitude?: number; birthTimezoneOffsetMinutes?: number;
 }): Promise<{ user: PublicUser } & TokenPair> {
   if (await findUserByEmail(params.email)) throw new AuthError('An account with this email already exists', 409);
+  // Phone number is a second unique key — one account per number, so the
+  // same visitor can't end up with several accounts by registering again
+  // with a different email. Points them at logging in instead.
+  if (params.phoneNumber && await findUserByPhone(params.phoneNumber)) {
+    throw new AuthError('An account with this phone number already exists — please log in instead', 409);
+  }
   const passwordHash = bcrypt.hashSync(params.password, BCRYPT_ROUNDS);
   const row = await createUser({
     name: params.name, email: params.email, passwordHash, role: params.role, phoneNumber: params.phoneNumber,

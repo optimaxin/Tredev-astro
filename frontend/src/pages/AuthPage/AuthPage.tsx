@@ -667,7 +667,10 @@ export default function AuthPage() {
 
 // Deliberately plain (not manuscript-themed) — Google's own brand guidelines
 // want its sign-in button recognizable, not restyled into a site's theme.
-function GoogleSignInButton({ loading, error, onClick }: { loading: boolean; error: string; onClick: () => void }) {
+// Exported so the campaign's OnboardingModal (a separate, differently-themed
+// sign-up flow that also needs Google Sign-In) can reuse it as-is instead of
+// duplicating it.
+export function GoogleSignInButton({ loading, error, onClick }: { loading: boolean; error: string; onClick: () => void }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 'var(--space-3) 0' }}>

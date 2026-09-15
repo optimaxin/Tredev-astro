@@ -254,7 +254,28 @@
   --panchang-gold: #B58A3B;
   padding: var(--space-2);
   position: relative;
+  border: 1px solid var(--panchang-gold);
+  border-radius: var(--radius-lg);
 }
+
+/* Ornate corner flourishes on the outer card — small gold "L" brackets in
+   each corner, echoing a temple-card border without pulling in an SVG asset. */
+.panchangDash::before,
+.panchangDash::after,
+.panchangDashContent::before,
+.panchangDashContent::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--panchang-gold);
+  z-index: 3;
+  pointer-events: none;
+}
+.panchangDash::before { top: 6px; left: 6px; border-width: 2px 0 0 2px; }
+.panchangDash::after { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
+.panchangDashContent::before { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
+.panchangDashContent::after { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; }
 
 /* Dark theme: swap the printed-almanac card from solid white to a dark
    surface, contrast-checked the same way as the light values above —
@@ -309,12 +330,49 @@
   z-index: 2;
 }
 
+/* Centered brand block — logo + wordmark + tagline, above the date/acharya
+   row, echoing a temple-card's big centered title treatment but with our
+   own brand instead of a deity name. */
+.panchangDashBrandBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  margin-bottom: var(--space-4);
+}
+
+.panchangDashBrandLogo {
+  height: 34px;
+  width: auto;
+  margin-bottom: 2px;
+}
+
+.panchangDashBrandName {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  color: var(--panchang-gold);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.panchangDashBrandTagline {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--panchang-gold-text);
+  margin: 0;
+}
+
 .panchangDashHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--panchang-glass-border);
 }
 
 .panchangDashDate {
@@ -412,6 +470,39 @@
   color: var(--panchang-heading);
 }
 
+/* Sunrise/Sunset + Moonrise/Moonset — their own two boxes (rather than
+   buried in the flat detail grid), matching a temple-almanac's dedicated
+   rise/set panels. */
+.panchangDashRiseSetRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.panchangDashRiseSetBox {
+  border: 1px solid var(--panchang-gold);
+  border-radius: var(--radius-lg);
+  background: var(--panchang-glass);
+  padding: var(--space-3);
+}
+
+.panchangDashRiseSetTitle {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--panchang-gold-text);
+  margin-bottom: var(--space-2);
+}
+
+.panchangDashRiseSetPair {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 /* Muhurat row — Shubh/Ashubh periods as glowing pills in one flowing row,
    not two boxed side-by-side panels. */
 .panchangDashMuhuratRow {
@@ -506,5 +597,9 @@
   .panchangDashDetailGrid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
   .panchangDashDetailTile { padding: var(--space-2); }
   .panchangDashMuhuratRow { margin-bottom: var(--space-3); }
+  .panchangDashBrandName { font-size: var(--text-xl); }
+  .panchangDashBrandLogo { height: 28px; }
+  .panchangDashRiseSetRow { gap: var(--space-2); margin-bottom: var(--space-3); }
+  .panchangDashRiseSetBox { padding: var(--space-2); }
   .arcWrap { max-width: 180px; }
 }

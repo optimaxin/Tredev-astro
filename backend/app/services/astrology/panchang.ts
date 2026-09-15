@@ -102,6 +102,45 @@ function findTithiBoundaryCrossing(targetDiff: number, guessDate: Date): Date {
   return new Date((lo + hi) / 2);
 }
 
+// Same bisection again, but on the Sun+Moon longitude SUM — that's the
+// quantity the 27 Yogas divide into equal 13°20' steps, so a yoga boundary
+// is where the sum crosses a multiple of 360/27. The sum advances ~14.3°/day
+// (Moon ~13.2 + Sun ~1.0), so one yoga lasts under a day and a ±2 day window
+// always contains both its start and end.
+function findYogaBoundaryCrossing(targetSum: number, guessDate: Date): Date {
+  let lo = guessDate.getTime() - 2 * 86_400_000;
+  let hi = guessDate.getTime() + 2 * 86_400_000;
+  const signedDiff = (ms: number) => {
+    const pos = getPlanetaryPositions({ utcDate: new Date(ms) });
+    const sum = ((pos.find(p => p.id === 'sun')!.longitude + pos.find(p => p.id === 'moon')!.longitude) % 360 + 360) % 360;
+    return (((sum - targetSum + 540) % 360) + 360) % 360 - 180;
+  };
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (signedDiff(mid) <= 0) lo = mid; else hi = mid;
+  }
+  return new Date((lo + hi) / 2);
+}
+
+// Lunar (Amanta) month names, indexed by the sidereal rashi the SUN occupied
+// at the new moon that began the current month — the standard rule: the
+// month running from the new moon while the Sun is in Mesha is Vaishakha,
+// from Vrishabha is Jyeshtha, and so on round to Meena -> Chaitra.
+const MAAS_BY_SUN_RASHI_AT_NEW_MOON = [
+  'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada', 'Ashwin',
+  'Kartika', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna', 'Chaitra',
+];
+
+// The six classical seasons, two lunar months each, starting at Chaitra.
+const RITU_BY_MAAS: Record<string, string> = {
+  Chaitra: 'Vasanta', Vaishakha: 'Vasanta',
+  Jyeshtha: 'Grishma', Ashadha: 'Grishma',
+  Shravana: 'Varsha', Bhadrapada: 'Varsha',
+  Ashwin: 'Sharad', Kartika: 'Sharad',
+  Margashirsha: 'Hemanta', Pausha: 'Hemanta',
+  Magha: 'Shishira', Phalguna: 'Shishira',
+};
+
 // Rahu Kaal, Yamaganda Kaal, and Gulika Kaal all use the same mechanic —
 // one fixed 1-of-8 segment of daylight hours depending on the weekday —
 // just with three different, independently standard weekday tables.
@@ -145,11 +184,22 @@ export interface PanchangResult {
   date: string;
   vara: string;
   tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number; start: string; end: string };
-  nakshatra: { name: string; pada: number; lord: string };
+  nakshatra: { name: string; pada: number; lord: string; start: string; end: string };
   yoga: string;
+  /** The current yoga's own start/end instants — same idea as tithi.start/end. */
+  yogaWindow: { start: string; end: string };
   karana: string;
   moonRashi: string;
   sunRashi: string;
+  /** Lunar (Amanta) month and the classical season it falls in. */
+  maas: string;
+  ritu: string;
+  /** Traditional era years. Hijri is deliberately absent — it's a different
+   *  (purely lunar) calendar this engine doesn't compute, and guessing it
+   *  would be inventing data. */
+  samvat: { vikram: number; shaka: number };
+  /** Every graha's sidereal rashi right now — the "ग्रह स्थिति" block. */
+  grahaPositions: { id: string; rashi: string }[];
   sunrise: string | null; // ISO instant
   sunset: string | null;
   moonrise: string | null;
@@ -210,8 +260,30 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   const tithiStart = findTithiBoundaryCrossing(((tithiNumber - 1) * 12) % 360, angaInstant);
   const tithiEnd = findTithiBoundaryCrossing((tithiNumber * 12) % 360, angaInstant);
 
-  const yogaIndex = Math.floor(((sun_.longitude + moon.longitude) % 360 + 360) % 360 / (360 / 27));
+  const yogaSpan = 360 / 27;
+  const yogaSum = ((sun_.longitude + moon.longitude) % 360 + 360) % 360;
+  const yogaIndex = Math.floor(yogaSum / yogaSpan);
+  const yogaStart = findYogaBoundaryCrossing(yogaIndex * yogaSpan, angaInstant);
+  const yogaEnd = findYogaBoundaryCrossing(((yogaIndex + 1) * yogaSpan) % 360, angaInstant);
   const karanaHalfTithi = Math.floor(diff / 6); // 0-59
+
+  // Lunar month: find the new moon that started the current month (the last
+  // time Moon-minus-Sun crossed 0°), then name the month after the rashi the
+  // Sun occupied at that instant.
+  const currentNewMoon = findTithiBoundaryCrossing(0, new Date(angaInstant.getTime() - 15 * 86_400_000));
+  const sunRashiAtNewMoon = getRashi(getPlanetaryPositions({ utcDate: currentNewMoon }).find(p => p.id === 'sun')!.longitude);
+  const maas = MAAS_BY_SUN_RASHI_AT_NEW_MOON[sunRashiAtNewMoon.index];
+  const ritu = RITU_BY_MAAS[maas];
+
+  // Both eras roll over at Chaitra Shukla Pratipada (late March / April),
+  // not on 1 January — so a Gregorian date before that new year still
+  // belongs to the previous samvat year.
+  const beforeHinduNewYear = month <= 3;
+  const samvat = { vikram: year + (beforeHinduNewYear ? 56 : 57), shaka: year - (beforeHinduNewYear ? 79 : 78) };
+
+  const grahaPositions = positions
+    .filter(p => !['uranus', 'neptune', 'pluto'].includes(p.id))
+    .map(p => ({ id: p.id, rashi: getRashi(p.longitude).name }));
 
   const moonRashi = getRashi(moon.longitude);
   const sunRashi = getRashi(sun_.longitude);
@@ -223,17 +295,17 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
       ? getMoonRiseSet(sunriseDate, nextSunriseDate, latitude, longitude)
       : getMoonRiseSet(midnightUtc, new Date(midnightUtc.getTime() + 86_400_000), latitude, longitude);
 
-  // Amrit Kaal is timed from the current Nakshatra's OWN start/end instants,
-  // not the clock day — find them by searching for when the Moon's sidereal
-  // longitude crosses this nakshatra's boundaries.
+  // The current Nakshatra's own start/end instants — reported directly, and
+  // also what Amrit Kaal below is timed from (it's measured from the
+  // Nakshatra's own span, not the clock day).
+  const nakSpan = 360 / 27;
+  const nakStartLongitude = Math.floor(moon.longitude / nakSpan) * nakSpan;
+  const nakStart = findMoonLongitudeCrossing(nakStartLongitude, sunriseDate ?? midnightUtc);
+  const nakEnd = findMoonLongitudeCrossing(nakStartLongitude + nakSpan, sunriseDate ?? midnightUtc);
+
   let amritKaal: PanchangResult['amritKaal'] = null;
   const amritOffsetHours = AMRIT_KAAL_OFFSET_HOURS[nakshatra.name];
   if (amritOffsetHours !== undefined) {
-    const nakSpan = 360 / 27;
-    const nakStartLongitude = Math.floor(moon.longitude / nakSpan) * nakSpan;
-    const nakEndLongitude = nakStartLongitude + nakSpan;
-    const nakStart = findMoonLongitudeCrossing(nakStartLongitude, sunriseDate ?? midnightUtc);
-    const nakEnd = findMoonLongitudeCrossing(nakEndLongitude, sunriseDate ?? midnightUtc);
     const nakDurationHours = (nakEnd.getTime() - nakStart.getTime()) / 3_600_000;
     const akStart = new Date(nakStart.getTime() + (amritOffsetHours / 24) * nakDurationHours * 3_600_000);
     const akDurationHours = nakDurationHours * (1.6 / 24);
@@ -284,11 +356,16 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
     date: dateOnly,
     vara: WEEKDAY_NAMES[weekday],
     tithi: { name: tithiName, paksha, number: tithiInPaksha, start: tithiStart.toISOString(), end: tithiEnd.toISOString() },
-    nakshatra: { name: nakshatra.name, pada: nakshatra.pada, lord: nakshatra.lord },
+    nakshatra: { name: nakshatra.name, pada: nakshatra.pada, lord: nakshatra.lord, start: nakStart.toISOString(), end: nakEnd.toISOString() },
     yoga: YOGA_NAMES[yogaIndex],
+    yogaWindow: { start: yogaStart.toISOString(), end: yogaEnd.toISOString() },
     karana: karanaName(karanaHalfTithi),
     moonRashi: moonRashi.name,
     sunRashi: sunRashi.name,
+    maas,
+    ritu,
+    samvat,
+    grahaPositions,
     sunrise: sunriseDate?.toISOString() ?? null,
     sunset: sunsetDate?.toISOString() ?? null,
     moonrise: moonRiseSet.rise?.toISOString() ?? null,

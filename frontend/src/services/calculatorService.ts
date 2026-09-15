@@ -205,9 +205,14 @@ export interface PanchangResult {
   date: string;
   vara: string;
   tithi: { name: string; paksha: 'Shukla' | 'Krishna'; number: number; start: string; end: string };
-  nakshatra: { name: string; pada: number; lord: string };
+  nakshatra: { name: string; pada: number; lord: string; start: string; end: string };
   yoga: string;
+  yogaWindow: { start: string; end: string };
   karana: string;
+  maas: string;
+  ritu: string;
+  samvat: { vikram: number; shaka: number };
+  grahaPositions: { id: string; rashi: string }[];
   moonRashi: string;
   sunRashi: string;
   sunrise: string | null;
