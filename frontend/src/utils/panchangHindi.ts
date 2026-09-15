@@ -67,15 +67,75 @@ export function hindiOr(language: string, table: Record<string, string>, english
   return language === 'hi' ? (table[english] || english) : english;
 }
 
+// Asia/Kolkata is a fixed +05:30 with no DST, so shifting the instant by a
+// constant and then reading it in UTC gives the exact IST wall clock —
+// and, unlike a locale/timezone-name conversion, it can't be applied twice
+// by accident further down the pipeline.
+const IST_OFFSET_MS = 5.5 * 3_600_000;
+
+function toIstDate(iso: string): Date {
+  return new Date(new Date(iso).getTime() + IST_OFFSET_MS);
+}
+
+/** The calendar date (in IST) an instant falls on, as YYYY-MM-DD. */
+export function istDateKey(iso: string): string {
+  return toIstDate(iso).toISOString().slice(0, 10);
+}
+
+/** Whole calendar days from `fromDateKey` to `toDateKey`, both YYYY-MM-DD. */
+function dayDelta(fromDateKey: string, toDateKey: string): number {
+  const asUtc = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((asUtc(toDateKey) - asUtc(fromDateKey)) / 86_400_000);
+}
+
 // 12-hour + AM/PM — a bare 24h "07:09" reads as ambiguous to most casual
 // readers (is that morning or could it be misread as evening?); AM/PM
 // removes the ambiguity outright without needing the reader to already be
 // fluent in 24h-clock conventions.
 export function hindiTime12(iso: string | null): string {
   if (!iso) return '—';
-  const d = new Date(new Date(iso).getTime() + 5.5 * 3_600_000); // IST offset
+  const d = toIstDate(iso);
   const h24 = d.getUTCHours();
   const period = h24 >= 12 ? 'PM' : 'AM';
   const h12 = h24 % 12 || 12;
   return `${h12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${period}`;
+}
+
+// The one place Panchang transition instants become display text. Tithi,
+// Nakshatra, Yoga and Karana all routinely END on the following calendar
+// day — rendering just the clock time made those look like same-day (and,
+// when the end hour was numerically smaller than the start hour, outright
+// impossible: "12:46 PM to 12:20 PM"). The instant carries its own date all
+// the way here precisely so this can say so.
+//
+// `selectedDate` is the YYYY-MM-DD the card is showing, NOT "today" — a
+// user browsing a past/future date needs the rollover marked relative to
+// the date they're looking at.
+export function formatPanchangTransition(iso: string | null, selectedDate: string, isHindi: boolean): string {
+  if (!iso) return '—';
+  const time = hindiTime12(iso);
+  const delta = dayDelta(selectedDate, istDateKey(iso));
+  if (delta === 0) return time;
+  if (delta === 1) return isHindi ? `अगले दिन ${time}` : `next day ${time}`;
+  // Anything further out (or before the selected date) is rare enough that a
+  // relative word would be vaguer than the date itself.
+  const d = toIstDate(iso);
+  const dayMonth = d.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return `${time}, ${dayMonth}`;
+}
+
+/**
+ * A period is only renderable if it actually runs forwards. A failure here
+ * means the underlying instants are wrong (a stripped date, a double
+ * timezone shift) — the caller should hide the period rather than paper
+ * over it by nudging the clock.
+ */
+export function isValidInterval(startIso: string | null, endIso: string | null): boolean {
+  if (!startIso || !endIso) return false;
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  return Number.isFinite(start) && Number.isFinite(end) && end > start;
 }

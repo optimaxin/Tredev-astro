@@ -6,7 +6,7 @@ import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePic
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { PanchangResult } from '../../services/calculatorService';
 import { istHourFraction } from '../../utils/istTime';
-import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime12, hindiOr } from '../../utils/panchangHindi';
+import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime12, hindiOr, formatPanchangTransition, isValidInterval } from '../../utils/panchangHindi';
 import PanchangSharePoster from './PanchangSharePoster';
 import styles from './Panchang.module.css';
 
@@ -244,16 +244,18 @@ export default function Panchang() {
   const moonPhase = ((fullTithiNumber - 0.5) * 12) / 360; // 0 = new moon, 0.5 = full moon — derived from the real tithi, not hardcoded
 
   const L = (key: keyof typeof PANCHANG_LABEL) => PANCHANG_LABEL[key][isHindi ? 'hi' : 'en'];
+  // A window that crosses midnight (the Tithi range regularly does) reads as
+  // a same-day few-minute gap without something marking that the end time is
+  // actually the next day — "7:09 AM to 7:46 AM" looks like a 37-minute
+  // window instead of the ~24 hours it really spans. Both ends go through the
+  // one shared transition formatter (utils/panchangHindi) so the card, the
+  // share poster and anything else added later all mark a rollover the same
+  // way, and all of them compare real instants rather than clock strings.
   const toRange = (start: string, end: string) => {
-    // A window that crosses midnight (the Tithi range regularly does) reads
-    // as a same-day few-minute gap without something marking that the end
-    // time is actually the next day — "7:09 AM to 7:46 AM" looks like a
-    // 37-minute window instead of the ~24 hours it really spans.
-    const startIST = new Date(new Date(start).getTime() + 5.5 * 3_600_000);
-    const endIST = new Date(new Date(end).getTime() + 5.5 * 3_600_000);
-    const crossesDay = startIST.getUTCDate() !== endIST.getUTCDate() || startIST.getUTCMonth() !== endIST.getUTCMonth();
-    const endLabel = hindiTime12(end) + (crossesDay ? (isHindi ? ' (अगले दिन)' : ' (next day)') : '');
-    return `${hindiTime12(start)} ${isHindi ? 'से' : 'to'} ${endLabel}`;
+    if (!isValidInterval(start, end)) return '—';
+    const from = formatPanchangTransition(start, selectedDate, isHindi);
+    const to = formatPanchangTransition(end, selectedDate, isHindi);
+    return `${from} ${isHindi ? 'से' : 'to'} ${to}`;
   };
   const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips
@@ -271,7 +273,16 @@ export default function Panchang() {
   const HINDI_FIELDS = data ? [
     { icon: '◈', label: L('vara'), value: hindiOr(language, HINDI_WEEKDAY, data.vara) },
     { icon: '◎', label: L('yoga'), value: hindiOr(language, HINDI_YOGA, data.yoga) },
-    { icon: '✧', label: L('karana'), value: hindiOr(language, HINDI_KARANA, data.karana) },
+    // A day runs through several karanas — this tile shows the one prevailing
+    // at the instant the angas were read (now, or sunrise for a browsed date),
+    // so the label says which rather than implying it covers the whole day.
+    {
+      icon: '✧',
+      label: data.angaReference === 'now'
+        ? (isHindi ? 'करण (वर्तमान)' : 'Karana (current)')
+        : (isHindi ? 'करण (सूर्योदय पर)' : 'Karana (at sunrise)'),
+      value: hindiOr(language, HINDI_KARANA, data.karana),
+    },
     { icon: '☉', label: L('sunRashi'), value: hindiOr(language, HINDI_RASHI, data.sunRashi) },
   ] : [];
   const brandTagline = isHindi ? 'आपका आकाश। आपकी कहानी।' : 'Your Sky. Your Story.';

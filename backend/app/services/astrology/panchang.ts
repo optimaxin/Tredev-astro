@@ -189,6 +189,18 @@ export interface PanchangResult {
   /** The current yoga's own start/end instants — same idea as tithi.start/end. */
   yogaWindow: { start: string; end: string };
   karana: string;
+  /** The single reported karana's own span. A panchang day contains several
+   *  karanas (each is half a tithi) — this one is whichever prevails at
+   *  `angaReference`, not the whole day's. */
+  karanaWindow: { start: string; end: string };
+  /**
+   * Which instant the five angas (tithi/nakshatra/yoga/karana) were read at:
+   * 'now' for today (so a live card doesn't go stale the moment an anga
+   * changes), 'sunrise' for any other date, where there is no "now" and the
+   * classical almanac convention applies. Reported rather than assumed, so
+   * the UI can say which it is instead of quietly picking one.
+   */
+  angaReference: 'now' | 'sunrise';
   moonRashi: string;
   sunRashi: string;
   /** Lunar (Amanta) month and the classical season it falls in. */
@@ -265,7 +277,11 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   const yogaIndex = Math.floor(yogaSum / yogaSpan);
   const yogaStart = findYogaBoundaryCrossing(yogaIndex * yogaSpan, angaInstant);
   const yogaEnd = findYogaBoundaryCrossing(((yogaIndex + 1) * yogaSpan) % 360, angaInstant);
+  // Karana = half a tithi, so its boundaries sit on multiples of 6° of the
+  // same Moon-minus-Sun angle the tithi uses.
   const karanaHalfTithi = Math.floor(diff / 6); // 0-59
+  const karanaStart = findTithiBoundaryCrossing((karanaHalfTithi * 6) % 360, angaInstant);
+  const karanaEnd = findTithiBoundaryCrossing(((karanaHalfTithi + 1) * 6) % 360, angaInstant);
 
   // Lunar month: find the new moon that started the current month (the last
   // time Moon-minus-Sun crossed 0°), then name the month after the rashi the
@@ -360,6 +376,8 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
     yoga: YOGA_NAMES[yogaIndex],
     yogaWindow: { start: yogaStart.toISOString(), end: yogaEnd.toISOString() },
     karana: karanaName(karanaHalfTithi),
+    karanaWindow: { start: karanaStart.toISOString(), end: karanaEnd.toISOString() },
+    angaReference: isRequestingToday ? 'now' : 'sunrise',
     moonRashi: moonRashi.name,
     sunRashi: sunRashi.name,
     maas,

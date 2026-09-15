@@ -209,6 +209,9 @@ export interface PanchangResult {
   yoga: string;
   yogaWindow: { start: string; end: string };
   karana: string;
+  karanaWindow: { start: string; end: string };
+  /** Which instant the angas were read at — 'now' for today, else sunrise. */
+  angaReference: 'now' | 'sunrise';
   maas: string;
   ritu: string;
   samvat: { vikram: number; shaka: number };

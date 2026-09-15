@@ -1,7 +1,7 @@
 import type { PanchangResult } from '../../services/calculatorService';
 import {
   HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA,
-  HINDI_PLANET, PAKSHA_HI, hindiTime12, hindiOr,
+  HINDI_PLANET, PAKSHA_HI, hindiTime12, hindiOr, formatPanchangTransition, isValidInterval,
 } from '../../utils/panchangHindi';
 
 // The share-only layout: a traditional printed-almanac poster, deliberately
@@ -123,7 +123,11 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
   const p = PALETTES[theme];
   const lang = isHindi ? 'hi' : 'en';
   const L = (hi: string, en: string) => (isHindi ? hi : en);
+  // Clock-only for the fixed points of the day (sunrise/muhurat windows all
+  // sit inside the selected date); date-aware for the angas, which regularly
+  // end on the following day.
   const time = (iso: string | null) => hindiTime12(iso);
+  const moment = (iso: string | null) => formatPanchangTransition(iso, data.date, isHindi);
 
   const gregorian = new Date(`${data.date}T00:00:00Z`).toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
@@ -149,7 +153,15 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
   ];
 
   const detailRows = [
-    { icon: `☀${TEXT}`, label: L('करण', 'Karana'), value: hindiOr(lang, HINDI_KARANA, data.karana) },
+    {
+      icon: `☀${TEXT}`,
+      // A day runs through several karanas, so the one shown has to say which
+      // it is rather than reading as "the day's karana".
+      label: data.angaReference === 'now'
+        ? L('करण (वर्तमान)', 'Karana (current)')
+        : L('करण (सूर्योदय पर)', 'Karana (at sunrise)'),
+      value: hindiOr(lang, HINDI_KARANA, data.karana),
+    },
     { icon: '✺', label: L('वार', 'Weekday'), value: varaText },
     { icon: `☾${TEXT}`, label: L('पक्ष', 'Paksha'), value: pakshaText },
     { icon: '❁', label: L('ऋतु', 'Ritu'), value: isHindi ? `${RITU_HI[data.ritu] ?? data.ritu} ऋतु` : `${data.ritu} Ritu` },
@@ -217,10 +229,15 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
               <Panel p={p} key={c.title} style={{ flex: 1, textAlign: 'center' }}>
                 <PanelTitle p={p} icon={c.icon} text={c.title} />
                 <div style={{ fontSize: 24, color: p.gold, margin: '4px 0 8px' }}>{c.name}</div>
-                <div style={{ fontSize: 15, lineHeight: 1.6 }}>
-                  <div>{L('आरंभ', 'Starts')} — {time(c.start)}</div>
-                  <div>{L('समाप्त', 'Ends')} — {time(c.end)}</div>
-                </div>
+                {/* An interval that doesn't run forwards means the instants
+                    themselves are wrong — show the anga without invented
+                    times rather than printing an impossible window. */}
+                {isValidInterval(c.start, c.end) && (
+                  <div style={{ fontSize: 15, lineHeight: 1.6 }}>
+                    <div>{L('आरंभ', 'Starts')} — {moment(c.start)}</div>
+                    <div>{L('समाप्त', 'Ends')} — {moment(c.end)}</div>
+                  </div>
+                )}
               </Panel>
             ))}
           </div>
