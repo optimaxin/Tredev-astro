@@ -16,12 +16,37 @@
   background: var(--surface-elevated);
 }
 
+.rashiRowWrap {
+  position: relative;
+}
+
+/* Fade-out hint on the trailing edge — signals "swipe for more" instead of
+   the row just looking cut off mid-button on a narrow phone screen. Always
+   present (not conditional on actual overflow) — simpler than measuring
+   scroll width in JS, and harmless on wide screens where the row doesn't
+   scroll since the last button still has clear space before the edge. */
+.rashiRowWrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: var(--space-2);
+  width: 32px;
+  background: linear-gradient(to right, transparent, var(--surface));
+  pointer-events: none;
+}
+
+:global([data-theme='dark']) .rashiRowWrap::after {
+  background: linear-gradient(to right, transparent, var(--surface-elevated));
+}
+
 .rashiRow {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
   padding-bottom: var(--space-2);
   scrollbar-width: thin;
+  scroll-snap-type: x proximity;
 }
 
 .rashiBtn {
@@ -40,6 +65,7 @@
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: all var(--transition-base);
+  scroll-snap-align: start;
 }
 
 .rashiBtn:hover {

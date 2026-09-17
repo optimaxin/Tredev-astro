@@ -583,6 +583,14 @@
   top: 90px;
   left: 5%;
   right: 5%;
+  /* Bottom edge stays a fixed gap off the viewport bottom regardless of
+     screen height, with everything past that scrollable — without this,
+     the menu had no height limit at all, so on a shorter phone screen the
+     bottom items (theme toggle, sign out) rendered below the visible
+     viewport with no way to scroll down to them. */
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(250, 247, 240, 0.98);
   border: 1px solid rgba(181, 138, 59, 0.22);
   border-radius: 24px;

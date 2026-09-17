@@ -422,6 +422,20 @@
   color: var(--panchang-label);
 }
 
+/* The Tithi tile's "valid until" sub-line — was rendering completely
+   unstyled (this rule never existed despite the class being used in
+   Panchang.tsx), so it inherited body-sized text, wrapped across many
+   lines, and stretched this one tile (and the whole hero row, since grid
+   rows match their tallest cell) far taller than its Nakshatra/Moon-Rashi
+   siblings — the actual cause of the reported "stretched" mobile layout. */
+.panchangDashHeroSub {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: var(--panchang-label);
+  opacity: 0.85;
+}
+
 .panchangDashHeroValue {
   font-family: var(--font-serif);
   font-size: var(--text-base);
@@ -594,6 +608,7 @@
   .panchangDashHeroIcon { font-size: 1.1rem; }
   .panchangDashHeroLabel { font-size: 0.6rem; }
   .panchangDashHeroValue { font-size: 0.8rem; }
+  .panchangDashHeroSub { font-size: 0.56rem; }
   .panchangDashDetailGrid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
   .panchangDashDetailTile { padding: var(--space-2); }
   .panchangDashMuhuratRow { margin-bottom: var(--space-3); }

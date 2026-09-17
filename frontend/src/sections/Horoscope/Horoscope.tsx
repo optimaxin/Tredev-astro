@@ -62,19 +62,26 @@ export default function Horoscope() {
         </div>
 
         <div className={styles.card}>
-          <div className={styles.rashiRow}>
-            {RASHIS.map((r, i) => (
-              <button
-                key={r.eng}
-                type="button"
-                className={`${styles.rashiBtn} ${i === active ? styles.rashiBtnActive : ''}`}
-                onClick={() => setActive(i)}
-                title={r.eng}
-              >
-                <img src={`/images/zodiac/${r.eng}.png`} alt="" width={26} height={26} />
-                <span>{r.eng}</span>
-              </button>
-            ))}
+          {/* Wrapper carries the fade-out edge hint (a plain overflow-x:auto
+              row gave no visual sign there were more signs to scroll to on
+              mobile — it just looked cut off mid-button) — the scroll
+              container itself stays plain so scroll-snap on its children
+              isn't affected by the mask. */}
+          <div className={styles.rashiRowWrap}>
+            <div className={styles.rashiRow}>
+              {RASHIS.map((r, i) => (
+                <button
+                  key={r.eng}
+                  type="button"
+                  className={`${styles.rashiBtn} ${i === active ? styles.rashiBtnActive : ''}`}
+                  onClick={() => setActive(i)}
+                  title={r.eng}
+                >
+                  <img src={`/images/zodiac/${r.eng}.png`} alt="" width={26} height={26} />
+                  <span>{r.eng}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className={styles.preview} onClick={explore} role="button" tabIndex={0}>
