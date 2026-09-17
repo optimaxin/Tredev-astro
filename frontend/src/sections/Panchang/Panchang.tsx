@@ -172,25 +172,64 @@ export default function Panchang() {
       // fully transparent PNG here, since html2canvas won't reliably paint
       // a background it didn't capture itself — and it has to match the
       // poster's own theme, not a fixed colour.
+      // scale 2 on a 900x1240 poster is a 1800x2480 canvas — around 4.5M
+      // pixels held twice over (canvas + JPEG encode). That is what a phone
+      // runs out of memory on, and the slower render also outlives the
+      // user-activation window share() needs (see below). 1.5 still lands
+      // ~1350px wide, past what WhatsApp and Instagram re-encode to anyway.
       const canvas = await html2canvas(posterRef.current, {
-        scale: 2,
+        scale: 1.5,
         backgroundColor: theme === 'light' ? '#faf5e9' : '#1a0c04',
       });
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-      if (!blob) return;
-      const file = new File([blob], 'panchang.jpg', { type: 'image/jpeg' });
-      const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[]; title?: string }) => Promise<void> };
-      if (nav.canShare?.({ files: [file] }) && nav.share) {
-        await nav.share({ files: [file], title: isHindi ? 'पावन पंचांग' : 'Sacred Panchang' });
-      } else {
+      // Was a bare `return` — on the browsers where toBlob gives up on a
+      // large canvas, the button just went quiet with nothing shown.
+      if (!blob) throw new Error('canvas.toBlob returned null');
+
+      const saveToDevice = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `panchang-${data?.date ?? todayDateString()}.jpg`;
+        // In the document and revoked later, not detached and revoked in the
+        // same tick: a detached anchor's click is ignored outright by
+        // Firefox, and revoking immediately can pull the blob out from under
+        // a download the browser hasn't started reading yet — between them
+        // that's a Save button that silently does nothing.
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      };
+
+      const file = new File([blob], 'panchang.jpg', { type: 'image/jpeg' });
+      const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[]; title?: string }) => Promise<void> };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        try {
+          await nav.share({ files: [file], title: isHindi ? 'पावन पंचांग' : 'Sacred Panchang' });
+        } catch (shareErr) {
+          // Dismissing the share sheet rejects with AbortError. That's the
+          // user saying no, not a failure — telling them the image couldn't
+          // be created is both wrong and alarming.
+          if ((shareErr as Error)?.name === 'AbortError') return;
+          // Everything else here is the browser refusing the share rather
+          // than the image being bad: Chrome drops the transient user
+          // activation share() requires a few seconds after the tap, and
+          // rendering this poster regularly takes longer than that on a
+          // phone (NotAllowedError). The image exists either way, so hand
+          // it over as a download instead of reporting a failure.
+          console.warn('[panchang-share] share sheet unavailable, saving instead:', shareErr);
+          saveToDevice();
+        }
+      } else {
+        saveToDevice();
       }
-    } catch {
+    } catch (err) {
+      // Logged, not just swallowed — html2canvas fails for reasons the user
+      // can do nothing about (an unsupported CSS colour function, a tainted
+      // image), and without this the only evidence left is the generic
+      // message below.
+      console.error('[panchang-share] could not render the poster:', err);
       setError('Could not create the shareable image. Please try again.');
     } finally {
       setSharing(false);
