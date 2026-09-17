@@ -38,6 +38,7 @@ import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
 import type { KundliFullResult } from '../services/calculatorService';
+import { API_URL } from '../services/apiUrl';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import {
   HoroscopePage, ChoghadiyaPage, MuhuratFinderPage, AbhijitMuhuratPage, KundliMatchingPage,
@@ -121,7 +122,13 @@ export default function PageRenderer() {
       return (
         <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
           <div className={styles.container}>
-            <KundliSection />
+            {/* serverPdfUrl switches PDF generation to the same fast,
+                server-rendered path the campaign microsite already uses
+                (real Chromium print via backend/app/api/kundliPdf.routes.ts)
+                instead of this component's own multi-minute client-side
+                html2canvas-per-block capture — see KundliSection's own
+                serverPdfUrl prop comment for the full explanation. */}
+            <KundliSection serverPdfUrl={`${API_URL}/api/kundli-pdf`} />
           </div>
         </div>
       );

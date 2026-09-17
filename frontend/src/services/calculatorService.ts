@@ -373,6 +373,8 @@ export interface AscendantPredictions {
   health: string;
   career: string;
   relationship: string;
+  dos: string[];
+  donts: string[];
 }
 
 export interface DashaPrediction {

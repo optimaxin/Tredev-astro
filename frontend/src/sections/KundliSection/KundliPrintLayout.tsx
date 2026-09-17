@@ -103,6 +103,7 @@ const LABELS = {
     yoginiDasha: 'Yogini Dasha', colYogini: 'Yogini', colLord: 'Lord', colStart: 'Start', colEnd: 'End',
     freeReport: 'Free Report', ascendantPredictionsFor: (asc: string) => `Ascendant Predictions — ${asc}`,
     personality: 'Personality', physical: 'Physical', health: 'Health', career: 'Career', relationship: 'Relationship',
+    dosAndDonts: "Do's and Don'ts", dos: "Do's", donts: "Don'ts",
     planetaryPredictions: 'Planetary Predictions', considerationFor: (planet: string) => `${planet} Consideration`,
     yogaCombinations: 'Yoga Combinations',
     rudrakshaRecommendation: 'Rudraksha Recommendation', mukhiRudraksha: (mukhi: number, deity: string) => `${mukhi}-Mukhi Rudraksha — ${deity}`,
@@ -143,6 +144,7 @@ const LABELS = {
     yoginiDasha: 'योगिनी दशा', colYogini: 'योगिनी', colLord: 'स्वामी', colStart: 'प्रारंभ', colEnd: 'समाप्ति',
     freeReport: 'निःशुल्क रिपोर्ट', ascendantPredictionsFor: (asc: string) => `लग्न भविष्यवाणी — ${asc}`,
     personality: 'व्यक्तित्व', physical: 'शारीरिक', health: 'स्वास्थ्य', career: 'करियर', relationship: 'संबंध',
+    dosAndDonts: 'क्या करें और क्या न करें', dos: 'क्या करें', donts: 'क्या न करें',
     planetaryPredictions: 'ग्रह भविष्यवाणी', considerationFor: (planet: string) => `${planet} विचार`,
     yogaCombinations: 'योग संयोजन',
     rudrakshaRecommendation: 'रुद्राक्ष सुझाव', mukhiRudraksha: (mukhi: number, deity: string) => `${mukhi}-मुखी रुद्राक्ष — ${deity}`,
@@ -531,9 +533,29 @@ export default function KundliPrintLayout({ name, dob, tob, place, timezoneOffse
               [L.career, result.ascendantPredictions.career],
               [L.relationship, result.ascendantPredictions.relationship],
             ] as const).map(([label, text]) => (
-              <PredictionCard key={label} title={label}>{shorten(text, 110)}</PredictionCard>
+              <PredictionCard key={label} title={label}>{shorten(text, 210)}</PredictionCard>
             ))}
           </div>
+
+          {(result.ascendantPredictions.dos.length > 0 || result.ascendantPredictions.donts.length > 0) && (
+            <div style={{ marginTop: 14 }}>
+              <SubHeading>{L.dosAndDonts}</SubHeading>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: FONT.body, margin: '0 0 2px', fontWeight: 600, color: GOLD }}>{L.dos}</p>
+                  <ul style={{ fontSize: FONT.label, color: MUTED, margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+                    {result.ascendantPredictions.dos.map((d, i) => <li key={i}>{d}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <p style={{ fontSize: FONT.body, margin: '0 0 2px', fontWeight: 600, color: GOLD }}>{L.donts}</p>
+                  <ul style={{ fontSize: FONT.label, color: MUTED, margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+                    {result.ascendantPredictions.donts.map((d, i) => <li key={i}>{d}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div data-pdf-block style={{ marginBottom: 8 }}>
