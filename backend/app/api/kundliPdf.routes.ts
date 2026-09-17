@@ -68,6 +68,14 @@ function withPdfLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+// Phase-1 diagnostics for the 512MB-host memory budget this whole route is
+// built around — logs RSS (the number that actually gets a container
+// OOM-killed) before and after each job, so a real memory regression shows
+// up in Render's logs instead of only as a mystery crash under load.
+function logRss(label: string): void {
+  console.log(`[kundli-pdf] ${label} — RSS ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
@@ -234,6 +242,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
   let browser: Browser | undefined;
   let page: Page | undefined;
   await withPdfLock(async () => {
+  logRss('job start');
   try {
     const [launchedBrowser, logoDataUri, acharyaDataUri] = await Promise.all([
       launchBrowser(),
@@ -304,6 +313,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
     await browser.close().catch(() => {});
     page = undefined;
     browser = undefined;
+    logRss('chromium closed');
 
     const merged = await PDFDocument.create();
     const [coverDoc, restDoc] = await Promise.all([PDFDocument.load(coverPdf), PDFDocument.load(restPdf)]);
@@ -324,6 +334,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
   } finally {
     if (page) await page.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
+    logRss('job end');
   }
   });
 });
