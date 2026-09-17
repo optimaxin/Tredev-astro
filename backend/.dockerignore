@@ -1,8 +1,0 @@
-node_modules
-.env
-.env.*
-*.log
-backend_dev.log
-tests
-tsconfig.tsbuildinfo
-data
