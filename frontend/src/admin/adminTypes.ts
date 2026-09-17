@@ -19,6 +19,7 @@ export type AdminSection =
   | 'orders'
   | 'pricing'
   | 'blog'
+  | 'shlok'
   | 'notifications'
   | 'audit'
   | 'settings';

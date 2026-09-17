@@ -113,12 +113,14 @@ function RashiWheel({ p, moonRashi }: { p: Palette; moonRashi: string }) {
   );
 }
 
-export default function PanchangSharePoster({ data, isHindi, location, theme, posterRef }: {
+export default function PanchangSharePoster({ data, isHindi, location, theme, posterRef, shlok }: {
   data: PanchangResult;
   isHindi: boolean;
   location: string;
   theme: 'dark' | 'light';
   posterRef: React.RefObject<HTMLDivElement | null>;
+  /** The day's shlok, set by staff — omitted on days nothing was queued. */
+  shlok?: string;
 }) {
   const p = PALETTES[theme];
   const lang = isHindi ? 'hi' : 'en';
@@ -341,6 +343,11 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
           <div style={{ textAlign: 'center', marginTop: 14, color: p.goldDim, fontSize: 14, letterSpacing: '0.3em' }}>
             ❖ ── ✦ ── ❖
           </div>
+          {shlok && (
+            <div style={{ textAlign: 'center', marginTop: 8, color: p.gold, fontSize: 16, lineHeight: 1.5, fontStyle: 'italic' }}>
+              {shlok}
+            </div>
+          )}
           <div style={{ textAlign: 'center', marginTop: 6, color: p.goldDim, fontSize: 14 }}>
             tredevastro.com
           </div>

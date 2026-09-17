@@ -13,6 +13,8 @@ import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../reposito
 import { register, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
+import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
+import { toPublicDailyShlok } from '../models/dailyShlok.ts';
 import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
 import { countPurchasesForUser, getPurchaseStats, listAllPurchases, listRecentPurchases } from '../repositories/reportPurchaseRepository.ts';
@@ -483,6 +485,37 @@ adminRouter.delete('/blog/:id', requireSection('blog'), async (req, res) => {
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deleteBlogPost(id);
   await audit(req, 'blog.delete', String(id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+// ── Daily shlok (the Panchang card's footer line, one per calendar day) ──
+
+const dailyShlokSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  textEn: z.string().trim().min(3).max(300),
+  textHi: z.string().trim().min(3).max(300),
+});
+
+adminRouter.get('/daily-shlok', requireSection('shlok'), async (_req, res) => {
+  res.json({ success: true, data: (await listShloks(180)).map(toPublicDailyShlok) });
+});
+
+// One PUT for both "queue a new day" and "edit that day" — a date can only
+// ever hold one shlok, so the repository upserts rather than making the
+// page track whether it's creating or updating.
+adminRouter.put('/daily-shlok', requireSection('shlok'), async (req, res) => {
+  const parsed = dailyShlokSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await upsertShlok(parsed.data);
+  await audit(req, 'shlok.save', parsed.data.date);
+  res.json({ success: true, data: toPublicDailyShlok(row) });
+});
+
+adminRouter.delete('/daily-shlok/:date', requireSection('shlok'), async (req, res) => {
+  const date = String(req.params.date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(res, 422, 'VALIDATION_ERROR', 'date must be YYYY-MM-DD');
+  await deleteShlok(date);
+  await audit(req, 'shlok.delete', date);
   res.json({ success: true, data: { ok: true } });
 });
 

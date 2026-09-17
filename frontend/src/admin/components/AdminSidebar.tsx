@@ -13,6 +13,7 @@ const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'orders', icon: '▢', labelKey: 'admin_sidebar_orders' },
   { key: 'pricing', icon: '🌍', labelKey: 'admin_sidebar_pricing' },
   { key: 'blog', icon: '✍', labelKey: 'admin_sidebar_blog' },
+  { key: 'shlok', icon: '🕉', labelKey: 'admin_sidebar_shlok' },
   { key: 'notifications', icon: '♃', labelKey: 'admin_sidebar_notifications' },
   { key: 'audit', icon: '◈', labelKey: 'admin_sidebar_audit' },
   { key: 'settings', icon: '⚙', labelKey: 'admin_sidebar_settings' },

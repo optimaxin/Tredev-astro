@@ -91,7 +91,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'notifications', 'audit', 'settings',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -148,6 +148,15 @@ export interface NewBlogPost {
   content: string;
   tag: string;
   featured: boolean;
+}
+
+// The Panchang card's footer line for one calendar day — `date` is the
+// primary key, so saving an existing date edits it rather than adding a
+// second row.
+export interface ApiDailyShlok {
+  date: string;
+  textEn: string;
+  textHi: string;
 }
 
 export interface ApiBroadcast {
@@ -291,6 +300,10 @@ export const adminService = {
 
   createBlogPost: (post: NewBlogPost) => request<ApiBlogPost>('/blog', { method: 'POST', body: JSON.stringify(post) }),
   deleteBlogPost: (id: number) => request<{ ok: boolean }>(`/blog/${id}`, { method: 'DELETE' }),
+
+  listDailyShloks: () => request<ApiDailyShlok[]>('/daily-shlok'),
+  saveDailyShlok: (shlok: ApiDailyShlok) => request<ApiDailyShlok>('/daily-shlok', { method: 'PUT', body: JSON.stringify(shlok) }),
+  deleteDailyShlok: (date: string) => request<{ ok: boolean }>(`/daily-shlok/${date}`, { method: 'DELETE' }),
 
   listReportPurchases: (page = 1, limit = 100) => request<ApiReportPurchase[]>(`/report-purchases?page=${page}&limit=${limit}`),
 

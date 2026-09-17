@@ -126,11 +126,6 @@
   background: rgba(181, 138, 59, 0.06);
 }
 
-.lockIcon {
-  font-size: 0.7rem;
-  opacity: 0.7;
-}
-
 /* Location input area */
 .locationInput {
   width: 100%;

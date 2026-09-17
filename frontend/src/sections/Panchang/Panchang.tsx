@@ -5,6 +5,8 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { PanchangResult } from '../../services/calculatorService';
+import { contentService } from '../../services/contentService';
+import type { DailyShlok } from '../../services/contentService';
 import { istHourFraction } from '../../utils/istTime';
 import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime12, hindiOr, formatPanchangTransition, isValidInterval } from '../../utils/panchangHindi';
 import PanchangSharePoster from './PanchangSharePoster';
@@ -145,6 +147,10 @@ export default function Panchang() {
   const [showInput, setShowInput] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayDateString());
   const [data, setData] = useState<PanchangResult | null>(null);
+  // The day's shlok, set by staff in the admin console (Daily Shlok page).
+  // Null is the normal "nothing queued for this date" state — the footer
+  // then keeps its own built-in line.
+  const [shlok, setShlok] = useState<DailyShlok | null>(null);
   const [error, setError] = useState('');
   const [changing, setChanging] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -206,6 +212,18 @@ export default function Panchang() {
 
   useEffect(() => { loadFor(location, selectedDate); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keyed to the date alone, not the location: the shlok is the same
+  // everywhere, so browsing to another city shouldn't refetch it. A failure
+  // here is deliberately silent — the footer just keeps its default line
+  // rather than showing an error over a decorative line.
+  useEffect(() => {
+    let stale = false;
+    contentService.getDailyShlok(selectedDate)
+      .then(result => { if (!stale) setShlok(result); })
+      .catch(() => { if (!stale) setShlok(null); });
+    return () => { stale = true; };
+  }, [selectedDate]);
+
   const handleDateChange = (val: string) => {
     setSelectedDate(val);
     loadFor(location, val);
@@ -261,6 +279,10 @@ export default function Panchang() {
     // between two Devanagari-formatted times reads as a typo there.
     return `${from} ${isHindi ? 'से' : '–'} ${to}`;
   };
+  // Staff's shlok for this date when there is one, otherwise the line this
+  // card has always carried.
+  const shlokLine = (isHindi ? shlok?.textHi : shlok?.textEn)
+    || (isHindi ? 'ॐ सर्वे भवन्तु सुखिनः' : 'Om Sarve Bhavantu Sukhinah');
   const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips
   // above the denser field grid instead of competing equally with everything else.
@@ -401,7 +423,6 @@ export default function Panchang() {
                   onClick={handleChangeLocation}
                 >
                   Change Location
-                  {!isLoggedIn && <span className={styles.lockIcon}>🔒</span>}
                 </motion.button>
               )}
             </AnimatePresence>
@@ -487,7 +508,12 @@ export default function Panchang() {
                   ))}
                 </div>
 
-                <p className={styles.panchangDashFooter}>{isHindi ? 'ॐ सर्वे भवन्तु सुखिनः · Tredeva Astro · भारतीय समयानुसार (IST)' : 'Om Sarve Bhavantu Sukhinah · Tredeva Astro · Indian Standard Time (IST)'}</p>
+                {/* Only the shlok itself is staff-editable — the brand and
+                    the IST note stay, so a custom line can't quietly drop
+                    the timezone the whole card is computed in. */}
+                <p className={styles.panchangDashFooter}>
+                  {shlokLine} · Tredeva Astro · {isHindi ? 'भारतीय समयानुसार (IST)' : 'Indian Standard Time (IST)'}
+                </p>
                 </div>
               </div>
 
@@ -495,7 +521,7 @@ export default function Panchang() {
                 <span aria-hidden="true">↗</span> {sharing ? (isHindi ? 'तैयार हो रहा है...' : 'Preparing...') : (isHindi ? 'पंचांग शेयर करें' : 'Share Panchang')}
               </button>
 
-              {data && <PanchangSharePoster data={data} isHindi={isHindi} location={location} theme={theme} posterRef={posterRef} />}
+              {data && <PanchangSharePoster data={data} isHindi={isHindi} location={location} theme={theme} posterRef={posterRef} shlok={shlokLine} />}
             </motion.div>
           </AnimatePresence>
         </motion.div>

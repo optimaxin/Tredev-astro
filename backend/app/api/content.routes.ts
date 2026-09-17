@@ -10,6 +10,8 @@ import { listActiveBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
 import { listPurchasesForUser } from '../repositories/reportPurchaseRepository.ts';
 import { toPublicReportPurchase } from '../models/reportPurchase.ts';
+import { findShlokForDate } from '../repositories/dailyShlokRepository.ts';
+import { toPublicDailyShlok } from '../models/dailyShlok.ts';
 
 // Read-only public content (journal posts, testimonials, the paid-report
 // catalog) — no auth, no writes. Editing this content is an admin/CMS
@@ -31,6 +33,17 @@ contentRouter.get('/blog/:id', async (req, res) => {
   const row = await findBlogPostById(id);
   if (!row) return fail(res, 404, 'NOT_FOUND', 'Blog post not found');
   res.json({ success: true, data: toPublicBlogPost(row) });
+});
+
+// The Panchang card's footer shlok for one day, set by staff (see the
+// 'shlok' section in admin.routes.ts). Answers with null rather than 404
+// when that day has none — the card then shows its own built-in line, so
+// "no shlok queued for today" is an ordinary state, not a client error.
+contentRouter.get('/daily-shlok', async (req, res) => {
+  const date = String(req.query.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(res, 422, 'VALIDATION_ERROR', 'date must be YYYY-MM-DD');
+  const row = await findShlokForDate(date);
+  res.json({ success: true, data: row ? toPublicDailyShlok(row) : null });
 });
 
 contentRouter.get('/testimonials', async (_req, res) => {

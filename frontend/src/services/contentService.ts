@@ -85,7 +85,15 @@ export interface ReportPurchase {
   purchasedAt: number;
 }
 
+/** The Panchang card's footer line for one day, or null if staff haven't set one. */
+export interface DailyShlok {
+  date: string;
+  textEn: string;
+  textHi: string;
+}
+
 export const contentService = {
+  getDailyShlok: (date: string) => request<DailyShlok | null>(`/api/daily-shlok?date=${encodeURIComponent(date)}`),
   listBlogPosts: () => request<BlogPost[]>('/api/blog'),
   getBlogPost: (id: number) => request<BlogPost>(`/api/blog/${id}`),
   listTestimonials: () => request<Testimonial[]>('/api/testimonials'),
