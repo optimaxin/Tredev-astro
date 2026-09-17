@@ -321,8 +321,7 @@ export default function Panchang() {
           <div className={styles.left}>
             <button
               type="button"
-              className={styles.changeLocationBtn}
-              style={{ marginBottom: '12px' }}
+              className={`${styles.changeLocationBtn} ${styles.langToggleBtn}`}
               onClick={() => setPanchangLang(isHindi ? 'en' : 'hi')}
               title="Switch Panchang language"
             >

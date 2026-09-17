@@ -96,7 +96,10 @@
 
 .focusLine {
   display: flex;
-  align-items: center;
+  /* Top-aligned, not centered — the reading wraps to 4-5 lines on a phone
+     and a vertically-centered icon then floats in the middle of the
+     paragraph instead of reading as its leading marker. */
+  align-items: flex-start;
   gap: var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--text-sm);

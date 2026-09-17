@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import { PLANET_META } from '../../data/planetMeta';
+import { HOUSE_MEANINGS } from '../../data/mockData';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { DailyHoroscopeResult } from '../../services/calculatorService';
 import styles from './Horoscope.module.css';
@@ -42,7 +43,25 @@ export default function Horoscope() {
       .catch(err => setError(err instanceof CalculatorApiError ? err.message : "Could not load today's horoscope."));
   }, [current.eng]);
 
-  const focusPlanet = data?.transits.find(tr => tr.house === 1);
+  // Today's most relevant transit for this rashi. A 1st-house (Self) transit
+  // is the headline when there is one, but most signs have none on any given
+  // day — Aries included — and this used to fall through to a bare "See the
+  // full planetary transit breakdown" placeholder, so the homepage card
+  // showed no actual reading at all for them. The Moon is the fallback
+  // because it's the fastest graha and the one daily readings hinge on, then
+  // the Sun, then whatever the day's chart does have.
+  const focusPlanet = data && (
+    data.transits.find(tr => tr.house === 1)
+    ?? data.transits.find(tr => tr.id === 'moon')
+    ?? data.transits.find(tr => tr.id === 'sun')
+    ?? data.transits[0]
+  );
+  // HOUSE_MEANINGS entries read "5th House — Creativity, children, ..." —
+  // the two halves give both the ordinal house name and a one-word theme
+  // without needing a separate ordinal() helper here.
+  const [focusHouseName, focusHouseTheme] = focusPlanet
+    ? (HOUSE_MEANINGS[focusPlanet.house] ?? '').split('—').map(part => part.trim())
+    : [];
 
   const explore = () => { setPage('horoscope'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
@@ -92,14 +111,10 @@ export default function Horoscope() {
                 <PlanetIcon id={focusPlanet.id} size={24} />
                 <span>
                   <strong className={styles.focusRashi}>{current.name} ({current.eng}):</strong>{' '}
-                  {PLANET_META[focusPlanet.id]?.name} is transiting your 1st house (Self) in {focusPlanet.rashi}
+                  {PLANET_META[focusPlanet.id]?.name} is transiting your {focusHouseName}
+                  {focusHouseTheme ? ` (${focusHouseTheme.split(',')[0]})` : ''} in {focusPlanet.rashi}
                   {focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
                 </span>
-              </p>
-            )}
-            {data && !focusPlanet && (
-              <p className={styles.focusLine}>
-                <span>See the full planetary transit breakdown for {current.eng} →</span>
               </p>
             )}
           </div>

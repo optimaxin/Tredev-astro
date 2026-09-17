@@ -48,6 +48,12 @@
   background: linear-gradient(160deg, var(--surface) 0%, var(--surface-elevated) 100%);
 }
 
+/* Was an inline marginBottom on the button — moved here so the mobile
+   query below can drop it when this becomes part of a one-row toolbar. */
+.langToggleBtn {
+  margin-bottom: var(--space-3);
+}
+
 .arcWrap {
   /* Was capped at 200px inside a 320px column, leaving ~60px of dead
      padding on each side that read as disconnected from the main card. */
@@ -598,8 +604,34 @@
 @media (max-width: 640px) {
   .section { padding: var(--space-12) 0; }
   .container { padding: 0 var(--space-4); }
-  .left { padding: var(--space-5); gap: var(--space-2); }
-  .right { padding: var(--space-5); }
+
+  /* On a phone the left column's only real job is "which day, which place" —
+     but as a tall centered stack (SunArc + date + picker + location + button,
+     each on its own row) it added ~300px above the almanac card, which is
+     what actually made this section read as endlessly stretched. Collapsed
+     into one compact wrapped toolbar so the shareable almanac card below is
+     the section's content on mobile, the same card people already share. */
+  .left {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+  /* The day/night arc is decorative (the Prahar label it carries is not
+     data people scroll here for) and was the single tallest block above
+     the card — hidden rather than shrunk again. */
+  .arcWrap { display: none; }
+  .langToggleBtn { margin-bottom: 0; }
+  /* The long "Thursday, 17 September 2026" line is covered twice over on a
+     phone — by the date picker right below it and by the card's own
+     weekday heading — so it's one whole row of the toolbar spent on
+     nothing new. */
+  .date { display: none; }
+  .locationWrap { font-size: var(--text-xs); margin: 0; }
+  .locationInput { width: 100%; }
+  .right { padding: var(--space-4) var(--space-3); }
   .panchangDashHeader { margin-bottom: var(--space-3); }
   .panchangDashFigure { height: 64px; }
   .panchangDashDate { font-size: var(--text-lg); }
@@ -616,5 +648,13 @@
   .panchangDashBrandLogo { height: 28px; }
   .panchangDashRiseSetRow { gap: var(--space-2); margin-bottom: var(--space-3); }
   .panchangDashRiseSetBox { padding: var(--space-2); }
-  .arcWrap { max-width: 180px; }
+  /* Both of these wrapped onto a second line at phone width ("Sunrise &
+     Sunset" as a heading, "6:06 AM" as a value split after the digits),
+     which doubled each box's height for no extra information. */
+  .panchangDashRiseSetTitle { font-size: 0.57rem; margin-bottom: 6px; }
+  .panchangDashRiseSetPair .panchangDashDetailLabel { font-size: 0.58rem; }
+  .panchangDashRiseSetPair .panchangDashDetailValue { font-size: 0.72rem; white-space: nowrap; }
+  /* Each pill held a full "name · start to end" line that wrapped to two
+     rows per pill — six pills meant twelve rows of text under the card. */
+  .panchangDashPill { font-size: 0.62rem; padding: 5px var(--space-2); }
 }
