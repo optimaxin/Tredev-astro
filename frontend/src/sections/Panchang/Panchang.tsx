@@ -255,7 +255,11 @@ export default function Panchang() {
     if (!isValidInterval(start, end)) return '—';
     const from = formatPanchangTransition(start, selectedDate, isHindi);
     const to = formatPanchangTransition(end, selectedDate, isHindi);
-    return `${from} ${isHindi ? 'से' : 'to'} ${to}`;
+    // En dash rather than the word "to" in English: same meaning, two
+    // characters shorter, which is what lets the muhurat pills sit two per
+    // row on a phone without their text wrapping. Hindi keeps "से" — "–"
+    // between two Devanagari-formatted times reads as a typo there.
+    return `${from} ${isHindi ? 'से' : '–'} ${to}`;
   };
   const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips

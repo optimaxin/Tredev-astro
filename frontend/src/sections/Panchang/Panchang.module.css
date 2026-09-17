@@ -602,8 +602,12 @@
    phone. Tithi/Nakshatra/Moon-Rashi are short text — keeping all 3 side by
    side, just smaller, is far more compact than stacking them. */
 @media (max-width: 640px) {
-  .section { padding: var(--space-12) 0; }
+  .section { padding: var(--space-8) 0; }
   .container { padding: 0 var(--space-4); }
+  /* Scoped to this section only — the shared header block reserves desktop
+     breathing room under the title that just pushes the card further down
+     the phone screen. */
+  .section :global(.section-header-split) { margin-bottom: var(--space-5); padding-bottom: var(--space-3); }
 
   /* On a phone the left column's only real job is "which day, which place" —
      but as a tall centered stack (SunArc + date + picker + location + button,
@@ -631,30 +635,61 @@
   .date { display: none; }
   .locationWrap { font-size: var(--text-xs); margin: 0; }
   .locationInput { width: 100%; }
-  .right { padding: var(--space-4) var(--space-3); }
-  .panchangDashHeader { margin-bottom: var(--space-3); }
-  .panchangDashFigure { height: 64px; }
-  .panchangDashDate { font-size: var(--text-lg); }
-  .panchangDashHeroRow { gap: var(--space-2); margin-bottom: var(--space-3); }
-  .panchangDashHeroTile { padding: var(--space-2) 4px; }
-  .panchangDashHeroIcon { font-size: 1.1rem; }
-  .panchangDashHeroLabel { font-size: 0.6rem; }
-  .panchangDashHeroValue { font-size: 0.8rem; }
-  .panchangDashHeroSub { font-size: 0.56rem; }
-  .panchangDashDetailGrid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
-  .panchangDashDetailTile { padding: var(--space-2); }
-  .panchangDashMuhuratRow { margin-bottom: var(--space-3); }
-  .panchangDashBrandName { font-size: var(--text-xl); }
-  .panchangDashBrandLogo { height: 28px; }
+  .right { padding: var(--space-3) var(--space-3) var(--space-4); }
+
+  /* Brand block: on screen the site's own header already says TredevaAstro
+     two inches above this, so the block only has to survive as branding on
+     the SHARED image — it doesn't need hero sizing here. */
+  .panchangDashBrandBlock { gap: 0; margin-bottom: var(--space-3); }
+  .panchangDashBrandName { font-size: var(--text-lg); }
+  .panchangDashBrandLogo { height: 22px; margin-bottom: 0; }
+  .panchangDashBrandTagline { font-size: 0.6rem; }
+
+  .panchangDashHeader { margin-bottom: var(--space-3); padding-top: var(--space-2); }
+  .panchangDashFigure { height: 46px; }
+  .panchangDashDate { font-size: var(--text-base); }
+  .panchangDashBrand { font-size: 0.6rem; }
+
+  .panchangDashHeroRow { gap: 6px; margin-bottom: var(--space-2); }
+  .panchangDashHeroTile { padding: 6px 4px; gap: 2px; }
+  .panchangDashHeroIcon { font-size: 0.95rem; }
+  .panchangDashHeroLabel { font-size: 0.56rem; }
+  .panchangDashHeroValue { font-size: 0.76rem; line-height: 1.25; }
+  .panchangDashHeroSub { font-size: 0.54rem; }
+
+  /* Each detail tile stacked a label over a value inside its own padded
+     box — four of those ran ~140px for eight short words. Label and value
+     share one line now, so the grid is two compact rows. */
+  .panchangDashDetailGrid { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: var(--space-2); }
+  .panchangDashDetailTile { padding: 6px var(--space-2); gap: 6px; }
+  .panchangDashDetailTile > div { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+  .panchangDashDetailIcon { font-size: 0.85rem; }
+  .panchangDashDetailLabel { display: inline; font-size: 0.54rem; }
+  .panchangDashDetailValue { display: inline; font-size: 0.72rem; }
+
+  .panchangDashMuhuratRow { margin-bottom: var(--space-2); gap: 5px; }
   .panchangDashRiseSetRow { gap: var(--space-2); margin-bottom: var(--space-3); }
   .panchangDashRiseSetBox { padding: var(--space-2); }
   /* Both of these wrapped onto a second line at phone width ("Sunrise &
      Sunset" as a heading, "6:06 AM" as a value split after the digits),
      which doubled each box's height for no extra information. */
-  .panchangDashRiseSetTitle { font-size: 0.57rem; margin-bottom: 6px; }
-  .panchangDashRiseSetPair .panchangDashDetailLabel { font-size: 0.58rem; }
-  .panchangDashRiseSetPair .panchangDashDetailValue { font-size: 0.72rem; white-space: nowrap; }
-  /* Each pill held a full "name · start to end" line that wrapped to two
-     rows per pill — six pills meant twelve rows of text under the card. */
-  .panchangDashPill { font-size: 0.62rem; padding: 5px var(--space-2); }
+  .panchangDashRiseSetTitle { font-size: 0.57rem; margin-bottom: 4px; }
+  /* These two keep the stacked label-over-value shape the detail tiles
+     above just gave up — side by side, the four rise/set pairs don't fit
+     one line across two half-width boxes. */
+  .panchangDashRiseSetPair .panchangDashDetailLabel { display: block; font-size: 0.55rem; }
+  .panchangDashRiseSetPair .panchangDashDetailValue { display: block; font-size: 0.7rem; white-space: nowrap; }
+  /* Six full-width pills stacked one per row were the single tallest block
+     in the card (~200px). Two per row cuts that to three rows. They're
+     deliberately allowed to wrap to a second line inside the pill: clamping
+     them to one line with an ellipsis did fit, but measured against the
+     rendered text it silently cut off the actual muhurat times, which is
+     the only information the pill carries. */
+  .panchangDashMuhuratRow { display: grid; grid-template-columns: 1fr 1fr; }
+  .panchangDashPill {
+    font-size: 0.55rem;
+    line-height: 1.3;
+    padding: 5px var(--space-2);
+    text-align: center;
+  }
 }
