@@ -18,7 +18,7 @@ import PanchangDetailsForm from '../../components/PanchangDetailsForm/PanchangDe
 import type { PanchangDetailsSubmitValue } from '../../components/PanchangDetailsForm/PanchangDetailsForm';
 import LocationAutocomplete from '../../components/LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GeocodeResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliMatchingReport, KundliResult, LalKitabResult, LuckyAttributes, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
+import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesOutcome, GeocodeResult, HoroscopePeriodResult, KaalSarpDoshaResult, KundliMatchingReport, KundliResult, LalKitabResult, LuckyAttributes, NakshatraResult, NumerologyMatchResult, NumerologyResult, PanchangResult, PersonalNumerologyCycle, PitraDoshaReason, PitraDoshaResult, RahuKetuTransitResult, SadeSatiResult } from '../../services/calculatorService';
 import KundliMatchingResult from './KundliMatchingResult';
 import { formatIst } from '../../utils/istTime';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
@@ -789,6 +789,60 @@ export function KaalSarpDoshaPage({ currentUser = null }: { currentUser?: MaybeU
   );
 }
 
+const PITRA_DOSHA_REASON_TEXT: Record<PitraDoshaReason, string> = {
+  'sun-rahu-conjunction': 'Your Sun and Rahu sit in the same house — a classical Pitra Dosha combination.',
+  'sun-ketu-conjunction': 'Your Sun and Ketu sit in the same house — a classical Pitra Dosha combination.',
+  'sun-saturn-conjunction': 'Your Sun and Saturn sit in the same house — often cited as a Pitra Dosha indicator.',
+  'node-in-9th-house': 'Rahu or Ketu occupies your 9th house — the house of father and ancestry.',
+  'saturn-aspects-sun': "Saturn casts its special aspect on your Sun's house.",
+  'ninth-lord-afflicted': 'Your 9th house lord is conjunct or aspected by a node or Saturn.',
+};
+
+export function PitraDoshaPage({ currentUser = null }: { currentUser?: MaybeUser } = {}) {
+  const [result, setResult] = useState<PitraDoshaResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (details: BirthDetailsSubmitValue) => {
+    setError('');
+    setResult(null);
+    try {
+      setResult(await calculatorService.pitraDosha(details));
+    } catch (err) {
+      setError(err instanceof CalculatorApiError ? err.message : 'Could not calculate. Please try again.');
+    }
+  };
+
+  return (
+    <CalculatorPageShell eyebrow="Pitra Dosha" title="Pitra Dosha Check" description="Checks whether your Sun, or your 9th house of father and ancestry, is afflicted by Rahu, Ketu, or Saturn — the classical indicators of Pitra Dosha.">
+      <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Check Pitra Dosha" idPrefix="pitradosha" showNameField={false} initialValues={toSavedBirthDetails(currentUser)} />
+      {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
+      {result && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{result.isPitraDosha ? 'Pitra Dosha is present' : 'Pitra Dosha is not present'}</h3>
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+            Your Sun is in {result.sunRashi} (house {result.sunHouse}), Rahu in house {result.rahuHouse}, Ketu in house {result.ketuHouse}, and Saturn in house {result.saturnHouse}.
+            {' '}Your 9th house is ruled by {result.ninthLord.charAt(0).toUpperCase() + result.ninthLord.slice(1)}, currently placed in {result.ninthLordRashi} (house {result.ninthLordHouse}).
+          </p>
+          {result.isPitraDosha ? (
+            <ul style={{ marginTop: '12px', paddingLeft: '20px' }}>
+              {result.reasons.map(r => (
+                <li key={r} className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', marginBottom: '6px' }}>{PITRA_DOSHA_REASON_TEXT[r]}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)' }}>
+              None of the classical Sun/9th-house affliction conditions checked here are present in your chart.
+            </p>
+          )}
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '12px' }}>
+            Different traditional sources weigh these conditions differently — treat this as a starting point for a deeper reading with an astrologer, not a final verdict.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
 export function RahuKetuTransitPage({ currentUser = null }: { currentUser?: MaybeUser } = {}) {
   const [result, setResult] = useState<RahuKetuTransitResult | null>(null);
   const [error, setError] = useState('');
@@ -1118,6 +1172,241 @@ export function NumerologyMatchPage() {
           </p>
           <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
             This groups numbers 1/5/7, 2/4/8, and 3/6/9 by shared temperament — a common but simplified numerology convention, not a precise or universally-agreed system. Use it alongside Kundli Matching, not instead of it.
+          </p>
+        </ResultCard>
+      )}
+    </CalculatorPageShell>
+  );
+}
+
+/* ====================================================
+   Vastu Calculator — a pure rule-based lookup (which
+   direction is auspicious for which room), not an
+   astronomical calculation, so unlike every other page in
+   this file it deliberately has no calculatorService call
+   and no backend round trip — there's nothing here that
+   needs protecting or rate-limiting, just a static table.
+   ==================================================== */
+
+const VASTU_DIRECTIONS: { key: string; en: string; hi: string }[] = [
+  { key: 'N', en: 'North', hi: 'उत्तर' },
+  { key: 'NE', en: 'North-East', hi: 'ईशान (उत्तर-पूर्व)' },
+  { key: 'E', en: 'East', hi: 'पूर्व' },
+  { key: 'SE', en: 'South-East', hi: 'आग्नेय (दक्षिण-पूर्व)' },
+  { key: 'S', en: 'South', hi: 'दक्षिण' },
+  { key: 'SW', en: 'South-West', hi: 'नैऋत्य (दक्षिण-पश्चिम)' },
+  { key: 'W', en: 'West', hi: 'पश्चिम' },
+  { key: 'NW', en: 'North-West', hi: 'वायव्य (उत्तर-पश्चिम)' },
+];
+
+type VastuVerdict = 'excellent' | 'good' | 'neutral' | 'avoid';
+
+const VASTU_VERDICT_META: Record<VastuVerdict, { en: string; hi: string; color: string }> = {
+  excellent: { en: 'Excellent', hi: 'उत्तम', color: '#2f8f4e' },
+  good: { en: 'Good', hi: 'अच्छा', color: '#8a7524' },
+  neutral: { en: 'Neutral', hi: 'सामान्य', color: '#8c8062' },
+  avoid: { en: 'Avoid', hi: 'बचें', color: '#d64545' },
+};
+
+interface VastuZoneRule {
+  verdict: VastuVerdict;
+  note: { en: string; hi: string };
+  remedy?: { en: string; hi: string };
+}
+
+type VastuZoneKey = 'entrance' | 'kitchen' | 'bedroom' | 'pooja' | 'toilet' | 'staircase';
+
+const VASTU_ZONES: { key: VastuZoneKey; label: { en: string; hi: string } }[] = [
+  { key: 'entrance', label: { en: 'Main Entrance', hi: 'मुख्य द्वार' } },
+  { key: 'kitchen', label: { en: 'Kitchen', hi: 'रसोई' } },
+  { key: 'bedroom', label: { en: 'Master Bedroom', hi: 'मुख्य शयनकक्ष' } },
+  { key: 'pooja', label: { en: 'Pooja Room', hi: 'पूजा कक्ष' } },
+  { key: 'toilet', label: { en: 'Toilet / Bathroom', hi: 'शौचालय / स्नानघर' } },
+  { key: 'staircase', label: { en: 'Staircase', hi: 'सीढ़ियां' } },
+];
+
+// Standard classical Vastu Shastra direction rules — general reference
+// knowledge, not a proprietary/invented system (same caveat every other
+// dosha/remedy page on this site carries: guidance, not a substitute for
+// a real Vastu consultation before construction).
+const VASTU_RULES: Record<VastuZoneKey, Record<string, VastuZoneRule>> = {
+  entrance: {
+    N: { verdict: 'excellent', note: { en: 'Ruled by Kuber, the lord of wealth — one of the best directions for a main entrance.', hi: 'धन के स्वामी कुबेर द्वारा शासित — मुख्य द्वार के लिए सबसे उत्तम दिशाओं में से एक।' } },
+    NE: { verdict: 'excellent', note: { en: 'Ishanya, the most sacred direction — governed by the water element, brings positivity and prosperity.', hi: 'ईशान, सबसे पवित्र दिशा — जल तत्व द्वारा शासित, समृद्धि और सकारात्मकता लाती है।' } },
+    E: { verdict: 'good', note: { en: 'Ruled by Indra and the rising Sun — a generally favourable entrance direction.', hi: 'इंद्र और उदीयमान सूर्य द्वारा शासित — प्रवेश द्वार के लिए सामान्यतः शुभ दिशा।' } },
+    SE: { verdict: 'neutral', note: { en: 'Agneya, the fire zone — workable for an entrance but can bring minor friction; balance with cool tones or plants.', hi: 'आग्नेय, अग्नि क्षेत्र — प्रवेश द्वार के लिए ठीक है पर मामूली तनाव ला सकता है; ठंडे रंगों/पौधों से संतुलन करें।' } },
+    S: { verdict: 'avoid', note: { en: 'Ruled by Yama — traditionally considered inauspicious for a main entrance unless specific remedies are applied.', hi: 'यम द्वारा शासित — विशेष उपाय के बिना मुख्य द्वार के लिए परंपरागत रूप से अशुभ माना जाता है।' }, remedy: { en: 'Place a bright light and a small Ganesha idol above the doorway; keep the entrance well-lit.', hi: 'द्वार के ऊपर एक तेज़ रोशनी और छोटी गणेश प्रतिमा रखें; प्रवेश द्वार को अच्छी तरह रोशन रखें।' } },
+    SW: { verdict: 'avoid', note: { en: 'Nairutya, ruled by Rahu — considered the weakest direction for an entrance, linked to instability.', hi: 'नैऋत्य, राहु द्वारा शासित — प्रवेश द्वार के लिए सबसे कमज़ोर दिशा मानी जाती है, अस्थिरता से जुड़ी।' }, remedy: { en: "Use heavy, solid doors and keep this zone clutter-free; consult an expert before construction if this can't be avoided.", hi: 'भारी, मज़बूत दरवाज़े उपयोग करें और इस क्षेत्र को अव्यवस्था-मुक्त रखें; यदि इसे टाला न जा सके तो निर्माण से पहले विशेषज्ञ से सलाह लें।' } },
+    W: { verdict: 'good', note: { en: 'A generally stable and favourable direction for an entrance, ruled by Varuna.', hi: 'वरुण द्वारा शासित, प्रवेश द्वार के लिए सामान्यतः स्थिर और शुभ दिशा।' } },
+    NW: { verdict: 'good', note: { en: 'Vayavya, the air zone — favourable for an entrance, especially for guest-facing homes.', hi: 'वायव्य, वायु क्षेत्र — प्रवेश द्वार के लिए शुभ, विशेषकर अतिथियों के लिए।' } },
+  },
+  kitchen: {
+    SE: { verdict: 'excellent', note: { en: 'Agneya, ruled by the fire element (Agni) — the ideal zone for a kitchen.', hi: 'आग्नेय, अग्नि तत्व द्वारा शासित — रसोई के लिए सबसे उत्तम क्षेत्र।' } },
+    NW: { verdict: 'good', note: { en: "A workable secondary choice for the kitchen when SE isn't available.", hi: 'जब आग्नेय उपलब्ध न हो तो रसोई के लिए एक अच्छा विकल्प।' } },
+    N: { verdict: 'neutral', note: { en: 'Not ideal, but usable with minor adjustments to the cooking-stove placement.', hi: 'आदर्श नहीं, पर स्टोव की स्थिति में थोड़ा बदलाव कर उपयोग किया जा सकता है।' } },
+    E: { verdict: 'neutral', note: { en: 'Acceptable — ensure the cook faces east while cooking for best results.', hi: 'स्वीकार्य — खाना बनाते समय रसोइए का मुख पूर्व की ओर रखें।' } },
+    W: { verdict: 'neutral', note: { en: 'Workable, though not amongst the classically preferred zones.', hi: 'उपयोग किया जा सकता है, हालांकि यह पारंपरिक रूप से पसंदीदा क्षेत्र नहीं है।' } },
+    S: { verdict: 'neutral', note: { en: 'Acceptable as a secondary option — avoid placing the stove directly against the south wall.', hi: 'द्वितीयक विकल्प के रूप में स्वीकार्य — स्टोव को दक्षिण दीवार से सटाकर न रखें।' } },
+    NE: { verdict: 'avoid', note: { en: 'Water-element zone — a kitchen (fire) here creates an elemental clash, linked to health and harmony issues.', hi: 'जल तत्व क्षेत्र — यहाँ रसोई (अग्नि) तात्विक टकराव पैदा करती है, स्वास्थ्य और सामंजस्य से जुड़ी समस्याएं।' }, remedy: { en: 'If unavoidable, keep this corner extremely clean and add a small fire-element (red/orange) accent near the stove.', hi: 'यदि अपरिहार्य हो, तो इस कोने को अत्यंत साफ रखें और स्टोव के पास लाल/नारंगी रंग का प्रतीक जोड़ें।' } },
+    SW: { verdict: 'avoid', note: { en: 'The most inauspicious zone for a kitchen — linked to draining finances and family discord.', hi: 'रसोई के लिए सबसे अशुभ क्षेत्र — धन हानि और पारिवारिक कलह से जुड़ा।' }, remedy: { en: 'Relocate if possible; otherwise ensure the cook faces east and keep the space very well-lit.', hi: 'यदि संभव हो तो स्थान बदलें; अन्यथा रसोइए का मुख पूर्व की ओर रखें और स्थान को अच्छी तरह रोशन रखें।' } },
+  },
+  bedroom: {
+    SW: { verdict: 'excellent', note: { en: 'Nairutya — the most stable, grounding zone, ideal for the master bedroom.', hi: 'नैऋत्य — सबसे स्थिर क्षेत्र, मुख्य शयनकक्ष के लिए आदर्श।' } },
+    S: { verdict: 'good', note: { en: 'A good secondary choice for the master bedroom, promotes restful sleep.', hi: 'मुख्य शयनकक्ष के लिए एक अच्छा विकल्प, अच्छी नींद को बढ़ावा देता है।' } },
+    W: { verdict: 'good', note: { en: 'A favourable zone for a bedroom, generally calm and settled.', hi: 'शयनकक्ष के लिए शुभ क्षेत्र, सामान्यतः शांत।' } },
+    NW: { verdict: 'neutral', note: { en: 'Workable, though occupants here may feel more restless than in the South-West.', hi: 'उपयोग किया जा सकता है, हालांकि यहाँ रहने वालों को नैऋत्य की तुलना में अधिक बेचैनी महसूस हो सकती है।' } },
+    N: { verdict: 'neutral', note: { en: "Acceptable, generally fine for a children's or guest bedroom rather than the master.", hi: 'स्वीकार्य, आमतौर पर मुख्य के बजाय बच्चों या अतिथि शयनकक्ष के लिए उपयुक्त।' } },
+    E: { verdict: 'neutral', note: { en: 'Workable, good natural light but not amongst the classically preferred zones for rest.', hi: 'उपयोग किया जा सकता है, अच्छी प्राकृतिक रोशनी पर आराम के लिए पारंपरिक पसंदीदा क्षेत्र नहीं।' } },
+    SE: { verdict: 'avoid', note: { en: 'Fire zone — linked to conflicts and irritability between couples when used as the master bedroom.', hi: 'अग्नि क्षेत्र — मुख्य शयनकक्ष के रूप में उपयोग होने पर दंपत्ति के बीच कलह और चिड़चिड़ापन से जुड़ा।' }, remedy: { en: 'Use cool colours (blue/green/white) in this room and avoid red/orange tones.', hi: 'इस कमरे में ठंडे रंगों (नीला/हरा/सफेद) का उपयोग करें और लाल/नारंगी रंगों से बचें।' } },
+    NE: { verdict: 'avoid', note: { en: 'The most sacred zone — using it as a bedroom is traditionally discouraged; better reserved for worship or meditation.', hi: 'सबसे पवित्र क्षेत्र — इसे शयनकक्ष के रूप में उपयोग करना परंपरागत रूप से वर्जित है; इसे पूजा या ध्यान के लिए रखें।' }, remedy: { en: 'If unavoidable, keep the bed away from the exact corner and add plenty of light.', hi: 'यदि अपरिहार्य हो, तो पलंग को कोने से दूर रखें और पर्याप्त रोशनी जोड़ें।' } },
+  },
+  pooja: {
+    NE: { verdict: 'excellent', note: { en: 'Ishanya — the most sacred zone in the home, ideal for a pooja/worship room.', hi: 'ईशान — घर का सबसे पवित्र क्षेत्र, पूजा कक्ष के लिए आदर्श।' } },
+    E: { verdict: 'good', note: { en: 'A favourable direction for worship, facing the rising Sun.', hi: 'पूजा के लिए शुभ दिशा, उदीयमान सूर्य की ओर मुख।' } },
+    N: { verdict: 'good', note: { en: 'A generally auspicious zone, works well as a secondary choice.', hi: 'सामान्यतः शुभ क्षेत्र, द्वितीयक विकल्प के रूप में अच्छा काम करता है।' } },
+    W: { verdict: 'neutral', note: { en: 'Workable, though not amongst the classically preferred worship zones.', hi: 'उपयोग किया जा सकता है, हालांकि यह पारंपरिक पूजा के लिए पसंदीदा क्षेत्र नहीं।' } },
+    NW: { verdict: 'neutral', note: { en: 'Acceptable as a secondary option for a small worship corner.', hi: 'छोटे पूजा कोने के लिए द्वितीयक विकल्प के रूप में स्वीकार्य।' } },
+    SE: { verdict: 'avoid', note: { en: 'Fire zone — creates elemental imbalance for a worship space focused on peace.', hi: 'अग्नि क्षेत्र — शांति केंद्रित पूजा स्थान के लिए तात्विक असंतुलन पैदा करता है।' } },
+    S: { verdict: 'avoid', note: { en: 'Traditionally discouraged for worship; considered to disturb the sanctity of the space.', hi: 'पूजा के लिए परंपरागत रूप से वर्जित; स्थान की पवित्रता को भंग करने वाला माना जाता है।' } },
+    SW: { verdict: 'avoid', note: { en: 'The most inauspicious zone for a worship room, linked to instability.', hi: 'पूजा कक्ष के लिए सबसे अशुभ क्षेत्र, अस्थिरता से जुड़ा।' } },
+  },
+  toilet: {
+    NW: { verdict: 'good', note: { en: 'A favourable, classically-preferred zone for a toilet/bathroom.', hi: 'शौचालय/स्नानघर के लिए शुभ, पारंपरिक रूप से पसंदीदा क्षेत्र।' } },
+    W: { verdict: 'good', note: { en: 'A workable, generally safe zone for a bathroom.', hi: 'स्नानघर के लिए उपयुक्त, सामान्यतः सुरक्षित क्षेत्र।' } },
+    S: { verdict: 'neutral', note: { en: 'Acceptable as a secondary option.', hi: 'द्वितीयक विकल्प के रूप में स्वीकार्य।' } },
+    SE: { verdict: 'neutral', note: { en: 'Workable, though not amongst the classically preferred zones.', hi: 'उपयोग किया जा सकता है, हालांकि यह पारंपरिक रूप से पसंदीदा क्षेत्र नहीं।' } },
+    N: { verdict: 'neutral', note: { en: 'Acceptable with minor adjustments — avoid placing directly at the centre-north.', hi: 'थोड़े समायोजन के साथ स्वीकार्य — बिल्कुल उत्तर-केंद्र में रखने से बचें।' } },
+    E: { verdict: 'avoid', note: { en: 'Not ideal — this zone is better reserved for more auspicious uses.', hi: 'आदर्श नहीं — यह क्षेत्र अधिक शुभ उपयोग के लिए बेहतर है।' } },
+    NE: { verdict: 'avoid', note: { en: "The most inauspicious zone for a toilet — considered to badly affect the home's overall harmony.", hi: 'शौचालय के लिए सबसे अशुभ क्षेत्र — घर के समग्र सामंजस्य को बुरी तरह प्रभावित करने वाला माना जाता है।' }, remedy: { en: 'If unavoidable, keep this area extremely clean and well-ventilated, and consider a sea-salt bowl to absorb negative energy.', hi: 'यदि अपरिहार्य हो, तो इस क्षेत्र को अत्यंत साफ, हवादार रखें और नकारात्मक ऊर्जा सोखने के लिए समुद्री नमक का कटोरा रखने पर विचार करें।' } },
+    SW: { verdict: 'avoid', note: { en: 'Discouraged — this zone is meant for stability, not drainage-related activity.', hi: 'निषिद्ध — यह क्षेत्र स्थिरता के लिए है, जल निकासी संबंधी गतिविधि के लिए नहीं।' } },
+  },
+  staircase: {
+    S: { verdict: 'excellent', note: { en: 'One of the best zones for a staircase, supports stability of the household.', hi: 'सीढ़ियों के लिए सबसे उत्तम क्षेत्रों में से एक, घर की स्थिरता को सहारा देता है।' } },
+    SW: { verdict: 'good', note: { en: 'A favourable zone for a staircase.', hi: 'सीढ़ियों के लिए शुभ क्षेत्र।' } },
+    W: { verdict: 'good', note: { en: 'A workable, generally safe zone for a staircase.', hi: 'सीढ़ियों के लिए उपयुक्त, सामान्यतः सुरक्षित क्षेत्र।' } },
+    SE: { verdict: 'neutral', note: { en: 'Acceptable as a secondary option.', hi: 'द्वितीयक विकल्प के रूप में स्वीकार्य।' } },
+    N: { verdict: 'neutral', note: { en: 'Workable, though not amongst the classically preferred zones.', hi: 'उपयोग किया जा सकता है, हालांकि यह पारंपरिक रूप से पसंदीदा क्षेत्र नहीं।' } },
+    E: { verdict: 'neutral', note: { en: 'Acceptable with minor adjustments.', hi: 'थोड़े समायोजन के साथ स्वीकार्य।' } },
+    NE: { verdict: 'avoid', note: { en: 'The most sacred zone — a staircase here is traditionally discouraged.', hi: 'सबसे पवित्र क्षेत्र — यहाँ सीढ़ियां परंपरागत रूप से वर्जित हैं।' }, remedy: { en: 'If unavoidable, keep this corner very clean and well-lit, and avoid storing anything underneath.', hi: 'यदि अपरिहार्य हो, तो इस कोने को अत्यंत साफ और रोशन रखें, और नीचे कुछ भी संग्रहीत न करें।' } },
+    NW: { verdict: 'avoid', note: { en: 'Not ideal — can create restlessness for the household when used for the main staircase.', hi: 'आदर्श नहीं — मुख्य सीढ़ियों के लिए उपयोग होने पर घर में बेचैनी पैदा कर सकता है।' } },
+  },
+};
+
+export function VastuCalculatorPage() {
+  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [selections, setSelections] = useState<Partial<Record<VastuZoneKey, string>>>({});
+
+  const setZoneDirection = (zone: VastuZoneKey, direction: string) => {
+    setSelections(prev => {
+      if (!direction) {
+        const next = { ...prev };
+        delete next[zone];
+        return next;
+      }
+      return { ...prev, [zone]: direction };
+    });
+  };
+
+  const filledEntries = VASTU_ZONES.flatMap(zone => {
+    const direction = selections[zone.key];
+    const rule = direction ? VASTU_RULES[zone.key][direction] : undefined;
+    return rule ? [{ zone, direction: direction as string, rule }] : [];
+  });
+
+  const summary = filledEntries.reduce((acc, e) => {
+    acc[e.rule.verdict] += 1;
+    return acc;
+  }, { excellent: 0, good: 0, neutral: 0, avoid: 0 } as Record<VastuVerdict, number>);
+
+  const t = {
+    eyebrow: language === 'hi' ? 'वास्तु शास्त्र' : 'Vastu Shastra',
+    title: language === 'hi' ? 'वास्तु कैलकुलेटर' : 'Vastu Calculator',
+    description: language === 'hi'
+      ? 'अपने घर के मुख्य द्वार और कमरों की दिशा चुनें, और शास्त्रीय वास्तु सिद्धांतों के आधार पर तुरंत विश्लेषण पाएं।'
+      : 'Pick the direction of your main entrance and key rooms to get an instant analysis based on classical Vastu Shastra principles.',
+    skip: language === 'hi' ? '— छोड़ें —' : '— Skip —',
+    summaryTitle: language === 'hi' ? 'आपका वास्तु सारांश' : 'Your Vastu Summary',
+    remedyLabel: language === 'hi' ? 'उपाय:' : 'Remedy:',
+    disclaimer: language === 'hi'
+      ? 'यह उपकरण सामान्य शास्त्रीय वास्तु सिद्धांतों पर आधारित है और मनोरंजन एवं मार्गदर्शन के लिए है — किसी बड़े निर्माण/नवीनीकरण निर्णय से पहले किसी वास्तु विशेषज्ञ से परामर्श अवश्य लें।'
+      : 'This tool applies general classical Vastu principles and is for guidance — always consult a Vastu expert before a major construction or renovation decision.',
+  };
+
+  return (
+    <CalculatorPageShell eyebrow={t.eyebrow} title={t.title} description={t.description}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div role="group" aria-label="Language" style={{ display: 'flex', border: '1px solid var(--color-gold, #c9a227)', borderRadius: '999px', overflow: 'hidden' }}>
+          {(['en', 'hi'] as const).map(lang => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setLanguage(lang)}
+              style={{
+                padding: '0.35rem 0.9rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                background: language === lang ? 'var(--color-gold, #c9a227)' : 'transparent',
+                color: language === lang ? '#1a1206' : 'var(--color-text-muted)',
+              }}
+            >
+              {lang === 'en' ? 'English' : 'हिन्दी'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        {VASTU_ZONES.map(zone => (
+          <div key={zone.key} className="form-group">
+            <label className="form-label">{zone.label[language]}</label>
+            <select
+              className="input-field input-cosmos"
+              value={selections[zone.key] || ''}
+              onChange={e => setZoneDirection(zone.key, e.target.value)}
+            >
+              <option value="">{t.skip}</option>
+              {VASTU_DIRECTIONS.map(d => (
+                <option key={d.key} value={d.key}>{d[language]}</option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+
+      {filledEntries.length > 0 && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{t.summaryTitle}</h3>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            {(Object.keys(summary) as VastuVerdict[]).filter(v => summary[v] > 0).map(v => (
+              <span key={v} style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600, background: `${VASTU_VERDICT_META[v].color}22`, color: VASTU_VERDICT_META[v].color }}>
+                {VASTU_VERDICT_META[v][language]}: {summary[v]}
+              </span>
+            ))}
+          </div>
+
+          {filledEntries.map(({ zone, direction, rule }) => (
+            <div key={zone.key} style={{ padding: '14px 0', borderTop: '1px solid var(--color-border, #e8dfc8)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <strong style={{ color: 'var(--color-text-dark)' }}>
+                  {zone.label[language]} — {VASTU_DIRECTIONS.find(d => d.key === direction)?.[language]}
+                </strong>
+                <span style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, background: `${VASTU_VERDICT_META[rule.verdict].color}22`, color: VASTU_VERDICT_META[rule.verdict].color }}>
+                  {VASTU_VERDICT_META[rule.verdict][language]}
+                </span>
+              </div>
+              <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', marginTop: '6px' }}>{rule.note[language]}</p>
+              {rule.remedy && (
+                <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '4px' }}>
+                  <strong>{t.remedyLabel}</strong> {rule.remedy[language]}
+                </p>
+              )}
+            </div>
+          ))}
+
+          <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '20px', fontStyle: 'italic' }}>
+            {t.disclaimer}
           </p>
         </ResultCard>
       )}

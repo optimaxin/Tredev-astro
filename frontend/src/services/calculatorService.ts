@@ -95,6 +95,27 @@ export interface KaalSarpDoshaResult {
   enclosedSide: 'rahu-to-ketu' | 'ketu-to-rahu' | null;
 }
 
+export type PitraDoshaReason =
+  | 'sun-rahu-conjunction'
+  | 'sun-ketu-conjunction'
+  | 'sun-saturn-conjunction'
+  | 'node-in-9th-house'
+  | 'saturn-aspects-sun'
+  | 'ninth-lord-afflicted';
+
+export interface PitraDoshaResult {
+  isPitraDosha: boolean;
+  reasons: PitraDoshaReason[];
+  sunRashi: string;
+  sunHouse: number;
+  rahuHouse: number;
+  ketuHouse: number;
+  saturnHouse: number;
+  ninthLord: string;
+  ninthLordRashi: string;
+  ninthLordHouse: number;
+}
+
 export interface RahuKetuTransitResult {
   moonRashi: string;
   rahuTransitRashi: string;
@@ -292,6 +313,7 @@ export interface AntardashaPeriod {
   lord: string;
   startsAt: string;
   endsAt: string;
+  active: boolean;
 }
 
 export interface MahadashaPeriod {
@@ -531,6 +553,7 @@ export const calculatorService = {
   kundliMatching: (bride: BirthDetailsInput, groom: BirthDetailsInput) =>
     request<KundliMatchingReport>('/api/calculators/kundli-matching', { method: 'POST', body: JSON.stringify({ bride, groom }) }),
   kaalSarpDosha: (birth: BirthDetailsInput) => request<KaalSarpDoshaResult>('/api/calculators/kaal-sarp-dosha', { method: 'POST', body: JSON.stringify(birth) }),
+  pitraDosha: (birth: BirthDetailsInput) => request<PitraDoshaResult>('/api/calculators/pitra-dosha', { method: 'POST', body: JSON.stringify(birth) }),
   rahuKetuTransit: (birth: BirthDetailsInput) => request<RahuKetuTransitResult>('/api/calculators/rahu-ketu-transit', { method: 'POST', body: JSON.stringify(birth) }),
   numerologyMatch: (person1: { name: string; date: string }, person2: { name: string; date: string }) =>
     request<NumerologyMatchResult>('/api/calculators/numerology-match', { method: 'POST', body: JSON.stringify({ person1, person2 }) }),

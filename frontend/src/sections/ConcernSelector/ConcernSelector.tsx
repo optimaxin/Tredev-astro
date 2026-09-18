@@ -79,7 +79,7 @@ const CONCERNS = [
     size: 'small',
     accentColor: '#6B8464',
     animationType: 'float',
-    page: 'astrologers',
+    page: 'vastu-calculator',
   },
 ];
 

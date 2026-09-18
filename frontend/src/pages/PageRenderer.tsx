@@ -38,14 +38,13 @@ import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
 import type { KundliFullResult } from '../services/calculatorService';
-import { API_URL } from '../services/apiUrl';
 import { toSavedBirthDetails } from '../utils/birthDetails';
 import {
   HoroscopePage, ChoghadiyaPage, MuhuratFinderPage, AbhijitMuhuratPage, KundliMatchingPage,
   NakshatraFinderPage, SadeSatiPage, LuckyPage, BabyNamePage, LalKitabPage,
-  KaalSarpDoshaPage, RahuKetuTransitPage, MoonSignPage, AscendantPage, NumerologyPage,
+  KaalSarpDoshaPage, PitraDoshaPage, RahuKetuTransitPage, MoonSignPage, AscendantPage, NumerologyPage,
   LifePathNumberPage, NameNumerologyPage, NumerologyMatchPage, FlamesPage, ChineseZodiacPage,
-  NumerologyHoroscopePage, ordinal,
+  NumerologyHoroscopePage, VastuCalculatorPage, ordinal,
 } from './calculators/CalculatorPages';
 import { astrologerService, AstrologerApiError } from '../services/astrologerService';
 import type { EffectivePrice, Review, UiAstrologer } from '../services/astrologerService';
@@ -122,13 +121,12 @@ export default function PageRenderer() {
       return (
         <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
           <div className={styles.container}>
-            {/* serverPdfUrl switches PDF generation to the same fast,
-                server-rendered path the campaign microsite already uses
-                (real Chromium print via backend/app/api/kundliPdf.routes.ts)
-                instead of this component's own multi-minute client-side
-                html2canvas-per-block capture — see KundliSection's own
-                serverPdfUrl prop comment for the full explanation. */}
-            <KundliSection serverPdfUrl={`${API_URL}/api/kundli-pdf`} />
+            {/* serverPdfUrl (real Chromium print via backend/app/api/
+                kundliPdf.routes.ts) is paused for now — the server launching
+                Chromium per request was making the whole site heavy. Falls
+                back to KundliSection's own client-side PDF generation until
+                it's re-enabled — see docs/chromium-pdf-pause.md. */}
+            <KundliSection />
           </div>
         </div>
       );
@@ -172,6 +170,9 @@ export default function PageRenderer() {
     case 'kaal-sarp-dosha':
       return <KaalSarpDoshaPage currentUser={currentUser} />;
 
+    case 'pitra-dosha':
+      return <PitraDoshaPage currentUser={currentUser} />;
+
     case 'rahu-ketu-transit':
       return <RahuKetuTransitPage currentUser={currentUser} />;
 
@@ -207,6 +208,9 @@ export default function PageRenderer() {
 
     case 'chinese-zodiac':
       return <ChineseZodiacPage />;
+
+    case 'vastu-calculator':
+      return <VastuCalculatorPage />;
 
     case 'numerology-horoscope':
       return <NumerologyHoroscopePage currentUser={currentUser} />;

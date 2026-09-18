@@ -154,7 +154,7 @@ export const FREE_TOOLS_CATEGORIES = [
     description: 'Identify doshas in your kundli.',
     icon: '◎',
     color: FREE_TOOLS_ACCENT,
-    tools: ['Kaal Sarp Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
+    tools: ['Kaal Sarp Dosha', 'Pitra Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
   },
   {
     id: 'numerology',
@@ -163,6 +163,14 @@ export const FREE_TOOLS_CATEGORIES = [
     icon: '∞',
     color: FREE_TOOLS_ACCENT,
     tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match', 'Numerology Horoscope', 'Chinese Zodiac'],
+  },
+  {
+    id: 'vastu',
+    label: 'Vastu',
+    description: 'Check the Vastu of your home or office.',
+    icon: '◈',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Vastu Calculator'],
   },
 ];
 

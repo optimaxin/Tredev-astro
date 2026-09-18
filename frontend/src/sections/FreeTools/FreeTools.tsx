@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import { RashiChakraIcon, MarriageIcon, ConstellationIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon } from '../../components/Icons/Icons';
+import { RashiChakraIcon, MarriageIcon, ConstellationIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon, VastuIcon } from '../../components/Icons/Icons';
 import type { IconProps } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
@@ -29,6 +29,7 @@ const TOOL_ROUTES: Record<string, string> = {
   'Baby Name Calculator': 'baby-name',
   'Lal Kitab': 'lal-kitab',
   'Kaal Sarp Dosha': 'kaal-sarp-dosha',
+  'Pitra Dosha': 'pitra-dosha',
   'Sade Sati': 'sade-sati',
   'Rahu Ketu Transit': 'rahu-ketu-transit',
   'Numerology': 'numerology',
@@ -43,6 +44,7 @@ const TOOL_ROUTES: Record<string, string> = {
   'Yearly Horoscope': 'horoscope',
   'Chinese Zodiac': 'chinese-zodiac',
   'Numerology Horoscope': 'numerology-horoscope',
+  'Vastu Calculator': 'vastu-calculator',
   "Today's Panchang": 'panchang',
   'Muhurat Finder': 'muhurat-finder',
   'Choghadiya': 'choghadiya',
@@ -60,6 +62,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
   compatibility: MarriageIcon,
   doshas: DoshaShieldIcon,
   numerology: NumerologyGridIcon,
+  vastu: VastuIcon,
 };
 
 export default function FreeTools({ featured = false }: FreeToolsProps) {

@@ -33,7 +33,14 @@ export function getYoginiDashaTimeline(birthUtcDate: Date, moonNakshatraIndex: n
 
   const periods: YoginiPeriod[] = [];
   let cursorYears = 0;
-  for (let i = 0; i < YOGINI_ORDER.length; i++) {
+  // Unlike Vimshottari's single 120-year pass, the 36-year Yogini cycle is
+  // meant to repeat for as long as the native lives — anyone older than 36
+  // would otherwise run out of periods and never have a currently-active
+  // one. Always complete at least the first full cycle (i < 8, matching the
+  // previous behaviour for anyone within their first 36 years), then keep
+  // repeating the same 8-Yogini sequence for as many extra cycles as it
+  // takes to reach `atDate`.
+  for (let i = 0; i < YOGINI_ORDER.length || cursorYears <= elapsedYearsSinceBirth; i++) {
     const idx = (startIndex + i) % YOGINI_ORDER.length;
     const periodYears = i === 0 ? (1 - fractionElapsed) * YOGINI_YEARS[idx] : YOGINI_YEARS[idx];
     const active = elapsedYearsSinceBirth >= cursorYears && elapsedYearsSinceBirth < cursorYears + periodYears;

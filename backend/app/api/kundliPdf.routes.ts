@@ -5,6 +5,14 @@ import { rateLimit } from '../middleware/rateLimit.ts';
 
 export const kundliPdfRouter = Router();
 
+// PAUSED 2026-09-18: a real Chromium launch per request (see launchBrowser
+// below) was too heavy for the current host and was making the rest of the
+// site sluggish. Nothing below this flag was removed — flip it back to
+// false (or delete this block) to re-enable exactly what was running
+// before. Full writeup + a real fix (BROWSERLESS_WS_ENDPOINT, already
+// supported below) is in docs/chromium-pdf-pause.md.
+const PDF_GENERATION_PAUSED = true;
+
 // The campaign microsite's own print-only route (ganesh-chaturthi/src/
 // PrintKundliPage.tsx) — a real, already-running app instance, not a
 // second copy of the report's markup/styles maintained here. Navigating a
@@ -220,7 +228,11 @@ function buildCoverFooterTemplate(language: 'en' | 'hi'): string {
 const PAGE_MARGIN = { top: `${HEADER_HEIGHT_PX + 32}px`, bottom: `${FOOTER_HEIGHT_PX}px`, left: '0', right: '0' };
 
 kundliPdfRouter.post('/', limiter, async (req, res) => {
-  const { name, displayName, dob, tob, place, latitude, longitude, timezoneOffsetMinutes, language: rawLanguage } = req.body || {};
+  if (PDF_GENERATION_PAUSED) {
+    res.status(503).json({ error: 'PDF download is temporarily unavailable. Please try again later.' });
+    return;
+  }
+  const { name, displayName, dob, tob, place, latitude, longitude, timezoneOffsetMinutes, language: rawLanguage, timeUnknown } = req.body || {};
   if (!name || !dob || !tob || !place || typeof latitude !== 'number' || typeof longitude !== 'number' || typeof timezoneOffsetMinutes !== 'number') {
     res.status(400).json({ error: 'Missing or invalid birth details' });
     return;
@@ -236,6 +248,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
     name: nameForDisplay, dob: String(dob), tob: String(tob), place: String(place),
     lat: String(latitude), lng: String(longitude), tz: String(timezoneOffsetMinutes),
     lang: language,
+    ...(timeUnknown ? { timeUnknown: '1' } : {}),
   });
   const targetUrl = `${CAMPAIGN_APP_URL}/print-kundli?${qs.toString()}`;
 

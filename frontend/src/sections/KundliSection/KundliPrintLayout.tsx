@@ -80,6 +80,8 @@ const LABELS = {
     brand: 'TredevaAstro · Vedic Astrology Report', generated: 'Generated',
     thankYou: 'Thank You For Reading', brandFooter: 'TREDEVAASTRO · YOUR SKY. YOUR STORY.',
     basic: 'Basic', birthDetails: 'Birth Details', name: 'Name', dob: 'Date of Birth', tob: 'Time of Birth', pob: 'Place of Birth',
+    tobNotProvided: 'Not provided',
+    timeUnknownNotice: "This Kundli isn't fully accurate — since the exact time of birth wasn't provided, the current time was used as an approximation. Time-sensitive details such as the Ascendant, houses, and exact Nakshatra Pada may differ from the real birth chart.",
     panchang: 'Panchang', tithi: 'Tithi', karana: 'Karana', yoga: 'Yoga', nakshatra: 'Nakshatra', nakshatraLord: 'Nakshatra Lord',
     ascendant: 'Ascendant', sunrise: 'Sunrise', sunset: 'Sunset',
     avakhadaDetails: 'Avakhada Details', varna: 'Varna', vashya: 'Vashya', yoni: 'Yoni', gan: 'Gan', nadi: 'Nadi',
@@ -121,6 +123,8 @@ const LABELS = {
     brand: 'TredevaAstro · वैदिक ज्योतिष रिपोर्ट', generated: 'तैयार किया गया',
     thankYou: 'पढ़ने के लिए धन्यवाद', brandFooter: 'TREDEVAASTRO · आपका आकाश। आपकी कहानी।',
     basic: 'मूल विवरण', birthDetails: 'जन्म विवरण', name: 'नाम', dob: 'जन्म तिथि', tob: 'जन्म समय', pob: 'जन्म स्थान',
+    tobNotProvided: 'उपलब्ध नहीं',
+    timeUnknownNotice: 'यह कुंडली पूर्ण रूप से सटीक नहीं है — सही जन्म समय उपलब्ध न होने के कारण वर्तमान समय का उपयोग किया गया है। लग्न, भाव और नक्षत्र पद जैसे समय-संवेदनशील विवरण वास्तविक जन्म कुंडली से भिन्न हो सकते हैं।',
     panchang: 'पंचांग', tithi: 'तिथि', karana: 'करण', yoga: 'योग', nakshatra: 'नक्षत्र', nakshatraLord: 'नक्षत्र स्वामी',
     ascendant: 'लग्न', sunrise: 'सूर्योदय', sunset: 'सूर्यास्त',
     avakhadaDetails: 'अवाखड़ा विवरण', varna: 'वर्ण', vashya: 'वश्य', yoni: 'योनि', gan: 'गण', nadi: 'नाड़ी',
@@ -164,6 +168,10 @@ interface KundliPrintLayoutProps {
   name: string;
   dob: string;
   tob: string;
+  // When true, `tob` is a substituted current-time value, not the visitor's
+  // real birth time — this report prints "Not provided" in its place plus a
+  // disclaimer, rather than presenting that substituted clock value as fact.
+  timeUnknown?: boolean;
   place: string;
   // For converting the Panchang's UTC sunrise/sunset instants back to the
   // birth place's local clock time — see formatLocalTime below.
@@ -192,7 +200,7 @@ interface KundliPrintLayoutProps {
   language?: Language;
 }
 
-export default function KundliPrintLayout({ name, dob, tob, place, timezoneOffsetMinutes, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
+export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
   const L = LABELS[language];
   const isHi = language === 'hi';
 
@@ -278,9 +286,15 @@ export default function KundliPrintLayout({ name, dob, tob, place, timezoneOffse
           <KVGrid cols={2}>
             <KVRow label={L.name}>{name}</KVRow>
             <KVRow label={L.dob}>{dob}</KVRow>
-            <KVRow label={L.tob}>{tob}</KVRow>
+            {/* The substituted current-time value itself never gets printed
+                here as though it were a real answer — only the disclaimer
+                below says a time was assumed. */}
+            <KVRow label={L.tob}>{timeUnknown ? L.tobNotProvided : tob}</KVRow>
             <KVRow label={L.pob}>{place}</KVRow>
           </KVGrid>
+          {timeUnknown && (
+            <p style={{ fontSize: FONT.label, color: '#b8860b', margin: '6px 0 0', lineHeight: 1.5 }}>⚠ {L.timeUnknownNotice}</p>
+          )}
 
           <SubHeading>{L.panchang}</SubHeading>
           <KVGrid cols={2}>

@@ -11,7 +11,6 @@ import {
 } from '../../../frontend/src/pages/calculators/CalculatorPages';
 import KundliSection from '../../../frontend/src/sections/KundliSection/KundliSection';
 import PanchangSection from '../../../frontend/src/sections/Panchang/Panchang';
-import { API_URL } from '../../../frontend/src/services/apiUrl';
 
 export interface ToolConfig {
   id: string;
@@ -42,13 +41,14 @@ export const TOOLS: ToolConfig[] = [
   // above, so re-demanding login just to download would be pure friction.
   // pdfBannerImageSrc: same hero banner as this site's own homepage, used on
   // the report's cover and closing pages instead of the plain logo.
-  // serverPdfUrl: server-rendered PDF (backend/app/api/kundliPdf.routes.ts)
-  // instead of the client-side html2canvas capture — seconds instead of
-  // minutes, which matters here since this page exists to convert visitors
-  // fast, not to keep them waiting.
+  // serverPdfUrl (server-rendered PDF via backend/app/api/kundliPdf.
+  // routes.ts) is paused for now — Chromium launching per request was
+  // making the whole site heavy. Falls back to the client-side html2canvas
+  // capture (slower, but no server Chromium cost) until it's re-enabled —
+  // see docs/chromium-pdf-pause.md.
   // hideAstrologerCta: "Consult an Astrologer" routes to a real main-site
   // page this microsite doesn't have, so it's a dead button here.
-  { id: 'free-kundli', label: 'Free Kundli', category: 'birth', render: () => <KundliSection skipPdfLoginGate pdfBannerImageSrc="/images/hero-banner.jpg" serverPdfUrl={`${API_URL}/api/kundli-pdf`} hideAstrologerCta hideHistoryAndSave /> },
+  { id: 'free-kundli', label: 'Free Kundli', category: 'birth', render: () => <KundliSection skipPdfLoginGate pdfBannerImageSrc="/images/hero-banner.jpg" hideAstrologerCta hideHistoryAndSave /> },
   { id: 'moon-sign', label: 'Moon Sign Calculator', category: 'birth', render: () => <MoonSignPage currentUser={null} /> },
   { id: 'nakshatra-finder', label: 'Nakshatra Finder', category: 'birth', render: () => <NakshatraFinderPage currentUser={null} /> },
   { id: 'lucky', label: 'Lucky Color & Date', category: 'birth', render: () => <LuckyPage currentUser={null} /> },

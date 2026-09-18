@@ -18,7 +18,7 @@ import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
   SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon,
 } from '../../components/Icons/Icons';
-import { NorthIndianChart, SouthIndianChart, cap, ordinal, teaser, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
+import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
 import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, HINDI_WEEKDAY, PAKSHA_HI, hindiOr } from '../../utils/panchangHindi';
@@ -109,12 +109,12 @@ const YOGINI_HI: Record<string, string> = {
 // this one tool rather than shared site copy.
 const TAB_LABELS = {
   en: {
-    mahadashaTimelineTitle: 'Your Vimshottari Mahadasha Timeline',
-    mahadashaTimelineDesc: "The nine planetary periods of your life, starting from your Moon's nakshatra at birth. Each period's summary below is a preview — see Predictions for the full note on your current period, or consult an astrologer for the complete picture.",
+    mahadashaTimelineTitle: 'Your Current Mahadasha',
+    mahadashaTimelineDesc: "The planetary period (Vimshottari Mahadasha) active in your life right now, and its current Antardasha sub-period, both timed from your Moon's nakshatra at birth.",
     mahadasha: (lord: string, current: boolean) => `${cap(lord)} Mahadasha${current ? ' (current)' : ''}`,
-    antardasha: (lord: string) => `${cap(lord)} Antardasha`,
-    yoginiTimelineTitle: 'Your Yogini Dasha Timeline',
-    yoginiTimelineDesc: "An alternate 36-year, 8-period dasha cycle, also timed from your Moon's nakshatra at birth.",
+    antardasha: (lord: string) => `${cap(lord)} Antardasha (current)`,
+    yoginiTimelineTitle: 'Your Current Yogini Dasha',
+    yoginiTimelineDesc: "The period active right now in the alternate 36-year, 8-period Yogini dasha cycle, also timed from your Moon's nakshatra at birth.",
     yoginiLine: (yogini: string, lord: string, current: boolean) => `${yogini} Yogini (${cap(lord)})${current ? ' (current)' : ''}`,
     doshas: 'Doshas', kaalSarpDosha: 'Kaal Sarp Dosha', sadeSati: 'Sade Sati', rahuKetuTransit: 'Rahu-Ketu Transit',
     present: 'Present', clear: 'Clear', notActive: 'Not active', activePhase: (phase: string) => `Active · ${phase}`,
@@ -122,10 +122,11 @@ const TAB_LABELS = {
     sadeSatiText: (s: string, m: string) => `Saturn is currently transiting ${s}; your Moon sign is ${m}.`,
     rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `Rahu transiting ${rr} (${rh} from Moon), Ketu transiting ${kr} (${kh} from Moon).`,
     ascendantPredictions: 'Ascendant Predictions',
-    ascendantIsPreview: (asc: string) => `Your Ascendant is ${asc} — a quick preview of each area is below.`,
+    ascendantIsPreview: (asc: string) => `Your Ascendant is ${asc} — your reading for each area is below.`,
     personality: 'Personality', physical: 'Physical', health: 'Health', career: 'Career', relationship: 'Relationship',
-    quickPreviewNote: 'This is a quick preview based on your chart, not the full reading. For your complete, personalized predictions and guidance, consult an expert astrologer on TredevaAstro.',
+    quickPreviewNote: 'For a deeper, fully personalized reading beyond what your chart alone can show, consult an expert astrologer on TredevaAstro.',
     consultAstrologer: 'Consult an Astrologer',
+    dosAndDonts: "Do's & Don'ts", dos: "Do's", donts: "Don'ts",
     yogaCombinations: 'Yoga Combinations', formed: 'Present', notFormed: 'Not formed',
     advancedNote: 'Technical, classical scoring behind your chart — useful if you want to go deeper, not required to understand your reading.',
     shadbalaTitle: 'Shadbala (Planetary Strength)',
@@ -165,12 +166,12 @@ const TAB_LABELS = {
     natal: 'Natal', transit: 'Transit', fromLagna: 'from Lagna', fromMoon: 'from Moon',
   },
   hi: {
-    mahadashaTimelineTitle: 'आपकी विंशोत्तरी महादशा समयरेखा',
-    mahadashaTimelineDesc: 'आपके जीवन की नौ ग्रह अवधियाँ, जन्म के समय आपके चन्द्र नक्षत्र से आरंभ होती हैं। नीचे हर अवधि का सारांश एक झलक मात्र है — अपनी वर्तमान अवधि के पूर्ण विवरण के लिए भविष्यवाणियाँ देखें, या संपूर्ण जानकारी के लिए किसी ज्योतिषी से सलाह लें।',
+    mahadashaTimelineTitle: 'आपकी वर्तमान महादशा',
+    mahadashaTimelineDesc: 'वह ग्रह अवधि (विंशोत्तरी महादशा) जो अभी आपके जीवन में सक्रिय है, और उसकी वर्तमान अंतर्दशा उप-अवधि — दोनों जन्म के समय आपके चन्द्र नक्षत्र से गिनी गई हैं।',
     mahadasha: (lord: string, current: boolean) => `${HINDI_PLANET[lord] || cap(lord)} महादशा${current ? ' (वर्तमान)' : ''}`,
-    antardasha: (lord: string) => `${HINDI_PLANET[lord] || cap(lord)} अंतर्दशा`,
-    yoginiTimelineTitle: 'आपकी योगिनी दशा समयरेखा',
-    yoginiTimelineDesc: 'एक वैकल्पिक 36-वर्षीय, 8-अवधि दशा चक्र, जो भी जन्म के समय आपके चन्द्र नक्षत्र से गिना जाता है।',
+    antardasha: (lord: string) => `${HINDI_PLANET[lord] || cap(lord)} अंतर्दशा (वर्तमान)`,
+    yoginiTimelineTitle: 'आपकी वर्तमान योगिनी दशा',
+    yoginiTimelineDesc: 'वैकल्पिक 36-वर्षीय, 8-अवधि योगिनी दशा चक्र में अभी सक्रिय अवधि, जो भी जन्म के समय आपके चन्द्र नक्षत्र से गिनी जाती है।',
     yoginiLine: (yogini: string, lord: string, current: boolean) => `${YOGINI_HI[yogini] || yogini} योगिनी (${HINDI_PLANET[lord] || cap(lord)})${current ? ' (वर्तमान)' : ''}`,
     doshas: 'दोष', kaalSarpDosha: 'कालसर्प दोष', sadeSati: 'साढ़े साती', rahuKetuTransit: 'राहु-केतु गोचर',
     present: 'उपस्थित', clear: 'अनुपस्थित', notActive: 'सक्रिय नहीं', activePhase: (phase: string) => `सक्रिय · ${DOSHA_PHASE_HI[phase] || phase}`,
@@ -178,10 +179,11 @@ const TAB_LABELS = {
     sadeSatiText: (s: string, m: string) => `शनि वर्तमान में ${s} राशि में गोचर कर रहे हैं; आपकी चन्द्र राशि ${m} है।`,
     rahuKetuText: (rr: string, rh: string, kr: string, kh: string) => `राहु ${rr} में गोचर कर रहा है (चन्द्र से ${rh} भाव), केतु ${kr} में गोचर कर रहा है (चन्द्र से ${kh} भाव)।`,
     ascendantPredictions: 'लग्न भविष्यवाणियाँ',
-    ascendantIsPreview: (asc: string) => `आपका लग्न ${asc} है — हर क्षेत्र की एक झलक नीचे दी गई है।`,
+    ascendantIsPreview: (asc: string) => `आपका लग्न ${asc} है — हर क्षेत्र के लिए आपकी रीडिंग नीचे दी गई है।`,
     personality: 'व्यक्तित्व', physical: 'शारीरिक', health: 'स्वास्थ्य', career: 'करियर', relationship: 'संबंध',
-    quickPreviewNote: 'यह आपकी कुंडली पर आधारित एक त्वरित झलक है, पूर्ण विवरण नहीं। अपनी संपूर्ण, व्यक्तिगत भविष्यवाणियों और मार्गदर्शन के लिए, TredevaAstro पर किसी विशेषज्ञ ज्योतिषी से सलाह लें।',
+    quickPreviewNote: 'आपकी कुंडली से मिलने वाली जानकारी से आगे, एक गहरी, पूर्णतः व्यक्तिगत रीडिंग के लिए TredevaAstro पर किसी विशेषज्ञ ज्योतिषी से सलाह लें।',
     consultAstrologer: 'ज्योतिषी से सलाह लें',
+    dosAndDonts: 'क्या करें और क्या न करें', dos: 'क्या करें', donts: 'क्या न करें',
     yogaCombinations: 'योग संयोजन', formed: 'उपस्थित', notFormed: 'नहीं बना',
     advancedNote: 'आपकी कुंडली के पीछे की तकनीकी, शास्त्रीय गणना — यदि आप गहराई में जाना चाहते हैं तो उपयोगी है, आपकी रीडिंग समझने के लिए आवश्यक नहीं।',
     shadbalaTitle: 'षड्बल (ग्रह शक्ति)',
@@ -567,6 +569,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
           longitude: submittedDetails.longitude,
           timezoneOffsetMinutes: submittedDetails.timezoneOffsetMinutes,
           language: pdfLanguage,
+          timeUnknown: submittedDetails.timeUnknown ?? false,
         }),
       });
       if (!res.ok) throw new Error('Server PDF generation failed');
@@ -1087,7 +1090,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                 </div>
               )}
 
-              <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" showGenderField initialValues={savedBirthDetails} />
+              <BirthDetailsForm onSubmit={handleSubmit} submitLabel="Generate My Free Kundli" idPrefix="kundli" showGenderField initialValues={savedBirthDetails} allowUnknownTime />
               {savedBirthDetails && (
                 <p className={styles.privacy}>✦ Pre-filled from the birth details you gave at sign-up — edit any field if it's wrong.</p>
               )}
@@ -1108,8 +1111,18 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                   <span className={`section-eyebrow ${styles.chartHeaderEyebrow}`}>Birth Chart</span>
                   <h1 className="section-title-cosmos">{pdfLanguage === 'hi' ? `${displayName} की कुंडली` : <>{displayName}&apos;s Kundli</>}</h1>
                   <p className={styles.chartMeta}>
-                    {birthProfile.dob} · {birthProfile.tob} · {birthProfile.place}
+                    {/* The exact clock value substituted for an unknown birth
+                        time is never shown here — showing it would read as
+                        the visitor's real birth time, which it isn't. */}
+                    {birthProfile.dob} · {submittedDetails?.timeUnknown ? (pdfLanguage === 'hi' ? 'समय अज्ञात' : 'Time unknown') : birthProfile.tob} · {birthProfile.place}
                   </p>
+                  {submittedDetails?.timeUnknown && (
+                    <p className={styles.chartMeta} style={{ color: '#b8860b', marginTop: 4 }}>
+                      {pdfLanguage === 'hi'
+                        ? '⚠ यह कुंडली पूर्ण रूप से सटीक नहीं है — सही जन्म समय उपलब्ध न होने के कारण वर्तमान समय का उपयोग किया गया है। लग्न, भाव और नक्षत्र पद जैसे समय-संवेदनशील विवरण वास्तविक जन्म कुंडली से भिन्न हो सकते हैं।'
+                        : "⚠ This Kundli isn't fully accurate — since your exact time of birth wasn't provided, the current time was used as an approximation. Time-sensitive details like your Ascendant, houses, and exact Nakshatra Pada may differ from your real birth chart."}
+                    </p>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)', flexShrink: 0 }}>
                   <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1138,16 +1151,8 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                         </button>
                       ))}
                     </div>
-                    <button
-                      className="btn btn-gold"
-                      onClick={handleDownloadPdfClick}
-                      disabled={pdfState === 'generating'}
-                      id="kundli-download-pdf-btn"
-                    >
-                      {pdfState === 'generating'
-                        ? (serverPdfUrl ? 'Generating…' : `Preparing… ${String(Math.floor(pdfCountdownSec / 60)).padStart(2, '0')}:${String(pdfCountdownSec % 60).padStart(2, '0')}`)
-                        : isLoggedIn || skipPdfLoginGate ? tr('kundli_download_pdf') : `${tr('kundli_download_pdf')} (login required)`}
-                    </button>
+                    {/* Download PDF button paused along with Chromium PDF
+                        generation — see docs/chromium-pdf-pause.md. */}
                     <button
                       className="btn btn-outline-gold"
                       onClick={() => setFullResult(null)}
@@ -1175,7 +1180,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                 // into extreme negative space.
                 <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
-                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} place={birthProfile.place} timezoneOffsetMinutes={submittedDetails?.timezoneOffsetMinutes ?? 0} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
+                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} timeUnknown={submittedDetails?.timeUnknown ?? false} place={birthProfile.place} timezoneOffsetMinutes={submittedDetails?.timezoneOffsetMinutes ?? 0} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
                   </div>
                 </div>
               )}
@@ -1377,25 +1382,23 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                     <h2 className={styles.overviewTitle}>{TL.mahadashaTimelineTitle}</h2>
                     <p className={styles.overviewText}>{TL.mahadashaTimelineDesc}</p>
                     <div className={styles.timelineList}>
-                      {fullResult.mahadashaTimeline.map((period, i) => (
+                      {fullResult.mahadashaTimeline.filter(period => period.active).map((period, i) => (
                         <div key={i}>
-                          <div className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
+                          <div className={`${styles.timelineItem} ${styles.timelineItemActive}`}>
                             <span className={styles.timelineLord}>{TL.mahadasha(period.lord, period.active)}</span>
                             <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                           </div>
                           {fullResult.dashaPredictions.find(d => d.lord === period.lord) && (
-                            <p className={styles.dashaPredictionText}>{teaser(fullResult.dashaPredictions.find(d => d.lord === period.lord)!.text, 100)}</p>
+                            <p className={styles.dashaPredictionText}>{fullResult.dashaPredictions.find(d => d.lord === period.lord)!.text}</p>
                           )}
-                          {period.active && (
-                            <div className={styles.antardashaList}>
-                              {period.antardashas.map((sub, j) => (
-                                <div key={j} className={styles.antardashaItem}>
-                                  <span>{TL.antardasha(sub.lord)}</span>
-                                  <span>{sub.startsAt} → {sub.endsAt}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <div className={styles.antardashaList}>
+                            {period.antardashas.filter(sub => sub.active).map((sub, j) => (
+                              <div key={j} className={styles.antardashaItem}>
+                                <span>{TL.antardasha(sub.lord)}</span>
+                                <span>{sub.startsAt} → {sub.endsAt}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1405,8 +1408,8 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                     <h2 className={styles.overviewTitle}>{TL.yoginiTimelineTitle}</h2>
                     <p className={styles.overviewText}>{TL.yoginiTimelineDesc}</p>
                     <div className={styles.timelineList}>
-                      {fullResult.yoginiDashaTimeline.map((period, i) => (
-                        <div key={i} className={`${styles.timelineItem} ${period.active ? styles.timelineItemActive : ''}`}>
+                      {fullResult.yoginiDashaTimeline.filter(period => period.active).map((period, i) => (
+                        <div key={i} className={`${styles.timelineItem} ${styles.timelineItemActive}`}>
                           <span className={styles.timelineLord}>{TL.yoginiLine(period.yogini, period.lord, period.active)}</span>
                           <span className={styles.timelineDates}>{period.startsAt} → {period.endsAt}</span>
                         </div>
@@ -1467,10 +1470,37 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                       ] as const).map(([label, text]) => (
                         <div key={label} className={styles.predictionCard}>
                           <div className={styles.predictionCardTitle}>{label}</div>
-                          <p className={styles.doshaCardText}>{teaser(text, 110)}</p>
+                          <p className={styles.doshaCardText}>{text}</p>
                         </div>
                       ))}
                     </div>
+                    {(fullResult.ascendantPredictions.dos.length > 0 || fullResult.ascendantPredictions.donts.length > 0) && (
+                      <div style={{ marginTop: 'var(--space-6)' }}>
+                        <h2 className={styles.overviewTitle}>{TL.dosAndDonts}</h2>
+                        <div className={styles.doshaYogaGrid}>
+                          <div className={styles.doshaCard}>
+                            <div className={styles.doshaCardHead}>
+                              <span className={styles.doshaCardTitle}>{TL.dos}</span>
+                            </div>
+                            <ul style={{ margin: 0, paddingLeft: '1.1em' }}>
+                              {fullResult.ascendantPredictions.dos.map((d, i) => (
+                                <li key={i} className={styles.doshaCardText}>{d}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className={styles.doshaCard}>
+                            <div className={styles.doshaCardHead}>
+                              <span className={styles.doshaCardTitle}>{TL.donts}</span>
+                            </div>
+                            <ul style={{ margin: 0, paddingLeft: '1.1em' }}>
+                              {fullResult.ascendantPredictions.donts.map((d, i) => (
+                                <li key={i} className={styles.doshaCardText}>{d}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {!hideAstrologerCta && (
                       <div className={styles.saveBar} style={{ marginTop: 'var(--space-6)' }}>
                         <span className={styles.saveText}>{TL.quickPreviewNote}</span>

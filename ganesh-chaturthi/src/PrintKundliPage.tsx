@@ -23,6 +23,7 @@ export default function PrintKundliPage() {
   const longitude = Number(params.get('lng'));
   const timezoneOffsetMinutes = Number(params.get('tz'));
   const language: 'en' | 'hi' = params.get('lang') === 'hi' ? 'hi' : 'en';
+  const timeUnknown = params.get('timeUnknown') === '1';
 
   useEffect(() => {
     calculatorService
@@ -80,6 +81,7 @@ export default function PrintKundliPage() {
         name={name}
         dob={dob}
         tob={tob}
+        timeUnknown={timeUnknown}
         place={place}
         timezoneOffsetMinutes={timezoneOffsetMinutes}
         result={result}
