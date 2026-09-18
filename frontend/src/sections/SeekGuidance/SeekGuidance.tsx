@@ -18,6 +18,15 @@ export default function SeekGuidance() {
   const { setPage, setConcern, t, tOr } = useAppContext();
 
   const handleCardClick = (concern: Concern) => {
+    // Every other concern here funnels into the Kundli page (personalized by
+    // `concern`) since there's no dedicated tool for it — Vastu is the one
+    // exception now that a real Vastu Calculator exists, so it goes there
+    // directly instead of opening an unrelated Kundli.
+    if (concern === 'Vastu') {
+      setPage('vastu-calculator');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setConcern(concern);
     setPage('free-kundli');
     window.scrollTo({ top: 0, behavior: 'smooth' });

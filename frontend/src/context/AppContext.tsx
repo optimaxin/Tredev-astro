@@ -676,9 +676,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     monk_notif_10: 'Sunil from Noida just ordered a Shri Yantra (Brass) 🕉️',
 
     // Auth Page (manuscript sign-up/sign-in)
-    auth_tab_register: 'Inscribe Birth Details',
+    auth_tab_register: 'Create Your Account',
     auth_tab_login: 'Member Sign In',
-    auth_subtitle_register: 'ANCIENT VEDIC BIRTH MANUSCRIPT · INSCRIBE YOUR KUNDLI DETAILS',
+    auth_subtitle_register: 'ANCIENT VEDIC MANUSCRIPT · BEGIN YOUR JOURNEY',
     auth_subtitle_login: 'SACRED USER VAULT · ACCESS STORED BIRTH PROFILE',
     auth_label_fullname: "Full Name / Seeker's Name *",
     auth_placeholder_fullname: 'e.g. Sparsh Sharma',
@@ -1356,9 +1356,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     monk_notif_10: 'सुनील (नोएडा) ने अभी श्री यंत्र (पीतल) ऑर्डर किया 🕉️',
 
     // Auth Page (manuscript sign-up/sign-in)
-    auth_tab_register: 'जन्म विवरण अंकित करें',
+    auth_tab_register: 'खाता बनाएं',
     auth_tab_login: 'सदस्य साइन इन',
-    auth_subtitle_register: 'प्राचीन वैदिक जन्म पत्र · अपनी कुंडली का विवरण दर्ज करें',
+    auth_subtitle_register: 'प्राचीन वैदिक पत्र · अपनी यात्रा शुरू करें',
     auth_subtitle_login: 'पवित्र सदस्य कक्ष · संग्रहीत जन्म प्रोफ़ाइल तक पहुंचें',
     auth_label_fullname: 'पूरा नाम *',
     auth_placeholder_fullname: 'उदा. स्पर्श शर्मा',
@@ -1918,9 +1918,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     monk_notif_10: 'सुनील (नोएडा) यांनी नुकतेच श्री यंत्र (पितळ) ऑर्डर केले 🕉️',
 
     // Auth Page (manuscript sign-up/sign-in)
-    auth_tab_register: 'जन्म तपशील नोंदवा',
+    auth_tab_register: 'खाते तयार करा',
     auth_tab_login: 'सदस्य साइन इन',
-    auth_subtitle_register: 'प्राचीन वैदिक जन्मपत्रिका · तुमची कुंडली माहिती भरा',
+    auth_subtitle_register: 'प्राचीन वैदिक पत्र · तुमचा प्रवास सुरू करा',
     auth_subtitle_login: 'पवित्र सदस्य कक्ष · जतन केलेल्या जन्म प्रोफाइलमध्ये प्रवेश करा',
     auth_label_fullname: 'पूर्ण नाव *',
     auth_placeholder_fullname: 'उदा. स्पर्श शर्मा',

@@ -2,12 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
-import AncientDatePicker from '../../components/AncientDatePicker/AncientDatePicker';
-import AncientTimePicker from '../../components/AncientTimePicker/AncientTimePicker';
-import LocationAutocomplete from '../../components/LocationAutocomplete/LocationAutocomplete';
-import { TIMEZONES } from '../../components/BirthDetailsForm/BirthDetailsForm';
-import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { GeocodeResult } from '../../services/calculatorService';
 import { authService, ApiRequestError } from '../../services/authService';
 import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164IndianNumber } from '../../services/firebaseClient';
 import type { ConfirmationResult } from 'firebase/auth';
@@ -31,22 +25,17 @@ export default function AuthPage() {
   const [loginError, setLoginError] = useState('');
   const [registerError, setRegisterError] = useState('');
 
-  // Register state
+  // Register state — birth details (date/time/place/timezone) are
+  // deliberately NOT collected here anymore; they were making signup feel
+  // long, the backend already stores them as optional, and a user can add
+  // them any time later via the Free Kundli page's "Save to my profile"
+  // button (same fields, same PATCH /api/auth/me/birth-details endpoint).
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     password: '',
     phoneNumber: '',
-    dob: '',
-    timeOfBirth: '',
-    placeOfBirth: '',
-    timezoneOffset: TIMEZONES[0].offset,
-    gender: 'Male',
   });
-  // Set only when the user picks an actual suggestion — carries its exact
-  // coordinates directly, so submit can skip a second (less precise) geocode
-  // guess entirely. Any further edit to the text invalidates it.
-  const [selectedGeo, setSelectedGeo] = useState<GeocodeResult | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
   // 'form' -> 'otp' (phone verification, right after account creation, now
   // via Firebase Phone Auth instead of the old custom OTP-over-SMS/AWS SNS)
@@ -130,20 +119,11 @@ export default function AuthPage() {
     setRegisterError('');
     setRegisterLoading(true);
     try {
-      const geo = selectedGeo ?? await calculatorService.geocode(form.placeOfBirth.trim());
-      await register(form.fullName, form.email, form.password, form.phoneNumber.trim(), {
-        birthDate: form.dob,
-        birthTime: form.timeOfBirth,
-        birthPlace: geo.displayName,
-        birthLatitude: geo.latitude,
-        birthLongitude: geo.longitude,
-        birthTimezoneOffsetMinutes: form.timezoneOffset,
-      });
+      await register(form.fullName, form.email, form.password, form.phoneNumber.trim());
       setRegisterStep('otp');
       await handleSendPhoneOtp();
     } catch (err) {
-      if (err instanceof CalculatorApiError) setRegisterError(`Place of birth: ${err.message}`);
-      else if (err instanceof ApiRequestError) setRegisterError(err.message);
+      if (err instanceof ApiRequestError) setRegisterError(err.message);
       else setRegisterError('Something went wrong. Please try again.');
     } finally {
       setRegisterLoading(false);
@@ -394,93 +374,9 @@ export default function AuthPage() {
                   />
                 </div>
 
-                {/* Celestial Inscription Separator */}
-                <div className={styles.sacredSeparator}>
-                  <div className={styles.sepLine} />
-                  <span className={styles.sepText}>❖ जन्म कुण्डली गणना निर्देशांक ({t('auth_separator_birth_coords')}) ❖</span>
-                  <div className={styles.sepLine} />
-                </div>
-
-                {/* DOB & Time Row */}
-                <div className={styles.inkRow2}>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म तिथि</span> {t('auth_label_dob')}
-                    </label>
-                    <AncientDatePicker
-                      className={styles.inkInput}
-                      value={form.dob}
-                      onChange={val => setForm({ ...form, dob: val })}
-                      required
-                      placeholder={t('auth_placeholder_dob')}
-                    />
-                  </div>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म समय</span> {t('auth_label_tob')}
-                    </label>
-                    <AncientTimePicker
-                      className={styles.inkInput}
-                      value={form.timeOfBirth}
-                      onChange={val => setForm({ ...form, timeOfBirth: val })}
-                      required
-                      placeholder={t('auth_placeholder_tob')}
-                    />
-                  </div>
-                </div>
-
-                {/* Place of Birth & Gender Row */}
-                <div className={styles.inkRow2}>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>जन्म स्थान</span> {t('auth_label_pob')}
-                    </label>
-                    <LocationAutocomplete
-                      id="auth-place-of-birth"
-                      className={styles.inkInput}
-                      placeholder={t('auth_placeholder_pob')}
-                      value={form.placeOfBirth}
-                      onChange={v => { setForm(f => ({ ...f, placeOfBirth: v })); setSelectedGeo(null); }}
-                      onSelect={geo => { setForm(f => ({ ...f, placeOfBirth: geo.displayName })); setSelectedGeo(geo); }}
-                      required
-                    />
-                  </div>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>लिंग</span> {t('auth_label_gender')}
-                    </label>
-                    <div className={styles.genderRow}>
-                      {(['Male', 'Female', 'Other'] as const).map(g => (
-                        <button
-                          type="button"
-                          key={g}
-                          className={`${styles.genderOption} ${form.gender === g ? styles.genderOptionActive : ''}`}
-                          onClick={() => setForm({ ...form, gender: g })}
-                        >
-                          {t(`auth_gender_${g.toLowerCase()}`)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Time Zone */}
-                <div className={styles.inkRow2}>
-                  <div className={styles.inkField} style={{ gridColumn: '1 / -1' }}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>समय क्षेत्र</span> Time Zone
-                    </label>
-                    <select
-                      className={styles.inkInput}
-                      value={form.timezoneOffset}
-                      onChange={e => setForm({ ...form, timezoneOffset: Number(e.target.value) })}
-                    >
-                      {TIMEZONES.map(tz => (
-                        <option key={tz.label} value={tz.offset}>{tz.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                {/* Birth date/time/place/timezone are deliberately not
+                    collected here anymore — see the `form` state comment
+                    above. Add them later from the Free Kundli page. */}
 
                 {registerError && (
                   <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{registerError}</p>
