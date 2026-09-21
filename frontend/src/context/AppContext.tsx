@@ -702,7 +702,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     auth_btn_seal: 'SEAL INSCRIPTION →',
     auth_btn_unlocking: 'Unlocking Vault...',
     auth_btn_signin_vault: 'SIGN IN TO VAULT →',
-    auth_success_message: 'Greetings {name}! Your birth coordinates ({date} at {time}, {place}) have been successfully inscribed onto the sacred Vedic manuscript archive.',
+    auth_success_message: 'Greetings {name}! Your account has been successfully inscribed onto the sacred Vedic manuscript archive.',
     auth_btn_continue: '✦ ENTER CELESTIAL PORTAL ✦',
     auth_footer_stamp: 'ENCRYPTED ANCIENT VEDIC ARCHIVE',
 
@@ -1382,7 +1382,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     auth_btn_seal: 'मुद्रा लगाएं →',
     auth_btn_unlocking: 'कक्ष अनलॉक हो रहा है...',
     auth_btn_signin_vault: 'साइन इन करें →',
-    auth_success_message: 'प्रणाम {name}! आपका जन्म विवरण ({date}, {time} बजे, {place}) पवित्र वैदिक पांडुलिपि संग्रह में सफलतापूर्वक अंकित कर दिया गया है।',
+    auth_success_message: 'प्रणाम {name}! आपका खाता पवित्र वैदिक पांडुलिपि संग्रह में सफलतापूर्वक अंकित कर दिया गया है।',
     auth_btn_continue: '✦ आकाशीय द्वार में प्रवेश करें ✦',
     auth_footer_stamp: 'एन्क्रिप्टेड प्राचीन वैदिक संग्रह',
 
@@ -1944,7 +1944,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     auth_btn_seal: 'मुद्रा लावा →',
     auth_btn_unlocking: 'कक्ष अनलॉक होत आहे...',
     auth_btn_signin_vault: 'साइन इन करा →',
-    auth_success_message: 'नमस्कार {name}! तुमचे जन्म तपशील ({date}, {time} वाजता, {place}) पवित्र वैदिक हस्तलिखित संग्रहात यशस्वीरित्या नोंदवले गेले आहेत.',
+    auth_success_message: 'नमस्कार {name}! तुमचे खाते पवित्र वैदिक हस्तलिखित संग्रहात यशस्वीरित्या नोंदवले गेले आहे.',
     auth_btn_continue: '✦ खगोलीय द्वारातून प्रवेश करा ✦',
     auth_footer_stamp: 'एन्क्रिप्टेड प्राचीन वैदिक संग्रह',
 

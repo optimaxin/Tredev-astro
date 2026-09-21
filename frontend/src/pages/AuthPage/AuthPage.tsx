@@ -523,11 +523,7 @@ export default function AuthPage() {
                 <div className={styles.royalWaxSealBig}>ॐ</div>
                 <h2 className={styles.successHeader}>जन्मांग अभिलिखितम्!</h2>
                 <p className={styles.successSubtext}>
-                  {t('auth_success_message')
-                    .replace('{name}', form.fullName)
-                    .replace('{date}', form.dob)
-                    .replace('{time}', form.timeOfBirth)
-                    .replace('{place}', form.placeOfBirth)}
+                  {t('auth_success_message').replace('{name}', form.fullName)}
                 </p>
                 <button
                   type="button"
