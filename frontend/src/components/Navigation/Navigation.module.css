@@ -587,8 +587,16 @@
      screen height, with everything past that scrollable — without this,
      the menu had no height limit at all, so on a shorter phone screen the
      bottom items (theme toggle, sign out) rendered below the visible
-     viewport with no way to scroll down to them. */
+     viewport with no way to scroll down to them.
+     `100vh` on mobile is the LARGEST viewport (address bar hidden) — with
+     the address bar actually showing, that overstates the real visible
+     height, so the box's computed content fit inside its own (too-tall)
+     max-height with nothing to scroll, even though the bottom was hidden
+     behind the browser chrome. `100dvh` tracks the real, current viewport
+     instead; kept as a fallback-first declaration since unsupported
+     browsers just ignore the second, later `dvh` line and keep the `vh` one. */
   max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: rgba(250, 247, 240, 0.98);
