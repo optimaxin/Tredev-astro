@@ -33,6 +33,21 @@ const PLANET_DEBILITATION_SIGN: Record<string, string> = {
 };
 const DUSTHANA_HOUSES = [6, 8, 12];
 
+// Classical best-facing direction per zone (the top "excellent" pick from
+// the full direction-by-direction rulebook in the standalone Vastu
+// Calculator). Folded directly into the reading text below so it's a
+// complete, actionable line on its own — the old wording pointed to "the
+// direction guidance below," which only exists on the Vastu Calculator page,
+// not here on the Kundli result tab, making the reading a dead end.
+const IDEAL_ZONE_DIRECTION: Record<VastuZoneKey, { en: string; hi: string }> = {
+  entrance: { en: 'North or North-East', hi: 'उत्तर या ईशान (उत्तर-पूर्व)' },
+  kitchen: { en: 'South-East', hi: 'आग्नेय (दक्षिण-पूर्व)' },
+  bedroom: { en: 'South-West', hi: 'नैऋत्य (दक्षिण-पश्चिम)' },
+  pooja: { en: 'North-East', hi: 'ईशान (उत्तर-पूर्व)' },
+  toilet: { en: 'North-West', hi: 'वायव्य (उत्तर-पश्चिम)' },
+  staircase: { en: 'South', hi: 'दक्षिण' },
+};
+
 export type VastuChartVerdict = 'favorable' | 'neutral' | 'caution';
 
 export const VASTU_CHART_VERDICT_META: Record<VastuChartVerdict, { en: string; hi: string; color: string }> = {
@@ -64,15 +79,17 @@ export function getVastuChartReading(kundli: KundliResult): VastuZoneReading[] {
       verdict = 'caution';
     }
 
+    const idealDir = IDEAL_ZONE_DIRECTION[zone.key];
+
     const en = {
-      favorable: `${planetName} (this zone's significator) is strong in your chart — house ${planet.house}, ${planet.rashi}. This zone naturally supports you; keep it clean and in active use.`,
-      neutral: `${planetName} (this zone's significator) sits in house ${planet.house}, ${planet.rashi} — a workable placement. Follow the standard direction guidance below for this zone.`,
-      caution: `${planetName} (this zone's significator) is under strain in your chart — house ${planet.house}, ${planet.rashi}. Give this zone extra Vastu care, or a remedy for ${planetName}.`,
+      favorable: `${planetName} (this zone's significator) is strong in your chart — house ${planet.house}, ${planet.rashi}. This zone naturally supports you. Classically, ${zone.label.en.toLowerCase()} works best facing ${idealDir.en} — align it there if you can, keep it clean, and in active use.`,
+      neutral: `${planetName} (this zone's significator) sits in house ${planet.house}, ${planet.rashi} — a workable placement, neither a strong boost nor a strain. Classically, ${zone.label.en.toLowerCase()} works best facing ${idealDir.en}; if yours doesn't, that's fine — just keep this space simple and uncluttered.`,
+      caution: `${planetName} (this zone's significator) is under strain in your chart — house ${planet.house}, ${planet.rashi}. Give this zone extra care: face it ${idealDir.en} if you're renovating, keep it especially clean, or take up a remedy for ${planetName}.`,
     }[verdict];
     const hi = {
-      favorable: `${planetName} (इस क्षेत्र का कारक ग्रह) आपकी कुंडली में मजबूत है — भाव ${planet.house}, ${planet.rashi}। यह क्षेत्र स्वाभाविक रूप से आपके अनुकूल है; इसे स्वच्छ और उपयोग में रखें।`,
-      neutral: `${planetName} (इस क्षेत्र का कारक ग्रह) भाव ${planet.house}, ${planet.rashi} में स्थित है — एक सामान्य स्थिति। इस क्षेत्र के लिए नीचे दी गई सामान्य दिशा-सलाह का पालन करें।`,
-      caution: `${planetName} (इस क्षेत्र का कारक ग्रह) आपकी कुंडली में दबाव में है — भाव ${planet.house}, ${planet.rashi}। इस क्षेत्र पर विशेष वास्तु ध्यान दें, या ${planetName} का उपाय करें।`,
+      favorable: `${planetName} (इस क्षेत्र का कारक ग्रह) आपकी कुंडली में मजबूत है — भाव ${planet.house}, ${planet.rashi}। यह क्षेत्र स्वाभाविक रूप से आपके अनुकूल है। शास्त्रीय रूप से, ${zone.label.hi} के लिए सबसे उत्तम दिशा ${idealDir.hi} है — यदि संभव हो तो इसी दिशा में रखें, स्वच्छ और उपयोग में रखें।`,
+      neutral: `${planetName} (इस क्षेत्र का कारक ग्रह) भाव ${planet.house}, ${planet.rashi} में स्थित है — एक सामान्य स्थिति, न विशेष लाभ न हानि। शास्त्रीय रूप से, ${zone.label.hi} के लिए सबसे उत्तम दिशा ${idealDir.hi} है; यदि आपका ऐसा नहीं है तो चिंता की बात नहीं — बस इस स्थान को सरल और अव्यवस्था-मुक्त रखें।`,
+      caution: `${planetName} (इस क्षेत्र का कारक ग्रह) आपकी कुंडली में दबाव में है — भाव ${planet.house}, ${planet.rashi}। इस क्षेत्र पर विशेष ध्यान दें: नवीनीकरण करते समय इसे ${idealDir.hi} दिशा में रखें, इसे विशेष रूप से स्वच्छ रखें, या ${planetName} का उपाय करें।`,
     }[verdict];
 
     return { zone, verdict, en, hi };
