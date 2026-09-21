@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FREE_TOOLS_CATEGORIES } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import { RashiChakraIcon, MarriageIcon, ConstellationIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon, VastuIcon } from '../../components/Icons/Icons';
+import { RashiChakraIcon, MarriageIcon, HeartIcon, ConstellationIcon, AcharyaIcon, CareerIcon, SunIcon, MoonIcon, DoshaShieldIcon, NumerologyGridIcon, VastuIcon } from '../../components/Icons/Icons';
 import type { IconProps } from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
@@ -59,7 +59,7 @@ const TOOL_ROUTES: Record<string, string> = {
 const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
   daily: SunIcon,
   birth: MoonIcon,
-  compatibility: MarriageIcon,
+  compatibility: HeartIcon,
   doshas: DoshaShieldIcon,
   numerology: NumerologyGridIcon,
   vastu: VastuIcon,

@@ -22,6 +22,7 @@ import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSim
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
 import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, HINDI_WEEKDAY, PAKSHA_HI, hindiOr } from '../../utils/panchangHindi';
+import { getVastuChartReading, VASTU_CHART_VERDICT_META } from '../../data/vastuKundli';
 import styles from './KundliSection.module.css';
 
 // Every chart selectable in the Charts tab — D1/Chandra carry real ecliptic
@@ -148,6 +149,8 @@ const TAB_LABELS = {
     gemRemediesDesc: "Three classical gemstone picks — Life (Ascendant lord), Lucky (5th house/Purva Punya lord), and Fortune (9th house/Bhagya lord) — plus the Rudraksha ruled by your birth Nakshatra's lord.",
     metal: 'Metal:', wearOn: 'Wear on:', rudraksha: 'Rudraksha', mukhi: (n: number, deity: string) => `${n} Mukhi (${deity})`,
     precautions: 'Precautions before wearing any gemstone or Rudraksha',
+    vastuTitle: 'Vastu Insights From Your Kundli',
+    vastuDesc: "Each zone's classical significator planet, read from this exact chart — not a generic checklist.",
     remediesFootnote: 'These are classical, chart-derived starting points — not a substitute for a full consultation, since remedial choices can shift with other placements in your chart.',
     consultAstrologerRemedies: 'Consult an Astrologer for Remedies',
     verifyNote: "To verify: the Ascendant/Moon/Sun signs and houses named above should exactly match what's shown in the chart above — including on any other Kundli tool given the same birth date, time, and place.",
@@ -205,6 +208,8 @@ const TAB_LABELS = {
     gemRemediesDesc: 'तीन शास्त्रीय रत्न सुझाव — जीवन (लग्न स्वामी), भाग्य (पंचम भाव/पूर्व पुण्य स्वामी), और सौभाग्य (नवम भाव/भाग्य स्वामी) — साथ ही आपकी जन्म नक्षत्र के स्वामी द्वारा शासित रुद्राक्ष।',
     metal: 'धातु:', wearOn: 'पहनें:', rudraksha: 'रुद्राक्ष', mukhi: (n: number, deity: string) => `${n} मुखी (${deity})`,
     precautions: 'कोई भी रत्न या रुद्राक्ष पहनने से पहले सावधानियां',
+    vastuTitle: 'आपकी कुंडली से वास्तु सुझाव',
+    vastuDesc: 'हर क्षेत्र का शास्त्रीय कारक ग्रह, ठीक इस कुंडली से पढ़ा गया — सामान्य सूची नहीं।',
     remediesFootnote: 'ये शास्त्रीय, कुंडली-आधारित प्रारंभिक बिंदु हैं — पूर्ण परामर्श का विकल्प नहीं, क्योंकि उपचारात्मक विकल्प आपकी कुंडली की अन्य स्थितियों के साथ बदल सकते हैं।',
     consultAstrologerRemedies: 'उपायों के लिए ज्योतिषी से सलाह लें',
     verifyNote: 'पुष्टि के लिए: ऊपर बताई गई लग्न/चंद्र/सूर्य राशियाँ और भाव ऊपर के चार्ट में दिखाए गए से बिल्कुल मेल खाने चाहिए — यहां तक कि उसी जन्म तिथि, समय और स्थान के लिए किसी अन्य कुंडली उपकरण पर भी।',
@@ -1670,6 +1675,37 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                       {fullResult.rudraksha.precautions.map((p, i) => <li key={i}>{p}</li>)}
                     </ul>
                   </details>
+
+                  {/* Personalized Vastu — reuses the same significator-planet check as
+                      the standalone Vastu Calculator (data/vastuKundli.ts), so a zone
+                      flagged here matches what that tool would say for this same chart. */}
+                  <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>
+                    <VastuIcon size={22} /> {TL.vastuTitle}
+                  </h2>
+                  <p className={styles.overviewText}>{TL.vastuDesc}</p>
+                  {kundliResult && (
+                    <div className={styles.gemGrid}>
+                      {getVastuChartReading(kundliResult).map(({ zone, verdict, en, hi }) => (
+                        <div key={zone.key} className={styles.gemCard}>
+                          <div className={styles.gemCardHead}>
+                            <VastuIcon size={22} />
+                            <div>
+                              <div className={styles.gemCardName}>{zone.label[pdfLanguage === 'hi' ? 'hi' : 'en']}</div>
+                              <span style={{
+                                display: 'inline-block', marginTop: 2, padding: '1px 8px', borderRadius: 999,
+                                fontSize: '0.7rem', fontWeight: 700,
+                                background: `${VASTU_CHART_VERDICT_META[verdict].color}22`, color: VASTU_CHART_VERDICT_META[verdict].color,
+                              }}>
+                                {VASTU_CHART_VERDICT_META[verdict][pdfLanguage === 'hi' ? 'hi' : 'en']}
+                              </span>
+                            </div>
+                          </div>
+                          <p className={styles.doshaCardText}>{pdfLanguage === 'hi' ? hi : en}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <p className={styles.chartNote}>{TL.remediesFootnote}</p>
                   {!hideAstrologerCta && (
                     <button className="btn btn-gold" style={{ marginTop: 'var(--space-4)' }} onClick={() => setPage('astrologers')}>

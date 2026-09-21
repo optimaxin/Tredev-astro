@@ -210,7 +210,7 @@ export default function PageRenderer() {
       return <ChineseZodiacPage />;
 
     case 'vastu-calculator':
-      return <VastuCalculatorPage />;
+      return <VastuCalculatorPage currentUser={currentUser} />;
 
     case 'numerology-horoscope':
       return <NumerologyHoroscopePage currentUser={currentUser} />;

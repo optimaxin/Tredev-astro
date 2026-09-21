@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRealtime } from '../../realtime/RealtimeContext';
 import { startRingbackTone, stopRingbackTone } from '../../realtime/sound';
+import { API_URL } from '../../services/apiUrl';
 import styles from './CallWindow.module.css';
 
 interface CallWindowProps {
@@ -18,18 +19,24 @@ interface CallWindowProps {
 // direct/reflexive path — real users on separate networks routinely sit
 // behind a NAT that doesn't, which is exactly "stuck on Connecting…
 // forever" (ICE never completes, so pc.ontrack/onconnectionstatechange
-// never fires). The TURN entries are Metered.ca's public OpenRelay demo
-// server — a well-known free-for-testing relay, not something to rely on
-// for real production traffic, but real enough to make calls actually
-// connect instead of silently failing behind a strict NAT.
-// ponytail: demo TURN server, no auth/rate-limit control — swap for a paid
-// TURN provider (or self-hosted coturn) if call volume ever matters.
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-];
+// never fires). TURN credentials are minted per-call by the backend
+// (backend/app/api/turn.routes.ts, backed by Cloudflare's TURN service)
+// rather than a fixed secret baked into the bundle — falls back to
+// STUN-only if that request fails or Cloudflare isn't configured.
+async function fetchIceServers(): Promise<RTCIceServer[]> {
+  const fallback: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+  try {
+    const token = localStorage.getItem('auth_access_token');
+    const res = await fetch(`${API_URL}/api/turn/credentials`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    return Array.isArray(data.iceServers) ? data.iceServers : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 type CallStatus = 'connecting' | 'connected' | 'ended' | 'error';
 
@@ -48,32 +55,41 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-    const flushPendingCandidates = async () => {
-      const queued = pendingCandidatesRef.current.splice(0);
-      for (const c of queued) {
-        try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (err) { console.error('Failed to add queued ICE candidate:', err); }
-      }
-    };
-
-    pc.onicecandidate = e => {
-      if (e.candidate) sendCallSignal('call:ice-candidate', consultationId, e.candidate.toJSON());
-    };
-    pc.ontrack = e => {
-      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = e.streams[0];
-      setStatus('connected');
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') setStatus(s => (s === 'ended' ? s : 'error'));
-    };
 
     (async () => {
       try {
+        // Fetched in parallel with the mic prompt below — both are awaited
+        // before the peer connection does anything signaling-related.
+        const iceServersPromise = fetchIceServers();
+        const streamPromise = navigator.mediaDevices.getUserMedia({ audio: true });
+        const iceServers = await iceServersPromise;
+        if (cancelled) return;
+        const pc = new RTCPeerConnection({ iceServers });
+        pcRef.current = pc;
+
+        const flushPendingCandidates = async () => {
+          const queued = pendingCandidatesRef.current.splice(0);
+          for (const c of queued) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (err) { console.error('Failed to add queued ICE candidate:', err); }
+          }
+        };
+
+        pc.onicecandidate = e => {
+          if (e.candidate) sendCallSignal('call:ice-candidate', consultationId, e.candidate.toJSON());
+        };
+        pc.ontrack = e => {
+          if (remoteAudioRef.current) remoteAudioRef.current.srcObject = e.streams[0];
+          setStatus('connected');
+        };
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') setStatus(s => (s === 'ended' ? s : 'error'));
+        };
+
         // Acquire the mic and add the track BEFORE subscribing to signaling
         // (and before creating an offer). Getting this backwards was the
         // actual bug: the answerer's onCallSignal handler used to be live
@@ -83,8 +99,8 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
         // initiator would then get one-way or no audio, with nothing in
         // the UI indicating why. Now nothing touches signaling until the
         // local track actually exists.
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        const stream = await streamPromise;
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); pc.close(); pcRef.current = null; return; }
         localStreamRef.current = stream;
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
@@ -131,7 +147,8 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
     return () => {
       cancelled = true;
       unsubscribe?.();
-      pc.close();
+      pcRef.current?.close();
+      pcRef.current = null;
       localStreamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, [consultationId, isInitiator, sendCallSignal, onCallSignal]);

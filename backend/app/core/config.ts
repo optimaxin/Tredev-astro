@@ -61,6 +61,14 @@ export const config = {
   // clicked what" view for the campaign, not an account-scoped admin feature.
   campaignAnalyticsUsername: required('CAMPAIGN_ANALYTICS_USERNAME', 'ganesh-admin'),
   campaignAnalyticsPassword: required('CAMPAIGN_ANALYTICS_PASSWORD', 'ganesh-analytics-2026'),
+  cloudflareTurn: {
+    // Optional, like cashfree/aws above — CallWindow.tsx's TURN-credentials
+    // route falls back to STUN-only when these aren't set (fine for
+    // same-network dev testing, not for real cross-network calls). Create a
+    // Turn Key at the Cloudflare dashboard → Realtime → TURN Service.
+    keyId: process.env.CLOUDFLARE_TURN_KEY_ID,
+    apiToken: process.env.CLOUDFLARE_TURN_API_TOKEN,
+  },
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project
     // Settings → Service Accounts → Generate new private key), pasted as

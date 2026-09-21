@@ -22,6 +22,8 @@ import type { BabyNameResult, ChineseZodiacResult, DailyHoroscopeResult, FlamesO
 import KundliMatchingResult from './KundliMatchingResult';
 import { formatIst } from '../../utils/istTime';
 import { toSavedBirthDetails } from '../../utils/birthDetails';
+import { VASTU_ZONES, getVastuChartReading, VASTU_CHART_VERDICT_META } from '../../data/vastuKundli';
+import type { VastuZoneKey } from '../../data/vastuKundli';
 
 type MaybeUser = AuthUser | null | undefined;
 
@@ -1214,17 +1216,6 @@ interface VastuZoneRule {
   remedy?: { en: string; hi: string };
 }
 
-type VastuZoneKey = 'entrance' | 'kitchen' | 'bedroom' | 'pooja' | 'toilet' | 'staircase';
-
-const VASTU_ZONES: { key: VastuZoneKey; label: { en: string; hi: string } }[] = [
-  { key: 'entrance', label: { en: 'Main Entrance', hi: 'मुख्य द्वार' } },
-  { key: 'kitchen', label: { en: 'Kitchen', hi: 'रसोई' } },
-  { key: 'bedroom', label: { en: 'Master Bedroom', hi: 'मुख्य शयनकक्ष' } },
-  { key: 'pooja', label: { en: 'Pooja Room', hi: 'पूजा कक्ष' } },
-  { key: 'toilet', label: { en: 'Toilet / Bathroom', hi: 'शौचालय / स्नानघर' } },
-  { key: 'staircase', label: { en: 'Staircase', hi: 'सीढ़ियां' } },
-];
-
 // Standard classical Vastu Shastra direction rules — general reference
 // knowledge, not a proprietary/invented system (same caveat every other
 // dosha/remedy page on this site carries: guidance, not a substitute for
@@ -1292,9 +1283,21 @@ const VASTU_RULES: Record<VastuZoneKey, Record<string, VastuZoneRule>> = {
   },
 };
 
-export function VastuCalculatorPage() {
+export function VastuCalculatorPage({ currentUser = null }: { currentUser?: MaybeUser } = {}) {
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [selections, setSelections] = useState<Partial<Record<VastuZoneKey, string>>>({});
+  const [kundli, setKundli] = useState<KundliResult | null>(null);
+  const [kundliError, setKundliError] = useState('');
+
+  const handleBirthSubmit = async (details: BirthDetailsSubmitValue) => {
+    setKundliError('');
+    try {
+      setKundli(await calculatorService.kundli(details));
+    } catch (err) {
+      setKundli(null);
+      setKundliError(err instanceof CalculatorApiError ? err.message : 'Could not read your Kundli. Please check the birth details and try again.');
+    }
+  };
 
   const setZoneDirection = (zone: VastuZoneKey, direction: string) => {
     setSelections(prev => {
@@ -1330,6 +1333,22 @@ export function VastuCalculatorPage() {
     disclaimer: language === 'hi'
       ? 'यह उपकरण सामान्य शास्त्रीय वास्तु सिद्धांतों पर आधारित है और मनोरंजन एवं मार्गदर्शन के लिए है — किसी बड़े निर्माण/नवीनीकरण निर्णय से पहले किसी वास्तु विशेषज्ञ से परामर्श अवश्य लें।'
       : 'This tool applies general classical Vastu principles and is for guidance — always consult a Vastu expert before a major construction or renovation decision.',
+    birthFormTitle: language === 'hi'
+      ? 'पहला तरीका: अपना जन्म विवरण डालें'
+      : 'Option 1: Enter your birth details',
+    birthFormIntro: language === 'hi'
+      ? 'अपनी कुंडली के अनुसार, हर क्षेत्र (द्वार, रसोई, शयनकक्ष...) के लिए व्यक्तिगत वास्तु सुझाव पाएं।'
+      : "Get a personal Vastu reading for every zone (entrance, kitchen, bedroom...) matched to your own Kundli.",
+    birthFormSubmit: language === 'hi' ? 'मेरी कुंडली से वास्तु देखें' : 'Show My Kundli-Based Vastu',
+    personalizedTitle: language === 'hi'
+      ? `आपकी कुंडली के अनुसार वास्तु (लग्न: ${kundli?.ascendant.rashi})`
+      : `Your Vastu, Matched to Your Kundli (Lagna: ${kundli?.ascendant.rashi})`,
+    directionToolTitle: language === 'hi'
+      ? 'दूसरा तरीका: अपने कमरों की दिशा जांचें'
+      : 'Option 2: Check by your rooms’ actual direction',
+    directionToolIntro: language === 'hi'
+      ? 'अपने घर के मुख्य द्वार और कमरों की दिशा चुनें, यह सामान्य शास्त्रीय सिद्धांतों पर आधारित है (आपकी कुंडली से अलग)।'
+      : 'Pick the direction each room actually faces — this is the general classical rulebook, separate from the Kundli reading above.',
   };
 
   return (
@@ -1356,6 +1375,42 @@ export function VastuCalculatorPage() {
           ))}
         </div>
       </div>
+
+      <div style={{ maxWidth: '480px', margin: '0 auto 24px' }}>
+        <h3 className={styles.partnerTitle} style={{ textAlign: 'center', border: 'none' }}>{t.birthFormTitle}</h3>
+        <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center', marginBottom: '12px' }}>{t.birthFormIntro}</p>
+        <BirthDetailsForm
+          onSubmit={handleBirthSubmit}
+          submitLabel={t.birthFormSubmit}
+          idPrefix="vastu"
+          showNameField={false}
+          initialValues={toSavedBirthDetails(currentUser)}
+        />
+        {kundliError && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '12px' }}>{kundliError}</p>}
+      </div>
+
+      {/* Always fully populated — every zone gets a concrete, chart-derived
+          line the moment birth details are submitted, so this never renders
+          as an empty "no issues found" dead end. */}
+      {kundli && (
+        <ResultCard>
+          <h3 className={styles.partnerTitle} style={{ border: 'none' }}>{t.personalizedTitle}</h3>
+          {getVastuChartReading(kundli).map(({ zone, verdict, en, hi }) => (
+            <div key={zone.key} style={{ padding: '14px 0', borderTop: '1px solid var(--color-border, #e8dfc8)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <strong style={{ color: 'var(--color-text-dark)' }}>{zone.label[language]}</strong>
+                <span style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, background: `${VASTU_CHART_VERDICT_META[verdict].color}22`, color: VASTU_CHART_VERDICT_META[verdict].color }}>
+                  {VASTU_CHART_VERDICT_META[verdict][language]}
+                </span>
+              </div>
+              <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', marginTop: '6px' }}>{language === 'hi' ? hi : en}</p>
+            </div>
+          ))}
+        </ResultCard>
+      )}
+
+      <h3 className={styles.partnerTitle} style={{ textAlign: 'center', border: 'none', marginTop: '32px' }}>{t.directionToolTitle}</h3>
+      <p className={styles.reviewText} style={{ color: 'var(--color-text-dark-2)', textAlign: 'center', marginBottom: '16px' }}>{t.directionToolIntro}</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         {VASTU_ZONES.map(zone => (

@@ -24,7 +24,7 @@ interface Palette {
   page: string; panel: string; edge: string; gold: string; goldDim: string; ink: string; accent: string;
 }
 const PALETTES: Record<'dark' | 'light', Palette> = {
-  dark: { page: '#1a0c04', panel: '#2a150a', edge: '#6b4519', gold: '#e3b55f', goldDim: '#b98f43', ink: '#f4e3bd', accent: '#c4501f' },
+  dark: { page: '#0d2733', panel: '#12374a', edge: '#2596be', gold: '#e3b55f', goldDim: '#b98f43', ink: '#f4e3bd', accent: '#2596be' },
   light: { page: '#faf5e9', panel: '#fffdf6', edge: '#dcc9a0', gold: '#9b6f1f', goldDim: '#a8895a', ink: '#3a2c18', accent: '#b8501d' },
 };
 

@@ -10,7 +10,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Not `scroll-behavior: smooth` here — every scrollTo()/scrollIntoView()
+     call in the app already passes `behavior: 'smooth'` explicitly, so this
+     was redundant. Applied globally it also fights the fixed-position nav on
+     iOS/Android WebViews: any layout shift or rubber-band overscroll gets
+     smooth-animated back into place, which is what reads as the page
+     randomly "snapping back to top" mid-scroll on mobile. */
   font-size: 16px;
 }
 
@@ -21,6 +26,7 @@ body {
   color: var(--color-text-dark);
   background: var(--bg-primary);
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

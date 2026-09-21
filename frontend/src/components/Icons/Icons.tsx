@@ -93,6 +93,14 @@ export function MarriageIcon({ size = 26, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function HeartIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 21C12 21 4 15.5 4 9.5C4 6.5 6.5 4 9.5 4C11 4 12 5 12 5C12 5 13 4 14.5 4C17.5 4 20 6.5 20 9.5C20 15.5 12 21 12 21Z" />
+    </svg>
+  );
+}
  
 export function WealthIcon({ size = 26, ...props }: IconProps) {
   return (
