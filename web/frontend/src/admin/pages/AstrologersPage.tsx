@@ -53,6 +53,14 @@ const EMPTY_EDIT_FORM: EditForm = {
   chatPrice: '0', callPrice: '0', videoPrice: '0',
 };
 
+interface CreateForm extends EditForm {
+  name: string;
+  email: string;
+  password: string;
+}
+
+const EMPTY_CREATE_FORM: CreateForm = { ...EMPTY_EDIT_FORM, name: '', email: '', password: '' };
+
 function profileToForm(p: ApiAstrologerProfile): EditForm {
   return {
     title: p.title, bio: p.bio, avatar: p.avatar, experienceYears: String(p.experienceYears),
@@ -70,7 +78,7 @@ const ZERO_REVENUE: ApiAstrologerRevenue = {
 };
 
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, currentUser } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, currentUser, refreshAdminData } = useAppContext();
   // Revenue is an ADMIN-only view — Staff never sees it here regardless of
   // whether they've been granted the Astrologers section, mirrors the
   // backend's GET /astrologers/revenue being adminOnly now.
@@ -98,6 +106,48 @@ export default function AstrologersPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+
+  // Direct admin-onboarding — creates the account (role ASTROLOGIST) and
+  // its catalog profile in one call (backend/app/api/admin.routes.ts's
+  // POST /astrologers). The apply/approve flow (Applications page) still
+  // exists unchanged; this is a staff shortcut for onboarding someone
+  // directly without them applying first.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const toggleCreateConsultationType = (type: string) => {
+    setCreateForm(prev => ({
+      ...prev,
+      consultationTypes: prev.consultationTypes.includes(type)
+        ? prev.consultationTypes.filter(t => t !== type)
+        : [...prev.consultationTypes, type],
+    }));
+  };
+
+  const handleCreateSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateSaving(true);
+    setCreateError('');
+    try {
+      await adminService.createAstrologer({
+        name: createForm.name, email: createForm.email, password: createForm.password,
+        title: createForm.title, bio: createForm.bio, avatar: createForm.avatar,
+        languages: splitList(createForm.languages), categories: splitList(createForm.categories), expertise: splitList(createForm.expertise),
+        consultationTypes: createForm.consultationTypes,
+        chatPrice: Number(createForm.chatPrice) || 0, callPrice: Number(createForm.callPrice) || 0, videoPrice: Number(createForm.videoPrice) || 0,
+        experienceYears: Number(createForm.experienceYears) || 0,
+      });
+      await Promise.all([refreshAdminData(), astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data))]);
+      setCreateOpen(false);
+      setCreateForm(EMPTY_CREATE_FORM);
+    } catch (err) {
+      setCreateError(err instanceof AdminApiError ? err.message : 'Could not create this astrologer.');
+    } finally {
+      setCreateSaving(false);
+    }
+  };
 
   const openEdit = async (account: AuthUser) => {
     const id = joinedProfile(account, catalog).id;
@@ -267,6 +317,9 @@ export default function AstrologersPage() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <SearchInput value={search} onChange={setSearch} placeholder={t('admin_search_name_email')} />
+          <AdminButton variant="gold" onClick={() => { setCreateForm(EMPTY_CREATE_FORM); setCreateError(''); setCreateOpen(true); }}>
+            {t('admin_astro_add')}
+          </AdminButton>
         </div>
       </div>
 
@@ -525,6 +578,79 @@ export default function AstrologersPage() {
             {editError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{editError}</p>}
           </form>
         )}
+      </Drawer>
+
+      <Drawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title={t('admin_astro_add')}
+        footer={<AdminButton variant="gold" type="submit" form="create-astrologer-form" disabled={createSaving}>{createSaving ? '…' : t('admin_action_save')}</AdminButton>}
+      >
+        <form id="create-astrologer-form" onSubmit={handleCreateSave}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Name</label>
+            <input className={styles.formInput} required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Email</label>
+            <input type="email" className={styles.formInput} required value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Initial Password</label>
+            <input type="text" className={styles.formInput} required minLength={8} value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })} placeholder="At least 8 characters" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_title')}</label>
+            <input className={styles.formInput} required value={createForm.title} onChange={e => setCreateForm({ ...createForm, title: e.target.value })} placeholder="e.g. Vedic Astrologer" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_bio')}</label>
+            <textarea className={styles.formTextarea} value={createForm.bio} onChange={e => setCreateForm({ ...createForm, bio: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_avatar')}</label>
+            <input className={styles.formInput} value={createForm.avatar} onChange={e => setCreateForm({ ...createForm, avatar: e.target.value })} placeholder="https://…" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_experience')}</label>
+            <input type="number" min={0} max={80} className={styles.formInput} value={createForm.experienceYears} onChange={e => setCreateForm({ ...createForm, experienceYears: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_col_languages')}</label>
+            <input className={styles.formInput} value={createForm.languages} onChange={e => setCreateForm({ ...createForm, languages: e.target.value })} placeholder="Hindi, English, …" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_categories')}</label>
+            <input className={styles.formInput} value={createForm.categories} onChange={e => setCreateForm({ ...createForm, categories: e.target.value })} placeholder="Love, Marriage, Career, …" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_expertise')}</label>
+            <input className={styles.formInput} value={createForm.expertise} onChange={e => setCreateForm({ ...createForm, expertise: e.target.value })} placeholder="Vedic Astrology, Numerology, …" />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_consultation_types')}</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {CONSULTATION_TYPES.map(type => (
+                <AdminButton key={type} type="button" variant={createForm.consultationTypes.includes(type) ? 'gold' : 'outline'} onClick={() => toggleCreateConsultationType(type)}>
+                  {type}
+                </AdminButton>
+              ))}
+            </div>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_chat_price')}</label>
+            <input type="number" min={0} className={styles.formInput} value={createForm.chatPrice} onChange={e => setCreateForm({ ...createForm, chatPrice: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_call_price')}</label>
+            <input type="number" min={0} className={styles.formInput} value={createForm.callPrice} onChange={e => setCreateForm({ ...createForm, callPrice: e.target.value })} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>{t('admin_astro_edit_video_price')}</label>
+            <input type="number" min={0} className={styles.formInput} value={createForm.videoPrice} onChange={e => setCreateForm({ ...createForm, videoPrice: e.target.value })} />
+          </div>
+          {createError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{createError}</p>}
+        </form>
       </Drawer>
 
     </div>

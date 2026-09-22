@@ -80,6 +80,12 @@ export interface AstrologerProfilePatch {
   experienceYears: number;
 }
 
+export interface NewAstrologer extends AstrologerProfilePatch {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface ApiUserRecord {
   id: string;
   name: string;
@@ -291,6 +297,8 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   updateAstrologerProfile: (id: number, patch: AstrologerProfilePatch) =>
     request<ApiAstrologerProfile>(`/astrologers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  createAstrologer: (body: NewAstrologer) =>
+    request<ApiAstrologerProfile>('/astrologers', { method: 'POST', body: JSON.stringify(body) }),
   getAstrologerRevenue: () => request<ApiAstrologerRevenue[]>('/astrologers/revenue'),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),

@@ -210,9 +210,12 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
 
 // ── Astrologers ──────────────────────────────────────────────────────────
 // Direct admin-onboarding ("Add Astrologer") was removed per explicit
-// request — astrologer accounts come from the apply/approve flow now.
-// Removing one still reuses PATCH /users/:id/role (set role back to USER),
-// same mechanism the Users page already uses for role changes.
+// request in favor of the apply/approve flow, then re-added per a later
+// explicit request — see POST /astrologers below. Both paths lead to the
+// same account + catalog row, so nothing about the apply/approve flow
+// changes. Removing an astrologer still reuses PATCH /users/:id/role (set
+// role back to USER), same mechanism the Users page already uses for role
+// changes.
 
 // Real per-astrologer revenue, replacing the old `price * totalConsultations`
 // estimate the Astrologers page used to show (which used the CHAT price
@@ -335,6 +338,38 @@ adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req,
   if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
   await audit(req, 'astrologer.profile.update', row.name);
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
+});
+
+// Direct admin-onboarding, re-added per explicit request (see the removal
+// comment above — the apply/approve flow stays as the public-facing path,
+// this is an additional staff shortcut for onboarding someone directly).
+// Reuses authService.register() for the account itself (duplicate email/
+// phone checks, password hashing, role assignment all go through the one
+// real path already used everywhere else), then the same
+// insertAstrologerForUser + updateAstrologerProfile pair the apply/approve
+// flow already uses to create and fill in the catalog row.
+const createAstrologerSchema = editAstrologerSchema.extend({
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().email().max(200),
+  password: z.string().min(8).max(200),
+});
+
+adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res) => {
+  const parsed = createAstrologerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { name, email, password, ...profile } = parsed.data;
+  let userId: string;
+  try {
+    const { user } = await register({ name, email, password, role: 'ASTROLOGIST' });
+    userId = user.id;
+  } catch (e) {
+    if (e instanceof AuthError) return fail(res, e.status, 'REGISTER_FAILED', e.message);
+    throw e;
+  }
+  const catalogRow = await insertAstrologerForUser(userId, name, profile.expertise[0] || 'General Astrology');
+  const updated = await updateAstrologerProfile(catalogRow.id, profile);
+  await audit(req, 'astrologer.create', email);
+  res.json({ success: true, data: toPublicAstrologerProfile(updated ?? catalogRow) });
 });
 
 // Same audit surface as /users/:id/activity, mirrored for the Astrologers

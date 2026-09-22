@@ -353,6 +353,10 @@ interface AppContextValue {
   setShowLoginModal: (v: boolean) => void;
   // Admin account data — real backend (backend/app/api/admin.routes.ts)
   accounts: AuthUser[];
+  // Re-pulls accounts + audit log — exposed so a page that creates/changes
+  // an account (e.g. AstrologersPage's "Add Astrologer") can refresh the
+  // list itself instead of waiting for the next full page load.
+  refreshAdminData: () => Promise<void>;
   applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => Promise<void>;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
@@ -875,6 +879,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_apps_confirm_reject_title: 'Reject this application?',
     admin_apps_confirm_reject_desc: 'The applicant will be notified that their application was not approved.',
     admin_astro_title: 'Astrologers',
+    admin_astro_add: 'Add Astrologer',
     admin_astro_view_cards: 'Cards',
     admin_astro_view_table: 'Table',
     admin_astro_view_revenue: 'Revenue',
@@ -3330,7 +3335,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
-      accounts, applyToBecomeAstrologer,
+      accounts, refreshAdminData, applyToBecomeAstrologer,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
       suspendAccount, restoreAccount, updateAccountRole, updateMyProfile,
