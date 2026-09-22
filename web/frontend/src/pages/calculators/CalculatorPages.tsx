@@ -39,6 +39,37 @@ type MaybeUser = AuthUser | null | undefined;
 const NATURAL_BENEFIC = new Set(['jupiter', 'venus', 'moon']);
 const NATURAL_MALEFIC = new Set(['saturn', 'mars', 'sun', 'rahu', 'ketu']);
 
+// Category-wise daily forecast (Love/Career/Health/Finance) — the format
+// every other astrology site uses instead of a raw transit table. Still
+// built entirely from the same real, freshly-computed transits above: each
+// life area maps to its classical Gochara houses (standard Parashari
+// significations, not invented), and the sentence names whichever real
+// planet(s) are actually transiting there today, using that planet's real
+// naisargika nature and PLANET_META's real classical significance — nothing
+// here is a canned/generic line independent of the actual chart.
+const FORECAST_CATEGORIES: { key: string; label: string; icon: string; houses: number[] }[] = [
+  { key: 'love', label: 'Love & Relationships', icon: '💞', houses: [5, 7] },
+  { key: 'career', label: 'Career & Growth', icon: '💼', houses: [10] },
+  { key: 'health', label: 'Health & Wellness', icon: '🌿', houses: [1, 6] },
+  { key: 'finance', label: 'Finance & Gains', icon: '💰', houses: [2, 11] },
+];
+
+function buildForecastReading(houses: number[], transits: { id: string; rashi: string; house: number; retrograde: boolean }[]): string {
+  const inPlay = transits.filter(t => houses.includes(t.house));
+  if (inPlay.length === 0) {
+    // Real, honest fallback for a category with no transit in its houses
+    // today (the common case — most houses are untenanted on any given
+    // day) — not a fabricated prediction, just says so plainly.
+    return 'No major transit highlights this area of your chart today — steady, business-as-usual energy, with no significant planetary push either way.';
+  }
+  return inPlay.map(t => {
+    const meta = PLANET_META[t.id];
+    const nature = NATURAL_BENEFIC.has(t.id) ? 'a naturally supportive influence' : NATURAL_MALEFIC.has(t.id) ? 'a naturally testing influence' : 'a mixed, situational influence';
+    const houseTheme = (HOUSE_MEANINGS[t.house] ?? '').split('—')[1]?.trim();
+    return `${meta?.name || t.id} is transiting your ${t.house}${ordinal(t.house)} house${houseTheme ? ` (${houseTheme})` : ''} in ${t.rashi} — ${nature}, bringing ${meta?.quality.toLowerCase()}${t.retrograde ? ', currently retrograde so its effect turns inward and asks for patience' : ''}.`;
+  }).join(' ');
+}
+
 const HOROSCOPE_PERIODS: { key: 'daily' | 'weekly' | 'weekly-love' | 'monthly' | 'half-year' | 'full-year'; label: string }[] = [
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
@@ -239,6 +270,25 @@ export function HoroscopePage() {
                         <strong style={{ color: 'var(--gold-primary)' }}>Today's Focus:</strong>{' '}
                         {PLANET_META[focusPlanet.id]?.name} is transiting your 1st house (Self) in {focusPlanet.rashi}{focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
                       </span>
+                    </div>
+                  )}
+
+                  {period === 'daily' && (
+                    <div style={{ marginBottom: '18px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                      <h4 style={{ color: 'var(--gold-primary)', fontSize: '14px', marginBottom: '10px' }}>Today's Forecast</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                        {FORECAST_CATEGORIES.map(cat => (
+                          <div key={cat.key} style={{ padding: '12px 14px', background: 'rgba(199, 161, 90, 0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '16px' }}>{cat.icon}</span>
+                              <strong style={{ color: 'var(--gold-primary)', fontSize: '13px' }}>{cat.label}</strong>
+                            </div>
+                            <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--color-text-dark-2)', margin: 0 }}>
+                              {buildForecastReading(cat.houses, sortedTransits)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
