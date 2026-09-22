@@ -102,10 +102,15 @@ function buildForecastReading(
     // Real, honest fallback for a category with no transit in its houses
     // right now and no relevant sign change coming up in this window either
     // (the common case — most houses are untenanted on any given day) —
-    // not a fabricated prediction, just says so plainly.
+    // not a fabricated prediction, just says so plainly. Names the actual
+    // houses involved rather than a fully generic line — without that, two
+    // categories that both happen to be empty on the same day render the
+    // exact same sentence, which reads as a bug even though each was
+    // independently computed.
+    const houseList = houses.map(h => `${h}${ordinal(h)}`).join(houses.length > 1 ? ' and ' : '');
     return upcoming.length > 0
-      ? 'No major transit highlights this area right now, and no relevant sign change falls in this window either — steady, business-as-usual energy.'
-      : 'No major transit highlights this area of your chart today — steady, business-as-usual energy, with no significant planetary push either way.';
+      ? `No transit currently sits in your ${houseList} house${houses.length > 1 ? 's' : ''}, and no relevant sign change falls there in this window either — steady, business-as-usual energy here.`
+      : `No transit currently sits in your ${houseList} house${houses.length > 1 ? 's' : ''} today — steady, business-as-usual energy here, with no significant planetary push either way.`;
   }
   return sentences.join(' ');
 }
