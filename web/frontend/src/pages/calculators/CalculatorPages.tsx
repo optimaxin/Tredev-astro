@@ -54,21 +54,70 @@ const FORECAST_CATEGORIES: { key: string; label: string; icon: string; houses: n
   { key: 'finance', label: 'Finance & Gains', icon: '💰', houses: [2, 11] },
 ];
 
-function buildForecastReading(houses: number[], transits: { id: string; rashi: string; house: number; retrograde: boolean }[]): string {
+// Whole-sign house order (Aries first) — used to work out which house an
+// UPCOMING sign change (a rashi name, not a house number) will land in, the
+// same whole-sign counting the backend already uses for the current
+// transits' `house` field.
+const RASHI_ORDER = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+function houseFromRashi(rashiEng: string, moonRashiIndex0: number): number {
+  const idx = RASHI_ORDER.indexOf(rashiEng);
+  return idx === -1 ? 0 : ((idx - moonRashiIndex0 + 12) % 12) + 1;
+}
+
+// `upcoming`/`moonRashiIndex0` are only ever passed for weekly/monthly/
+// half-year/full-year (the backend's real "sign changes coming up in this
+// window" data — see horoscope-period's upcomingTransits) — without them,
+// this reduces to the daily reading. Previously the Weekly/Monthly/etc tabs
+// only ever showed the SAME current-position transit list Daily does (that
+// part is genuinely identical — "where is Jupiter right now" doesn't depend
+// on which tab you're on), with no period-specific content anywhere near
+// this forecast section, which read as "every tab shows the same thing."
+// Folding in real upcoming sign changes for that category's houses is what
+// actually differs per period.
+function buildForecastReading(
+  houses: number[],
+  transits: { id: string; rashi: string; house: number; retrograde: boolean }[],
+  upcoming: { planetId: string; toRashi: string; date: string }[] = [],
+  moonRashiIndex0 = 0,
+): string {
   const inPlay = transits.filter(t => houses.includes(t.house));
-  if (inPlay.length === 0) {
-    // Real, honest fallback for a category with no transit in its houses
-    // today (the common case — most houses are untenanted on any given
-    // day) — not a fabricated prediction, just says so plainly.
-    return 'No major transit highlights this area of your chart today — steady, business-as-usual energy, with no significant planetary push either way.';
-  }
-  return inPlay.map(t => {
+  const currentSentences = inPlay.map(t => {
     const meta = PLANET_META[t.id];
     const nature = NATURAL_BENEFIC.has(t.id) ? 'a naturally supportive influence' : NATURAL_MALEFIC.has(t.id) ? 'a naturally testing influence' : 'a mixed, situational influence';
     const houseTheme = (HOUSE_MEANINGS[t.house] ?? '').split('—')[1]?.trim();
-    return `${meta?.name || t.id} is transiting your ${t.house}${ordinal(t.house)} house${houseTheme ? ` (${houseTheme})` : ''} in ${t.rashi} — ${nature}, bringing ${meta?.quality.toLowerCase()}${t.retrograde ? ', currently retrograde so its effect turns inward and asks for patience' : ''}.`;
-  }).join(' ');
+    return `${meta?.name || t.id} is currently transiting your ${t.house}${ordinal(t.house)} house${houseTheme ? ` (${houseTheme})` : ''} in ${t.rashi} — ${nature}, bringing ${meta?.quality.toLowerCase()}${t.retrograde ? ', currently retrograde so its effect turns inward and asks for patience' : ''}.`;
+  });
+
+  const upcomingSentences = upcoming
+    .map(ev => ({ ev, house: houseFromRashi(ev.toRashi, moonRashiIndex0) }))
+    .filter(({ house }) => houses.includes(house))
+    .map(({ ev, house }) => {
+      const meta = PLANET_META[ev.planetId];
+      const dateLabel = new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      return `${meta?.name || ev.planetId} moves into your ${house}${ordinal(house)} house on ${dateLabel}, entering ${ev.toRashi} — worth watching for this area.`;
+    });
+
+  const sentences = [...currentSentences, ...upcomingSentences];
+  if (sentences.length === 0) {
+    // Real, honest fallback for a category with no transit in its houses
+    // right now and no relevant sign change coming up in this window either
+    // (the common case — most houses are untenanted on any given day) —
+    // not a fabricated prediction, just says so plainly.
+    return upcoming.length > 0
+      ? 'No major transit highlights this area right now, and no relevant sign change falls in this window either — steady, business-as-usual energy.'
+      : 'No major transit highlights this area of your chart today — steady, business-as-usual energy, with no significant planetary push either way.';
+  }
+  return sentences.join(' ');
 }
+
+const FORECAST_HEADING: Record<typeof HOROSCOPE_PERIODS[number]['key'], string> = {
+  daily: "Today's Forecast",
+  weekly: "This Week's Forecast",
+  'weekly-love': "This Week's Forecast",
+  monthly: "This Month's Forecast",
+  'half-year': "This Half-Year's Forecast",
+  'full-year': "This Year's Forecast",
+};
 
 const HOROSCOPE_PERIODS: { key: 'daily' | 'weekly' | 'weekly-love' | 'monthly' | 'half-year' | 'full-year'; label: string }[] = [
   { key: 'daily', label: 'Daily' },
@@ -273,9 +322,9 @@ export function HoroscopePage() {
                     </div>
                   )}
 
-                  {period === 'daily' && (
+                  {transitData && (
                     <div style={{ marginBottom: '18px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                      <h4 style={{ color: 'var(--gold-primary)', fontSize: '14px', marginBottom: '10px' }}>Today's Forecast</h4>
+                      <h4 style={{ color: 'var(--gold-primary)', fontSize: '14px', marginBottom: '10px' }}>{FORECAST_HEADING[period]}</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
                         {FORECAST_CATEGORIES.map(cat => (
                           <div key={cat.key} style={{ padding: '12px 14px', background: 'rgba(199, 161, 90, 0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
@@ -284,7 +333,7 @@ export function HoroscopePage() {
                               <strong style={{ color: 'var(--gold-primary)', fontSize: '13px' }}>{cat.label}</strong>
                             </div>
                             <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--color-text-dark-2)', margin: 0 }}>
-                              {buildForecastReading(cat.houses, sortedTransits)}
+                              {buildForecastReading(cat.houses, sortedTransits, upcomingTransits, activeRashi)}
                             </p>
                           </div>
                         ))}
