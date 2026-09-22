@@ -80,12 +80,14 @@ function buildForecastReading(
   upcoming: { planetId: string; toRashi: string; date: string }[] = [],
   moonRashiIndex0 = 0,
 ): string {
+  // Kept short and plain on purpose — one line per real planet involved,
+  // no jargon dump (house theme, naisargika-nature label, etc.). The full
+  // technical detail (house, sign, benefic/malefic dot) is still right
+  // below in the transit list for anyone who wants it.
   const inPlay = transits.filter(t => houses.includes(t.house));
   const currentSentences = inPlay.map(t => {
     const meta = PLANET_META[t.id];
-    const nature = NATURAL_BENEFIC.has(t.id) ? 'a naturally supportive influence' : NATURAL_MALEFIC.has(t.id) ? 'a naturally testing influence' : 'a mixed, situational influence';
-    const houseTheme = (HOUSE_MEANINGS[t.house] ?? '').split('—')[1]?.trim();
-    return `${meta?.name || t.id} is currently transiting your ${t.house}${ordinal(t.house)} house${houseTheme ? ` (${houseTheme})` : ''} in ${t.rashi} — ${nature}, bringing ${meta?.quality.toLowerCase()}${t.retrograde ? ', currently retrograde so its effect turns inward and asks for patience' : ''}.`;
+    return `${meta?.name || t.id} in your ${t.house}${ordinal(t.house)} house brings ${meta?.quality.toLowerCase()}${t.retrograde ? ' (retrograde — go slow here)' : ''}.`;
   });
 
   const upcomingSentences = upcoming
@@ -94,25 +96,11 @@ function buildForecastReading(
     .map(({ ev, house }) => {
       const meta = PLANET_META[ev.planetId];
       const dateLabel = new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      return `${meta?.name || ev.planetId} moves into your ${house}${ordinal(house)} house on ${dateLabel}, entering ${ev.toRashi} — worth watching for this area.`;
+      return `${meta?.name || ev.planetId} enters your ${house}${ordinal(house)} house around ${dateLabel}.`;
     });
 
   const sentences = [...currentSentences, ...upcomingSentences];
-  if (sentences.length === 0) {
-    // Real, honest fallback for a category with no transit in its houses
-    // right now and no relevant sign change coming up in this window either
-    // (the common case — most houses are untenanted on any given day) —
-    // not a fabricated prediction, just says so plainly. Names the actual
-    // houses involved rather than a fully generic line — without that, two
-    // categories that both happen to be empty on the same day render the
-    // exact same sentence, which reads as a bug even though each was
-    // independently computed.
-    const houseList = houses.map(h => `${h}${ordinal(h)}`).join(houses.length > 1 ? ' and ' : '');
-    return upcoming.length > 0
-      ? `No transit currently sits in your ${houseList} house${houses.length > 1 ? 's' : ''}, and no relevant sign change falls there in this window either — steady, business-as-usual energy here.`
-      : `No transit currently sits in your ${houseList} house${houses.length > 1 ? 's' : ''} today — steady, business-as-usual energy here, with no significant planetary push either way.`;
-  }
-  return sentences.join(' ');
+  return sentences.length > 0 ? sentences.join(' ') : 'Nothing major here right now.';
 }
 
 const FORECAST_HEADING: Record<typeof HOROSCOPE_PERIODS[number]['key'], string> = {
