@@ -22,7 +22,7 @@ import { countOrdersForUser, getOrderStats, listAllOrders, listRecentDeliveredOr
 import { orderDisplayId, toPublicOrder } from '../models/order.ts';
 import { ADMIN_SECTIONS, deleteStaffPermissions, getStaffPermissions, setStaffPermissions } from '../repositories/staffPermissionRepository.ts';
 import type { AdminSectionKey } from '../repositories/staffPermissionRepository.ts';
-import { listPublicAstrologers } from '../services/realtimeStore.ts';
+import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
@@ -202,7 +202,10 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   await decideApplication(application.id, parsed.data.decision);
   if (parsed.data.decision === 'APPROVED') {
     await updateUserRole(applicant.id, 'ASTROLOGIST');
-    await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    const catalogRow = await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    // Without this, the new astrologer can't go online / accept anything
+    // until the process restarts — see registerNewAstrologer's own comment.
+    await registerNewAstrologer(catalogRow);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });
@@ -368,8 +371,12 @@ adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res)
   }
   const catalogRow = await insertAstrologerForUser(userId, name, profile.expertise[0] || 'General Astrology');
   const updated = await updateAstrologerProfile(catalogRow.id, profile);
+  const finalRow = updated ?? catalogRow;
+  // Without this, this astrologer can't go online / accept anything until
+  // the process restarts — see registerNewAstrologer's own comment.
+  await registerNewAstrologer(finalRow);
   await audit(req, 'astrologer.create', email);
-  res.json({ success: true, data: toPublicAstrologerProfile(updated ?? catalogRow) });
+  res.json({ success: true, data: toPublicAstrologerProfile(finalRow) });
 });
 
 // Same audit surface as /users/:id/activity, mirrored for the Astrologers

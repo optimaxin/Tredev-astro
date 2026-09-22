@@ -16,6 +16,7 @@ import type {
   AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
   EtaEstimate, NotificationKind, PublicAstrologerState, QueueEntry, RequestResult,
 } from '../models/types.ts';
+import type { AstrologerCatalogRow } from '../models/astrologer.ts';
 
 // ── Astrologer live-session state ───────────────────────────────────────
 // Consultations, queue entries, notifications, and the request-idempotency
@@ -44,39 +45,52 @@ const adminConfig: AdminConfig = {
   defaultMaxConcurrent: 1,
 };
 
+// A catalog row created for a real account (via the apply→approve flow,
+// admin-add, or the demo astrologer seed) carries that account's real
+// login email — that's the identity `getAstrologerByEmail` must resolve
+// to. Rows from the original seed roster have no account behind them
+// (user_id is NULL), so they get a synthetic, non-login-able email —
+// just enough for the recommendation engine and public dashboards to
+// still have a full roster to reason about.
+async function buildAstrologerRecord(row: AstrologerCatalogRow): Promise<AstrologerRecord> {
+  const owner = row.user_id ? await findUserById(row.user_id) : undefined;
+  const email = owner?.email || `astrologer${row.id}@tredevastro.local`;
+  return {
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    category: JSON.parse(row.categories),
+    languages: JSON.parse(row.languages),
+    consultationTypes: JSON.parse(row.consultation_types),
+    rating: row.rating,
+    experience: row.experience_years,
+    price: row.chat_price,
+    avatar: row.avatar,
+    email,
+    intent: 'OFFLINE',
+    status: 'OFFLINE',
+    maxConcurrent: row.max_concurrent,
+    lastActivityAt: Date.now(),
+    durationSamplesMs: [],
+  };
+}
+
 // Called explicitly from main.ts, after migrations + catalog seeding have
 // run — NOT at module-load time, since the `astrologers` DB table doesn't
 // exist yet when this file is first imported.
 export async function seedRealtimeStore() {
   for (const row of await listAllAstrologersRaw()) {
-    // A catalog row created for a real account (via the apply→approve flow,
-    // admin-add, or the demo astrologer seed) carries that account's real
-    // login email — that's the identity `getAstrologerByEmail` must resolve
-    // to. Rows from the original seed roster have no account behind them
-    // (user_id is NULL), so they get a synthetic, non-login-able email —
-    // just enough for the recommendation engine and public dashboards to
-    // still have a full roster to reason about.
-    const owner = row.user_id ? await findUserById(row.user_id) : undefined;
-    const email = owner?.email || `astrologer${row.id}@tredevastro.local`;
-    astrologers.set(row.id, {
-      id: row.id,
-      name: row.name,
-      title: row.title,
-      category: JSON.parse(row.categories),
-      languages: JSON.parse(row.languages),
-      consultationTypes: JSON.parse(row.consultation_types),
-      rating: row.rating,
-      experience: row.experience_years,
-      price: row.chat_price,
-      avatar: row.avatar,
-      email,
-      intent: 'OFFLINE',
-      status: 'OFFLINE',
-      maxConcurrent: row.max_concurrent,
-      lastActivityAt: Date.now(),
-      durationSamplesMs: [],
-    });
+    astrologers.set(row.id, await buildAstrologerRecord(row));
   }
+}
+
+// Registers a single newly-created catalog row into the live store —
+// without this, a fresh astrologer (from the apply→approve flow or
+// admin-add) stays invisible to setIntent/requestConsultation/everything
+// else in this file until the process restarts and seedRealtimeStore()
+// runs again. Call right after inserting the catalog row.
+export async function registerNewAstrologer(row: AstrologerCatalogRow) {
+  astrologers.set(row.id, await buildAstrologerRecord(row));
 }
 
 const awayFlags = new Map<number, boolean>();
