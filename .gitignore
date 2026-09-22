@@ -17,6 +17,15 @@ backend/data/
 # assets. Never meant for the shared repo (real names, unrelated projects).
 Extra/
 
+# Android (mobile/)
+mobile/local.properties
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/captures/
+mobile/.cxx/
+*.iml
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -7,7 +7,7 @@
 // function and the frontend has no test runner of its own, so it's exercised
 // here through the backend's existing tsx-based sanity-test setup.
 import assert from 'node:assert/strict';
-import { formatPanchangTransition, isValidInterval, istDateKey } from '../../frontend/src/utils/panchangHindi.ts';
+import { formatPanchangTransition, isValidInterval, istDateKey } from '../../web/frontend/src/utils/panchangHindi.ts';
 
 // IST (+05:30) instants written as UTC, since that's what the API returns.
 const ist = (isoLocal) => new Date(new Date(`${isoLocal}+05:30`).toISOString()).toISOString();

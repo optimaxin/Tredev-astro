@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.TredevAstro" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@color/bg_primary</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+    </style>
+</resources>
