@@ -83,7 +83,7 @@ export function istDateKey(iso: string): string {
 }
 
 /** Whole calendar days from `fromDateKey` to `toDateKey`, both YYYY-MM-DD. */
-function dayDelta(fromDateKey: string, toDateKey: string): number {
+export function dayDelta(fromDateKey: string, toDateKey: string): number {
   const asUtc = (key: string) => {
     const [y, m, d] = key.split('-').map(Number);
     return Date.UTC(y, m - 1, d);
@@ -91,17 +91,24 @@ function dayDelta(fromDateKey: string, toDateKey: string): number {
   return Math.round((asUtc(toDateKey) - asUtc(fromDateKey)) / 86_400_000);
 }
 
-// 12-hour + AM/PM — a bare 24h "07:09" reads as ambiguous to most casual
-// readers (is that morning or could it be misread as evening?); AM/PM
-// removes the ambiguity outright without needing the reader to already be
-// fluent in 24h-clock conventions.
-export function hindiTime12(iso: string | null): string {
+// 24-hour HH:MM — the site's fixed convention for every Panchang time.
+export function hindiTime24(iso: string | null): string {
   if (!iso) return '—';
   const d = toIstDate(iso);
-  const h24 = d.getUTCHours();
-  const period = h24 >= 12 ? 'PM' : 'AM';
-  const h12 = h24 % 12 || 12;
-  return `${h12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${period}`;
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+// "Today"/"आज", "Tomorrow"/"कल", or the real date further out — relative to
+// `selectedDate` (the card's currently-browsed date, not the device's
+// today), so a Tithi/Nakshatra/Yoga/Karana window that starts or ends
+// outside that day is labelled unambiguously.
+export function panchangDayLabel(iso: string | null, selectedDate: string, isHindi: boolean): string {
+  if (!iso) return '—';
+  const delta = dayDelta(selectedDate, istDateKey(iso));
+  if (delta === 0) return isHindi ? 'आज' : 'Today';
+  if (delta === 1) return isHindi ? 'कल' : 'Tomorrow';
+  const d = toIstDate(iso);
+  return d.toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
 
 // The one place Panchang transition instants become display text. Tithi,
@@ -116,7 +123,7 @@ export function hindiTime12(iso: string | null): string {
 // the date they're looking at.
 export function formatPanchangTransition(iso: string | null, selectedDate: string, isHindi: boolean): string {
   if (!iso) return '—';
-  const time = hindiTime12(iso);
+  const time = hindiTime24(iso);
   const delta = dayDelta(selectedDate, istDateKey(iso));
   if (delta === 0) return time;
   if (delta === 1) return isHindi ? `अगले दिन ${time}` : `next day ${time}`;

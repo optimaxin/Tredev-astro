@@ -8,7 +8,7 @@ import type { PanchangResult } from '../../services/calculatorService';
 import { contentService } from '../../services/contentService';
 import type { DailyShlok } from '../../services/contentService';
 import { istHourFraction } from '../../utils/istTime';
-import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime12, hindiOr, formatPanchangTransition, isValidInterval } from '../../utils/panchangHindi';
+import { HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, hindiTime24, panchangDayLabel, hindiOr, formatPanchangTransition, isValidInterval } from '../../utils/panchangHindi';
 import PanchangSharePoster from './PanchangSharePoster';
 import styles from './Panchang.module.css';
 
@@ -333,15 +333,24 @@ export default function Panchang() {
   const paksha = data ? (isHindi ? (data.tithi.paksha === 'Shukla' ? 'शुक्ल' : 'कृष्ण') : data.tithi.paksha) : '';
   // The 3 fields people glance at first, called out as bigger hero chips
   // above the denser field grid instead of competing equally with everything else.
-  // Sub-line under the Tithi tile — the tithi shown is the one active RIGHT
+  // Sub-block under the Tithi tile — the tithi shown is the one active RIGHT
   // NOW (not a fixed "as of sunrise" value that could already be stale by
   // the time someone's looking at this), so the window it's valid for is
-  // shown alongside it rather than left implicit.
-  const tithiSub = data ? toRange(data.tithi.start, data.tithi.end) : '';
+  // shown alongside it rather than left implicit. Two explicit rows (start
+  // day + time, end day + time) instead of one run-on "from – to" string —
+  // a Tithi typically starts today and ends tomorrow, and spelling out
+  // which day each time belongs to reads faster than parsing a single
+  // dense line.
+  const tithiSub = data && isValidInterval(data.tithi.start, data.tithi.end) ? (
+    <>
+      <span>{panchangDayLabel(data.tithi.start, selectedDate, isHindi)}, {hindiTime24(data.tithi.start)}</span>
+      <span>{panchangDayLabel(data.tithi.end, selectedDate, isHindi)} ({isHindi ? 'समाप्ति' : 'end'}), {hindiTime24(data.tithi.end)}</span>
+    </>
+  ) : '—';
   const HERO_FIELDS = data ? [
-    { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})`, sub: tithiSub },
-    { icon: '✦', label: L('nakshatra'), value: hindiOr(language, HINDI_NAKSHATRA, data.nakshatra.name), sub: undefined as string | undefined },
-    { icon: '☾', label: L('moonRashi'), value: hindiOr(language, HINDI_RASHI, data.moonRashi), sub: undefined as string | undefined },
+    { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})`, sub: tithiSub as React.ReactNode },
+    { icon: '✦', label: L('nakshatra'), value: hindiOr(language, HINDI_NAKSHATRA, data.nakshatra.name), sub: undefined as React.ReactNode },
+    { icon: '☾', label: L('moonRashi'), value: hindiOr(language, HINDI_RASHI, data.moonRashi), sub: undefined as React.ReactNode },
   ] : [];
   const HINDI_FIELDS = data ? [
     { icon: '◈', label: L('vara'), value: hindiOr(language, HINDI_WEEKDAY, data.vara) },
@@ -512,7 +521,7 @@ export default function Panchang() {
                       <span className={styles.panchangDashHeroIcon}>{f.icon}</span>
                       <span className={styles.panchangDashHeroLabel}>{f.label}</span>
                       <span className={styles.panchangDashHeroValue}>{f.value}</span>
-                      {f.sub && <span className={styles.panchangDashHeroSub}>{f.sub}</span>}
+                      {f.sub && <div className={styles.panchangDashHeroSub}>{f.sub}</div>}
                     </div>
                   ))}
                 </div>
@@ -533,15 +542,15 @@ export default function Panchang() {
                   <div className={styles.panchangDashRiseSetBox}>
                     <span className={styles.panchangDashRiseSetTitle}>☀ {isHindi ? 'सूर्योदय एवं सूर्यास्त' : 'Sunrise & Sunset'}</span>
                     <div className={styles.panchangDashRiseSetPair}>
-                      <div><span className={styles.panchangDashDetailLabel}>{L('sunrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.sunrise) : '—'}</span></div>
-                      <div><span className={styles.panchangDashDetailLabel}>{L('sunset')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.sunset) : '—'}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('sunrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime24(data.sunrise) : '—'}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('sunset')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime24(data.sunset) : '—'}</span></div>
                     </div>
                   </div>
                   <div className={styles.panchangDashRiseSetBox}>
                     <span className={styles.panchangDashRiseSetTitle}>☾ {isHindi ? 'चंद्रोदय एवं चंद्रास्त' : 'Moonrise & Moonset'}</span>
                     <div className={styles.panchangDashRiseSetPair}>
-                      <div><span className={styles.panchangDashDetailLabel}>{L('moonrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime12(data.moonrise) : '—'}</span></div>
-                      <div><span className={styles.panchangDashDetailLabel}>{L('moonset')}</span><span className={styles.panchangDashDetailValue}>{data?.moonset ? hindiTime12(data.moonset) : (isHindi ? 'नहीं' : 'None')}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('moonrise')}</span><span className={styles.panchangDashDetailValue}>{data ? hindiTime24(data.moonrise) : '—'}</span></div>
+                      <div><span className={styles.panchangDashDetailLabel}>{L('moonset')}</span><span className={styles.panchangDashDetailValue}>{data?.moonset ? hindiTime24(data.moonset) : (isHindi ? 'नहीं' : 'None')}</span></div>
                     </div>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import type { PanchangResult } from '../../services/calculatorService';
 import {
   HINDI_WEEKDAY, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA,
-  HINDI_PLANET, PAKSHA_HI, hindiTime12, hindiOr, formatPanchangTransition, isValidInterval,
+  HINDI_PLANET, PAKSHA_HI, hindiTime24, hindiOr, formatPanchangTransition, isValidInterval,
 } from '../../utils/panchangHindi';
 
 // The share-only layout: a traditional printed-almanac poster, deliberately
@@ -128,7 +128,7 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
   // Clock-only for the fixed points of the day (sunrise/muhurat windows all
   // sit inside the selected date); date-aware for the angas, which regularly
   // end on the following day.
-  const time = (iso: string | null) => hindiTime12(iso);
+  const time = (iso: string | null) => hindiTime24(iso);
   const moment = (iso: string | null) => formatPanchangTransition(iso, data.date, isHindi);
 
   const gregorian = new Date(`${data.date}T00:00:00Z`).toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
