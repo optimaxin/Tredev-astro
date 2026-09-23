@@ -14,7 +14,17 @@ function required(name: string, devFallback: string): string {
 export const config = {
   port: Number(process.env.PORT) || 4000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  clientOrigins: [process.env.CLIENT_ORIGIN || 'http://localhost:5173', 'http://localhost:5174'],
+  // CLIENT_ORIGIN can be a comma-separated list (see main.ts's CORS setup,
+  // which parses it the same way) — e.g. the main site plus the separately-
+  // deployed Ganesh Chaturthi campaign site each need to be allowlisted.
+  // clientOrigins[0] is used as the payment gateway callback/return URL
+  // (see payments.routes.ts), so it must be exactly ONE clean origin, not
+  // the raw unsplit env var — sending Razorpay a comma-joined value as its
+  // callback_url gets rejected outright ("URL should be sent in
+  // callback_url field").
+  clientOrigins: process.env.CLIENT_ORIGIN
+    ? process.env.CLIENT_ORIGIN.split(',').map(o => o.trim()).filter(Boolean)
+    : ['http://localhost:5173', 'http://localhost:5174'],
   // No dev fallback here — there's no meaningful local default for a hosted
   // Postgres connection string. Set it in backend/.env (see .env.example).
   databaseUrl: (() => {
