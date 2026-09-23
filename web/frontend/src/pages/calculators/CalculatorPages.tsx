@@ -112,6 +112,25 @@ const FORECAST_HEADING: Record<typeof HOROSCOPE_PERIODS[number]['key'], string> 
   'full-year': "This Year's Forecast",
 };
 
+// Matches the backend's own PERIOD_PLANETS (horoscope-period's real
+// "which planets are worth naming as upcoming news over this window" set —
+// see calculators.routes.ts) — applied here to the CURRENT-position part of
+// the forecast too, which previously showed every planet's live position
+// regardless of period, so Daily/Weekly/Monthly/Half-Year/Full-Year all
+// read almost identically (only the upcoming-events add-on differed, and
+// often not even that, in a short window). The Moon changes sign every
+// ~2.25 days — real, but not "current news" worth mentioning in a
+// half-year outlook — so longer periods now only mention the slower
+// planets, same as the backend already decided upcoming events should.
+const PERIOD_RELEVANT_PLANETS: Record<typeof HOROSCOPE_PERIODS[number]['key'], string[] | null> = {
+  daily: null,
+  weekly: ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  'weekly-love': ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  monthly: ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  'half-year': ['mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+  'full-year': ['mars', 'jupiter', 'saturn', 'rahu', 'ketu'],
+};
+
 const HOROSCOPE_PERIODS: { key: 'daily' | 'weekly' | 'weekly-love' | 'monthly' | 'half-year' | 'full-year'; label: string }[] = [
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
@@ -159,6 +178,11 @@ export function HoroscopePage() {
 
   const sortedTransits = transitData ? [...transitData.transits].sort((a, b) => a.house - b.house) : [];
   const upcomingTransits = transitData && 'upcomingTransits' in transitData ? transitData.upcomingTransits : [];
+  // Only the Forecast cards use this narrower, period-relevant set — the
+  // "Full technical transit breakdown" below still shows every real planet
+  // regardless of period, for anyone who wants the complete picture.
+  const periodRelevantPlanets = PERIOD_RELEVANT_PLANETS[period];
+  const forecastTransits = periodRelevantPlanets ? sortedTransits.filter(t => periodRelevantPlanets.includes(t.id)) : sortedTransits;
 
   return (
     <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -311,7 +335,7 @@ export function HoroscopePage() {
                               <strong style={{ color: 'var(--gold-primary)', fontSize: '13px' }}>{cat.label}</strong>
                             </div>
                             <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--color-text-dark-2)', margin: 0 }}>
-                              {buildForecastReading(cat.houses, sortedTransits, upcomingTransits, activeRashi)}
+                              {buildForecastReading(cat.houses, forecastTransits, upcomingTransits, activeRashi)}
                             </p>
                           </div>
                         ))}
