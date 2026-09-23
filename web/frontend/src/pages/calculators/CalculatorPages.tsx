@@ -158,9 +158,7 @@ export function HoroscopePage() {
   }, [current.eng, period]);
 
   const sortedTransits = transitData ? [...transitData.transits].sort((a, b) => a.house - b.house) : [];
-  const focusPlanet = sortedTransits.find(t => t.house === 1);
   const upcomingTransits = transitData && 'upcomingTransits' in transitData ? transitData.upcomingTransits : [];
-  const venusTransit = sortedTransits.find(t => t.id === 'venus');
 
   return (
     <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -295,25 +293,12 @@ export function HoroscopePage() {
                     Real planetary transits for {transitData.date}, counted as houses from {current.eng} (treated as your Moon Sign) — the standard Vedic approach for rashi-based predictions.
                   </p>
 
-                  {period === 'weekly-love' && venusTransit && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-                      <PlanetIcon id="venus" size={28} />
-                      <span>
-                        <strong style={{ color: 'var(--gold-primary)' }}>Love & Relationships this week:</strong>{' '}
-                        Venus, the natural significator of love, is transiting your {venusTransit.house}{ordinal(venusTransit.house)} house in {venusTransit.rashi}{venusTransit.retrograde ? ' — Retrograde' : ''}.
-                      </span>
-                    </div>
-                  )}
-
-                  {focusPlanet && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '14px', background: 'rgba(199, 161, 90, 0.08)', border: '1px solid var(--border-subtle)', borderRadius: '8px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                      <PlanetIcon id={focusPlanet.id} size={28} />
-                      <span>
-                        <strong style={{ color: 'var(--gold-primary)' }}>Today's Focus:</strong>{' '}
-                        {PLANET_META[focusPlanet.id]?.name} is transiting your 1st house (Self) in {focusPlanet.rashi}{focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
-                      </span>
-                    </div>
-                  )}
+                  {/* The old "Today's Focus" (1st house) and "weekly-love"
+                      (Venus) callouts used to sit here, each repeating one
+                      planet the Forecast grid below already covers (Health
+                      includes house 1; Love includes Venus whenever it's in
+                      house 5/7) — removed rather than saying the same thing
+                      twice in two different tones. */}
 
                   {transitData && (
                     <div style={{ marginBottom: '18px', opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
@@ -334,7 +319,14 @@ export function HoroscopePage() {
                     </div>
                   )}
 
-                  <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                  {/* Collapsed by default — the Forecast cards above already
+                      say what this means in plain language; this is the raw
+                      technical breakdown (every planet, every house, exact
+                      sign) for anyone who wants to double-check it, not the
+                      first thing every visitor has to read through. */}
+                  <details style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                    <summary style={{ cursor: 'pointer', color: 'var(--gold-primary)', fontSize: '13px', marginBottom: '10px' }}>Full technical transit breakdown</summary>
+                  <div style={{ marginTop: '10px' }}>
                     {sortedTransits.map(t => {
                       const meta = PLANET_META[t.id];
                       const dotColor = NATURAL_BENEFIC.has(t.id) ? '#4caf7d' : NATURAL_MALEFIC.has(t.id) ? '#c85a5a' : '#9a9a9a';
@@ -376,6 +368,7 @@ export function HoroscopePage() {
                   <p className={styles.reviewText} style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '14px' }}>
                     Dot colors show each planet's classical natural temperament (green = benefic, red = malefic, grey = neutral) — a fixed classical property of the planet itself, not a verdict on today specifically.
                   </p>
+                  </details>
                 </>
               )}
             </div>
@@ -401,7 +394,7 @@ export function ChoghadiyaPage() {
   };
 
   return (
-    <CalculatorPageShell eyebrow="Choghadiya" title="Choghadiya Muhurat Table" description="All 8 day segments and 8 night segments, each ruled by one of 7 classical types — auspicious, neutral, or inauspicious.">
+    <CalculatorPageShell eyebrow="Choghadiya" title="Choghadiya Muhurat Table" description="All 8 day segments and 8 night segments, each ruled by one of 7 classical types — auspicious or inauspicious.">
       <PanchangDetailsForm onSubmit={handleSubmit} submitLabel="Show Choghadiya" idPrefix="choghadiya" />
       {error && <p style={{ color: '#d64545', textAlign: 'center', marginTop: '16px' }}>{error}</p>}
       {result && !result.choghadiya && (
