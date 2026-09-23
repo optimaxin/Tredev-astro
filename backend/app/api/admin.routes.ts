@@ -31,6 +31,7 @@ import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPr
 import { toPublicPricingRegion } from '../models/pricingRegion.ts';
 import { deleteOverride, listOverridesForAdmin, upsertOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { parseCsv, toCsvRow } from '../services/csv.ts';
+import { findCallRecordingData, listCallRecordings } from '../repositories/callRecordingRepository.ts';
 
 export const adminRouter = Router();
 
@@ -441,6 +442,27 @@ adminRouter.get('/consultations', requireSection('consultations'), async (req, r
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllConsultations(parsed.data.page, parsed.data.limit);
   res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
+});
+
+// ── Call recordings ──────────────────────────────────────────────────────
+// Staff-only, 10-day auto-delete (see callRecordingRepository.ts and
+// realtimeStore.ts's deleteExpiredCallRecordings). List returns metadata
+// only; the actual audio is a separate per-recording fetch so the list
+// response stays small regardless of how many recordings exist.
+
+adminRouter.get('/call-recordings', requireSection('call-recordings'), async (req, res) => {
+  const parsed = pageSchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { rows, total } = await listCallRecordings(parsed.data.page, parsed.data.limit);
+  res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
+});
+
+adminRouter.get('/call-recordings/:id/audio', requireSection('call-recordings'), async (req, res) => {
+  const recording = await findCallRecordingData(String(req.params.id));
+  if (!recording) return fail(res, 404, 'NOT_FOUND', 'Recording not found (it may have expired)');
+  res.setHeader('Content-Type', recording.mimeType);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(recording.data);
 });
 
 // ── Report purchases ─────────────────────────────────────────────────────

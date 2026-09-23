@@ -40,6 +40,25 @@ async function fetchIceServers(): Promise<RTCIceServer[]> {
 
 type CallStatus = 'connecting' | 'connected' | 'ended' | 'error';
 
+// Uploaded to backend/app/api/chat.routes.ts's POST /:id/recording as a raw
+// binary body (see that route's own comment for why not JSON/base64) —
+// staff-only playback and 10-day auto-delete both live server-side.
+async function uploadRecording(consultationId: string, blob: Blob) {
+  if (blob.size === 0) return;
+  try {
+    const token = localStorage.getItem('auth_access_token');
+    await fetch(`${API_URL}/api/consultations/${consultationId}/recording`, {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type || 'audio/webm', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: blob,
+    });
+  } catch (err) {
+    // Best-effort — a failed recording upload must never surface as a call
+    // failure to either party, it's a staff-side archival feature only.
+    console.error('Failed to upload call recording:', err);
+  }
+}
+
 // Voice-only WebRTC call, signaled over the existing realtime socket (see
 // RealtimeContext's sendCallSignal/onCallSignal — a thin relay, no new REST
 // endpoints). Video is a separate, later feature; this only ever requests
@@ -56,6 +75,52 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  // Recording — only the initiator side records (see startRecording's own
+  // comment for why one side capturing both tracks is enough).
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  // Mixes the local mic + the just-arrived remote track into one stream via
+  // Web Audio, so the recording captures both sides of the conversation from
+  // a single MediaRecorder. Only the initiator (by this app's fixed
+  // user-always-initiates convention, see the isInitiator prop comment)
+  // does this — WebRTC delivers both tracks to both peers once connected,
+  // so recording on one side alone already has the full conversation;
+  // recording on both would just produce two duplicate copies to store and
+  // auto-delete for no benefit.
+  function startRecording(localStream: MediaStream, remoteStream: MediaStream) {
+    if (!isInitiator || recorderRef.current) return;
+    try {
+      const audioCtx = new AudioContext();
+      audioCtxRef.current = audioCtx;
+      const dest = audioCtx.createMediaStreamDestination();
+      audioCtx.createMediaStreamSource(localStream).connect(dest);
+      audioCtx.createMediaStreamSource(remoteStream).connect(dest);
+      const recorder = new MediaRecorder(dest.stream);
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+      recorder.start();
+      recorderRef.current = recorder;
+    } catch (err) {
+      // Best-effort — recording setup failure must never block the call itself.
+      console.error('Failed to start call recording:', err);
+    }
+  }
+
+  function stopRecordingAndUpload() {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    recorderRef.current = null;
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      recordedChunksRef.current = [];
+      uploadRecording(consultationId, blob);
+    };
+    if (recorder.state !== 'inactive') recorder.stop();
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +150,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
         pc.ontrack = e => {
           if (remoteAudioRef.current) remoteAudioRef.current.srcObject = e.streams[0];
           setStatus('connected');
+          if (localStreamRef.current) startRecording(localStreamRef.current, e.streams[0]);
         };
         pc.onconnectionstatechange = () => {
           if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') setStatus(s => (s === 'ended' ? s : 'error'));
@@ -127,6 +193,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
               setStatus('ended');
               pc.close();
               localStreamRef.current?.getTracks().forEach(t => t.stop());
+              stopRecordingAndUpload();
             }
           } catch (err) {
             console.error('Call signaling error:', err);
@@ -150,6 +217,11 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
       pcRef.current?.close();
       pcRef.current = null;
       localStreamRef.current?.getTracks().forEach(t => t.stop());
+      // Safety net for a call that ends by the component unmounting (tab
+      // closed, network drop) rather than an explicit hangup — hangUp() and
+      // the 'call:hangup' handler above already cover the normal paths, so
+      // this is a no-op (recorderRef.current is already null) most of the time.
+      stopRecordingAndUpload();
     };
   }, [consultationId, isInitiator, sendCallSignal, onCallSignal]);
 
@@ -189,6 +261,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
   const hangUp = () => {
     sendCallSignal('call:hangup', consultationId);
     setStatus('ended');
+    stopRecordingAndUpload();
     // Hanging up the call ends the underlying consultation too — not just
     // the media connection. The other side doesn't need to also call this:
     // ending here fires chat:ended over the socket, which updates both

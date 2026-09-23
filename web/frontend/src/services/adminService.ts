@@ -97,7 +97,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -378,4 +378,29 @@ export const adminService = {
   },
   importAstrologerRegionPriceCsv: (csv: string) =>
     request<{ updated: number; errors: string[] }>('/astrologer-region-prices/csv-import', { method: 'POST', body: JSON.stringify({ csv }) }),
+
+  listCallRecordings: (page = 1, limit = 100) => request<ApiCallRecording[]>(`/call-recordings?page=${page}&limit=${limit}`),
+  // Raw fetch, not the JSON `request()` helper — the server sends the actual
+  // audio bytes, not a {success, data} envelope (see admin.routes.ts's
+  // GET /call-recordings/:id/audio).
+  fetchCallRecordingAudio: async (id: string): Promise<Blob> => {
+    const token = localStorage.getItem('auth_access_token');
+    const res = await fetch(`${API_URL}/api/admin/call-recordings/${id}/audio`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new AdminApiError('DOWNLOAD_FAILED', 'Could not load this recording (it may have expired).');
+    return res.blob();
+  },
 };
+
+export interface ApiCallRecording {
+  id: string;
+  consultationId: string;
+  astrologerName: string;
+  userName: string;
+  userEmail: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: number;
+  expiresAt: number;
+}

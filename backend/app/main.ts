@@ -27,6 +27,7 @@ import { turnRouter } from './api/turn.routes.ts';
 import { config } from './core/config.ts';
 import { attachSockets } from './websocket/sockets.ts';
 import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
+import { deleteExpiredCallRecordings } from './repositories/callRecordingRepository.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
 // Comma-separated so the main site and the separately-deployed Ganesh
@@ -109,6 +110,11 @@ attachSockets(io);
 // against in-memory state, not a client polling the network. Push to
 // clients still happens exclusively through the event bus → WebSocket path.
 setInterval(() => { runMaintenanceTick().catch(console.error); }, 20_000);
+
+// Enforces call-recordings' 10-day retention (see callRecordingRepository.ts)
+// by actually deleting expired rows. Hourly is plenty for a day-granularity
+// retention window — no need for the 20s cadence above.
+setInterval(() => { deleteExpiredCallRecordings(Date.now()).catch(console.error); }, 60 * 60_000);
 
 httpServer.listen(PORT, () => {
   console.log(`[tredevastro-realtime] listening on http://localhost:${PORT}`);
