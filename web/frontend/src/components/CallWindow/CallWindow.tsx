@@ -80,6 +80,7 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
   const audioCtxRef = useRef<AudioContext | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const tapTracksRef = useRef<MediaStreamTrack[]>([]);
 
   // Mixes the local mic + the just-arrived remote track into one stream via
   // Web Audio, so the recording captures both sides of the conversation from
@@ -95,8 +96,19 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
       const audioCtx = new AudioContext();
       audioCtxRef.current = audioCtx;
       const dest = audioCtx.createMediaStreamDestination();
-      audioCtx.createMediaStreamSource(localStream).connect(dest);
-      audioCtx.createMediaStreamSource(remoteStream).connect(dest);
+      // Cloned tracks, not the live ones — createMediaStreamSource() on the
+      // SAME MediaStream that's also playing through remoteAudioRef's
+      // <audio> element (srcObject) silences that element in Safari/WebKit
+      // (a well-known engine bug: a stream can't be "tapped" for Web Audio
+      // and played through an <audio> tag at once there). This was the
+      // actual live-call regression from adding recording — cloning keeps
+      // the recording tap on independent tracks that never touch the ones
+      // feeding actual playback or the outgoing WebRTC send track.
+      const localTap = new MediaStream(localStream.getAudioTracks().map(t => t.clone()));
+      const remoteTap = new MediaStream(remoteStream.getAudioTracks().map(t => t.clone()));
+      tapTracksRef.current = [...localTap.getTracks(), ...remoteTap.getTracks()];
+      audioCtx.createMediaStreamSource(localTap).connect(dest);
+      audioCtx.createMediaStreamSource(remoteTap).connect(dest);
       const recorder = new MediaRecorder(dest.stream);
       recordedChunksRef.current = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
@@ -120,6 +132,8 @@ export default function CallWindow({ consultationId, otherPartyName, isInitiator
     if (recorder.state !== 'inactive') recorder.stop();
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
+    tapTracksRef.current.forEach(t => t.stop());
+    tapTracksRef.current = [];
   }
 
   useEffect(() => {
