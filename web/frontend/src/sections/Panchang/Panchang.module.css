@@ -436,6 +436,13 @@
   text-align: right;
 }
 
+.panchangDashTithiRangeArrow {
+  display: flex;
+  align-items: center;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
 .panchangDashHeroValue {
   font-family: var(--font-serif);
   font-size: var(--text-base);

@@ -347,6 +347,7 @@ export default function Panchang() {
         <span>{panchangDayLabel(data.tithi.start, selectedDate, isHindi)}</span>
         <span>{hindiTime24(data.tithi.start)}</span>
       </span>
+      <span className={styles.panchangDashTithiRangeArrow} aria-hidden="true">→</span>
       <span className={styles.panchangDashTithiRangeCol}>
         <span>{panchangDayLabel(data.tithi.end, selectedDate, isHindi)}</span>
         <span>{hindiTime24(data.tithi.end)}</span>
