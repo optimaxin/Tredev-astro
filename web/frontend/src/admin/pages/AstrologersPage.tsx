@@ -352,9 +352,9 @@ export default function AstrologersPage() {
               <div key={a.email} className={styles.astroCard}>
                 <div className={styles.astroCardHeader}>
                   {p.avatar ? <img src={p.avatar} alt={a.name} className={styles.astroAvatar} /> : <div className={styles.astroAvatar}>{a.name.charAt(0)}</div>}
-                  <div>
+                  <div className={styles.astroCardHeaderText}>
                     <div className={styles.astroCardName}>{a.name}</div>
-                    <div className={styles.astroCardMeta}>{a.email}</div>
+                    <div className={styles.astroCardMeta} title={a.email}>{a.email}</div>
                   </div>
                 </div>
                 <div className={styles.astroCardStats}>

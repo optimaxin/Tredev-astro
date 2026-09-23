@@ -173,6 +173,12 @@
 
 .astroCardHeader { display: flex; align-items: center; gap: 12px; }
 
+/* Flex items default to min-width: auto, so without this a long email in
+   .astroCardMeta refused to shrink below its own text width and pushed
+   past the card's right edge instead of truncating — this is what let
+   content overflow the card. */
+.astroCardHeaderText { min-width: 0; flex: 1; }
+
 .astroAvatar {
   width: 46px;
   height: 46px;
@@ -187,8 +193,8 @@
   color: var(--adm-gold-dark);
 }
 
-.astroCardName { font-weight: 700; color: var(--adm-charcoal); font-size: 0.9rem; }
-.astroCardMeta { font-size: 0.74rem; color: var(--adm-muted); margin-top: 2px; }
+.astroCardName { font-weight: 700; color: var(--adm-charcoal); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.astroCardMeta { font-size: 0.74rem; color: var(--adm-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .astroCardStats {
   display: grid;
