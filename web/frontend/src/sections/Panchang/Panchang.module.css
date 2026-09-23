@@ -246,8 +246,6 @@
      all 4 improved their margin versus the old translucent glass tint. */
   --panchang-label: #5C544A; /* 7.44:1 on solid white */
   --panchang-gold-text: #6E5322; /* 7.19:1 on solid white */
-  --panchang-shubh-text: #155C36; /* 8.02:1 on solid white */
-  --panchang-ashubh-text: #B23A3A; /* 5.90:1 on solid white */
   --panchang-glass: #FFFFFF;
   --panchang-glass-border: rgba(181, 138, 59, 0.35);
   /* Fixed, not theme-dependent — var(--text-primary)/var(--gold-primary)
@@ -263,25 +261,6 @@
   border-radius: var(--radius-lg);
 }
 
-/* Ornate corner flourishes on the outer card — small gold "L" brackets in
-   each corner, echoing a temple-card border without pulling in an SVG asset. */
-.panchangDash::before,
-.panchangDash::after,
-.panchangDashContent::before,
-.panchangDashContent::after {
-  content: '';
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--panchang-gold);
-  z-index: 3;
-  pointer-events: none;
-}
-.panchangDash::before { top: 6px; left: 6px; border-width: 2px 0 0 2px; }
-.panchangDash::after { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
-.panchangDashContent::before { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
-.panchangDashContent::after { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; }
-
 /* Dark theme: swap the printed-almanac card from solid white to a dark
    surface, contrast-checked the same way as the light values above —
    users found the always-white card jarring against an otherwise dark
@@ -290,8 +269,6 @@
 :global([data-theme='dark']) .panchangDash {
   --panchang-label: #B9B3A8; /* text-secondary, ~8.9:1 on the surface below */
   --panchang-gold-text: #D2B978; /* gold-soft, ~8.4:1 */
-  --panchang-shubh-text: #4ADE80; /* ~10.9:1 */
-  --panchang-ashubh-text: #F87171; /* ~7.2:1 */
   --panchang-glass: #151B31; /* surface-highlight */
   --panchang-glass-border: rgba(199, 161, 90, 0.22);
   --panchang-heading: #F1E9DC; /* text-primary, ~13.6:1 */
@@ -439,11 +416,24 @@
   line-height: 1.35;
   color: var(--panchang-label);
   opacity: 0.85;
-  /* Tithi's sub-block is two rows (start day/time, end day/time) — a plain
-     flex column so each stays on its own line instead of running together. */
+}
+
+/* Tithi's start/end block — start date+time on the left, end date+time on
+   the right, each stacked as its own mini-column. */
+.panchangDashTithiRange {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.panchangDashTithiRangeCol {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+}
+
+.panchangDashTithiRangeCol:last-child {
+  align-items: flex-end;
+  text-align: right;
 }
 
 .panchangDashHeroValue {
@@ -527,13 +517,21 @@
   gap: var(--space-2);
 }
 
-/* Muhurat row — Shubh/Ashubh periods as glowing pills in one flowing row,
-   not two boxed side-by-side panels. */
+/* Muhurat periods — plain neutral pills (no green/red good-bad coloring,
+   no tick/warning icon), auspicious (Abhijit/Vijaya/Amrit Kaal/Sarvartha
+   Siddhi) stacked in the left column and inauspicious (Rahu Kaal/Yamaganda
+   Kaal) stacked in the right column, one under another. */
 .panchangDashMuhuratRow {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
+}
+
+.panchangDashMuhuratCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .panchangDashPill {
@@ -542,19 +540,9 @@
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: 400;
-  border: 1px solid transparent;
-}
-
-.panchangDashPillShubh {
-  background: rgba(46, 139, 87, 0.16);
-  border-color: rgba(46, 139, 87, 0.4);
-  color: var(--panchang-shubh-text);
-}
-
-.panchangDashPillAshubh {
-  background: rgba(214, 69, 69, 0.14);
-  border-color: rgba(214, 69, 69, 0.4);
-  color: var(--panchang-ashubh-text);
+  border: 1px solid var(--panchang-glass-border);
+  background: var(--panchang-glass);
+  color: var(--panchang-label);
 }
 
 .panchangDashFooter {
@@ -683,13 +671,10 @@
      one line across two half-width boxes. */
   .panchangDashRiseSetPair .panchangDashDetailLabel { display: block; font-size: 0.55rem; }
   .panchangDashRiseSetPair .panchangDashDetailValue { display: block; font-size: 0.7rem; white-space: nowrap; }
-  /* Six full-width pills stacked one per row were the single tallest block
-     in the card (~200px). Two per row cuts that to three rows. They're
-     deliberately allowed to wrap to a second line inside the pill: clamping
-     them to one line with an ellipsis did fit, but measured against the
-     rendered text it silently cut off the actual muhurat times, which is
-     the only information the pill carries. */
-  .panchangDashMuhuratRow { display: grid; grid-template-columns: 1fr 1fr; }
+  /* Pills are deliberately allowed to wrap to a second line at phone width:
+     clamping them to one line with an ellipsis did fit, but measured
+     against the rendered text it silently cut off the actual muhurat
+     times, which is the only information the pill carries. */
   .panchangDashPill {
     font-size: 0.55rem;
     line-height: 1.3;

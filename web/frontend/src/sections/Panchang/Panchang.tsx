@@ -336,16 +336,22 @@ export default function Panchang() {
   // Sub-block under the Tithi tile — the tithi shown is the one active RIGHT
   // NOW (not a fixed "as of sunrise" value that could already be stale by
   // the time someone's looking at this), so the window it's valid for is
-  // shown alongside it rather than left implicit. Two explicit rows (start
-  // day + time, end day + time) instead of one run-on "from – to" string —
-  // a Tithi typically starts today and ends tomorrow, and spelling out
-  // which day each time belongs to reads faster than parsing a single
-  // dense line.
+  // shown alongside it rather than left implicit. Two columns (start date
+  // over start time on the left, end date over end time on the right)
+  // instead of one run-on "from – to" string — a Tithi typically starts
+  // today and ends tomorrow, and this puts each day's own date directly
+  // above its own time instead of interleaving both days on one line.
   const tithiSub = data && isValidInterval(data.tithi.start, data.tithi.end) ? (
-    <>
-      <span>{panchangDayLabel(data.tithi.start, selectedDate, isHindi)}, {hindiTime24(data.tithi.start)}</span>
-      <span>{panchangDayLabel(data.tithi.end, selectedDate, isHindi)} ({isHindi ? 'समाप्ति' : 'end'}), {hindiTime24(data.tithi.end)}</span>
-    </>
+    <span className={styles.panchangDashTithiRange}>
+      <span className={styles.panchangDashTithiRangeCol}>
+        <span>{panchangDayLabel(data.tithi.start, selectedDate, isHindi)}</span>
+        <span>{hindiTime24(data.tithi.start)}</span>
+      </span>
+      <span className={styles.panchangDashTithiRangeCol}>
+        <span>{panchangDayLabel(data.tithi.end, selectedDate, isHindi)}</span>
+        <span>{hindiTime24(data.tithi.end)}</span>
+      </span>
+    </span>
   ) : '—';
   const HERO_FIELDS = data ? [
     { icon: '☽', label: L('tithi'), value: `${hindiOr(language, HINDI_TITHI, data.tithi.name)} (${paksha})`, sub: tithiSub as React.ReactNode },
@@ -556,12 +562,16 @@ export default function Panchang() {
                 </div>
 
                 <div className={styles.panchangDashMuhuratRow}>
-                  {SHUBH_FIELDS.map(f => (
-                    <span key={f.label} className={`${styles.panchangDashPill} ${styles.panchangDashPillShubh}`}>✓ {f.label} · {f.value}</span>
-                  ))}
-                  {ASHUBH_FIELDS.map(f => (
-                    <span key={f.label} className={`${styles.panchangDashPill} ${styles.panchangDashPillAshubh}`}>⚠ {f.label} · {f.value}</span>
-                  ))}
+                  <div className={styles.panchangDashMuhuratCol}>
+                    {SHUBH_FIELDS.map(f => (
+                      <span key={f.label} className={styles.panchangDashPill}>{f.label} · {f.value}</span>
+                    ))}
+                  </div>
+                  <div className={styles.panchangDashMuhuratCol}>
+                    {ASHUBH_FIELDS.map(f => (
+                      <span key={f.label} className={styles.panchangDashPill}>{f.label} · {f.value}</span>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Only the shlok itself is staff-editable — the brand and
