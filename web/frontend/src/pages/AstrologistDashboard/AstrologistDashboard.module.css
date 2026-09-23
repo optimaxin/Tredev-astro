@@ -4,7 +4,6 @@
   background: var(--bg-primary);
   display: flex;
   isolation: isolate;
-  overflow-x: hidden;
 }
 
 .backdrop {
@@ -201,6 +200,15 @@
   min-width: 0;
   position: relative;
   z-index: 1;
+  /* Was on .workspace — but overflow-x on the sidebar's own flex parent
+     silently makes it a scroll container per the CSS spec (overflow-x !=
+     visible forces overflow-y to compute as auto too), which breaks the
+     sidebar's position: sticky (it sticks relative to that container
+     instead of the viewport, and the container never itself scrolls since
+     its height just grows to fit content — so sticky does nothing and the
+     sidebar scrolls away with the page). Scoped to .main instead, which
+     doesn't contain the sticky sidebar. */
+  overflow-x: hidden;
 }
 
 .header {
