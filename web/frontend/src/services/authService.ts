@@ -80,6 +80,11 @@ export const authService = {
   updateBirthDetails: (accessToken: string, details: Required<RegisterBirthDetails>) =>
     request<ApiUser>('/me/birth-details', { method: 'PATCH', body: JSON.stringify(details), headers: { Authorization: `Bearer ${accessToken}` } }),
 
+  // Fills in a real name right after a brand-new phone-only signup (Phone
+  // Auth carries no name claim, unlike Google — see auth.routes.ts's comment).
+  updateName: (accessToken: string, name: string) =>
+    request<ApiUser>('/me/name', { method: 'PATCH', body: JSON.stringify({ name }), headers: { Authorization: `Bearer ${accessToken}` } }),
+
   forgotPassword: (email: string) =>
     request<{ message: string; devResetToken?: string }>('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 

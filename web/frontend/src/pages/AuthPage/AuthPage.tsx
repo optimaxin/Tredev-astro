@@ -2,52 +2,51 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
-import { ApiRequestError } from '../../services/authService';
 import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164IndianNumber } from '../../services/firebaseClient';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
-type TabType = 'login' | 'register';
+// Unified sign-in/sign-up: phone number (OTP) or "Continue with Google" —
+// no upfront email/password form for new users. Both are the SAME Firebase
+// call for a returning vs. brand-new person (see backend's loginWithFirebase,
+// which creates the account on first sign-in and returns `isNewUser`).
+// Google's token already carries a name, so a new Google user goes straight
+// through; Phone Auth's token doesn't, so a new phone user gets exactly one
+// extra "what's your name?" step. Old-style email+password accounts (the
+// seeded demo accounts, and anyone who signed up before this redesign) still
+// need a way in — that's the small "Log in with email instead" reveal below,
+// not a place to create new password accounts anymore.
+type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login';
 
 export default function AuthPage() {
-  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, t, pendingAction, setPendingAction } = useAppContext();
-  const [tab, setTab] = useState<TabType>('register');
+  const { setPage, login, loginWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
+  const [step, setStep] = useState<Step>('entry');
 
-  // Google Sign-In — same handler for either tab (it's a full login/signup
-  // on its own, not part of the manual form).
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
 
-  // Login state
+  // Phone entry + OTP
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [otpSendLoading, setOtpSendLoading] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  // Carried from loginWithFirebase's result into the 'name' step, so
+  // redirectByRole after saving the name still knows where this account goes.
+  const [pendingRole, setPendingRole] = useState<'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN'>('USER');
+
+  // Name step (new phone signups only)
+  const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [nameLoading, setNameLoading] = useState(false);
+
+  // Legacy email+password login (existing accounts only — see file comment)
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [registerError, setRegisterError] = useState('');
-
-  // Register state — birth details (date/time/place/timezone) are
-  // deliberately NOT collected here anymore; they were making signup feel
-  // long, the backend already stores them as optional, and a user can add
-  // them any time later via the Free Kundli page's "Save to my profile"
-  // button (same fields, same PATCH /api/auth/me/birth-details endpoint).
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    phoneNumber: '',
-  });
-  const [registerLoading, setRegisterLoading] = useState(false);
-  // 'form' -> 'otp' (phone verification, right after account creation, now
-  // via Firebase Phone Auth instead of the old custom OTP-over-SMS/AWS SNS)
-  // -> 'done'.
-  const [registerStep, setRegisterStep] = useState<'form' | 'otp' | 'done'>('form');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpSendLoading, setOtpSendLoading] = useState(false);
-  // Firebase's handle for whichever OTP was most recently sent — its
-  // .confirm(code) call is what actually checks the code.
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Mirrors the resume behaviour the old LoginModal popup used to do —
   // some gated actions (ai-chat, panchang-location) don't map to a page of
@@ -63,25 +62,9 @@ export default function AuthPage() {
   };
 
   const redirectByRole = (role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') => {
-    if (role === 'USER') {
-      resumePendingAction(pendingAction);
-    } else {
-      setPage('profile');
-    }
+    if (role === 'USER') resumePendingAction(pendingAction);
+    else setPage('profile');
     setPendingAction(null);
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setLoginLoading(true);
-    const user = await login(loginEmail, loginPassword);
-    setLoginLoading(false);
-    if (!user) {
-      setLoginError('Incorrect email or password.');
-      return;
-    }
-    redirectByRole(user.role);
   };
 
   const handleGoogleSignIn = async () => {
@@ -89,9 +72,11 @@ export default function AuthPage() {
     setGoogleLoading(true);
     try {
       const idToken = await signInWithGooglePopup();
-      const user = await loginWithFirebase(idToken);
-      if (!user) { setGoogleError('Could not sign in with Google. Please try again.'); return; }
-      redirectByRole(user.role);
+      const result = await loginWithFirebase(idToken);
+      if (!result) { setGoogleError('Could not sign in with Google. Please try again.'); return; }
+      // Google's ID token always carries a name (unlike Phone Auth), so
+      // there's nothing left to ask even for a brand-new account.
+      redirectByRole(result.user.role);
     } catch (err) {
       setGoogleError(err instanceof Error ? err.message : 'Could not sign in with Google. Please try again.');
     } finally {
@@ -99,34 +84,18 @@ export default function AuthPage() {
     }
   };
 
-  // Fires the OTP via Firebase's own SMS delivery — used both right after
-  // registration and by the "Resend" button on the otp step.
-  const handleSendPhoneOtp = async () => {
-    setOtpError('');
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPhoneError('');
     setOtpSendLoading(true);
     try {
-      const result = await sendFirebasePhoneOtp(toE164IndianNumber(form.phoneNumber), 'firebase-recaptcha-container');
+      const result = await sendFirebasePhoneOtp(toE164IndianNumber(phoneNumber), 'firebase-recaptcha-container');
       setConfirmationResult(result);
+      setStep('otp');
     } catch (err) {
-      setOtpError(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
+      setPhoneError(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
     } finally {
       setOtpSendLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegisterError('');
-    setRegisterLoading(true);
-    try {
-      await register(form.fullName, form.email, form.password, form.phoneNumber.trim());
-      setRegisterStep('otp');
-      await handleSendPhoneOtp();
-    } catch (err) {
-      if (err instanceof ApiRequestError) setRegisterError(err.message);
-      else setRegisterError('Something went wrong. Please try again.');
-    } finally {
-      setRegisterLoading(false);
     }
   };
 
@@ -135,11 +104,17 @@ export default function AuthPage() {
     setOtpError('');
     setOtpLoading(true);
     try {
-      if (!confirmationResult) throw new Error('No active verification code — resend it and try again.');
+      if (!confirmationResult) throw new Error('No active verification code — go back and resend it.');
       const credential = await confirmationResult.confirm(otpCode.trim());
       const idToken = await credential.user.getIdToken();
-      await verifyPhoneWithFirebase(idToken);
-      setRegisterStep('done');
+      const result = await loginWithFirebase(idToken);
+      if (!result) { setOtpError('Could not verify — please try again.'); return; }
+      if (result.isNewUser) {
+        setPendingRole(result.user.role);
+        setStep('name');
+      } else {
+        redirectByRole(result.user.role);
+      }
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : 'Incorrect or expired code. Please try again.');
     } finally {
@@ -147,9 +122,27 @@ export default function AuthPage() {
     }
   };
 
-  const handleContinue = () => {
-    resumePendingAction(pendingAction);
-    setPendingAction(null);
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNameError('');
+    setNameLoading(true);
+    try {
+      const ok = await saveMyName(nameInput.trim());
+      if (!ok) { setNameError('Could not save your name — please try again.'); return; }
+      setStep('done');
+    } finally {
+      setNameLoading(false);
+    }
+  };
+
+  const handleLegacyLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+    const user = await login(loginEmail, loginPassword);
+    setLoginLoading(false);
+    if (!user) { setLoginError('Incorrect email or password.'); return; }
+    redirectByRole(user.role);
   };
 
   return (
@@ -270,29 +263,11 @@ export default function AuthPage() {
               <span className={styles.starGlyph}>✦</span>
             </div>
             <h1 className={styles.manuscriptTitle}>
-              {tab === 'register' ? 'वैदिक जन्म पत्र ग्रन्थ' : 'सदस्य प्रवेश ग्रन्थ'}
+              {step === 'email-login' ? 'सदस्य प्रवेश ग्रन्थ' : 'वैदिक जन्म पत्र ग्रन्थ'}
             </h1>
             <p className={styles.manuscriptSubtitle}>
-              {tab === 'register' ? t('auth_subtitle_register') : t('auth_subtitle_login')}
+              {step === 'email-login' ? t('auth_subtitle_login') : t('auth_subtitle_register')}
             </p>
-          </div>
-
-          {/* Vintage Scroll Tab Switcher */}
-          <div className={styles.manuscriptTabs}>
-            <button
-              type="button"
-              className={`${styles.manuscriptTab} ${tab === 'register' ? styles.tabActive : ''}`}
-              onClick={() => setTab('register')}
-            >
-              📜 {t('auth_tab_register')}
-            </button>
-            <button
-              type="button"
-              className={`${styles.manuscriptTab} ${tab === 'login' ? styles.tabActive : ''}`}
-              onClick={() => setTab('login')}
-            >
-              🗝️ {t('auth_tab_login')}
-            </button>
           </div>
 
           {/* Invisible reCAPTCHA anchor for Firebase Phone Auth — must stay
@@ -301,64 +276,19 @@ export default function AuthPage() {
           <div id="firebase-recaptcha-container" />
 
           <AnimatePresence mode="wait">
-            {/* REGISTRATION INSCRIPTION FORM */}
-            {tab === 'register' && registerStep === 'form' && (
+            {/* ENTRY: phone number OR Google — the only two ways to sign up
+                or log in now. Same form handles both a brand-new visitor and
+                a returning one; loginWithFirebase tells them apart. */}
+            {step === 'entry' && (
               <motion.form
-                key="register-script"
+                key="entry-script"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                onSubmit={handleRegister}
+                onSubmit={handleSendOtp}
                 className={styles.scriptForm}
               >
-                {/* Full Name Field */}
-                <div className={styles.inkField}>
-                  <label className={styles.inkLabel}>
-                    <span className={styles.devanagariTag}>नामांकन</span> {t('auth_label_fullname')}
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.inkInput}
-                    placeholder={t('auth_placeholder_fullname')}
-                    value={form.fullName}
-                    onChange={e => setForm({ ...form, fullName: e.target.value })}
-                    required
-                  />
-                </div>
-
-                {/* Email & Password Row */}
-                <div className={styles.inkRow2}>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_email')}
-                    </label>
-                    <input
-                      type="email"
-                      className={styles.inkInput}
-                      placeholder={t('auth_placeholder_email')}
-                      value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>गुप्त कुंजी</span> {t('auth_label_password')}
-                    </label>
-                    <input
-                      type="password"
-                      className={styles.inkInput}
-                      placeholder="••••••••"
-                      value={form.password}
-                      onChange={e => setForm({ ...form, password: e.target.value })}
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                </div>
-
-                {/* Phone Number — verified by OTP right after the account is created */}
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
                     <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number
@@ -367,45 +297,172 @@ export default function AuthPage() {
                     type="tel"
                     className={styles.inkInput}
                     placeholder="+91 12345 67890"
-                    value={form.phoneNumber}
-                    onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
+                    value={phoneNumber}
+                    onChange={e => setPhoneNumber(e.target.value)}
                     required
                     minLength={8}
+                    autoFocus
                   />
                 </div>
 
-                {/* Birth date/time/place/timezone are deliberately not
-                    collected here anymore — see the `form` state comment
-                    above. Add them later from the Free Kundli page. */}
-
-                {registerError && (
-                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{registerError}</p>
+                {phoneError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{phoneError}</p>
                 )}
 
-                {/* Royal Red Wax Seal Button */}
                 <button
                   type="submit"
                   className={styles.waxSealBtn}
-                  disabled={registerLoading}
-                  id="auth-register-submit"
+                  disabled={otpSendLoading}
+                  id="auth-send-otp"
                 >
                   <div className={styles.sealEmblemInside}>ॐ</div>
-                  <span>{registerLoading ? t('auth_btn_inscribing') : `मुद्रित करें · ${t('auth_btn_seal')}`}</span>
+                  <span>{otpSendLoading ? 'Sending…' : 'Send OTP'}</span>
                 </button>
 
                 <GoogleSignInButton loading={googleLoading} error={googleError} onClick={handleGoogleSignIn} />
+
+                <button
+                  type="button"
+                  onClick={() => setStep('email-login')}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', marginTop: 'var(--space-3)', opacity: 0.7, alignSelf: 'center' }}
+                >
+                  Already have an account with email &amp; password? Log in instead
+                </button>
               </motion.form>
             )}
 
-            {/* LOGIN FORM */}
-            {tab === 'login' && (
+            {/* OTP VERIFICATION */}
+            {step === 'otp' && (
+              <motion.form
+                key="otp-script"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleVerifyOtp}
+                className={styles.scriptForm}
+              >
+                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
+                  We sent a 6-digit code to {phoneNumber}. Enter it below to continue.
+                </p>
+                <div className={styles.inkField}>
+                  <label className={styles.inkLabel}>Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    className={styles.inkInput}
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    required
+                    autoFocus
+                  />
+                </div>
+                {otpError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{otpError}</p>
+                )}
+                <button
+                  type="submit"
+                  className={styles.waxSealBtn}
+                  disabled={otpLoading || otpCode.length !== 6}
+                  id="auth-otp-verify-btn"
+                >
+                  <span>{otpLoading ? 'Verifying…' : 'Verify & Continue'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep('entry')}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
+                >
+                  Wrong number? Go back
+                </button>
+              </motion.form>
+            )}
+
+            {/* NAME — only reached for a brand-new phone-only signup, since
+                Phone Auth's token carries no name claim (Google's does). */}
+            {step === 'name' && (
+              <motion.form
+                key="name-script"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleSaveName}
+                className={styles.scriptForm}
+              >
+                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
+                  Phone number verified! What should we call you?
+                </p>
+                <div className={styles.inkField}>
+                  <label className={styles.inkLabel}>
+                    <span className={styles.devanagariTag}>नामांकन</span> {t('auth_label_fullname')}
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.inkInput}
+                    placeholder={t('auth_placeholder_fullname')}
+                    value={nameInput}
+                    onChange={e => setNameInput(e.target.value)}
+                    required
+                    minLength={2}
+                    autoFocus
+                  />
+                </div>
+                {nameError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{nameError}</p>
+                )}
+                <button
+                  type="submit"
+                  className={styles.waxSealBtn}
+                  disabled={nameLoading}
+                  id="auth-save-name-btn"
+                >
+                  <div className={styles.sealEmblemInside}>ॐ</div>
+                  <span>{nameLoading ? 'Saving…' : 'Continue'}</span>
+                </button>
+              </motion.form>
+            )}
+
+            {/* SUCCESS — only shown after the extra name step (phone signup);
+                Google and returning-user logins redirect straight away. */}
+            {step === 'done' && (
+              <motion.div
+                key="success-script"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className={styles.successManuscript}
+              >
+                <div className={styles.royalWaxSealBig}>ॐ</div>
+                <h2 className={styles.successHeader}>जन्मांग अभिलिखितम्!</h2>
+                <p className={styles.successSubtext}>
+                  {t('auth_success_message').replace('{name}', nameInput)}
+                </p>
+                <button
+                  type="button"
+                  className={styles.waxSealBtn}
+                  onClick={() => redirectByRole(pendingRole)}
+                  id="auth-continue-btn"
+                >
+                  <span>{t('auth_btn_continue')}</span>
+                </button>
+              </motion.div>
+            )}
+
+            {/* LEGACY EMAIL+PASSWORD LOGIN — existing accounts only (the
+                seeded demo accounts, and anyone who signed up before this
+                redesign). Not a signup path anymore; see file comment. */}
+            {step === 'email-login' && (
               <motion.form
                 key="login-script"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                onSubmit={handleLogin}
+                onSubmit={handleLegacyLogin}
                 className={styles.scriptForm}
               >
                 <div className={styles.inkField}>
@@ -419,6 +476,7 @@ export default function AuthPage() {
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     required
+                    autoFocus
                   />
                 </div>
 
@@ -450,90 +508,14 @@ export default function AuthPage() {
                   <span>{loginLoading ? t('auth_btn_unlocking') : `प्रवेश करें · ${t('auth_btn_signin_vault')}`}</span>
                 </button>
 
-                <GoogleSignInButton loading={googleLoading} error={googleError} onClick={handleGoogleSignIn} />
-              </motion.form>
-            )}
-
-            {/* PHONE OTP VERIFICATION STEP — shown right after account creation, via Firebase Phone Auth */}
-            {tab === 'register' && registerStep === 'otp' && (
-              <motion.form
-                key="otp-script"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                onSubmit={handleVerifyOtp}
-                className={styles.scriptForm}
-              >
-                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
-                  We sent a 6-digit code to {form.phoneNumber}. Enter it below to verify your number.
-                </p>
-                <div className={styles.inkField}>
-                  <label className={styles.inkLabel}>Verification Code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    className={styles.inkInput}
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    required
-                  />
-                </div>
-                {otpError && (
-                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{otpError}</p>
-                )}
-                <button
-                  type="submit"
-                  className={styles.waxSealBtn}
-                  disabled={otpLoading || otpSendLoading || otpCode.length !== 6}
-                  id="auth-otp-verify-btn"
-                >
-                  <span>{otpLoading ? 'Verifying…' : 'Verify Phone Number'}</span>
-                </button>
                 <button
                   type="button"
-                  onClick={handleSendPhoneOtp}
-                  disabled={otpSendLoading}
+                  onClick={() => setStep('entry')}
                   style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
                 >
-                  {otpSendLoading ? 'Sending…' : "Didn't get a code? Resend"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegisterStep('done')}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', marginTop: 'var(--space-2)', opacity: 0.7 }}
-                >
-                  Skip for now
+                  Back to phone / Google sign-in
                 </button>
               </motion.form>
-            )}
-
-            {/* REGISTRATION SUCCESS STATE */}
-            {tab === 'register' && registerStep === 'done' && (
-              <motion.div
-                key="success-script"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className={styles.successManuscript}
-              >
-                <div className={styles.royalWaxSealBig}>ॐ</div>
-                <h2 className={styles.successHeader}>जन्मांग अभिलिखितम्!</h2>
-                <p className={styles.successSubtext}>
-                  {t('auth_success_message').replace('{name}', form.fullName)}
-                </p>
-                <button
-                  type="button"
-                  className={styles.waxSealBtn}
-                  onClick={handleContinue}
-                  id="auth-continue-btn"
-                >
-                  <span>{t('auth_btn_continue')}</span>
-                </button>
-              </motion.div>
             )}
           </AnimatePresence>
 

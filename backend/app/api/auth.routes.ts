@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthError, getPublicUser, linkFirebasePhone, login, loginWithFirebase, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { updateBirthDetails } from '../repositories/userRepository.ts';
+import { updateBirthDetails, updateUserName } from '../repositories/userRepository.ts';
 import { MAINSTREAM_EMAIL_DOMAINS } from '../core/mainstreamEmailDomains.ts';
 
 export const authRouter = Router();
@@ -107,6 +107,22 @@ authRouter.patch('/me/birth-details', requireAuth, async (req, res) => {
   const parsed = birthDetailsSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await updateBirthDetails(req.user!.id, parsed.data);
+  const user = await getPublicUser(req.user!.id);
+  res.json({ success: true, data: user });
+});
+
+// Phone Auth carries no name claim (unlike Google, whose ID token already
+// has one — see loginWithFirebase's own comment), so a brand-new phone
+// signup is created with the phone number as a placeholder name. The
+// unified auth page prompts for a real name right after, exactly once,
+// using this route — not birth-details-style, since a name is needed
+// immediately (shown in the nav/greeting) rather than deferred.
+const nameSchema = z.object({ name: z.string().trim().min(2).max(100) });
+
+authRouter.patch('/me/name', requireAuth, async (req, res) => {
+  const parsed = nameSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  await updateUserName(req.user!.id, parsed.data.name);
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
 });
