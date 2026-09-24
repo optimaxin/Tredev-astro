@@ -16,6 +16,12 @@ export function findUserByFirebaseUid(uid: string): Promise<UserRow | undefined>
   return queryOne<UserRow>('SELECT * FROM users WHERE firebase_uid = $1', [uid]);
 }
 
+// Used at registration to enforce "one account per phone number" — see
+// authService.ts's register().
+export function findUserByPhone(phoneNumber: string): Promise<UserRow | undefined> {
+  return queryOne<UserRow>('SELECT * FROM users WHERE phone_number = $1', [phoneNumber.trim()]);
+}
+
 // Links an existing account (found by email match) to a Firebase identity
 // on its first Google/Phone sign-in — see authService.ts's loginWithFirebase.
 export async function linkFirebaseUid(userId: string, uid: string): Promise<void> {

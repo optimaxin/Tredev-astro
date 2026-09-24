@@ -1,0 +1,131 @@
+.section {
+  padding: var(--space-20) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+:global([data-theme='dark']) .card {
+  background: var(--surface-elevated);
+}
+
+.rashiRowWrap {
+  position: relative;
+}
+
+/* Fade-out hint on the trailing edge — signals "swipe for more" instead of
+   the row just looking cut off mid-button on a narrow phone screen. Always
+   present (not conditional on actual overflow) — simpler than measuring
+   scroll width in JS, and harmless on wide screens where the row doesn't
+   scroll since the last button still has clear space before the edge. */
+.rashiRowWrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: var(--space-2);
+  width: 32px;
+  background: linear-gradient(to right, transparent, var(--surface));
+  pointer-events: none;
+}
+
+:global([data-theme='dark']) .rashiRowWrap::after {
+  background: linear-gradient(to right, transparent, var(--surface-elevated));
+}
+
+.rashiRow {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+
+.rashiBtn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  scroll-snap-align: start;
+}
+
+.rashiBtn:hover {
+  border-color: var(--gold-primary);
+  color: var(--text-primary);
+}
+
+.rashiBtnActive {
+  border-color: var(--gold-primary);
+  background: rgba(199, 161, 90, 0.1);
+  color: var(--gold-primary);
+  font-weight: 600;
+}
+
+.preview {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: rgba(199, 161, 90, 0.06);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: border-color var(--transition-base);
+}
+
+.preview:hover {
+  border-color: var(--gold-primary);
+}
+
+.focusLine {
+  display: flex;
+  /* Top-aligned, not centered — the reading wraps to 4-5 lines on a phone
+     and a vertically-centered icon then floats in the middle of the
+     paragraph instead of reading as its leading marker. */
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.focusRashi {
+  color: var(--gold-primary);
+}
+
+.loading,
+.error {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.error {
+  color: #d64545;
+}
+
+@media (max-width: 640px) {
+  .section { padding: var(--space-12) 0; }
+  .card { padding: var(--space-4); }
+  .rashiBtn { padding: var(--space-1) var(--space-2); }
+}

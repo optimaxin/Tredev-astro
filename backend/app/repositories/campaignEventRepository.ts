@@ -4,6 +4,13 @@ import { MAINSTREAM_EMAIL_DOMAINS } from '../core/mainstreamEmailDomains.ts';
 
 const MAINSTREAM_DOMAINS_ARRAY = [...MAINSTREAM_EMAIL_DOMAINS];
 
+// Dev/QA accounts that slipped past the domain filter because they were made
+// with real Gmail addresses — matched on the NAME, since that's the only
+// thing they reliably share ("Test User", "OTP Test", "Login Bug Test",
+// "Signin Test", "qwert", and one developer's several dozen "Sparsh"
+// signups). Kept as a list so adding another marker later is one line.
+const TEST_ACCOUNT_NAME_PATTERNS = ['%sparsh%', '%test%', '%qwert%', '%dummy%'];
+
 export interface CampaignEventSummaryRow {
   event_type: string;
   event_label: string;
@@ -42,16 +49,15 @@ export interface RegisteredUserRow {
 // requires (auth.routes.ts) — years of dev/QA testing left hundreds of
 // @example.com, @tredevastro.local and similar throwaway accounts in this
 // table, which would otherwise flood a dashboard meant to show real
-// campaign visitors. Also drops anything named "sparsh" — one developer's
-// several dozen real-Gmail-domain test signups, which the domain filter
-// above can't catch since they're legitimate gmail.com addresses.
+// campaign visitors — plus the name-based test filter above for the ones
+// made with real Gmail addresses.
 export function listRegisteredUsers(): Promise<RegisteredUserRow[]> {
   return query<RegisteredUserRow>(
     `SELECT name, email, phone_number FROM users
      WHERE split_part(email, '@', 2) = ANY($1::text[])
-       AND name NOT ILIKE '%sparsh%'
+       AND NOT (name ILIKE ANY($2::text[]))
      ORDER BY name`,
-    [MAINSTREAM_DOMAINS_ARRAY]
+    [MAINSTREAM_DOMAINS_ARRAY, TEST_ACCOUNT_NAME_PATTERNS]
   );
 }
 
@@ -88,10 +94,10 @@ export function summarizeCampaignEventsByUser(): Promise<CampaignEventUserRow[]>
             event_type, event_label, COUNT(*)::text AS total
      FROM campaign_events
      WHERE user_email IS NOT NULL AND split_part(user_email, '@', 2) = ANY($1::text[])
-       AND (user_name IS NULL OR user_name NOT ILIKE '%sparsh%')
+       AND (user_name IS NULL OR NOT (user_name ILIKE ANY($2::text[])))
      GROUP BY user_email, event_type, event_label
      ORDER BY user_email, event_type, event_label`,
-    [MAINSTREAM_DOMAINS_ARRAY]
+    [MAINSTREAM_DOMAINS_ARRAY, TEST_ACCOUNT_NAME_PATTERNS]
   );
 }
 

@@ -173,15 +173,15 @@ export function recommendGemstones(kundli: Kundli, language: 'en' | 'hi' = 'en')
 
   if (language === 'hi') {
     return {
-      life: gemstoneFor('Life Stone', lifeLord, `${HINDI_PLANET[lifeLord as keyof typeof HINDI_PLANET]} आपकी लग्न राशि (${HINDI_RASHI[kundli.ascendant.rashi]}) का स्वामी है — जीवन रत्न को समग्र जीवन शक्ति, आत्म-छवि और सामान्य सौभाग्य को मजबूत करने के लिए आजीवन धारण किया जाता है।`, language),
-      lucky: gemstoneFor('Lucky Stone', luckyLord, `${HINDI_PLANET[luckyLord as keyof typeof HINDI_PLANET]} आपके पंचम भाव (पूर्व पुण्य, सौभाग्य और पूर्वजन्म के पुण्यों का भाव) का स्वामी है — भाग्य रत्न पारंपरिक रूप से नए अवसरों के द्वार खोलने के लिए धारण किया जाता है।`, language),
-      fortune: gemstoneFor('Fortune Stone', fortuneLord, `${HINDI_PLANET[fortuneLord as keyof typeof HINDI_PLANET]} आपके नवम भाव (भाग्य और धर्म का भाव) का स्वामी है — सौभाग्य रत्न पारंपरिक रूप से बाधाओं पर विजय पाने और समृद्धि आकर्षित करने के लिए धारण किया जाता है।`, language),
+      life: gemstoneFor('Life Stone', lifeLord, `${HINDI_PLANET[lifeLord as keyof typeof HINDI_PLANET]} आपकी लग्न राशि (${HINDI_RASHI[kundli.ascendant.rashi]}) का स्वामी है, इसलिए जीवन रत्न को समग्र जीवन शक्ति, आत्म-छवि और सामान्य सौभाग्य को मजबूत करने के लिए आजीवन धारण किया जाता है।`, language),
+      lucky: gemstoneFor('Lucky Stone', luckyLord, `आपके पंचम भाव (पूर्व पुण्य, सौभाग्य और पूर्वजन्म के पुण्यों का भाव) पर ${HINDI_PLANET[luckyLord as keyof typeof HINDI_PLANET]} का स्वामित्व है। परंपरागत रूप से भाग्य रत्न नए अवसरों के द्वार खोलने के लिए धारण किया जाता है।`, language),
+      fortune: gemstoneFor('Fortune Stone', fortuneLord, `नवम भाव (भाग्य और धर्म का भाव) ${HINDI_PLANET[fortuneLord as keyof typeof HINDI_PLANET]} के अधीन है। सौभाग्य रत्न बाधाओं पर विजय पाने और समृद्धि आकर्षित करने के लिए परंपरागत रूप से धारण किया जाता है।`, language),
     };
   }
   return {
-    life: gemstoneFor('Life Stone', lifeLord, `${cap(lifeLord)} rules your Ascendant (${kundli.ascendant.rashi}) — a life stone is meant to be worn throughout life to strengthen your overall vitality, self-image, and general fortune.`, language),
-    lucky: gemstoneFor('Lucky Stone', luckyLord, `${cap(luckyLord)} rules your 5th house (Purva Punya, the house of luck and past-life merit) — a lucky stone is traditionally worn to open doors to opportunity.`, language),
-    fortune: gemstoneFor('Fortune Stone', fortuneLord, `${cap(fortuneLord)} rules your 9th house (Bhagya, the house of fortune and dharma) — a fortune stone is traditionally worn to help overcome obstacles and attract prosperity.`, language),
+    life: gemstoneFor('Life Stone', lifeLord, `${cap(lifeLord)} rules your Ascendant (${kundli.ascendant.rashi}). A life stone is meant to be worn throughout life to strengthen your overall vitality, self-image, and general fortune.`, language),
+    lucky: gemstoneFor('Lucky Stone', luckyLord, `Your 5th house — Purva Punya, the house of luck and past-life merit — is ruled by ${cap(luckyLord)}. A lucky stone is traditionally worn to open doors to opportunity.`, language),
+    fortune: gemstoneFor('Fortune Stone', fortuneLord, `${cap(fortuneLord)} governs your 9th house, Bhagya, the house of fortune and dharma. A fortune stone is traditionally worn to help overcome obstacles and attract prosperity.`, language),
   };
 }
 

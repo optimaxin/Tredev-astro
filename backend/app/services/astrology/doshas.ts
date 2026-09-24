@@ -1,5 +1,6 @@
 import { getPlanetaryPositions } from './ephemeris.ts';
-import { getHouseFromAscendant, getRashi } from './zodiac.ts';
+import type { PlanetId } from './ephemeris.ts';
+import { getHouseFromAscendant, getRashi, RASHIS } from './zodiac.ts';
 import type { Kundli } from './kundli.ts';
 
 // Sade Sati — Saturn's transit through the 12th, 1st, or 2nd rashi counted
@@ -70,6 +71,89 @@ export interface RahuKetuTransitResult {
   ketuTransitRashi: string;
   rahuHouseFromMoon: number;
   ketuHouseFromMoon: number;
+}
+
+// Pitra Dosha — a classical indicator of affliction to the ancestral/
+// father's line in the birth chart. Traditional sources vary in exactly
+// which combinations count, so this checks the most commonly cited ones:
+// the Sun (karaka for father/ancestors) or the 9th house (house of father
+// and lineage) afflicted by Rahu, Ketu, or Saturn — by conjunction (same
+// house) or a classical whole-sign special aspect.
+export type PitraDoshaReason =
+  | 'sun-rahu-conjunction'
+  | 'sun-ketu-conjunction'
+  | 'sun-saturn-conjunction'
+  | 'node-in-9th-house'
+  | 'saturn-aspects-sun'
+  | 'ninth-lord-afflicted';
+
+export interface PitraDoshaResult {
+  isPitraDosha: boolean;
+  reasons: PitraDoshaReason[];
+  sunRashi: string;
+  sunHouse: number;
+  rahuHouse: number;
+  ketuHouse: number;
+  saturnHouse: number;
+  ninthLord: PlanetId;
+  ninthLordRashi: string;
+  ninthLordHouse: number;
+}
+
+// Every planet aspects the 7th house from itself (whole-sign); Saturn
+// additionally aspects the 3rd and 10th — the classical Parashari special
+// aspects used here (Mars/Jupiter have their own special aspects too, but
+// only Saturn's are relevant to the conditions this checks).
+const SATURN_SPECIAL_HOUSE_STEPS = [2, 6, 9]; // 3rd, 7th, 10th from Saturn's own house
+
+function houseNSteps(fromHouse: number, steps: number): number {
+  return ((fromHouse - 1 + steps) % 12) + 1;
+}
+
+const RASHI_LORDS: Record<(typeof RASHIS)[number], PlanetId> = {
+  Aries: 'mars', Taurus: 'venus', Gemini: 'mercury', Cancer: 'moon', Leo: 'sun', Virgo: 'mercury',
+  Libra: 'venus', Scorpio: 'mars', Sagittarius: 'jupiter', Capricorn: 'saturn', Aquarius: 'saturn', Pisces: 'jupiter',
+};
+
+export function checkPitraDosha(kundli: Kundli): PitraDoshaResult {
+  const byId = (id: PlanetId) => kundli.planets.find(p => p.id === id)!;
+  const sun = byId('sun');
+  const rahu = byId('rahu');
+  const ketu = byId('ketu');
+  const saturn = byId('saturn');
+
+  const ascendantRashiIndex = getRashi(kundli.ascendant.longitude).index;
+  const ninthRashiIndex = (ascendantRashiIndex + 8) % 12;
+  const ninthRashiName = RASHIS[ninthRashiIndex];
+  const ninthLordId = RASHI_LORDS[ninthRashiName];
+  const ninthLord = byId(ninthLordId);
+  const ninthHouse = 9;
+
+  const saturnAspectedHouses = SATURN_SPECIAL_HOUSE_STEPS.map(s => houseNSteps(saturn.house, s));
+
+  const reasons: PitraDoshaReason[] = [];
+  if (sun.house === rahu.house) reasons.push('sun-rahu-conjunction');
+  if (sun.house === ketu.house) reasons.push('sun-ketu-conjunction');
+  if (sun.house === saturn.house) reasons.push('sun-saturn-conjunction');
+  if (rahu.house === ninthHouse || ketu.house === ninthHouse) reasons.push('node-in-9th-house');
+  if (saturnAspectedHouses.includes(sun.house) && sun.house !== saturn.house) reasons.push('saturn-aspects-sun');
+  const ninthLordAfflicted =
+    ninthLord.house === rahu.house || ninthLord.house === ketu.house || ninthLord.house === saturn.house ||
+    (saturnAspectedHouses.includes(ninthLord.house) && ninthLord.house !== saturn.house);
+  if (ninthLordAfflicted) reasons.push('ninth-lord-afflicted');
+
+  return {
+    isPitraDosha: reasons.length > 0,
+    reasons,
+    sunRashi: sun.rashi,
+    sunHouse: sun.house,
+    rahuHouse: rahu.house,
+    ketuHouse: ketu.house,
+    saturnHouse: saturn.house,
+    ninthLord: ninthLordId,
+    ninthLordRashi: ninthLord.rashi,
+    ninthLordHouse: ninthLord.house,
+  };
 }
 
 export function checkRahuKetuTransit(natalMoonRashiIndex: number, atDate: Date): RahuKetuTransitResult {

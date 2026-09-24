@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { generateKundli, getNavamsaChart, getChandraChart } from '../services/astrology/kundli.ts';
-import { checkKaalSarpDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
+import { checkKaalSarpDosha, checkPitraDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
 import type { PlanetId } from '../services/astrology/ephemeris.ts';
@@ -164,6 +164,14 @@ calculatorsRouter.post('/kaal-sarp-dosha', limiter, (req, res) => {
     const birth = birthSchema.parse(req.body);
     const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
     return checkKaalSarpDosha(kundli);
+  });
+});
+
+calculatorsRouter.post('/pitra-dosha', limiter, (req, res) => {
+  handle(res, () => {
+    const birth = birthSchema.parse(req.body);
+    const kundli = generateKundli({ utcDate: toUtcDate(birth), latitude: birth.latitude, longitude: birth.longitude });
+    return checkPitraDosha(kundli);
   });
 });
 

@@ -64,6 +64,20 @@ function isClassical(lord: string): lord is ShadPlanet {
   return (SHAD_PLANETS as readonly string[]).includes(lord);
 }
 
+// Three independent phrasings per language, picked by house number so
+// consecutive Mahadashas in the same timeline don't all read off one
+// grammatical skeleton.
+const DASHA_OPENERS_EN: ((lord: string, house: string, area: string, sig: string, rashi: string, tone: string) => string)[] = [
+  (lord, house, area, sig, rashi, tone) => `${lord} sits in your ${house} house (${area}) in ${rashi}. Classically, ${lord} governs ${sig} — during this Mahadasha, expect that theme to surface around ${area}, carrying ${tone} from its placement in ${rashi}.`,
+  (lord, house, area, sig, rashi, tone) => `This Mahadasha belongs to ${lord}, placed in your ${house} house — ${area} — in ${rashi}. ${lord}'s classical domain is ${sig}, so this period tends to bring ${tone}, working through matters of ${area}.`,
+  (lord, house, area, sig, rashi, tone) => `${lord}, the ruling planet of this Mahadasha, is placed in ${rashi} in your ${house} house of ${area}. Its classical significations — ${sig} — play out here with ${tone}.`,
+];
+const DASHA_OPENERS_HI: ((lord: string, house: string, area: string, sig: string, rashi: string, tone: string) => string)[] = [
+  (lord, house, area, sig, rashi, tone) => `${lord} आपके ${house} भाव (${area}) में ${rashi} राशि में स्थित है। शास्त्रीय रूप से ${lord} ${sig} का कारक है — इस महादशा में यह विषय ${area} के इर्द-गिर्द उभरता है, ${rashi} राशि से ${tone} का पुट लिए हुए।`,
+  (lord, house, area, sig, rashi, tone) => `यह महादशा ${lord} की है, जो आपके ${house} भाव — ${area} — में ${rashi} राशि में बैठा है। ${lord} का शास्त्रीय कारक ${sig} है, इसलिए यह अवधि ${area} से जुड़े विषयों में ${tone} लेकर आती है।`,
+  (lord, house, area, sig, rashi, tone) => `इस महादशा के स्वामी ${lord}, आपके ${house} भाव (${area}) में ${rashi} राशि में स्थित हैं। इनका शास्त्रीय कारक — ${sig} — यहाँ ${tone} के साथ प्रकट होता है।`,
+];
+
 export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: MahadashaPeriod[], language: 'en' | 'hi' = 'en'): DashaPrediction[] {
   return mahadashaTimeline.map(period => {
     const planet = kundli.planets.find(p => p.id === period.lord);
@@ -74,9 +88,11 @@ export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: Mahadas
       }
       const houseAreaHi = HOUSE_LIFE_AREA_HI[planet.house];
       const toneHi = SIGN_TONE_HI[planet.rashi] || 'अपनी विशिष्ट ऊर्जा';
+      const rashiHi = HINDI_RASHI[planet.rashi] || planet.rashi;
       const nakshatraSentenceHi = ` यह ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}) में भी स्थित है, जो इस महादशा को एक अतिरिक्त, अधिक सूक्ष्म भावनात्मक रंग देता है।`;
       const dignityHi = isClassical(period.lord) ? (DASHA_DIGNITY_NOTE_HI[planetDignity(period.lord as ShadPlanet, getRashi(planet.longitude).index)]?.(lordHi) ?? '') : '';
-      const text = `${lordHi} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${HINDI_RASHI[planet.rashi] || planet.rashi} राशि में स्थित है। शास्त्रीय रूप से, ${lordHi} ${PLANET_SIGNIFICATIONS_HI[period.lord as keyof typeof PLANET_SIGNIFICATIONS_HI]} का कारक है — इस महादशा के दौरान, यह विषय विशेष रूप से ${houseAreaHi} के इर्द-गिर्द उभरता है, जिसमें ${planet.rashi ? HINDI_RASHI[planet.rashi] || planet.rashi : ''} राशि में स्थिति से ${toneHi} का पुट रहता है।` + nakshatraSentenceHi + dignityHi;
+      const opener = DASHA_OPENERS_HI[planet.house % DASHA_OPENERS_HI.length];
+      const text = opener(lordHi, HINDI_HOUSE_ORDINAL[planet.house], houseAreaHi, PLANET_SIGNIFICATIONS_HI[period.lord as keyof typeof PLANET_SIGNIFICATIONS_HI], rashiHi, toneHi) + nakshatraSentenceHi + dignityHi;
       return { lord: period.lord, text };
     }
     if (!planet) {
@@ -86,7 +102,8 @@ export function buildDashaPredictions(kundli: Kundli, mahadashaTimeline: Mahadas
     const tone = SIGN_TONE[planet.rashi] || 'its own distinct energy';
     const nakshatraSentence = ` It is also placed in the ${planet.nakshatra} nakshatra (pada ${planet.nakshatraPada}), which lends this Mahadasha an extra, finer-grained emotional undertone.`;
     const dignitySentence = isClassical(period.lord) ? (DASHA_DIGNITY_NOTE[planetDignity(period.lord as ShadPlanet, getRashi(planet.longitude).index)]?.(cap(period.lord)) ?? '') : '';
-    const text = `${cap(period.lord)} sits in your ${ordinal(planet.house)} house (${houseArea}) in ${planet.rashi}. Classically, ${cap(period.lord)} governs ${PLANET_SIGNIFICATIONS[period.lord as keyof typeof PLANET_SIGNIFICATIONS]} — during this Mahadasha, that theme comes forward specifically around ${houseArea}, carried with ${tone} from its placement in ${planet.rashi}.` + nakshatraSentence + dignitySentence;
+    const opener = DASHA_OPENERS_EN[planet.house % DASHA_OPENERS_EN.length];
+    const text = opener(cap(period.lord), ordinal(planet.house), houseArea, PLANET_SIGNIFICATIONS[period.lord as keyof typeof PLANET_SIGNIFICATIONS], planet.rashi, tone) + nakshatraSentence + dignitySentence;
     return { lord: period.lord, text };
   });
 }

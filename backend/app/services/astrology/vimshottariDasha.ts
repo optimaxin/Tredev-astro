@@ -19,6 +19,7 @@ export interface AntardashaPeriod {
   lord: DashaLord;
   startsAt: string;
   endsAt: string;
+  active: boolean;
 }
 
 export interface MahadashaPeriod {
@@ -38,10 +39,11 @@ function toDate(birthUtcDate: Date, years: number): string {
 // span proportionally by each sub-lord's own Vimshottari year-length (so a
 // Mahadasha lord's own Antardasha always comes first and is the longest-
 // weighted of the 9, since it repeats the Mahadasha/Antardasha match).
-function getAntardashas(mahadashaLord: DashaLord, startsAt: string, endsAt: string): AntardashaPeriod[] {
+function getAntardashas(mahadashaLord: DashaLord, startsAt: string, endsAt: string, atDate: Date): AntardashaPeriod[] {
   const startMs = new Date(startsAt).getTime();
   const totalMs = new Date(endsAt).getTime() - startMs;
   const startLordIndex = DASHA_ORDER.indexOf(mahadashaLord);
+  const atMs = atDate.getTime();
 
   const periods: AntardashaPeriod[] = [];
   let cursorMs = 0;
@@ -50,7 +52,8 @@ function getAntardashas(mahadashaLord: DashaLord, startsAt: string, endsAt: stri
     const durationMs = totalMs * (DASHA_YEARS[lord] / 120);
     const periodStartMs = startMs + cursorMs;
     const periodEndMs = periodStartMs + durationMs;
-    periods.push({ lord, startsAt: new Date(periodStartMs).toISOString().slice(0, 10), endsAt: new Date(periodEndMs).toISOString().slice(0, 10) });
+    const active = atMs >= periodStartMs && atMs < periodEndMs;
+    periods.push({ lord, startsAt: new Date(periodStartMs).toISOString().slice(0, 10), endsAt: new Date(periodEndMs).toISOString().slice(0, 10), active });
     cursorMs += durationMs;
   }
   return periods;
@@ -77,7 +80,7 @@ export function getCurrentMahadasha(birthUtcDate: Date, moonNakshatraIndex: numb
   const lord = DASHA_ORDER[lordIndex];
   const startsAt = toDate(birthUtcDate, cursorYears);
   const endsAt = toDate(birthUtcDate, cursorYears + periodYears);
-  return { lord, startsAt, endsAt, active: true, antardashas: getAntardashas(lord, startsAt, endsAt) };
+  return { lord, startsAt, endsAt, active: true, antardashas: getAntardashas(lord, startsAt, endsAt, atDate) };
 }
 
 // The full life timeline: all 9 Mahadashas from birth through the end of the
@@ -97,7 +100,7 @@ export function getMahadashaTimeline(birthUtcDate: Date, moonNakshatraIndex: num
     const active = elapsedYearsSinceBirth >= cursorYears && elapsedYearsSinceBirth < cursorYears + periodYears;
     const startsAt = toDate(birthUtcDate, cursorYears);
     const endsAt = toDate(birthUtcDate, cursorYears + periodYears);
-    periods.push({ lord, startsAt, endsAt, active, antardashas: getAntardashas(lord, startsAt, endsAt) });
+    periods.push({ lord, startsAt, endsAt, active, antardashas: getAntardashas(lord, startsAt, endsAt, atDate) });
     cursorYears += periodYears;
   }
   return periods;

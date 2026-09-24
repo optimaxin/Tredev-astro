@@ -3,18 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "workspaces": [
-    "frontend",
+    "web/frontend",
     "backend",
-    "ganesh-chaturthi"
+    "web/ganesh-chaturthi"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace frontend",
+    "dev": "npm run dev --workspace tredevastro-frontend",
     "server": "npm run dev --workspace backend",
     "campaign": "npm run dev --workspace ganesh-chaturthi-campaign",
     "dev:all": "concurrently -n web,api -c blue,magenta \"npm:dev\" \"npm:server\"",
-    "build": "npm run build --workspace frontend",
-    "lint": "npm run lint --workspace frontend",
-    "preview": "npm run preview --workspace frontend",
+    "build": "npm run build --workspace tredevastro-frontend",
+    "lint": "npm run lint --workspace tredevastro-frontend",
+    "preview": "npm run preview --workspace tredevastro-frontend",
     "test:backend": "npm run test --workspace backend"
   },
   "devDependencies": {

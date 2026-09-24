@@ -13,9 +13,22 @@ dist-ssr
 *.local
 backend/data/
 
+# Wrangler's local dev/deploy state (sessions, cached redirected config) —
+# not build output, regenerated per machine.
+.wrangler/
+
 # Personal/scratch workspace — sample kundli PDFs, reference repos, ad-hoc
 # assets. Never meant for the shared repo (real names, unrelated projects).
 Extra/
+
+# Android (mobile/)
+mobile/local.properties
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/captures/
+mobile/.cxx/
+*.iml
 
 # Editor directories and files
 .vscode/*

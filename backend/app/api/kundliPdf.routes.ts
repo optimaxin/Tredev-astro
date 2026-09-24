@@ -5,6 +5,14 @@ import { rateLimit } from '../middleware/rateLimit.ts';
 
 export const kundliPdfRouter = Router();
 
+// PAUSED 2026-09-18: a real Chromium launch per request (see launchBrowser
+// below) was too heavy for the current host and was making the rest of the
+// site sluggish. Nothing below this flag was removed — flip it back to
+// false (or delete this block) to re-enable exactly what was running
+// before. Full writeup + a real fix (BROWSERLESS_WS_ENDPOINT, already
+// supported below) is in docs/chromium-pdf-pause.md.
+const PDF_GENERATION_PAUSED = true;
+
 // The campaign microsite's own print-only route (ganesh-chaturthi/src/
 // PrintKundliPage.tsx) — a real, already-running app instance, not a
 // second copy of the report's markup/styles maintained here. Navigating a
@@ -66,6 +74,14 @@ function withPdfLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = pdfQueue.then(fn, fn);
   pdfQueue = run.then(() => undefined, () => undefined);
   return run;
+}
+
+// Phase-1 diagnostics for the 512MB-host memory budget this whole route is
+// built around — logs RSS (the number that actually gets a container
+// OOM-killed) before and after each job, so a real memory regression shows
+// up in Render's logs instead of only as a mystery crash under load.
+function logRss(label: string): void {
+  console.log(`[kundli-pdf] ${label} — RSS ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
 }
 
 function escapeHtml(s: string): string {
@@ -212,7 +228,11 @@ function buildCoverFooterTemplate(language: 'en' | 'hi'): string {
 const PAGE_MARGIN = { top: `${HEADER_HEIGHT_PX + 32}px`, bottom: `${FOOTER_HEIGHT_PX}px`, left: '0', right: '0' };
 
 kundliPdfRouter.post('/', limiter, async (req, res) => {
-  const { name, displayName, dob, tob, place, latitude, longitude, timezoneOffsetMinutes, language: rawLanguage } = req.body || {};
+  if (PDF_GENERATION_PAUSED) {
+    res.status(503).json({ error: 'PDF download is temporarily unavailable. Please try again later.' });
+    return;
+  }
+  const { name, displayName, dob, tob, place, latitude, longitude, timezoneOffsetMinutes, language: rawLanguage, timeUnknown } = req.body || {};
   if (!name || !dob || !tob || !place || typeof latitude !== 'number' || typeof longitude !== 'number' || typeof timezoneOffsetMinutes !== 'number') {
     res.status(400).json({ error: 'Missing or invalid birth details' });
     return;
@@ -228,12 +248,14 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
     name: nameForDisplay, dob: String(dob), tob: String(tob), place: String(place),
     lat: String(latitude), lng: String(longitude), tz: String(timezoneOffsetMinutes),
     lang: language,
+    ...(timeUnknown ? { timeUnknown: '1' } : {}),
   });
   const targetUrl = `${CAMPAIGN_APP_URL}/print-kundli?${qs.toString()}`;
 
   let browser: Browser | undefined;
   let page: Page | undefined;
   await withPdfLock(async () => {
+  logRss('job start');
   try {
     const [launchedBrowser, logoDataUri, acharyaDataUri] = await Promise.all([
       launchBrowser(),
@@ -304,6 +326,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
     await browser.close().catch(() => {});
     page = undefined;
     browser = undefined;
+    logRss('chromium closed');
 
     const merged = await PDFDocument.create();
     const [coverDoc, restDoc] = await Promise.all([PDFDocument.load(coverPdf), PDFDocument.load(restPdf)]);
@@ -324,6 +347,7 @@ kundliPdfRouter.post('/', limiter, async (req, res) => {
   } finally {
     if (page) await page.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
+    logRss('job end');
   }
   });
 });

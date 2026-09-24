@@ -1,9 +1,10 @@
-import { Router } from 'express';
+import { Router, raw } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { getPublicUser } from '../services/authService.ts';
 import { ChatError, listMessages, sendMessage } from '../services/chatService.ts';
+import { CallRecordingError, uploadCallRecording } from '../services/callRecordingService.ts';
 import { findAllForAstrologer, findAllForUser } from '../repositories/consultationRepository.ts';
 import { findAstrologerByIdRaw, findAstrologerByUserId } from '../repositories/astrologerRepository.ts';
 import { findReviewByConsultation } from '../repositories/reviewRepository.ts';
@@ -96,6 +97,29 @@ chatRouter.post('/:id/messages', requireAuth, messageLimiter, async (req, res) =
   } catch (e) {
     if (e instanceof ChatError) return fail(res, e.status, 'CHAT_ERROR', e.message);
     if (e instanceof z.ZodError) return fail(res, 422, 'VALIDATION_ERROR', e.issues.map(i => i.message).join('; '));
+    throw e;
+  }
+});
+
+// Uploads the client-recorded call audio (see CallWindow.tsx — calls are
+// peer-to-peer WebRTC, so this is the only point the server ever sees the
+// audio) as a raw binary body, not JSON — a multi-minute recording easily
+// exceeds the app's normal 8mb JSON body limit, and base64 would add ~33%
+// on top of that for no reason when the body can just be the raw bytes.
+// Staff-only playback lives in admin.routes.ts's 'call-recordings' section;
+// 10-day auto-delete is realtimeStore.ts's deleteExpiredCallRecordings.
+const recordingLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+
+chatRouter.post('/:id/recording', requireAuth, recordingLimiter, raw({ type: '*/*', limit: '50mb' }), async (req, res) => {
+  const email = await requesterEmail(req, res);
+  if (!email) return;
+  const mimeType = req.headers['content-type'] || 'audio/webm';
+  if (!Buffer.isBuffer(req.body)) return fail(res, 422, 'VALIDATION_ERROR', 'Expected a raw audio body');
+  try {
+    const result = await uploadCallRecording(String(req.params.id), email, mimeType, req.body);
+    res.status(201).json({ success: true, data: result });
+  } catch (e) {
+    if (e instanceof CallRecordingError) return fail(res, e.status, 'RECORDING_ERROR', e.message);
     throw e;
   }
 });

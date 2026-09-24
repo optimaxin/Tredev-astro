@@ -13,6 +13,8 @@ import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../reposito
 import { register, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
+import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
+import { toPublicDailyShlok } from '../models/dailyShlok.ts';
 import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
 import { countPurchasesForUser, getPurchaseStats, listAllPurchases, listRecentPurchases } from '../repositories/reportPurchaseRepository.ts';
@@ -29,7 +31,7 @@ import {
   getTimeseries,
   getUserUsage,
 } from '../repositories/aiUsageRepository.ts';
-import { listPublicAstrologers } from '../services/realtimeStore.ts';
+import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
@@ -38,6 +40,7 @@ import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPr
 import { toPublicPricingRegion } from '../models/pricingRegion.ts';
 import { deleteOverride, listOverridesForAdmin, upsertOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { parseCsv, toCsvRow } from '../services/csv.ts';
+import { findCallRecordingData, listCallRecordings } from '../repositories/callRecordingRepository.ts';
 
 export const adminRouter = Router();
 
@@ -209,7 +212,10 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   await decideApplication(application.id, parsed.data.decision);
   if (parsed.data.decision === 'APPROVED') {
     await updateUserRole(applicant.id, 'ASTROLOGIST');
-    await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    const catalogRow = await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    // Without this, the new astrologer can't go online / accept anything
+    // until the process restarts — see registerNewAstrologer's own comment.
+    await registerNewAstrologer(catalogRow);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });
@@ -217,9 +223,12 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
 
 // ── Astrologers ──────────────────────────────────────────────────────────
 // Direct admin-onboarding ("Add Astrologer") was removed per explicit
-// request — astrologer accounts come from the apply/approve flow now.
-// Removing one still reuses PATCH /users/:id/role (set role back to USER),
-// same mechanism the Users page already uses for role changes.
+// request in favor of the apply/approve flow, then re-added per a later
+// explicit request — see POST /astrologers below. Both paths lead to the
+// same account + catalog row, so nothing about the apply/approve flow
+// changes. Removing an astrologer still reuses PATCH /users/:id/role (set
+// role back to USER), same mechanism the Users page already uses for role
+// changes.
 
 // Real per-astrologer revenue, replacing the old `price * totalConsultations`
 // estimate the Astrologers page used to show (which used the CHAT price
@@ -344,6 +353,42 @@ adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req,
   res.json({ success: true, data: toPublicAstrologerProfile(row) });
 });
 
+// Direct admin-onboarding, re-added per explicit request (see the removal
+// comment above — the apply/approve flow stays as the public-facing path,
+// this is an additional staff shortcut for onboarding someone directly).
+// Reuses authService.register() for the account itself (duplicate email/
+// phone checks, password hashing, role assignment all go through the one
+// real path already used everywhere else), then the same
+// insertAstrologerForUser + updateAstrologerProfile pair the apply/approve
+// flow already uses to create and fill in the catalog row.
+const createAstrologerSchema = editAstrologerSchema.extend({
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().email().max(200),
+  password: z.string().min(8).max(200),
+});
+
+adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res) => {
+  const parsed = createAstrologerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { name, email, password, ...profile } = parsed.data;
+  let userId: string;
+  try {
+    const { user } = await register({ name, email, password, role: 'ASTROLOGIST' });
+    userId = user.id;
+  } catch (e) {
+    if (e instanceof AuthError) return fail(res, e.status, 'REGISTER_FAILED', e.message);
+    throw e;
+  }
+  const catalogRow = await insertAstrologerForUser(userId, name, profile.expertise[0] || 'General Astrology');
+  const updated = await updateAstrologerProfile(catalogRow.id, profile);
+  const finalRow = updated ?? catalogRow;
+  // Without this, this astrologer can't go online / accept anything until
+  // the process restarts — see registerNewAstrologer's own comment.
+  await registerNewAstrologer(finalRow);
+  await audit(req, 'astrologer.create', email);
+  res.json({ success: true, data: toPublicAstrologerProfile(finalRow) });
+});
+
 // Same audit surface as /users/:id/activity, mirrored for the Astrologers
 // profile drawer — no revenue here either, just chat/last-action audit.
 adminRouter.get('/astrologers/:id/activity', requireSection('astrologers'), async (req, res) => {
@@ -406,6 +451,27 @@ adminRouter.get('/consultations', requireSection('consultations'), async (req, r
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { rows, total } = await listAllConsultations(parsed.data.page, parsed.data.limit);
   res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
+});
+
+// ── Call recordings ──────────────────────────────────────────────────────
+// Staff-only, 10-day auto-delete (see callRecordingRepository.ts and
+// realtimeStore.ts's deleteExpiredCallRecordings). List returns metadata
+// only; the actual audio is a separate per-recording fetch so the list
+// response stays small regardless of how many recordings exist.
+
+adminRouter.get('/call-recordings', requireSection('call-recordings'), async (req, res) => {
+  const parsed = pageSchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const { rows, total } = await listCallRecordings(parsed.data.page, parsed.data.limit);
+  res.json({ success: true, data: rows, pagination: { ...parsed.data, total } });
+});
+
+adminRouter.get('/call-recordings/:id/audio', requireSection('call-recordings'), async (req, res) => {
+  const recording = await findCallRecordingData(String(req.params.id));
+  if (!recording) return fail(res, 404, 'NOT_FOUND', 'Recording not found (it may have expired)');
+  res.setHeader('Content-Type', recording.mimeType);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(recording.data);
 });
 
 // ── Report purchases ─────────────────────────────────────────────────────
@@ -492,6 +558,37 @@ adminRouter.delete('/blog/:id', requireSection('blog'), async (req, res) => {
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
   await deleteBlogPost(id);
   await audit(req, 'blog.delete', String(id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+// ── Daily shlok (the Panchang card's footer line, one per calendar day) ──
+
+const dailyShlokSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  textEn: z.string().trim().min(3).max(300),
+  textHi: z.string().trim().min(3).max(300),
+});
+
+adminRouter.get('/daily-shlok', requireSection('shlok'), async (_req, res) => {
+  res.json({ success: true, data: (await listShloks(180)).map(toPublicDailyShlok) });
+});
+
+// One PUT for both "queue a new day" and "edit that day" — a date can only
+// ever hold one shlok, so the repository upserts rather than making the
+// page track whether it's creating or updating.
+adminRouter.put('/daily-shlok', requireSection('shlok'), async (req, res) => {
+  const parsed = dailyShlokSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await upsertShlok(parsed.data);
+  await audit(req, 'shlok.save', parsed.data.date);
+  res.json({ success: true, data: toPublicDailyShlok(row) });
+});
+
+adminRouter.delete('/daily-shlok/:date', requireSection('shlok'), async (req, res) => {
+  const date = String(req.params.date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(res, 422, 'VALIDATION_ERROR', 'date must be YYYY-MM-DD');
+  await deleteShlok(date);
+  await audit(req, 'shlok.delete', date);
   res.json({ success: true, data: { ok: true } });
 });
 

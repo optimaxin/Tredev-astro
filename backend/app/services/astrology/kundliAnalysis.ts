@@ -121,28 +121,61 @@ export function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Four independent sentence templates per language, picked by planet id so
+// the same planet always reads the same way but consecutive planets in a
+// chart don't all share one grammatical skeleton (the giveaway of a
+// mail-merged paragraph). Each still states the same facts: house + life
+// area, sign, and what the planet classically governs.
+const OPENING_TEMPLATES: ((p: ChartPlanet, houseArea: string, sig: string) => string)[] = [
+  (p, houseArea, sig) => `${cap(p.id)} falls in your ${ordinal(p.house)} house, in ${p.rashi} — the house of ${houseArea}. Classically, ${cap(p.id)} governs ${sig}, so here it colors how you handle ${houseArea}.`,
+  (p, houseArea, sig) => `In your chart, ${cap(p.id)} is placed in ${p.rashi} in the ${ordinal(p.house)} house (${houseArea}). This planet's classical domain is ${sig}, which it brings to bear on that part of life.`,
+  (p, houseArea, sig) => `Your ${ordinal(p.house)} house — ${houseArea} — holds ${cap(p.id)}, sitting in ${p.rashi}. ${cap(p.id)} is traditionally tied to ${sig}, and that's the flavor it lends here.`,
+  (p, houseArea, sig) => `${cap(p.id)} sits in ${p.rashi}, in your ${ordinal(p.house)} house of ${houseArea}. Vedic astrology reads ${cap(p.id)} as the significator of ${sig}.`,
+];
+
+const NAKSHATRA_TEMPLATES: ((p: ChartPlanet) => string)[] = [
+  p => ` It's at ${p.degreeInSign.toFixed(1)}° of the sign, in ${p.nakshatra} nakshatra (pada ${p.nakshatraPada}, ruled by ${cap(p.nakshatraLord)}), which adds its own emotional texture on top of the sign.`,
+  p => ` More specifically, it's in ${p.nakshatra} nakshatra (pada ${p.nakshatraPada}) at ${p.degreeInSign.toFixed(1)}° — ruled by ${cap(p.nakshatraLord)}, this nakshatra shades the sign's broader theme.`,
+  p => ` The exact degree is ${p.degreeInSign.toFixed(1)}°, placing it in ${p.nakshatra} (pada ${p.nakshatraPada}), whose lord ${cap(p.nakshatraLord)} adds a finer layer beneath the sign.`,
+];
+
+const RETRO_TEMPLATES_EN: ((name: string) => string)[] = [
+  name => ` It's also retrograde right now — classical texts treat this as turning ${name}'s themes inward, more reconsidered than outwardly acted on.`,
+  name => ` It's retrograde at the moment too, which traditionally means ${name}'s usual expression runs delayed or gets reworked internally before showing outwardly.`,
+];
+
 function planetParagraph(planet: ChartPlanet, language: 'en' | 'hi'): string {
   const signIndex = getRashi(planet.longitude).index;
   const isClassical = (SHAD_PLANETS as readonly PlanetId[]).includes(planet.id);
   const dignity = isClassical ? planetDignity(planet.id as ShadPlanet, signIndex) : null;
+  const pick = <T,>(arr: T[]): T => arr[planet.house % arr.length];
 
   if (language === 'hi') {
     const houseAreaHi = HOUSE_LIFE_AREA_HI[planet.house];
     const rashiHi = HINDI_RASHI[planet.rashi] || planet.rashi;
     const planetHi = HINDI_PLANET[planet.id];
-    const base = `आपका ${planetHi} आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में स्थित है, जो ${rashiHi} राशि में है। शास्त्रीय ज्योतिष के अनुसार, ${planetHi} ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक है — यहाँ स्थित होकर यह इस ऊर्जा को विशेष रूप से ${houseAreaHi} से संबंधित विषयों पर प्रदान करता है।`;
-    const nakshatraSentence = ` यह ${rashiHi} राशि के ${planet.degreeInSign.toFixed(1)}° पर, ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}, स्वामी ${HINDI_PLANET[planet.nakshatraLord as PlanetId] || planet.nakshatraLord}) में स्थित है — ज्योतिष में नक्षत्र, राशि की व्यापक प्रकृति पर एक सूक्ष्म भावनात्मक और व्यवहारिक छटा जोड़ता है।`;
+    const OPENINGS_HI = [
+      `आपका ${planetHi} ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में, ${rashiHi} राशि में स्थित है। शास्त्रीय रूप से ${planetHi} ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक है, इसलिए यहाँ यह इसी क्षेत्र को प्रभावित करता है।`,
+      `${rashiHi} राशि में स्थित आपका ${planetHi} ${HINDI_HOUSE_ORDINAL[planet.house]} भाव — ${houseAreaHi} — में बैठा है। यह ग्रह पारंपरिक रूप से ${PLANET_SIGNIFICATIONS_HI[planet.id]} से जुड़ा है, और यही रंग यहाँ लाता है।`,
+      `आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${planetHi} विराजमान है, ${rashiHi} राशि में। ज्योतिष में ${planetHi} को ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक माना जाता है।`,
+    ];
+    const NAKSHATRA_HI = [
+      ` यह राशि के ${planet.degreeInSign.toFixed(1)}° पर, ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}, स्वामी ${HINDI_PLANET[planet.nakshatraLord as PlanetId] || planet.nakshatraLord}) में है, जो राशि के स्वभाव पर एक सूक्ष्म भावनात्मक छटा जोड़ता है।`,
+      ` सटीक रूप से यह ${planet.degreeInSign.toFixed(1)}° पर ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}) में है — इसके स्वामी ${HINDI_PLANET[planet.nakshatraLord as PlanetId] || planet.nakshatraLord} राशि के व्यापक भाव के नीचे एक और परत जोड़ते हैं।`,
+    ];
+    const base = OPENINGS_HI[planet.house % OPENINGS_HI.length];
+    const nakshatraSentence = NAKSHATRA_HI[planet.house % NAKSHATRA_HI.length];
     const dignitySentence = dignity ? (DIGNITY_NOTE_HI[dignity]?.(planetHi, rashiHi) ?? '') : '';
-    const retroSentence = planet.retrograde ? ` यह वर्तमान में वक्री भी है — शास्त्रीय ग्रंथ इसे ${planetHi} के विषयों को बाहर की बजाय भीतर की ओर मोड़ने, या उनके प्रभाव में देरी व पुनर्विचार लाने के रूप में पढ़ते हैं।` : '';
+    const retroSentence = planet.retrograde ? ` यह अभी वक्री भी है — शास्त्र इसे ${planetHi} के विषयों को बाहर की बजाय भीतर मोड़ने या उनमें देरी व पुनर्विचार लाने के रूप में पढ़ते हैं।` : '';
     return base + nakshatraSentence + dignitySentence + retroSentence;
   }
 
   const houseArea = HOUSE_LIFE_AREA[planet.house];
   const planetName = cap(planet.id);
-  const base = `Your ${planetName} sits in your ${ordinal(planet.house)} house (${houseArea}), placed in ${planet.rashi}. In classical Vedic astrology, ${planetName} governs ${PLANET_SIGNIFICATIONS[planet.id]} — placed here, it lends that energy specifically to matters of ${houseArea}.`;
-  const nakshatraSentence = ` It sits at ${planet.degreeInSign.toFixed(1)}° of ${planet.rashi}, within the ${planet.nakshatra} nakshatra (pada ${planet.nakshatraPada}, ruled by ${cap(planet.nakshatraLord)}) — Vedic astrology reads the nakshatra as adding a finer emotional and behavioral texture on top of the sign's broader theme.`;
+  const base = pick(OPENING_TEMPLATES)(planet, houseArea, PLANET_SIGNIFICATIONS[planet.id]);
+  const nakshatraSentence = pick(NAKSHATRA_TEMPLATES)(planet);
   const dignitySentence = dignity ? (DIGNITY_NOTE[dignity]?.(planetName, planet.rashi) ?? '') : '';
-  const retroSentence = planet.retrograde ? ` It is also currently retrograde, a placement classical texts read as turning ${planetName}'s themes inward or delaying and reconsidering their outward expression rather than acting on them directly.` : '';
+  const retroSentence = planet.retrograde ? pick(RETRO_TEMPLATES_EN)(planetName) : '';
   return base + nakshatraSentence + dignitySentence + retroSentence;
 }
 

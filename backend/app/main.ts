@@ -13,7 +13,9 @@ import { authRouter } from './api/auth.routes.ts';
 import { astrologersCatalogRouter } from './api/astrologers.routes.ts';
 import { chatRouter } from './api/chat.routes.ts';
 import { calculatorsRouter } from './api/calculators.routes.ts';
-import { kundliPdfRouter } from './api/kundliPdf.routes.ts';
+// kundliPdfRouter (Chromium/Playwright PDF generation) is paused — not even
+// imported, so the playwright module never loads into this process. See
+// docs/chromium-pdf-pause.md to re-enable.
 import { favoritesRouter } from './api/favorites.routes.ts';
 import { kundliHistoryRouter } from './api/kundliHistory.routes.ts';
 import { ordersRouter } from './api/orders.routes.ts';
@@ -21,9 +23,11 @@ import { adminRouter } from './api/admin.routes.ts';
 import { campaignAnalyticsRouter } from './api/campaignAnalytics.routes.ts';
 import { contentRouter } from './api/content.routes.ts';
 import { paymentsRouter } from './api/payments.routes.ts';
+import { turnRouter } from './api/turn.routes.ts';
 import { config } from './core/config.ts';
 import { attachSockets } from './websocket/sockets.ts';
 import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
+import { deleteExpiredCallRecordings } from './repositories/callRecordingRepository.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
 // Comma-separated so the main site and the separately-deployed Ganesh
@@ -70,11 +74,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);
 app.use('/api/calculators', calculatorsRouter);
-app.use('/api/kundli-pdf', kundliPdfRouter);
+// app.use('/api/kundli-pdf', kundliPdfRouter); — paused, see docs/chromium-pdf-pause.md
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/kundli-history', kundliHistoryRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/turn', turnRouter);
 app.use('/api/campaign-analytics', campaignAnalyticsRouter);
 // The dashboard itself — a single static page (see public/campaign-analytics.html)
 // rather than a whole separate app, since it's just a password-gated view
@@ -105,6 +110,11 @@ attachSockets(io);
 // against in-memory state, not a client polling the network. Push to
 // clients still happens exclusively through the event bus → WebSocket path.
 setInterval(() => { runMaintenanceTick().catch(console.error); }, 20_000);
+
+// Enforces call-recordings' 10-day retention (see callRecordingRepository.ts)
+// by actually deleting expired rows. Hourly is plenty for a day-granularity
+// retention window — no need for the 20s cadence above.
+setInterval(() => { deleteExpiredCallRecordings(Date.now()).catch(console.error); }, 60 * 60_000);
 
 httpServer.listen(PORT, () => {
   console.log(`[tredevastro-realtime] listening on http://localhost:${PORT}`);

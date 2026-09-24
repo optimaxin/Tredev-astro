@@ -16,5 +16,10 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["app", "tests"]
+  "include": ["app", "tests"],
+  // kundliPdf.routes.ts is paused (see docs/chromium-pdf-pause.md) and its
+  // playwright/pdf-lib dependencies were uninstalled to free space — the
+  // file itself stays in the repo for a clean re-enable, so it's excluded
+  // here rather than deleted, to keep it out of typecheck in the meantime.
+  "exclude": ["app/api/kundliPdf.routes.ts"]
 }

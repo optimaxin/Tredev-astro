@@ -1,0 +1,1075 @@
+/* ============================================================
+   TredevAstro — Global Design System
+   ============================================================ */
+
+/* ---------- Reset & Base ---------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* Not `scroll-behavior: smooth` here — every scrollTo()/scrollIntoView()
+     call in the app already passes `behavior: 'smooth'` explicitly, so this
+     was redundant. Applied globally it also fights the fixed-position nav on
+     iOS/Android WebViews: any layout shift or rubber-band overscroll gets
+     smooth-animated back into place, which is what reads as the page
+     randomly "snapping back to top" mid-scroll on mobile. */
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Yatra One', 'DM Sans', system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-text-dark);
+  background: var(--bg-primary);
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Design Tokens ---------- */
+:root {
+  /* Master Color System */
+  --bg-primary:         #060914;
+  --bg-secondary:       #080C1C;
+  --surface:            #0C1125;
+  --surface-elevated:   #11172C;
+  --surface-highlight:  #151B31;
+  
+  /* Cosmic clouds default (dark) values */
+  --saffron-cloud:      rgba(197, 106, 39, 0.85);
+  --indigo-cloud:       rgba(28, 43, 99, 0.9);
+  --maroon-cloud:       rgba(120, 22, 38, 0.75);
+  --cloud-blend-mode:   screen;
+  --cloud-opacity:      0.85;
+  --cloud-item-opacity: 0.65;
+  
+  --text-primary:       #F1E9DC;
+  --text-secondary:     #B9B3A8;
+  --text-muted:         #7F7B78;
+  --text-disabled:      #555766;
+  
+  --gold-primary:       #C7A15A;
+  --gold-secondary:     #9F7B3D;
+  --gold-soft:          #D2B978;
+  
+  --sacred-accent:      #A85A32;
+  --subtle-maroon:      #32161D;
+  --star-ivory:         #E8DFCF;
+  --star-gold:          #D8BD82;
+  --star-cool:          #AEB7D0;
+  
+  --border-subtle:      rgba(199, 161, 90, 0.16);
+  --border-strong:      rgba(199, 161, 90, 0.28);
+
+  /* Legacy variable mappings for backwards compatibility */
+  --color-dark:         var(--bg-primary);
+  --color-dark-maroon:  var(--bg-secondary);
+  --color-surface:      var(--surface);
+  --color-surface-maroon: var(--surface-elevated);
+  --color-surface-2:    var(--surface-highlight);
+  --color-ivory:        var(--bg-secondary);
+  --color-ivory-2:      var(--surface);
+  
+  --color-text-light:   var(--text-primary);
+  --color-text-muted:   var(--text-secondary);
+  --color-text-dark:    var(--text-secondary);
+  --color-text-dark-2:  var(--text-muted);
+  
+  --color-gold:         var(--gold-primary);
+  --color-gold-light:   var(--gold-soft);
+  --color-gold-dark:    var(--gold-secondary);
+  --color-cyan:         var(--sacred-accent);
+  --color-cyan-dim:     #9A5428;
+  --color-terracotta:   var(--subtle-maroon);
+  
+  --color-border-dark:  var(--border-subtle);
+  --color-border-light: var(--border-subtle);
+  --color-overlay:      rgba(6, 9, 20, 0.85);
+
+  /* Typography */
+  --font-serif:  'Yatra One', 'Cormorant Garamond', Georgia, serif;
+  --font-sans:   'Yatra One', 'DM Sans', system-ui, sans-serif;
+
+  /* Type Scale */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-md:   1.125rem;  /* 18px */
+  --text-lg:   1.25rem;   /* 20px */
+  --text-xl:   1.5rem;    /* 24px */
+  --text-2xl:  1.875rem;  /* 30px */
+  --text-3xl:  2.25rem;   /* 36px */
+  --text-4xl:  3rem;      /* 48px */
+  --text-5xl:  3.75rem;   /* 60px */
+  --text-6xl:  4.5rem;    /* 72px */
+  --text-hero: clamp(3rem, 8vw, 6.5rem);
+
+  /* Spacing */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* Border Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-gold:  0 0 30px rgba(200, 169, 107, 0.1);
+  --shadow-cyan:  0 0 20px rgba(168, 90, 50, 0.1);
+  --shadow-card:  0 4px 30px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 20px 50px rgba(0, 0, 0, 0.4);
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-base:   250ms ease;
+  --transition-slow:   400ms ease;
+  --transition-slower: 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Nav */
+  --nav-height: 72px;
+  --nav-link-size: 10.5px;
+  --nav-cta-size: 10.5px;
+  --nav-badge-size: 11px;
+
+  /* Devanagari-compatible companion to the Latin display/UI fonts above */
+  --font-devanagari: 'Hind', 'Yatra One', 'Noto Sans', sans-serif;
+
+  /* Z-index */
+  --z-base:    1;
+  --z-above:   10;
+  --z-sticky:  100;
+  --z-overlay: 200;
+  --z-modal:   300;
+  --z-tooltip: 400;
+}
+
+:root[data-theme='light'] {
+  /* Premium warm ivory/parchment/antique gold palette */
+  --bg-primary:         #F5F0E7;  /* warm ivory */
+  --bg-secondary:       #ECE4D6;  /* soft parchment */
+  --surface:            #FAF7F0;  /* antique paper surface */
+  --surface-elevated:   #F2EBD9;  /* slightly deeper surface */
+  --surface-highlight:  #E8DEC8;  /* muted parchment accent */
+  
+  --text-primary:       #182333;  /* deep navy */
+  --text-secondary:     #68717A;  /* muted slate */
+  --text-muted:         #8C8A84;  /* warm grey */
+  --text-disabled:      #BCBAB4;
+  
+  --gold-primary:       #B58A3B;  /* antique gold */
+  --gold-secondary:     #8F6A22;  /* darker antique gold */
+  --gold-soft:          #D0B06A;  /* soft gold */
+  
+  --sacred-accent:      #A85B2D;  /* saffron terracotta */
+  --subtle-maroon:      #4A2020;  /* deep maroon accent */
+  --star-ivory:         #68717A;
+  --star-gold:          #B58A3B;
+  --star-cool:          #17253A;
+  
+  --border-subtle:      rgba(181, 138, 59, 0.18);
+  --border-strong:      rgba(181, 138, 59, 0.35);
+  
+  --color-overlay:      rgba(245, 240, 231, 0.90);
+
+  /* Light mode cloud/atmosphere — very subtle warm wisps, NOT saffron blobs */
+  --saffron-cloud:      rgba(244, 150, 80, 0.14);  /* warm saffron aura */
+  --indigo-cloud:       rgba(235, 120, 40, 0.10);  /* glowing orange aura */
+  --maroon-cloud:       rgba(215, 100, 50, 0.08);  /* terracotta aura */
+  --cloud-blend-mode:   multiply;
+  --cloud-opacity:      0.65;
+  --cloud-item-opacity: 0.5;
+
+  --shadow-card:        0 2px 20px rgba(23, 37, 58, 0.06);
+  --shadow-card-hover:  0 6px 30px rgba(23, 37, 58, 0.12);
+  --shadow-elevated:    0 12px 50px rgba(23, 37, 58, 0.10);
+}
+
+
+/* ---------- Devanagari Typography System ----------
+   Hindi & Marathi reuse 'Yatra One' for display headings (it already covers
+   Devanagari) but swap the UI/body font to 'Hind' — a proper Devanagari text
+   face — and scale the whole type ramp up so Devanagari's script proportions
+   read with the same visual weight as the Latin UI at the same hierarchy
+   level. Applied via the document <html lang> attribute, not a class, so it
+   can never be left stale. */
+html[lang='hi'],
+html[lang='mr'] {
+  --font-sans: var(--font-devanagari), 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Yatra One', var(--font-devanagari), 'Cormorant Garamond', serif;
+
+  --text-xs:   0.875rem;   /* 14px, was 12px */
+  --text-sm:   1rem;       /* 16px, was 14px */
+  --text-base: 1.1875rem;  /* 19px, was 16px */
+  --text-md:   1.3125rem;  /* 21px, was 18px */
+  --text-lg:   1.5rem;     /* 24px, was 20px */
+  --text-xl:   1.8125rem;  /* 29px, was 24px */
+  --text-2xl:  2.1875rem;  /* 35px, was 30px */
+  --text-3xl:  2.625rem;   /* 42px, was 36px */
+  --text-4xl:  3.375rem;   /* 54px, was 48px */
+  --text-5xl:  4.125rem;   /* 66px, was 60px */
+  --text-6xl:  4.875rem;   /* 78px, was 72px */
+
+  --nav-link-size: 14.5px;
+  --nav-cta-size: 14px;
+  --nav-badge-size: 14px;
+}
+
+html[lang='hi'] body,
+html[lang='mr'] body {
+  /* Devanagari conjuncts and matras need more vertical room than Latin x-height */
+  line-height: 1.85;
+}
+
+/* Wide Latin tracking crowds/breaks Devanagari conjunct clusters — relax it
+   on the shared uppercase-style label utilities used for eyebrows, badges,
+   buttons and tags. */
+html[lang='hi'] .section-eyebrow-gold,
+html[lang='mr'] .section-eyebrow-gold,
+html[lang='hi'] .section-eyebrow,
+html[lang='mr'] .section-eyebrow,
+html[lang='hi'] .badge,
+html[lang='mr'] .badge,
+html[lang='hi'] .btn,
+html[lang='mr'] .btn,
+html[lang='hi'] .tag,
+html[lang='mr'] .tag,
+html[lang='hi'] .section-explore-link,
+html[lang='mr'] .section-explore-link {
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--gold-secondary); border-radius: 3px; }
+
+/* ---------- Selection ---------- */
+::-selection {
+  background: rgba(199, 161, 90, 0.2);
+  color: var(--gold-primary);
+}
+
+/* ---------- Typography Utilities ---------- */
+.font-serif   { font-family: var(--font-serif); }
+.font-sans    { font-family: var(--font-sans); }
+.font-light   { font-weight: 300; }
+.font-regular { font-weight: 400; }
+.font-medium  { font-weight: 500; }
+.font-semi    { font-weight: 600; }
+.italic       { font-style: italic; }
+
+/* Visually-hidden but still readable by assistive tech — for headings/labels
+   needed to keep the document outline correct without showing on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.text-gold       { color: var(--gold-primary); }
+.text-cyan       { color: var(--sacred-accent); }
+.text-light      { color: var(--text-primary); }
+.text-muted      { color: var(--text-secondary); }
+.text-dark       { color: var(--text-muted); }
+.text-terracotta { color: var(--subtle-maroon); }
+
+.text-center { text-align: center; }
+.text-left   { text-align: left; }
+.text-right  { text-align: right; }
+
+/* ---------- Layout Utilities ---------- */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+}
+
+.container-narrow {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+}
+
+.section-padding {
+  padding: var(--space-24) 0;
+}
+
+.section-padding-lg {
+  padding: var(--space-32) 0;
+}
+
+.flex         { display: flex; }
+.flex-center  { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-col     { display: flex; flex-direction: column; }
+.gap-2  { gap: var(--space-2); }
+.gap-4  { gap: var(--space-4); }
+.gap-6  { gap: var(--space-6); }
+.gap-8  { gap: var(--space-8); }
+.gap-12 { gap: var(--space-12); }
+
+.grid { display: grid; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ---------- World A: Cosmos ---------- */
+.world-cosmos {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ---------- World B: Human ---------- */
+.world-human {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+/* ---------- Section Labels ---------- */
+.section-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.section-title-cosmos {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.section-title-human {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.section-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 300;
+  line-height: 1.7;
+  max-width: 560px;
+}
+
+/* ---------- Dividers ---------- */
+.divider-gold {
+  width: 48px;
+  height: 1px;
+  background: var(--gold-primary);
+  margin: var(--space-6) 0;
+}
+
+.divider-gold-center {
+  width: 48px;
+  height: 1px;
+  background: var(--gold-primary);
+  margin: var(--space-6) auto;
+}
+
+/* ---------- Badges ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.badge-gold {
+  background: rgba(199, 161, 90, 0.1);
+  color: var(--gold-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.badge-cyan {
+  background: rgba(168, 90, 50, 0.1);
+  color: var(--sacred-accent);
+  border: 1px solid rgba(168, 90, 50, 0.2);
+}
+
+.badge-online {
+  background: rgba(80, 200, 120, 0.1);
+  color: #50C878;
+  border: 1px solid rgba(80, 200, 120, 0.2);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-6);
+  overflow: hidden;
+}
+
+/* Restrained shimmer sweep on hover — a single soft light pass, not a glow */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  transition: background-position 0.6s ease;
+  pointer-events: none;
+}
+.btn:hover::before {
+  background-position: -50% 0;
+}
+
+/* Tactile press feedback */
+.btn:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn::before { transition: none; }
+  .btn:active { transform: none; }
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-soft) 50%, var(--gold-secondary) 100%);
+  color: var(--bg-primary);
+  background-size: 200% auto;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(199, 161, 90, 0.15);
+}
+.btn-gold:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(199, 161, 90, 0.45), 0 6px 20px rgba(199, 161, 90, 0.25);
+}
+.btn-gold:active {
+  transform: scale(0.96);
+}
+
+.btn-outline-gold {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  transition: all 0.4s ease;
+}
+.btn-outline-gold:hover {
+  background: linear-gradient(135deg, rgba(199, 161, 90, 0.08) 0%, rgba(138, 35, 135, 0.04) 100%);
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(199, 161, 90, 0.2);
+}
+
+.btn-cosmic {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, #8A2387 50%, #E94057 100%);
+  color: #FFFFFF;
+  background-size: 200% auto;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(138, 35, 135, 0.2);
+}
+.btn-cosmic:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(233, 64, 87, 0.4), 0 4px 20px rgba(138, 35, 135, 0.3);
+}
+
+.btn-outline-light {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+.btn-outline-light:hover {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-dark {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+.btn-dark:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-10);
+  font-size: var(--text-base);
+  border-radius: var(--radius-md);
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+}
+
+.btn-full { width: 100%; }
+
+/* ---------- Card Base ---------- */
+.card-cosmos {
+  background: rgba(17, 23, 44, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: all var(--transition-base);
+}
+.card-cosmos:hover {
+  border-color: var(--border-strong);
+  background: rgba(21, 27, 50, 0.8);
+  box-shadow: 0 0 15px rgba(199, 161, 90, 0.05);
+  transform: translateY(-2px);
+}
+
+.card-human {
+  background: rgba(17, 23, 44, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: all var(--transition-base);
+}
+.card-human:hover {
+  border-color: var(--border-strong);
+  background: rgba(21, 27, 50, 0.8);
+  box-shadow: 0 0 15px rgba(199, 161, 90, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Light mode card overrides */
+[data-theme='light'] .card-cosmos,
+[data-theme='light'] .card-human {
+  background: rgba(250, 247, 240, 0.85);
+  border-color: rgba(181, 138, 59, 0.18);
+}
+[data-theme='light'] .card-cosmos:hover,
+[data-theme='light'] .card-human:hover {
+  background: rgba(250, 247, 240, 0.95);
+  border-color: rgba(181, 138, 59, 0.35);
+  box-shadow: 0 6px 30px rgba(23, 37, 58, 0.10);
+}
+
+/* ---------- Form Elements ---------- */
+.input-field {
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 400;
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.input-cosmos {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+  color: var(--color-text-light);
+}
+.input-cosmos::placeholder { color: rgba(160, 156, 148, 0.6); }
+.input-cosmos:focus {
+  border-color: var(--color-gold);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 3px rgba(200, 169, 107, 0.08);
+}
+
+.input-human {
+  background: #fff;
+  border: 1px solid rgba(16, 19, 33, 0.15);
+  color: var(--color-text-dark);
+}
+.input-human:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px rgba(200, 169, 107, 0.1);
+}
+
+/* ---------- Tag / Pill ---------- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.tag-cosmos {
+  color: var(--color-text-muted);
+  border-color: rgba(200, 169, 107, 0.15);
+  background: transparent;
+}
+.tag-cosmos:hover, .tag-cosmos.active {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+  background: rgba(200, 169, 107, 0.08);
+}
+
+.tag-human {
+  color: var(--color-text-dark-2);
+  border-color: rgba(16, 19, 33, 0.15);
+  background: var(--color-ivory-2);
+}
+.tag-human:hover, .tag-human.active {
+  color: var(--color-dark);
+  border-color: var(--color-gold);
+  background: rgba(200, 169, 107, 0.1);
+}
+
+/* ---------- Star Rating ---------- */
+.stars {
+  color: var(--color-gold);
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Animations ---------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
+}
+
+@keyframes orbitSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 169, 107, 0); }
+  50%       { box-shadow: 0 0 0 8px rgba(200, 169, 107, 0.1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-fade-up { animation: fadeUp 0.6s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.6s ease forwards; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+  .container { padding: 0 var(--space-6); }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  :root { --nav-height: 60px; }
+  .container { padding: 0 var(--space-5); }
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .section-padding { padding: var(--space-16) 0; }
+  .section-padding-lg { padding: var(--space-20) 0; }
+}
+
+/* ---------- Mobile spacing scale ----------
+   Every section's vertical padding is written as `padding: var(--space-XX) 0`
+   against these same shared tokens, so redefining the tokens here compacts
+   every section site-wide at once instead of patching each section's CSS
+   file individually. This is the actual fix for "excessive mobile spacing" —
+   the desktop rhythm (96px/80px/64px section padding) was never scaled down,
+   it was just inherited as-is onto a screen a third the width. */
+@media (max-width: 640px) {
+  :root {
+    --space-32: 3.5rem;  /* 56px, was 128px */
+    --space-24: 2.75rem; /* 44px, was 96px */
+    --space-20: 2.5rem;  /* 40px, was 80px */
+    --space-16: 2rem;    /* 32px, was 64px */
+    --space-12: 1.75rem; /* 28px, was 48px */
+  }
+}
+
+/* ---------- World Transition Gradient ---------- */
+.world-transition-to-human {
+  background: linear-gradient(180deg, var(--color-dark) 0%, var(--color-surface) 40%, var(--color-ivory) 100%);
+}
+
+.world-transition-to-cosmos {
+  background: linear-gradient(180deg, var(--color-ivory) 0%, var(--color-surface) 60%, var(--color-dark) 100%);
+}
+
+/* ---------- Glow Effects ---------- */
+.glow-gold {
+  filter: drop-shadow(0 0 8px rgba(200, 169, 107, 0.4));
+}
+
+.glow-cyan {
+  filter: drop-shadow(0 0 8px rgba(115, 217, 212, 0.4));
+}
+
+/* ---------- Scroll Reveal ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Tooltip ---------- */
+.tooltip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-card);
+}
+
+/* ---------- Loading spinner (inline, e.g. inside a submit button) ---------- */
+.spin-loader {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: -2px;
+  margin-right: 8px;
+  animation: spin-loader-rotate 0.7s linear infinite;
+}
+
+@keyframes spin-loader-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Horizontal Scroll ---------- */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar { display: none; }
+
+/* ---------- Cosmic Clouds Underlay ---------- */
+.cosmic-clouds-underlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: var(--cloud-opacity);
+  mix-blend-mode: var(--cloud-blend-mode);
+  transition: opacity var(--transition-slow), mix-blend-mode var(--transition-slow);
+}
+
+.cosmic-cloud {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: var(--cloud-item-opacity);
+  animation: floatCloud 50s ease-in-out infinite alternate;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cloud-saffron {
+  top: -15%;
+  left: 15%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, var(--saffron-cloud) 0%, rgba(0,0,0,0) 70%);
+}
+
+.cloud-indigo {
+  bottom: -10%;
+  right: 10%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, var(--indigo-cloud) 0%, rgba(0,0,0,0) 70%);
+  animation-duration: 65s;
+  animation-delay: -15s;
+}
+
+.cloud-maroon {
+  top: 35%;
+  left: -20%;
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, var(--maroon-cloud) 0%, rgba(0,0,0,0) 70%);
+  animation-duration: 55s;
+  animation-delay: -30s;
+}
+
+@keyframes floatCloud {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate(6%, 10%) scale(1.2) rotate(25deg);
+  }
+  100% {
+    transform: translate(-6%, -6%) scale(0.85) rotate(-25deg);
+  }
+}
+
+/* Enforce transparency on sections and wrappers so background cosmic clouds are visible */
+section:not(#hero), [class*="pageWrapper"] {
+  background: transparent !important;
+}
+
+/* Force Hero section to always use dark/celestial colors — hero is always dark regardless of theme */
+[class*="hero_hero"], #hero {
+  --color-text-light: #F1E9DC !important;
+  --color-text-muted: #B9B3A8 !important;
+  --color-text-dark: #B9B3A8 !important;
+  --color-text-dark-2: #7F7B78 !important;
+  --text-primary: #F1E9DC !important;
+  --text-secondary: #B9B3A8 !important;
+  --text-muted: #7F7B78 !important;
+  --gold-primary: #C7A15A !important;
+  --gold-secondary: #9F7B3D !important;
+  --gold-soft: #D2B978 !important;
+  --sacred-accent: #A85A32 !important;
+}
+
+/* Light mode body background — sections below hero inherit warm ivory */
+[data-theme='light'] body {
+  background: linear-gradient(135deg, #FFFDF9 0%, #FFF3E5 50%, #F6EAD8 100%) fixed;
+  color: #182333;
+}
+
+/* Light mode section titles and subtitles */
+[data-theme='light'] .section-title-cosmos,
+[data-theme='light'] .section-title-human {
+  color: #182333;
+}
+
+[data-theme='light'] .section-subtitle {
+  color: #68717A;
+}
+
+/* Light mode: btn-outline-light should use navy border */
+[data-theme='light'] .btn-outline-light {
+  color: #182333;
+  border-color: rgba(23, 37, 58, 0.25);
+}
+[data-theme='light'] .btn-outline-light:hover {
+  background: rgba(23, 37, 58, 0.04);
+  border-color: rgba(23, 37, 58, 0.4);
+}
+
+/* ── Global Section Container & Split Header System ── */
+.section-container {
+  width: 92%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.section-header-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--space-10);
+  gap: var(--space-6);
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-4);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 720px;
+}
+
+.section-eyebrow-gold {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  /* Full uppercase reads fine for short labels ("Panchangam") but slows
+     reading on longer ones ("Jyotish Margdarshan", 19 chars) — small-caps
+     keeps the same "label" look at any length without touching copy, and
+     falls back to plain sentence case (still readable) where unsupported. */
+  text-transform: none;
+  font-variant-caps: all-small-caps;
+  color: var(--gold-primary);
+  margin-bottom: var(--space-2);
+}
+
+.section-title-serif {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem);
+  font-weight: 300;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.section-desc-sans {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.section-explore-link {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold-primary);
+  background: rgba(199, 161, 90, 0.04);
+  border: 1px solid rgba(199, 161, 90, 0.3);
+  border-radius: 99px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  padding: 8px 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.section-explore-link:hover {
+  color: #FFFFFF !important;
+  background: var(--gold-primary);
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(199, 161, 90, 0.25);
+}
+
+@media (max-width: 768px) {
+  .section-header-split {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  .section-explore-link {
+    align-self: flex-start;
+  }
+}
+
+/* ── Yantra Watermarks & Sacred Geometry Backgrounds ── */
+.yantra-watermark-right {
+  position: relative;
+  overflow: hidden;
+}
+.yantra-watermark-right::after {
+  content: '';
+  position: absolute;
+  top: 15%;
+  right: -5%;
+  width: 380px;
+  height: 380px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23b58a3b' stroke-width='0.3' stroke-opacity='0.25'%3E%3Ccircle cx='50' cy='50' r='45'/%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Cpolygon points='50,15 80,68 20,68'/%3E%3Cpolygon points='50,85 20,32 80,32'/%3E%3Ccircle cx='50' cy='50' r='8'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.yantra-watermark-left {
+  position: relative;
+  overflow: hidden;
+}
+.yantra-watermark-left::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: -8%;
+  width: 360px;
+  height: 360px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23b58a3b' stroke-width='0.35' stroke-opacity='0.22'%3E%3Crect x='15' y='15' width='70' height='70'/%3E%3Ccircle cx='50' cy='50' r='35'/%3E%3Cline x1='15' y1='15' x2='85' y2='85'/%3E%3Cline x1='85' y1='15' x2='15' y2='85'/%3E%3Ccircle cx='50' cy='50' r='10'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 0;
+}
