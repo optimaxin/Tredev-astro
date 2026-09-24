@@ -21,4 +21,5 @@ export type AdminSection =
   | 'blog'
   | 'notifications'
   | 'audit'
+  | 'tokens'
   | 'settings';

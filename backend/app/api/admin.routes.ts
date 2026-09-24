@@ -20,6 +20,15 @@ import { countOrdersForUser, getOrderStats, listAllOrders, listRecentDeliveredOr
 import { orderDisplayId, toPublicOrder } from '../models/order.ts';
 import { ADMIN_SECTIONS, deleteStaffPermissions, getStaffPermissions, setStaffPermissions } from '../repositories/staffPermissionRepository.ts';
 import type { AdminSectionKey } from '../repositories/staffPermissionRepository.ts';
+import {
+  getConversationUsage,
+  getFilterOptions,
+  getModelUsage,
+  getOverview,
+  getRequestLogs,
+  getTimeseries,
+  getUserUsage,
+} from '../repositories/aiUsageRepository.ts';
 import { listPublicAstrologers } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
@@ -780,4 +789,113 @@ adminRouter.patch('/me', staffOrAdmin, async (req, res) => {
   if (parsed.data.name) await updateUserName(me.id, parsed.data.name);
   await audit(req, 'account.profile.update', me.email);
   res.json({ success: true, data: toPublicUser((await findUserById(me.id))!) });
+});
+
+// ── AI Token Meter ────────────────────────────────────────────────────
+// Read-only analytics over `ai_usage`, which the Python ai-core service
+// writes (see ai-core/app/llm/usage_store.py). Every route is behind the
+// same requireAuth + requireSection('tokens') gate as the rest of the
+// console, so a normal user cannot reach project-wide spend.
+//
+// Costs are returned in INR because that is what the business reports in,
+// converted from the USD the provider bills using the fx rate snapshotted
+// onto each row.
+
+const usageFilterSchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  userId: z.string().max(200).optional(),
+  model: z.string().max(200).optional(),
+  provider: z.string().max(100).optional(),
+  status: z.enum(['success', 'failed']).optional(),
+  conversationId: z.string().max(200).optional(),
+});
+
+/** Parses the shared filters, defaulting to the last 30 days. */
+function parseUsageFilters(req: import('express').Request) {
+  const parsed = usageFilterSchema.safeParse(req.query);
+  if (!parsed.success) return null;
+  const filters = { ...parsed.data };
+  if (!filters.from) {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    filters.from = since.toISOString();
+  }
+  return filters;
+}
+
+const tokensSection = requireSection('tokens');
+
+adminRouter.get('/ai-usage/overview', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  res.json({ success: true, data: await getOverview(filters) });
+});
+
+adminRouter.get('/ai-usage/timeseries', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  const raw = String(req.query.granularity ?? 'day');
+  // Mapped onto a closed set before it can reach date_trunc.
+  const granularity = raw === 'week' || raw === 'month' ? raw : 'day';
+  res.json({ success: true, data: await getTimeseries(filters, granularity) });
+});
+
+adminRouter.get('/ai-usage/models', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  res.json({ success: true, data: await getModelUsage(filters) });
+});
+
+adminRouter.get('/ai-usage/users', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  res.json({
+    success: true,
+    data: await getUserUsage(filters, {
+      search: req.query.search ? String(req.query.search).slice(0, 200) : undefined,
+      sort: req.query.sort ? String(req.query.sort) : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+    }),
+  });
+});
+
+adminRouter.get('/ai-usage/requests', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  res.json({
+    success: true,
+    data: await getRequestLogs(filters, {
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+      offset: req.query.offset ? Number(req.query.offset) : undefined,
+    }),
+  });
+});
+
+adminRouter.get('/ai-usage/conversations', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  res.json({ success: true, data: await getConversationUsage(filters) });
+});
+
+// Per-user drill-down: the same shapes as above, scoped to one user, so the
+// detail view reuses the aggregation rather than recomputing it differently.
+adminRouter.get('/ai-usage/users/:userId', staffOrAdmin, tokensSection, async (req, res) => {
+  const filters = parseUsageFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid usage filters');
+  const scoped = { ...filters, userId: String(req.params.userId) };
+  const [overview, models, recent, timeseries] = await Promise.all([
+    getOverview(scoped),
+    getModelUsage(scoped),
+    getRequestLogs(scoped, { limit: 25 }),
+    getTimeseries(scoped, 'day'),
+  ]);
+  res.json({
+    success: true,
+    data: { userId: String(req.params.userId), overview, models, timeseries, recentRequests: recent.rows },
+  });
+});
+
+adminRouter.get('/ai-usage/filters', staffOrAdmin, tokensSection, async (_req, res) => {
+  res.json({ success: true, data: await getFilterOptions() });
 });

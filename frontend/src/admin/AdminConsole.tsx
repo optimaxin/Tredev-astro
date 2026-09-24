@@ -20,6 +20,7 @@ const PricingRegionsPage = lazy(() => import('./pages/PricingRegionsPage'));
 const BlogPostsPage = lazy(() => import('./pages/BlogPostsPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
+const TokenMeterPage = lazy(() => import('./pages/TokenMeterPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 export default function AdminConsole() {
@@ -71,6 +72,7 @@ export default function AdminConsole() {
       case 'blog': return <BlogPostsPage />;
       case 'notifications': return <NotificationsPage />;
       case 'audit': return <AuditLogsPage />;
+      case 'tokens': return <TokenMeterPage />;
       case 'settings': return <SettingsPage />;
       default: return null;
     }

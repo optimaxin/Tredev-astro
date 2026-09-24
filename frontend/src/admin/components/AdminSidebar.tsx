@@ -15,6 +15,7 @@ const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'blog', icon: '✍', labelKey: 'admin_sidebar_blog' },
   { key: 'notifications', icon: '♃', labelKey: 'admin_sidebar_notifications' },
   { key: 'audit', icon: '◈', labelKey: 'admin_sidebar_audit' },
+  { key: 'tokens', icon: '⧗', labelKey: 'admin_sidebar_tokens' },
   { key: 'settings', icon: '⚙', labelKey: 'admin_sidebar_settings' },
 ];
 
