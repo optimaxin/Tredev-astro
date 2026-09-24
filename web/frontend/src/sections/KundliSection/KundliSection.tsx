@@ -12,6 +12,7 @@ import { transliterateNameToHindi } from '../../utils/nameTransliterate';
 import { kundliHistoryService } from '../../services/kundliHistoryService';
 import type { KundliHistoryEntry } from '../../services/kundliHistoryService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
+import KundliChatWidget from './KundliChatWidget';
 import { PLANET_META } from '../../data/planetMeta';
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import {
@@ -1732,6 +1733,27 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
           )}
         </AnimatePresence>
       </div>
+
+      {/* Astrology assistant. Mounted outside the AnimatePresence so the
+          form/result transition never unmounts an open conversation, and only
+          once a chart actually exists — there is nothing to ask about before
+          that. It re-keys per chart so generating a second kundli starts a
+          fresh conversation instead of continuing the previous one. */}
+      {fullResult && submittedDetails && (
+        <KundliChatWidget
+          chartKey={`${submittedDetails.date}T${submittedDetails.time}@${submittedDetails.latitude.toFixed(4)},${submittedDetails.longitude.toFixed(4)}`}
+          displayName={submittedDetails.name}
+          birth={{
+            date: submittedDetails.date,
+            time: submittedDetails.time,
+            timezoneOffsetMinutes: submittedDetails.timezoneOffsetMinutes,
+            latitude: submittedDetails.latitude,
+            longitude: submittedDetails.longitude,
+            name: submittedDetails.name,
+            placeLabel: submittedDetails.placeName,
+          }}
+        />
+      )}
     </section>
   );
 }

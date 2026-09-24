@@ -249,3 +249,158 @@
 
 .settingsCardTitle { font-weight: 700; color: var(--adm-charcoal); font-size: 0.88rem; margin-bottom: 6px; }
 .settingsCardDesc { font-size: 0.78rem; color: var(--adm-muted); }
+
+/* ── AI Token Meter (TokenMeterPage.tsx) ─────────────────────────────
+   Built from the same tokens (--adm-*) as the rest of the console so the
+   page reads as native rather than bolted on. The chart is hand-rolled:
+   the admin panel ships no charting library and adding one for a single
+   two-series bar chart would be a heavier change than this screen earns. */
+
+.select {
+  padding: 8px 12px;
+  border-radius: var(--adm-radius-md);
+  border: 1px solid var(--adm-border-soft);
+  background: var(--adm-surface);
+  color: var(--adm-charcoal);
+  font-family: var(--adm-font);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.select:focus { outline: none; border-color: var(--adm-gold); }
+
+.errorBanner {
+  padding: 12px 16px;
+  border-radius: var(--adm-radius-md);
+  border: 1px solid color-mix(in srgb, #d9534f 40%, transparent);
+  background: color-mix(in srgb, #d9534f 10%, transparent);
+  color: #a33;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* Carries the estimated-vs-actual caveat. Deliberately prominent: a cost
+   figure with no such note reads as money already spent. */
+.noteBanner {
+  padding: 12px 16px;
+  border-radius: var(--adm-radius-md);
+  border: 1px solid var(--adm-border-soft);
+  background: color-mix(in srgb, var(--adm-gold) 8%, transparent);
+  color: var(--adm-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.miniChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 180px;
+  padding: 8px 0;
+  overflow-x: auto;
+}
+
+.miniChartCol {
+  flex: 1 0 28px;
+  min-width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 6px;
+}
+
+/* The full bar is total tokens; the inner fill is the input share, so the
+   two series read as one stacked column rather than two bars to compare. */
+.miniChartBar {
+  width: 100%;
+  background: var(--adm-gold);
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+}
+
+.miniChartCol:hover .miniChartBar { opacity: 0.8; }
+
+.miniChartInput {
+  width: 100%;
+  background: var(--adm-gold-dark);
+}
+
+.miniChartLabel {
+  font-size: 0.65rem;
+  color: var(--adm-muted);
+  white-space: nowrap;
+}
+
+.chartLegend {
+  display: flex;
+  gap: 18px;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--adm-muted);
+}
+
+.chartLegend span { display: flex; align-items: center; gap: 6px; }
+
+.swatchInput,
+.swatchOutput {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.swatchInput { background: var(--adm-gold-dark); }
+.swatchOutput { background: var(--adm-gold); }
+
+.tabButton {
+  padding: 8px 16px;
+  border-radius: var(--adm-radius-md);
+  border: 1px solid var(--adm-border-soft);
+  background: transparent;
+  color: var(--adm-muted);
+  font-family: var(--adm-font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabButton:hover { border-color: var(--adm-gold); color: var(--adm-charcoal); }
+
+.tabButtonActive {
+  background: var(--adm-gold);
+  border-color: var(--adm-gold);
+  color: var(--adm-surface);
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--adm-font);
+  font-size: inherit;
+  color: var(--adm-gold-dark);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.linkButton:hover { text-decoration: underline; }
+
+.drawerMeta {
+  font-size: 0.78rem;
+  color: var(--adm-muted);
+  margin-bottom: 16px;
+  word-break: break-all;
+}
+
+@media (max-width: 640px) {
+  .miniChart { height: 140px; }
+  .miniChartLabel { display: none; }
+}

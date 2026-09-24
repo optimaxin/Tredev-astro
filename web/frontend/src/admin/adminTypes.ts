@@ -22,5 +22,6 @@ export type AdminSection =
   | 'shlok'
   | 'notifications'
   | 'audit'
+  | 'tokens'
   | 'settings'
   | 'call-recordings';

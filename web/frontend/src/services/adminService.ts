@@ -289,6 +289,119 @@ export interface ApiAstrologerRegionPrice {
   updatedAt: number;
 }
 
+
+// ── AI Token Meter types ──────────────────────────────────────────────
+// Mirrors backend/app/repositories/aiUsageRepository.ts. Costs are INR
+// unless the field name says Usd — the backend converts before returning,
+// so no rate lives in the frontend.
+
+export type AiUsageGranularity = 'day' | 'week' | 'month';
+
+export interface AiUsageQuery {
+  from?: string;
+  to?: string;
+  userId?: string;
+  model?: string;
+  provider?: string;
+  status?: 'success' | 'failed';
+  conversationId?: string;
+}
+
+export interface AiUsageOverview {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  estimatedCostInr: number;
+  // Null when the provider reports no actual charge (Gemini's free tier).
+  // The UI must keep saying "Estimated" while this is null.
+  actualCostUsd: number | null;
+  avgCostPerRequestInr: number;
+  avgTokensPerRequest: number;
+  activeUsers: number;
+  avgLatencyMs: number;
+}
+
+export interface AiUsageTimePoint {
+  bucket: string;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostInr: number;
+}
+
+export interface AiUsageModelRow {
+  provider: string;
+  model: string;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostInr: number;
+}
+
+export interface AiUsageUserRow {
+  userId: string;
+  userName: string | null;
+  userEmail: string | null;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostInr: number;
+  lastRequestAt: string | null;
+}
+
+export interface AiUsageRequestRow {
+  id: string;
+  requestId: string;
+  createdAt: string;
+  userId: string | null;
+  conversationId: string | null;
+  role: string;
+  provider: string;
+  model: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  estimatedCostInr: number;
+  latencyMs: number | null;
+  status: string;
+  errorCode: string | null;
+  fallbackUsed: boolean;
+}
+
+export interface AiUsageConversationRow {
+  conversationId: string;
+  requests: number;
+  totalTokens: number;
+  estimatedCostInr: number;
+  firstRequestAt: string | null;
+  lastRequestAt: string | null;
+}
+
+export interface AiUsageUserDetail {
+  userId: string;
+  overview: AiUsageOverview;
+  models: AiUsageModelRow[];
+  timeseries: AiUsageTimePoint[];
+  recentRequests: AiUsageRequestRow[];
+}
+
+/** Drops empty values so an unset filter never becomes `?model=`. */
+function toQuery(params: object): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -378,6 +491,26 @@ export const adminService = {
   },
   importAstrologerRegionPriceCsv: (csv: string) =>
     request<{ updated: number; errors: string[] }>('/astrologer-region-prices/csv-import', { method: 'POST', body: JSON.stringify({ csv }) }),
+
+  // ── AI Token Meter ──────────────────────────────────────────────────
+  // Backed by ai_usage, which the Python ai-core service writes. All costs
+  // come back already converted to INR by the backend, using the FX rate
+  // snapshotted onto each row.
+  aiUsageOverview: (q: AiUsageQuery = {}) =>
+    request<AiUsageOverview>(`/ai-usage/overview${toQuery(q)}`),
+  aiUsageTimeseries: (q: AiUsageQuery & { granularity?: AiUsageGranularity } = {}) =>
+    request<AiUsageTimePoint[]>(`/ai-usage/timeseries${toQuery(q)}`),
+  aiUsageModels: (q: AiUsageQuery = {}) =>
+    request<AiUsageModelRow[]>(`/ai-usage/models${toQuery(q)}`),
+  aiUsageUsers: (q: AiUsageQuery & { search?: string; sort?: string; limit?: number } = {}) =>
+    request<AiUsageUserRow[]>(`/ai-usage/users${toQuery(q)}`),
+  aiUsageRequests: (q: AiUsageQuery & { limit?: number; offset?: number } = {}) =>
+    request<{ rows: AiUsageRequestRow[]; total: number }>(`/ai-usage/requests${toQuery(q)}`),
+  aiUsageConversations: (q: AiUsageQuery = {}) =>
+    request<AiUsageConversationRow[]>(`/ai-usage/conversations${toQuery(q)}`),
+  aiUsageUserDetail: (userId: string, q: AiUsageQuery = {}) =>
+    request<AiUsageUserDetail>(`/ai-usage/users/${encodeURIComponent(userId)}${toQuery(q)}`),
+  aiUsageFilters: () => request<{ models: string[]; providers: string[] }>('/ai-usage/filters'),
 
   listCallRecordings: (page = 1, limit = 100) => request<ApiCallRecording[]>(`/call-recordings?page=${page}&limit=${limit}`),
   // Raw fetch, not the JSON `request()` helper — the server sends the actual
