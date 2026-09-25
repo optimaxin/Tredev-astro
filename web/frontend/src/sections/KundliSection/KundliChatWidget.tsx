@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { aiCoreService, AiCoreApiError } from '../../services/aiCoreService';
-import type { AiCoreBirthDetails } from '../../services/aiCoreService';
+import { NEGATIVE_REASONS } from '../../services/aiCoreService';
+import type { AiCoreBirthDetails, FeedbackType } from '../../services/aiCoreService';
 import styles from './KundliChatWidget.module.css';
 
 interface Props {
@@ -19,6 +20,11 @@ interface Bubble {
   // A degraded reply is the service saying it could not reach the model. It
   // is styled as a notice, never as a reading.
   degraded?: boolean;
+  // The turn this bubble belongs to. Feedback is per REPLY, not per bubble,
+  // so every bubble of one reply shares this and only the last one renders
+  // the thumbs.
+  requestId?: string;
+  isLastOfReply?: boolean;
 }
 
 // Assistant replies arrive as several short messages at once. They are
@@ -43,6 +49,11 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState('');
+  // request_id -> the vote this user gave it. Local so the thumb stays lit
+  // after a reload-free change of mind; the server holds the real record.
+  const [feedback, setFeedback] = useState<Record<string, FeedbackType>>({});
+  // Which reply is currently showing its "why?" reasons, if any.
+  const [reasonFor, setReasonFor] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoOpenedFor = useRef<string | null>(null);
@@ -106,11 +117,13 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
           // `messages` is the server's own split; `answer` is the fallback if
           // a future response ever arrives without it.
           const parts = res.messages.length > 0 ? res.messages : [res.answer].filter(Boolean);
-          const incoming: Bubble[] = parts.map(part => ({
+          const incoming: Bubble[] = parts.map((part, index) => ({
             id: nextId(),
             role: 'assistant',
             text: part,
             degraded: res.degraded,
+            requestId: res.request_id,
+            isLastOfReply: index === parts.length - 1,
           }));
           // First bubble immediately so the reply feels responsive; the rest
           // stagger in behind it.
@@ -123,6 +136,20 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
         .finally(() => setThinking(false));
     },
     [birth, sessionId, thinking],
+  );
+
+  const sendFeedback = useCallback(
+    (requestId: string, type: FeedbackType, reason?: string) => {
+      // Optimistic: the thumb lights up immediately. Feedback is a nicety —
+      // if the call fails the user should not see an error over it, and the
+      // console note is enough for us.
+      setFeedback(prev => ({ ...prev, [requestId]: type }));
+      setReasonFor(type === 'not_helpful' && !reason ? requestId : null);
+      aiCoreService
+        .submitFeedback({ requestId, feedbackType: type, conversationId: sessionId, reason })
+        .catch(() => { /* a lost vote must not interrupt the conversation */ });
+    },
+    [sessionId],
   );
 
   const showSuggestions = !thinking && queue.length === 0 && !bubbles.some(b => b.role === 'user');
@@ -151,8 +178,8 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
 
           <div className={styles.messages} ref={listRef}>
             {bubbles.map(b => (
+              <div key={b.id} className={styles.bubbleGroup}>
               <div
-                key={b.id}
                 className={[
                   styles.bubble,
                   b.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
@@ -160,6 +187,60 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
                 ].join(' ')}
               >
                 {b.text}
+              </div>
+
+              {/* Thumbs sit under the LAST bubble of a reply, not every one —
+                  the user is rating the answer, not each sentence of it.
+                  Hidden on a degraded reply: there is nothing to rate when
+                  the model could not be reached. */}
+              {b.role === 'assistant' && b.isLastOfReply && b.requestId && !b.degraded && (
+                <div className={styles.feedbackRow}>
+                  <button
+                    className={`${styles.feedbackButton} ${feedback[b.requestId] === 'helpful' ? styles.feedbackActive : ''}`}
+                    onClick={() => sendFeedback(b.requestId!, 'helpful')}
+                    aria-label="This was helpful"
+                    aria-pressed={feedback[b.requestId] === 'helpful'}
+                    title="Helpful"
+                  >
+                    👍
+                  </button>
+                  <button
+                    className={`${styles.feedbackButton} ${feedback[b.requestId] === 'not_helpful' ? styles.feedbackActive : ''}`}
+                    onClick={() => sendFeedback(b.requestId!, 'not_helpful')}
+                    aria-label="This was not helpful"
+                    aria-pressed={feedback[b.requestId] === 'not_helpful'}
+                    title="Not helpful"
+                  >
+                    👎
+                  </button>
+                  {feedback[b.requestId] && reasonFor !== b.requestId && (
+                    <span className={styles.feedbackThanks}>Thanks!</span>
+                  )}
+                </div>
+              )}
+
+              {/* Optional reasons, shown only after 👎 and dismissible by
+                  ignoring them. Never required — forcing a reason is how you
+                  stop people giving feedback at all. */}
+              {b.requestId && reasonFor === b.requestId && (
+                <div className={styles.reasonBox}>
+                  <div className={styles.reasonTitle}>What went wrong? (optional)</div>
+                  <div className={styles.reasonList}>
+                    {NEGATIVE_REASONS.map(r => (
+                      <button
+                        key={r.value}
+                        className={styles.reasonChip}
+                        onClick={() => sendFeedback(b.requestId!, 'not_helpful', r.value)}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className={styles.reasonSkip} onClick={() => setReasonFor(null)}>
+                    Skip
+                  </button>
+                </div>
+              )}
               </div>
             ))}
 

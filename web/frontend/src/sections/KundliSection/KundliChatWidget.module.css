@@ -247,3 +247,80 @@
     height: min(70vh, 460px);
   }
 }
+
+/* ── Feedback (👍/👎 under each reply) ────────────────────────────────
+   Deliberately quiet: low-contrast until hovered, so it invites a rating
+   without competing with the answer itself. */
+
+.bubbleGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.feedbackRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 4px 4px;
+}
+
+.feedbackButton {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.35;
+  border-radius: 6px;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.feedbackButton:hover { opacity: 0.9; background: color-mix(in srgb, var(--gold-primary) 12%, transparent); }
+
+/* The chosen verdict stays lit so the user can see what they said, and can
+   change it by pressing the other one. */
+.feedbackActive { opacity: 1; background: color-mix(in srgb, var(--gold-primary) 20%, transparent); }
+
+.feedbackThanks {
+  font-size: 0.68rem;
+  opacity: 0.55;
+  margin-left: 2px;
+}
+
+.reasonBox {
+  margin: 2px 0 6px 4px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  max-width: 92%;
+}
+
+.reasonTitle { font-size: 0.72rem; opacity: 0.7; margin-bottom: 6px; }
+
+.reasonList { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.reasonChip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.reasonChip:hover { border-color: var(--gold-primary); background: color-mix(in srgb, var(--gold-primary) 10%, transparent); }
+
+.reasonSkip {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.68rem;
+  opacity: 0.5;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+}
