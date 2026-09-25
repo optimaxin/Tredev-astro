@@ -32,7 +32,14 @@ import { geocodePlace, suggestPlaces, resolvePlaceId, type GeocodeResult } from 
 
 export const calculatorsRouter = Router();
 
-const limiter = rateLimit({ windowMs: 60_000, max: 30 });
+// Shared across every calculator route below (kundli, panchang, horoscope,
+// numerology, doshas, …) — a mobile session firing off just a few of these
+// per minute (Home's own Astrologers + Panchang preview calls, then
+// whichever tool screen someone opens) was hitting this same 429 that
+// looked like a broken "retry" on Panchang/Astrologers. 30/min total across
+// every calculator was too tight for that; this only widens the budget,
+// the per-IP fixed-window logic itself is unchanged.
+const limiter = rateLimit({ windowMs: 60_000, max: 120 });
 
 function fail(res: import('express').Response, status: number, code: string, message: string) {
   res.status(status).json({ success: false, error: { code, message } });
