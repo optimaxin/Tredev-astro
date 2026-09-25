@@ -99,6 +99,25 @@ export default function AuthPage() {
     }
   };
 
+  // Re-sends via the same Firebase call as the initial send (a new
+  // ConfirmationResult replaces the old one, since the previous code is
+  // still tied to the expired verification attempt) — needed because a
+  // Firebase OTP expires after a few minutes, and without this the only way
+  // out of an expired code was going back and re-entering the phone number.
+  const handleResendOtp = async () => {
+    setOtpError('');
+    setOtpSendLoading(true);
+    try {
+      const result = await sendFirebasePhoneOtp(toE164IndianNumber(phoneNumber), 'firebase-recaptcha-container');
+      setConfirmationResult(result);
+      setOtpCode('');
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.');
+    } finally {
+      setOtpSendLoading(false);
+    }
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setOtpError('');
@@ -116,7 +135,14 @@ export default function AuthPage() {
         redirectByRole(result.user.role);
       }
     } catch (err) {
-      setOtpError(err instanceof Error ? err.message : 'Incorrect or expired code. Please try again.');
+      // Firebase's own Error#message is the raw "Firebase: Error
+      // (auth/code-expired)." string — not something to show as-is. A
+      // Firebase auth error always carries a `.code` like that; map the
+      // common ones to something that tells the person what to actually do.
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/code-expired') setOtpError('This code has expired — tap "Resend code" below for a new one.');
+      else if (code === 'auth/invalid-verification-code') setOtpError('That code is incorrect — double-check it and try again.');
+      else setOtpError(err instanceof Error ? err.message : 'Incorrect or expired code. Please try again.');
     } finally {
       setOtpLoading(false);
     }
@@ -371,13 +397,23 @@ export default function AuthPage() {
                 >
                   <span>{otpLoading ? 'Verifying…' : 'Verify & Continue'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStep('entry')}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
-                >
-                  Wrong number? Go back
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-2)' }}>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={otpSendLoading}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    {otpSendLoading ? 'Sending…' : "Didn't get it? Resend code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep('entry')}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    Wrong number?
+                  </button>
+                </div>
               </motion.form>
             )}
 
