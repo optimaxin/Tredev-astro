@@ -14,21 +14,36 @@ interface CategoryCard {
   concern: Concern;
 }
 
+// Maps a concern card to the Astrologers page's own category filter (see
+// Astrologers.tsx's FILTERS) — these are the real `categories` values seeded
+// on astrologer catalog rows (backend/app/core/seedAstrologers.ts), not
+// invented here. 'Personal Growth' has no matching category on any astrologer
+// today, so it falls back to the unfiltered list rather than a real filter
+// that would just show zero results.
+const CATEGORY_BY_CONCERN: Partial<Record<NonNullable<Concern>, string>> = {
+  'Marriage': 'Marriage',
+  'Career & Business': 'Career',
+  'Money & Finance': 'Finance',
+  'Family': 'Family',
+  'Spirituality': 'Spirituality',
+};
+
 export default function SeekGuidance() {
-  const { setPage, setConcern, t, tOr } = useAppContext();
+  const { setPage, setAstrologerFilter, t, tOr } = useAppContext();
 
   const handleCardClick = (concern: Concern) => {
-    // Every other concern here funnels into the Kundli page (personalized by
-    // `concern`) since there's no dedicated tool for it — Vastu is the one
-    // exception now that a real Vastu Calculator exists, so it goes there
-    // directly instead of opening an unrelated Kundli.
+    // Each concern now goes to the Astrologers list, pre-filtered to
+    // astrologers who actually specialize in it — a real next step, unlike
+    // the old behaviour of funneling everything into an unrelated Kundli
+    // reading. Vastu is the one exception: it has its own dedicated
+    // calculator, which is a more direct answer than a person to consult.
     if (concern === 'Vastu') {
       setPage('vastu-calculator');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    setConcern(concern);
-    setPage('free-kundli');
+    setAstrologerFilter((concern && CATEGORY_BY_CONCERN[concern]) || 'All');
+    setPage('astrologers');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -1,0 +1,18 @@
+# Cloudflare-native header rules (Workers Static Assets + Pages both read
+# this file). Scoped to the unhashed public/ media files only — anything
+# Vite fingerprints (assets/*-HASH.js/css) already gets a content hash in
+# its filename, so it's safe to cache far longer; that's handled by
+# Cloudflare's own defaults for those, not this file.
+#
+# 1 day, not "immutable"/1 year: these filenames don't change when the
+# content does (no content hash), so a returning visitor should pick up an
+# updated Hero3.mp4/logo.png etc. within a day of a redeploy rather than
+# being stuck on a stale cached copy for months.
+/*.mp4
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.jpg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.jpeg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

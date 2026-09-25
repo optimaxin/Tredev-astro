@@ -343,9 +343,10 @@ interface AppContextValue {
   authLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser | null>;
   register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser }>;
-  loginWithFirebase: (idToken: string) => Promise<AuthUser | null>;
+  loginWithFirebase: (idToken: string) => Promise<{ user: AuthUser; isNewUser: boolean } | null>;
   verifyPhoneWithFirebase: (idToken: string) => Promise<void>;
   saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
+  saveMyName: (name: string) => Promise<boolean>;
   logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
@@ -2973,13 +2974,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // popup/OTP flow and has a verified ID token; this just exchanges it for
   // this app's own session (see backend/app/services/authService.ts's
   // loginWithFirebase, which creates the account on first sign-in).
-  const loginWithFirebase = async (idToken: string): Promise<AuthUser | null> => {
+  // `isNewUser` lets AuthPage decide whether to prompt for a name — Google's
+  // token already carries one, Phone Auth's doesn't (see saveMyName below).
+  const loginWithFirebase = async (idToken: string): Promise<{ user: AuthUser; isNewUser: boolean } | null> => {
     try {
-      const { user, accessToken, refreshToken } = await authService.firebaseLogin(idToken);
+      const { user, isNewUser, accessToken, refreshToken } = await authService.firebaseLogin(idToken);
       persistTokens(accessToken, refreshToken);
       const authUser = toAuthUser(user);
       setCurrentUser(authUser);
-      return authUser;
+      return { user: authUser, isNewUser };
     } catch {
       return null;
     }
@@ -3000,6 +3003,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!accessToken) return false;
     try {
       const user = await authService.updateBirthDetails(accessToken, details);
+      setCurrentUser(toAuthUser(user));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // One-time "what's your name?" step right after a brand-new phone-only
+  // signup (see authService.ts's updateName and auth.routes.ts's comment —
+  // Phone Auth's token has no name claim, unlike Google's).
+  const saveMyName = async (name: string): Promise<boolean> => {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) return false;
+    try {
+      const user = await authService.updateName(accessToken, name);
       setCurrentUser(toAuthUser(user));
       return true;
     } catch {
@@ -3345,7 +3363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       paymentResult, setPaymentResult,
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
-      isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, logout,
+      isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
       accounts, refreshAdminData, applyToBecomeAstrologer,
