@@ -41,14 +41,20 @@ export async function signInWithGooglePopup(): Promise<string> {
 
 // Phone Auth needs an invisible reCAPTCHA bound to a real DOM node —
 // `containerId` must already be mounted (see AuthPage.tsx's
-// `<div id="firebase-recaptcha-container" />`). One verifier per page
-// session; Firebase handles re-using vs. re-rendering it internally.
+// `<div id="firebase-recaptcha-container" />`).
+//
+// NOT reused across calls: an invisible reCAPTCHA widget is single-use —
+// once `signInWithPhoneNumber` has consumed it (successfully or not), a
+// second send attempt (an initial retry after an error, or the "Resend
+// code" button) with the SAME verifier instance fails outright with
+// "reCAPTCHA client element has been removed". Clearing and re-rendering a
+// fresh widget on every call is the fix Firebase's own docs use for
+// exactly this resend scenario.
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
-function getRecaptchaVerifier(containerId: string): RecaptchaVerifier {
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(getAuthClient(), containerId, { size: 'invisible' });
-  }
+function getFreshRecaptchaVerifier(containerId: string): RecaptchaVerifier {
+  recaptchaVerifier?.clear();
+  recaptchaVerifier = new RecaptchaVerifier(getAuthClient(), containerId, { size: 'invisible' });
   return recaptchaVerifier;
 }
 
@@ -57,7 +63,7 @@ function getRecaptchaVerifier(containerId: string): RecaptchaVerifier {
 // "+919876543210"). Returns a ConfirmationResult; call `.confirm(code)` on
 // it with the 6-digit code the user enters to complete verification.
 export async function sendFirebasePhoneOtp(phoneNumberE164: string, containerId: string): Promise<ConfirmationResult> {
-  return signInWithPhoneNumber(getAuthClient(), phoneNumberE164, getRecaptchaVerifier(containerId));
+  return signInWithPhoneNumber(getAuthClient(), phoneNumberE164, getFreshRecaptchaVerifier(containerId));
 }
 
 // India-only helper — this app's registration form collects a plain local
