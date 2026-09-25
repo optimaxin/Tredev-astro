@@ -1220,7 +1220,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
               {activeTab === 'overview' && (
                 <>
                   <ChartDisplay
-                    title={tr('kundli_planetary_placements')}
+                    title={TL.d1Title}
                     planets={chartPlanets}
                     ascendantRashi={kundliResult?.ascendant.rashi ?? ''}
                     allowPlacementsToggle={false}
