@@ -6,7 +6,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useRealtime } from '../../realtime/RealtimeContext';
 import styles from './Astrologers.module.css';
 
-const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Vastu', 'Spirituality'];
+const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vastu', 'Spirituality'];
 
 const FILTER_LABELS: Record<string, string> = {
   All: 'All Acharyas',
@@ -14,13 +14,23 @@ const FILTER_LABELS: Record<string, string> = {
   Marriage: 'Vivah',
   Career: 'Career',
   Finance: 'Dhan',
+  Family: 'Parivaar',
   Vastu: 'Vastu',
   Spirituality: 'Adhyatma',
 };
 
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
-  const { setPage, t } = useAppContext();
-  const [activeFilter, setActiveFilter] = useState('All');
+  const { setPage, t, astrologerFilter, setAstrologerFilter } = useAppContext();
+  // Seeded from SeekGuidance's category cards (e.g. "Career & Business" ->
+  // 'Career') via the shared `astrologerFilter` context field — consumed
+  // once here as the initial tab, then reset so a later, unrelated visit to
+  // this page (nav bar, footer link, etc.) doesn't stay stuck on it.
+  const [activeFilter, setActiveFilter] = useState(astrologerFilter);
+  useEffect(() => {
+    if (featured) return; // only the full listing page's tabs use this
+    if (astrologerFilter !== 'All') setAstrologerFilter('All');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [filtered, setFiltered] = useState<UiAstrologer[]>([]);
   const [recommended, setRecommended] = useState<UiAstrologer[]>([]);
   const [loadError, setLoadError] = useState(false);
