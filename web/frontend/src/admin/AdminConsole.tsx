@@ -22,6 +22,7 @@ const DailyShlokPage = lazy(() => import('./pages/DailyShlokPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'));
 const TokenMeterPage = lazy(() => import('./pages/TokenMeterPage'));
+const EvaluationPage = lazy(() => import('./pages/EvaluationPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CallRecordingsPage = lazy(() => import('./pages/CallRecordingsPage'));
 
@@ -76,6 +77,7 @@ export default function AdminConsole() {
       case 'notifications': return <NotificationsPage />;
       case 'audit': return <AuditLogsPage />;
       case 'tokens': return <TokenMeterPage />;
+      case 'evaluation': return <EvaluationPage />;
       case 'settings': return <SettingsPage />;
       case 'call-recordings': return <CallRecordingsPage />;
       default: return null;

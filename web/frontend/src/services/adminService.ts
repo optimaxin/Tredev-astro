@@ -402,6 +402,98 @@ function toQuery(params: object): string {
   return qs ? `?${qs}` : '';
 }
 
+// ── AI Evaluation types ───────────────────────────────────────────────
+// Mirrors backend/app/repositories/aiEvaluationRepository.ts. Scores are
+// 0..1. Nulls are meaningful: "not evaluated" and "scored zero" differ, and
+// a null helpfulRate means nobody has voted yet rather than nobody liked it.
+
+export interface AiQualityOverview {
+  totalResponses: number;
+  evaluatedResponses: number;
+  judgedResponses: number;
+  avgRewardScore: number | null;
+  feedbackCount: number;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  helpfulRate: number | null;
+  avgRating: number | null;
+  responsesWithFailures: number;
+}
+
+export interface AiDimensionAverages {
+  relevance: number | null;
+  grounding: number | null;
+  personalization: number | null;
+  completeness: number | null;
+  humanLikeness: number | null;
+  hinglishQuality: number | null;
+  whatsappStyle: number | null;
+  clarity: number | null;
+  conciseness: number | null;
+  warmth: number | null;
+  safety: number | null;
+}
+
+export interface AiFeedbackReason { reason: string; count: number }
+
+export interface AiQualityTrendPoint {
+  bucket: string;
+  responses: number;
+  avgRewardScore: number | null;
+  helpfulRate: number | null;
+  avgTotalTokens: number | null;
+  avgCostInr: number | null;
+}
+
+export interface AiQualityVsCostRow {
+  provider: string;
+  model: string;
+  responses: number;
+  avgTotalTokens: number | null;
+  avgCostInr: number | null;
+  avgRewardScore: number | null;
+  helpfulRate: number | null;
+}
+
+export interface AiEvaluatedResponse {
+  requestId: string;
+  createdAt: string;
+  userId: string | null;
+  conversationId: string | null;
+  provider: string | null;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  estimatedCostInr: number | null;
+  rewardScore: number | null;
+  judgeUsed: boolean;
+  deterministicFailures: string[];
+  feedbackType: string | null;
+  rating: number | null;
+  feedbackReason: string | null;
+}
+
+export interface AiResponseDetail extends AiEvaluatedResponse {
+  dimensions: AiDimensionAverages;
+  feedbackComment: string | null;
+  evaluatorProvider: string | null;
+  evaluatorModel: string | null;
+  evaluationVersion: string | null;
+  latencyMs: number | null;
+  status: string | null;
+}
+
+export interface AiEvaluationQuery {
+  from?: string;
+  to?: string;
+  userId?: string;
+  model?: string;
+  feedbackType?: 'helpful' | 'not_helpful';
+  minReward?: number;
+  maxReward?: number;
+}
+
 export const adminService = {
   listUsers: () => request<ApiUserRecord[]>('/users'),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
@@ -524,6 +616,22 @@ export const adminService = {
     if (!res.ok) throw new AdminApiError('DOWNLOAD_FAILED', 'Could not load this recording (it may have expired).');
     return res.blob();
   },
+
+  // ── AI Evaluation ───────────────────────────────────────────────────
+  aiEvaluationOverview: (q: AiEvaluationQuery = {}) =>
+    request<{
+      overview: AiQualityOverview;
+      dimensions: AiDimensionAverages;
+      feedbackReasons: AiFeedbackReason[];
+    }>(`/ai-evaluation/overview${toQuery(q)}`),
+  aiEvaluationTrend: (q: AiEvaluationQuery & { granularity?: AiUsageGranularity } = {}) =>
+    request<AiQualityTrendPoint[]>(`/ai-evaluation/trend${toQuery(q)}`),
+  aiEvaluationQualityVsCost: (q: AiEvaluationQuery = {}) =>
+    request<AiQualityVsCostRow[]>(`/ai-evaluation/quality-vs-cost${toQuery(q)}`),
+  aiEvaluationResponses: (q: AiEvaluationQuery & { limit?: number; offset?: number } = {}) =>
+    request<{ rows: AiEvaluatedResponse[]; total: number }>(`/ai-evaluation/responses${toQuery(q)}`),
+  aiEvaluationResponseDetail: (requestId: string) =>
+    request<AiResponseDetail>(`/ai-evaluation/responses/${encodeURIComponent(requestId)}`),
 };
 
 export interface ApiCallRecording {

@@ -31,6 +31,15 @@ import {
   getTimeseries,
   getUserUsage,
 } from '../repositories/aiUsageRepository.ts';
+import {
+  getDimensionAverages,
+  getFeedbackReasons,
+  getQualityOverview,
+  getQualityTrend,
+  getQualityVsCost,
+  getResponseDetail,
+  listEvaluatedResponses,
+} from '../repositories/aiEvaluationRepository.ts';
 import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
@@ -995,4 +1004,81 @@ adminRouter.get('/ai-usage/users/:userId', staffOrAdmin, tokensSection, async (r
 
 adminRouter.get('/ai-usage/filters', staffOrAdmin, tokensSection, async (_req, res) => {
   res.json({ success: true, data: await getFilterOptions() });
+});
+
+// ── AI Evaluation & Feedback ──────────────────────────────────────────
+// Quality analytics over `ai_evaluations` and `ai_feedback`, both written by
+// ai-core. Behind the same gate as the Token Meter, under an 'evaluation'
+// section, so project-wide quality data is admin-only.
+//
+// Three signals are reported side by side and never merged: the automated
+// reward score (a model's estimate), real user feedback (what a person said),
+// and tokens/cost. Merging them would destroy the comparison the page exists
+// to support.
+
+const evaluationFilterSchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  userId: z.string().max(200).optional(),
+  model: z.string().max(200).optional(),
+  feedbackType: z.enum(['helpful', 'not_helpful']).optional(),
+  minReward: z.coerce.number().min(0).max(1).optional(),
+  maxReward: z.coerce.number().min(0).max(1).optional(),
+});
+
+function parseEvaluationFilters(req: import('express').Request) {
+  const parsed = evaluationFilterSchema.safeParse(req.query);
+  if (!parsed.success) return null;
+  const filters = { ...parsed.data };
+  if (!filters.from) {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    filters.from = since.toISOString();
+  }
+  return filters;
+}
+
+const evaluationSection = requireSection('evaluation');
+
+adminRouter.get('/ai-evaluation/overview', staffOrAdmin, evaluationSection, async (req, res) => {
+  const filters = parseEvaluationFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid evaluation filters');
+  const [overview, dimensions, reasons] = await Promise.all([
+    getQualityOverview(filters),
+    getDimensionAverages(filters),
+    getFeedbackReasons(filters),
+  ]);
+  res.json({ success: true, data: { overview, dimensions, feedbackReasons: reasons } });
+});
+
+adminRouter.get('/ai-evaluation/trend', staffOrAdmin, evaluationSection, async (req, res) => {
+  const filters = parseEvaluationFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid evaluation filters');
+  const raw = String(req.query.granularity ?? 'day');
+  const granularity = raw === 'week' || raw === 'month' ? raw : 'day';
+  res.json({ success: true, data: await getQualityTrend(filters, granularity) });
+});
+
+adminRouter.get('/ai-evaluation/quality-vs-cost', staffOrAdmin, evaluationSection, async (req, res) => {
+  const filters = parseEvaluationFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid evaluation filters');
+  res.json({ success: true, data: await getQualityVsCost(filters) });
+});
+
+adminRouter.get('/ai-evaluation/responses', staffOrAdmin, evaluationSection, async (req, res) => {
+  const filters = parseEvaluationFilters(req);
+  if (!filters) return fail(res, 422, 'VALIDATION_ERROR', 'Invalid evaluation filters');
+  res.json({
+    success: true,
+    data: await listEvaluatedResponses(filters, {
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+      offset: req.query.offset ? Number(req.query.offset) : undefined,
+    }),
+  });
+});
+
+adminRouter.get('/ai-evaluation/responses/:requestId', staffOrAdmin, evaluationSection, async (req, res) => {
+  const detail = await getResponseDetail(String(req.params.requestId));
+  if (!detail) return fail(res, 404, 'NOT_FOUND', 'No such AI response');
+  res.json({ success: true, data: detail });
 });

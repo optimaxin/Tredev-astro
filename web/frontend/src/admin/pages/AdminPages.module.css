@@ -404,3 +404,54 @@
   .miniChart { height: 140px; }
   .miniChartLabel { display: none; }
 }
+
+/* ── AI Evaluation (EvaluationPage.tsx) ──────────────────────────────
+   Horizontal score bars: eleven dimensions read far faster as bar lengths
+   than as a column of decimals. */
+
+.dimensionRow {
+  display: grid;
+  grid-template-columns: 180px 1fr 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.dimensionLabel { font-size: 0.8rem; color: var(--adm-muted); }
+
+.dimensionBarTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--adm-border-soft) 60%, transparent);
+  overflow: hidden;
+}
+
+.dimensionBarFill {
+  display: block;
+  height: 100%;
+  background: var(--adm-gold);
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+/* Negative feedback counts are not a "score" — a different colour stops
+   them reading as though a long bar were good. */
+.dimensionBarNegative {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, #d9534f 70%, transparent);
+  border-radius: 4px;
+}
+
+.dimensionValue {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--adm-charcoal);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .dimensionRow { grid-template-columns: 120px 1fr 40px; gap: 8px; }
+  .dimensionLabel { font-size: 0.72rem; }
+}

@@ -23,5 +23,6 @@ export type AdminSection =
   | 'notifications'
   | 'audit'
   | 'tokens'
+  | 'evaluation'
   | 'settings'
   | 'call-recordings';

@@ -112,6 +112,34 @@ function anonymousUserId(): string {
   }
 }
 
+
+export type FeedbackType = 'helpful' | 'not_helpful';
+
+// Mirrors NEGATIVE_REASONS / POSITIVE_REASONS in ai-core's schemas.py. A
+// closed set so the admin dashboard can rank them rather than reading free
+// text; `other` plus the optional comment covers the rest.
+export const NEGATIVE_REASONS: { value: string; label: string }[] = [
+  { value: 'incorrect_information', label: 'Incorrect information' },
+  { value: 'too_generic', label: 'Too generic' },
+  { value: 'too_long', label: 'Too long' },
+  { value: 'did_not_answer', label: "Didn't answer my question" },
+  { value: 'not_personalized', label: 'Not personalized' },
+  { value: 'poor_hinglish', label: 'Poor Hinglish' },
+  { value: 'too_formal', label: 'Too formal' },
+  { value: 'not_conversational', label: 'Not conversational' },
+  { value: 'wrong_context_usage', label: 'Wrong chart/context usage' },
+  { value: 'other', label: 'Other' },
+];
+
+export interface FeedbackResult {
+  recorded: boolean;
+  request_id: string;
+  feedback_type: FeedbackType;
+  // False when the store is unreachable. The thumb still shows as selected —
+  // a lost vote must not look like a broken button.
+  persisted: boolean;
+}
+
 export const aiCoreService = {
   anonymousUserId,
 
@@ -135,4 +163,29 @@ export const aiCoreService = {
     }),
 
   personas: () => request<AiCorePersona[]>('/personas'),
+
+  // What the user thought of one reply, keyed by the request_id the chat
+  // response already returned. Changing a vote overwrites the previous one
+  // server-side rather than adding a second.
+  submitFeedback: (params: {
+    requestId: string;
+    feedbackType: FeedbackType;
+    conversationId?: string;
+    rating?: number;
+    reason?: string;
+    comment?: string;
+    userId?: string;
+  }) =>
+    request<FeedbackResult>('/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        request_id: params.requestId,
+        user_id: params.userId || anonymousUserId(),
+        feedback_type: params.feedbackType,
+        conversation_id: params.conversationId,
+        rating: params.rating,
+        feedback_reason: params.reason,
+        feedback_comment: params.comment,
+      }),
+    }),
 };
