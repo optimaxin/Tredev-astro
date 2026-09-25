@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
-import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164IndianNumber } from '../../services/firebaseClient';
+import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164 } from '../../services/firebaseClient';
+import { API_URL } from '../../services/apiUrl';
+import { COUNTRY_CODES, DEFAULT_COUNTRY, findByIso2, flagEmoji, type CountryCode } from '../../data/countryCodes';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
@@ -25,7 +27,24 @@ export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
 
-  // Phone entry + OTP
+  // Phone entry + OTP — country defaults to India, then swapped for the
+  // visitor's actual country as soon as IP geolocation resolves (same
+  // free, offline lookup lib/geoLocation.ts already uses for pricing;
+  // see GET /api/geo/country). Always user-overridable via the dropdown,
+  // since IP geolocation is a best-effort guess (VPNs, travel, etc.).
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/api/geo/country`)
+      .then(res => res.json())
+      .then((body: { countryCode: string | null }) => {
+        if (cancelled) return;
+        const match = findByIso2(body.countryCode);
+        if (match) setCountry(match);
+      })
+      .catch(() => {}); // best-effort — the India default is a fine fallback
+    return () => { cancelled = true; };
+  }, []);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [otpSendLoading, setOtpSendLoading] = useState(false);
@@ -89,7 +108,7 @@ export default function AuthPage() {
     setPhoneError('');
     setOtpSendLoading(true);
     try {
-      const result = await sendFirebasePhoneOtp(toE164IndianNumber(phoneNumber), 'firebase-recaptcha-container');
+      const result = await sendFirebasePhoneOtp(toE164(phoneNumber, country.dialCode), 'firebase-recaptcha-container');
       setConfirmationResult(result);
       setStep('otp');
     } catch (err) {
@@ -108,7 +127,7 @@ export default function AuthPage() {
     setOtpError('');
     setOtpSendLoading(true);
     try {
-      const result = await sendFirebasePhoneOtp(toE164IndianNumber(phoneNumber), 'firebase-recaptcha-container');
+      const result = await sendFirebasePhoneOtp(toE164(phoneNumber, country.dialCode), 'firebase-recaptcha-container');
       setConfirmationResult(result);
       setOtpCode('');
     } catch (err) {
@@ -319,16 +338,38 @@ export default function AuthPage() {
                   <label className={styles.inkLabel}>
                     <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number
                   </label>
-                  <input
-                    type="tel"
-                    className={styles.inkInput}
-                    placeholder="+91 12345 67890"
-                    value={phoneNumber}
-                    onChange={e => setPhoneNumber(e.target.value)}
-                    required
-                    minLength={8}
-                    autoFocus
-                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {/* Auto-selected from IP geolocation on mount (see the
+                        useEffect above) — always changeable, since that's a
+                        best-effort guess, not a guarantee. */}
+                    <select
+                      className={styles.inkInput}
+                      style={{ flex: '0 0 auto', width: 100 }}
+                      value={country.iso2}
+                      onChange={e => {
+                        const match = findByIso2(e.target.value);
+                        if (match) setCountry(match);
+                      }}
+                      aria-label="Country code"
+                    >
+                      {COUNTRY_CODES.map(c => (
+                        <option key={c.iso2} value={c.iso2}>
+                          {flagEmoji(c.iso2)} +{c.dialCode}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      className={styles.inkInput}
+                      style={{ flex: 1 }}
+                      placeholder="12345 67890"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                      required
+                      minLength={6}
+                      autoFocus
+                    />
+                  </div>
                 </div>
 
                 {phoneError && (
@@ -369,7 +410,7 @@ export default function AuthPage() {
                 className={styles.scriptForm}
               >
                 <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
-                  We sent a 6-digit code to {phoneNumber}. Enter it below to continue.
+                  We sent a 6-digit code to {toE164(phoneNumber, country.dialCode)}. Enter it below to continue.
                 </p>
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>Verification Code</label>

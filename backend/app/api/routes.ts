@@ -28,6 +28,16 @@ function astrologerIdFromEmail(email: string | undefined, res: import('express')
   return astro;
 }
 
+// Lets the frontend auto-select a phone country-calling-code (see
+// AuthPage.tsx's phone entry step) without shipping its own IP geolocation —
+// reuses the same free, offline, no-rate-limit lookup pricing already relies
+// on. `countryCode` is an ISO 3166-1 alpha-2 code (e.g. "IN") or null when it
+// can't be determined (localhost, an IP with no geo data) — the frontend
+// falls back to a sensible default in that case, same as pricing does.
+router.get('/geo/country', (req, res) => {
+  res.json({ countryCode: countryFromRequest(req) });
+});
+
 router.get('/astrologers', async (_req, res) => {
   res.json(await listPublicAstrologers());
 });

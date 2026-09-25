@@ -77,13 +77,15 @@ export async function sendFirebasePhoneOtp(phoneNumberE164: string, containerId:
   return signInWithPhoneNumber(getAuthClient(), phoneNumberE164, getFreshRecaptchaVerifier(containerId));
 }
 
-// India-only helper — this app's registration form collects a plain local
-// number (no country code field), so assume +91 unless one was already
-// given. Good enough for this app's actual userbase; a number that's
-// neither shape just gets rejected by Firebase with a clear error.
-export function toE164IndianNumber(raw: string): string {
+// Combines the user's selected country dial code with whatever they typed
+// in the phone field — AuthPage.tsx's country dropdown (see
+// data/countryCodes.ts) is what picks `dialCode`, auto-selected from IP
+// geolocation but always user-overridable. If they typed a full number with
+// its own '+' already, that's trusted as-is over the dropdown, since it's
+// unambiguous either way.
+export function toE164(raw: string, dialCode: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('+')) return trimmed;
   const digits = trimmed.replace(/\D/g, '');
-  return `+91${digits}`;
+  return `+${dialCode}${digits}`;
 }
