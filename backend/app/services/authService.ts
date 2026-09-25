@@ -140,6 +140,12 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
   let row = await findUserByFirebaseUid(uid);
   let isNewUser = false;
   if (!row && email) row = await findUserByEmail(email);
+  // Without this, a phone number that already belongs to an account (e.g.
+  // one created some other way, or a retried sign-in that got this far
+  // before) falls through to the createUser() call below and hits the
+  // phone_number UNIQUE constraint (see migration 042) as an unhandled DB
+  // error — a 500, not the "already exists" case this should actually be.
+  if (!row && phoneNumber) row = await findUserByPhone(phoneNumber);
 
   if (!row) {
     isNewUser = true;
