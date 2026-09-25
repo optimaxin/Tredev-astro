@@ -45,15 +45,26 @@ export async function signInWithGooglePopup(): Promise<string> {
 //
 // NOT reused across calls: an invisible reCAPTCHA widget is single-use —
 // once `signInWithPhoneNumber` has consumed it (successfully or not), a
-// second send attempt (an initial retry after an error, or the "Resend
-// code" button) with the SAME verifier instance fails outright with
-// "reCAPTCHA client element has been removed". Clearing and re-rendering a
-// fresh widget on every call is the fix Firebase's own docs use for
-// exactly this resend scenario.
+// second send attempt (a retry after an error, or "Resend code") needs a
+// genuinely fresh widget. `verifier.clear()` alone isn't reliable enough
+// here — Google's own grecaptcha.js keeps its widget registry keyed by the
+// actual DOM node, and in practice still reports "reCAPTCHA has already
+// been rendered in this element" for the next render even right after
+// `.clear()` (a real-world Firebase JS SDK + React timing gap, not
+// something this app's code controls). Swapping in a brand-new DOM node
+// with the same id sidesteps that entirely — grecaptcha has never seen
+// this exact node before, so there's nothing for it to conflict with.
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
 function getFreshRecaptchaVerifier(containerId: string): RecaptchaVerifier {
   recaptchaVerifier?.clear();
+  recaptchaVerifier = null;
+  const oldContainer = document.getElementById(containerId);
+  if (oldContainer?.parentNode) {
+    const freshContainer = document.createElement('div');
+    freshContainer.id = containerId;
+    oldContainer.parentNode.replaceChild(freshContainer, oldContainer);
+  }
   recaptchaVerifier = new RecaptchaVerifier(getAuthClient(), containerId, { size: 'invisible' });
   return recaptchaVerifier;
 }
