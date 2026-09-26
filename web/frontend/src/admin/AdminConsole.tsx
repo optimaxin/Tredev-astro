@@ -25,6 +25,7 @@ const TokenMeterPage = lazy(() => import('./pages/TokenMeterPage'));
 const EvaluationPage = lazy(() => import('./pages/EvaluationPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CallRecordingsPage = lazy(() => import('./pages/CallRecordingsPage'));
+const BannersPage = lazy(() => import('./pages/BannersPage'));
 
 export default function AdminConsole() {
   const { currentUser } = useAppContext();
@@ -80,6 +81,7 @@ export default function AdminConsole() {
       case 'evaluation': return <EvaluationPage />;
       case 'settings': return <SettingsPage />;
       case 'call-recordings': return <CallRecordingsPage />;
+      case 'banners': return <BannersPage />;
       default: return null;
     }
   };

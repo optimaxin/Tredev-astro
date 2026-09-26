@@ -97,7 +97,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -632,7 +632,24 @@ export const adminService = {
     request<{ rows: AiEvaluatedResponse[]; total: number }>(`/ai-evaluation/responses${toQuery(q)}`),
   aiEvaluationResponseDetail: (requestId: string) =>
     request<AiResponseDetail>(`/ai-evaluation/responses/${encodeURIComponent(requestId)}`),
+
+  // ── Homepage banners ─────────────────────────────────────────────────
+  listBanners: () => request<ApiBanner[]>('/banners'),
+  createBanner: (banner: { mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null; expiresAt: number | null }) =>
+    request<ApiBanner>('/banners', { method: 'POST', body: JSON.stringify(banner) }),
+  updateBanner: (id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }) =>
+    request<ApiBanner>(`/banners/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteBanner: (id: string) => request<{ ok: true }>(`/banners/${id}`, { method: 'DELETE' }),
 };
+
+export interface ApiBanner {
+  id: string;
+  mediaType: 'image' | 'video';
+  mediaData: string;
+  linkUrl: string | null;
+  createdAt: number;
+  expiresAt: number | null;
+}
 
 export interface ApiCallRecording {
   id: string;

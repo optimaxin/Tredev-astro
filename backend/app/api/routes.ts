@@ -8,6 +8,7 @@ import {
 } from '../services/realtimeStore.ts';
 import type { ConsultationType } from '../models/types.ts';
 import { countryFromRequest } from '../services/geoLocation.ts';
+import { listActiveBanners } from '../repositories/bannerRepository.ts';
 
 export const router = Router();
 
@@ -40,6 +41,13 @@ router.get('/geo/country', (req, res) => {
 
 router.get('/astrologers', async (_req, res) => {
   res.json(await listPublicAstrologers());
+});
+
+// Public feed for the homepage CampaignBanner carousel — staff-managed, see
+// admin.routes.ts's 'banners' section. No auth: same trust level as the
+// public astrologer catalog above.
+router.get('/banners/active', async (_req, res) => {
+  res.json(await listActiveBanners(Date.now()));
 });
 
 router.get('/astrologers/:id/recommendations', async (req, res) => {

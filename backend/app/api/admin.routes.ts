@@ -50,6 +50,8 @@ import { toPublicPricingRegion } from '../models/pricingRegion.ts';
 import { deleteOverride, listOverridesForAdmin, upsertOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { parseCsv, toCsvRow } from '../services/csv.ts';
 import { findCallRecordingData, listCallRecordings } from '../repositories/callRecordingRepository.ts';
+import { deleteBanner } from '../repositories/bannerRepository.ts';
+import { BannerError, createBanner, editBanner, listBanners } from '../services/bannerService.ts';
 
 export const adminRouter = Router();
 
@@ -481,6 +483,62 @@ adminRouter.get('/call-recordings/:id/audio', requireSection('call-recordings'),
   res.setHeader('Content-Type', recording.mimeType);
   res.setHeader('Cache-Control', 'private, no-store');
   res.send(recording.data);
+});
+
+// ── Homepage banners ─────────────────────────────────────────────────────
+// Staff-managed promo media for CampaignBanner.tsx's homepage carousel — up
+// to 7 rows (bannerRepository.MAX_BANNERS), each with an optional
+// click-through link and an optional expiry (null = never, cleaned up
+// hourly from main.ts once past its expires_at). Media is base64, capped
+// ~5MB raw (see bannerService.ts).
+
+const createBannerSchema = z.object({
+  mediaType: z.enum(['image', 'video']),
+  mediaData: z.string().min(1),
+  linkUrl: z.string().url().nullable().default(null),
+  expiresAt: z.number().int().positive().nullable().default(null),
+});
+
+const editBannerSchema = z.object({
+  linkUrl: z.string().url().nullable().optional(),
+  expiresAt: z.number().int().positive().nullable().optional(),
+});
+
+adminRouter.get('/banners', requireSection('banners'), async (_req, res) => {
+  res.json({ success: true, data: await listBanners() });
+});
+
+adminRouter.post('/banners', requireSection('banners'), async (req, res) => {
+  const parsed = createBannerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  try {
+    const banner = await createBanner(parsed.data);
+    await audit(req, 'Uploaded banner', banner.id);
+    res.status(201).json({ success: true, data: banner });
+  } catch (e) {
+    if (e instanceof BannerError) return fail(res, e.status, 'BANNER_ERROR', e.message);
+    throw e;
+  }
+});
+
+adminRouter.patch('/banners/:id', requireSection('banners'), async (req, res) => {
+  const parsed = editBannerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  try {
+    const banner = await editBanner(String(req.params.id), parsed.data);
+    await audit(req, 'Updated banner', banner.id);
+    res.json({ success: true, data: banner });
+  } catch (e) {
+    if (e instanceof BannerError) return fail(res, e.status, 'BANNER_ERROR', e.message);
+    throw e;
+  }
+});
+
+adminRouter.delete('/banners/:id', requireSection('banners'), async (req, res) => {
+  const deleted = await deleteBanner(String(req.params.id));
+  if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Banner not found');
+  await audit(req, 'Deleted banner', String(req.params.id));
+  res.json({ success: true, data: { ok: true } });
 });
 
 // ── Report purchases ─────────────────────────────────────────────────────

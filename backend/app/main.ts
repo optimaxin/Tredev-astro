@@ -28,6 +28,7 @@ import { config } from './core/config.ts';
 import { attachSockets } from './websocket/sockets.ts';
 import { rescheduleActiveConsultationTimers, runMaintenanceTick, seedRealtimeStore } from './services/realtimeStore.ts';
 import { deleteExpiredCallRecordings } from './repositories/callRecordingRepository.ts';
+import { deleteExpiredBanners } from './repositories/bannerRepository.ts';
 
 const PORT = Number(process.env.PORT) || 4000;
 // Comma-separated so the main site and the separately-deployed Ganesh
@@ -115,6 +116,10 @@ setInterval(() => { runMaintenanceTick().catch(console.error); }, 20_000);
 // by actually deleting expired rows. Hourly is plenty for a day-granularity
 // retention window — no need for the 20s cadence above.
 setInterval(() => { deleteExpiredCallRecordings(Date.now()).catch(console.error); }, 60 * 60_000);
+
+// Enforces a banner's expiry timer (see bannerRepository.ts) — a NULL
+// expires_at ("never") is never touched here, only rows past a real date.
+setInterval(() => { deleteExpiredBanners(Date.now()).catch(console.error); }, 60 * 60_000);
 
 httpServer.listen(PORT, () => {
   console.log(`[tredevastro-realtime] listening on http://localhost:${PORT}`);

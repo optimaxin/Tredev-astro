@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
+import { API_URL } from '../../services/apiUrl';
 import styles from './CampaignBanner.module.css';
+
+interface ApiBanner {
+  id: string;
+  mediaType: 'image' | 'video';
+  mediaData: string;
+  linkUrl: string | null;
+}
 
 const SLIDES = [
   {
@@ -173,7 +181,10 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
   );
 }
 
-export default function CampaignBanner() {
+// Falls back to this hardcoded carousel whenever staff haven't uploaded any
+// banners yet (see the default export below) — keeps the homepage looking
+// finished out of the box instead of showing an empty section.
+function StaticCampaignBanner() {
   const { setPage } = useAppContext();
   const [current, setCurrent] = useState(0);
   const [edgeHover, setEdgeHover] = useState<'left' | 'right' | null>(null);
@@ -378,4 +389,93 @@ export default function CampaignBanner() {
       </div>
     </section>
   );
+}
+
+// Staff-uploaded banners (see admin/pages/BannersPage.tsx) — plain
+// clickable media, no title/description copy since staff only supply an
+// image/video and an optional link, unlike the static carousel's SLIDES.
+function DynamicBannerCarousel({ banners }: { banners: ApiBanner[] }) {
+  const { setPage } = useAppContext();
+  const [current, setCurrent] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const total = banners.length;
+
+  useEffect(() => {
+    if (isHovered || total <= 1) return;
+    const id = window.setInterval(() => setCurrent(c => (c + 1) % total), 6000);
+    return () => clearInterval(id);
+  }, [isHovered, total]);
+
+  const banner = banners[current];
+
+  const handleClick = () => {
+    if (!banner.linkUrl) return;
+    // External links navigate the whole browser away; anything that looks
+    // like one of this app's own page keys (no scheme/slash) goes through
+    // setPage instead, same as the static carousel's slideCta buttons do.
+    if (/^https?:\/\//.test(banner.linkUrl)) {
+      window.location.href = banner.linkUrl;
+    } else {
+      setPage(banner.linkUrl);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <section className={styles.section} id="campaign-banner" aria-label="Featured campaigns">
+      <div
+        className={styles.carousel}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={banner.id}
+            className={styles.mainCard}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ cursor: banner.linkUrl ? 'pointer' : 'default', width: '100%' }}
+            onClick={handleClick}
+          >
+            {banner.mediaType === 'video' ? (
+              <video src={banner.mediaData} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay loop muted playsInline />
+            ) : (
+              <img src={banner.mediaData} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+            )}
+
+            {total > 1 && (
+              <div className={styles.slideCounter} style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
+                {banners.map((b, i) => (
+                  <button
+                    key={b.id}
+                    className={`${styles.counterDot} ${i === current ? styles.counterDotActive : ''}`}
+                    onClick={e => { e.stopPropagation(); setCurrent(i); }}
+                    aria-label={`Go to banner ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </section>
+  );
+}
+
+export default function CampaignBanner() {
+  const [banners, setBanners] = useState<ApiBanner[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/api/banners/active`)
+      .then(res => res.json())
+      .then((data: ApiBanner[]) => { if (!cancelled) setBanners(data); })
+      .catch(() => { if (!cancelled) setBanners([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (banners && banners.length > 0) return <DynamicBannerCarousel banners={banners} />;
+  return <StaticCampaignBanner />;
 }

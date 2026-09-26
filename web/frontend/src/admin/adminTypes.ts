@@ -25,4 +25,5 @@ export type AdminSection =
   | 'tokens'
   | 'evaluation'
   | 'settings'
-  | 'call-recordings';
+  | 'call-recordings'
+  | 'banners';

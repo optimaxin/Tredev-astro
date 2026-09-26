@@ -14,36 +14,34 @@ interface CategoryCard {
   concern: Concern;
 }
 
-// Maps a concern card to the Astrologers page's own category filter (see
-// Astrologers.tsx's FILTERS) — these are the real `categories` values seeded
-// on astrologer catalog rows (backend/app/core/seedAstrologers.ts), not
-// invented here. 'Personal Growth' has no matching category on any astrologer
-// today, so it falls back to the unfiltered list rather than a real filter
-// that would just show zero results.
-const CATEGORY_BY_CONCERN: Partial<Record<NonNullable<Concern>, string>> = {
-  'Marriage': 'Marriage',
-  'Career & Business': 'Career',
-  'Money & Finance': 'Finance',
-  'Family': 'Family',
-  'Spirituality': 'Spirituality',
+// Maps a concern card to its info page id (see data/guidanceInfo.ts and
+// pages/GuidanceInfoPage) — each card now leads to a real explanation of
+// that life area (governing planets, why it can feel stuck, remedies)
+// instead of jumping straight to the Astrologers list. Vastu is the one
+// exception: it has its own dedicated calculator, which is a more direct
+// answer than a reading page.
+const INFO_ID_BY_CONCERN: Partial<Record<NonNullable<Concern>, string>> = {
+  'Marriage': 'marriage',
+  'Career & Business': 'career',
+  'Money & Finance': 'money',
+  'Family': 'family',
+  'Personal Growth': 'growth',
+  'Spirituality': 'spirituality',
 };
 
 export default function SeekGuidance() {
-  const { setPage, setAstrologerFilter, t, tOr } = useAppContext();
+  const { setPage, setSelectedId, t, tOr } = useAppContext();
 
   const handleCardClick = (concern: Concern) => {
-    // Each concern now goes to the Astrologers list, pre-filtered to
-    // astrologers who actually specialize in it — a real next step, unlike
-    // the old behaviour of funneling everything into an unrelated Kundli
-    // reading. Vastu is the one exception: it has its own dedicated
-    // calculator, which is a more direct answer than a person to consult.
     if (concern === 'Vastu') {
       setPage('vastu-calculator');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    setAstrologerFilter((concern && CATEGORY_BY_CONCERN[concern]) || 'All');
-    setPage('astrologers');
+    const infoId = concern && INFO_ID_BY_CONCERN[concern];
+    if (!infoId) return;
+    setSelectedId(infoId);
+    setPage('guidance-info');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

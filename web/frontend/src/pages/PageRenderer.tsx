@@ -30,6 +30,7 @@ import AuthPage from './AuthPage/AuthPage';
 import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
 import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
+import GuidanceInfoPage from './GuidanceInfoPage/GuidanceInfoPage';
 import AdminConsole from '../admin/AdminConsole';
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
@@ -236,6 +237,9 @@ export default function PageRenderer() {
           </div>
         </div>
       );
+
+    case 'guidance-info':
+      return <GuidanceInfoPage id={selectedId} />;
 
     case 'astrologer-profile':
       return <AstrologerProfilePage id={selectedId} />;
