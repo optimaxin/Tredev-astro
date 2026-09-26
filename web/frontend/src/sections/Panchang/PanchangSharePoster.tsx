@@ -318,6 +318,9 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
                 <div style={{ fontSize: 13, color: p.goldDim }}>({L('चंद्र राशि अनुसार', 'by Moon sign')})</div>
               </div>
               <RashiWheel p={p} moonRashi={data.moonRashi} />
+              <div style={{ textAlign: 'center', color: p.gold, fontSize: 16, marginTop: 6 }}>
+                {hindiOr(lang, HINDI_RASHI, data.moonRashi)}
+              </div>
             </div>
           </Panel>
 
