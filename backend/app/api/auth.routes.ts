@@ -69,7 +69,10 @@ authRouter.post('/login', authLimiter, async (req, res) => {
 
 const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 
-authRouter.post('/refresh', async (req, res) => {
+// Looser than authLimiter — every open tab refreshes on load.
+const refreshLimiter = rateLimit({ windowMs: 60_000, max: 30 });
+
+authRouter.post('/refresh', refreshLimiter, async (req, res) => {
   try {
     const body = refreshSchema.parse(req.body);
     res.json({ success: true, data: await refresh(body.refreshToken) });

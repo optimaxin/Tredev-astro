@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,15 +63,26 @@ const app = express();
 // typical single-proxy deployment shape; adjust if this ever sits behind
 // more than one proxy layer.
 app.set('trust proxy', 1);
+// Security headers (HSTS, nosniff, frame-deny, a strict CSP, ...). This
+// server returns JSON everywhere except the one campaign-analytics page,
+// which gets its own relaxed CSP below.
+// CORP relaxed: the frontend lives on another origin and embeds some
+// responses directly (e.g. call-recording audio), which same-origin would block.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: corsOrigin }));
-// Default 100kb is fine for everything except chat's IMAGE/AUDIO messages,
-// which arrive as a base64 data URL (see chat.routes.ts's sendMessageSchema
-// for the actual per-message size cap this just needs to fit under).
+// Default 100kb is fine for everything except chat's IMAGE/AUDIO messages
+// and admin banner uploads, which arrive as a base64 data URL (see
+// chat.routes.ts's sendMessageSchema / admin banners for the real per-item
+// caps this just needs to fit under) — only those two prefixes get 8mb.
+// body-parser skips a body that's already been parsed, so the path-scoped
+// parsers win and the global one below covers everything else.
 // `verify` stashes the exact raw bytes on req.rawBody — payments.routes.ts's
 // webhook needs those (not the re-serialized req.body) to check Cashfree's
 // HMAC signature, since JSON.stringify(parsed) is not guaranteed byte-for-byte
 // identical to what Cashfree actually sent and signed.
-app.use(express.json({ limit: '8mb', verify: (req, _res, buf) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf; } }));
+const keepRawBody = (req: express.Request, _res: unknown, buf: Buffer) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf; };
+app.use(['/api/consultations', '/api/admin'], express.json({ limit: '8mb', verify: keepRawBody }));
+app.use(express.json({ limit: '100kb', verify: keepRawBody }));
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);
 app.use('/api/consultations', chatRouter);
@@ -86,6 +98,8 @@ app.use('/api/campaign-analytics', campaignAnalyticsRouter);
 // rather than a whole separate app, since it's just a password-gated view
 // over the /api/campaign-analytics/summary endpoint above.
 app.get('/campaign-analytics', (_req, res) => {
+  // The page is a single file with an inline <script>/<style>.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'");
   res.sendFile(join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'campaign-analytics.html'));
 });
 app.use('/api', contentRouter);
@@ -100,6 +114,16 @@ app.use('/api', router);
 app.use('/api/admin', adminRouter);
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Last-resort error handler: full detail to the server log only, a generic
+// message to the client — never a stack trace, SQL error or file path.
+// Keeps 4xx statuses body-parser sets (e.g. 413 payload too large).
+app.use((err: Error & { status?: number }, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = err.status && err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 500) console.error('[ERROR]', { message: err.message, stack: err.stack, url: req.originalUrl });
+  if (res.headersSent) return;
+  res.status(status).json({ success: false, error: { code: status === 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST', message: status === 500 ? 'Something went wrong. Please try again.' : 'Invalid request' } });
 });
 
 const httpServer = createServer(app);

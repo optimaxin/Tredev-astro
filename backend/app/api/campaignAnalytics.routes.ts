@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
@@ -10,6 +11,8 @@ export const campaignAnalyticsRouter = Router();
 // still bounded, mainly to blunt abuse (someone scripting thousands of fake
 // events) rather than to throttle real traffic.
 const trackLimiter = rateLimit({ windowMs: 60_000, max: 120 });
+// Blunts password brute-forcing against the shared dashboard login.
+const loginLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20 });
 
 const trackSchema = z.object({
   eventType: z.string().min(1).max(60),
@@ -48,23 +51,23 @@ campaignAnalyticsRouter.post('/track', trackLimiter, async (req, res) => {
 
 // A single shared username+password (config.campaignAnalyticsUsername/
 // Password), not full user/JWT auth — see that config field's own comment
-// for why. Accepted as either query params (simplest for the dashboard
-// page's own fetch calls) or headers, whichever the caller finds easier.
-// Also checked (via the request body) on /reset, since that one's a real
-// mutation. Both must match — either one alone isn't enough.
-function hasValidCredentials(req: import('express').Request): boolean {
-  const username = (typeof req.query.username === 'string' && req.query.username)
-    || (typeof req.body?.username === 'string' && req.body.username)
-    || req.get('x-analytics-username') || '';
-  const password = (typeof req.query.password === 'string' && req.query.password)
-    || (typeof req.body?.password === 'string' && req.body.password)
-    || req.get('x-analytics-password') || '';
-  return username.length > 0 && password.length > 0
-    && username === config.campaignAnalyticsUsername
-    && password === config.campaignAnalyticsPassword;
+// for why. Sent as headers (or in the body on /reset) — never the query
+// string, which ends up in access logs. Both must match, and an unset
+// config value never matches anything.
+function safeEqual(a: string, b: string) {
+  const ab = Buffer.from(a), bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
-campaignAnalyticsRouter.get('/summary', async (req, res) => {
+function hasValidCredentials(req: import('express').Request): boolean {
+  const username = (typeof req.body?.username === 'string' && req.body.username) || req.get('x-analytics-username') || '';
+  const password = (typeof req.body?.password === 'string' && req.body.password) || req.get('x-analytics-password') || '';
+  return config.campaignAnalyticsUsername.length > 0 && config.campaignAnalyticsPassword.length > 0
+    && safeEqual(username, config.campaignAnalyticsUsername)
+    && safeEqual(password, config.campaignAnalyticsPassword);
+}
+
+campaignAnalyticsRouter.get('/summary', loginLimiter, async (req, res) => {
   if (!hasValidCredentials(req)) {
     res.status(401).json({ error: 'Incorrect username or password' });
     return;
@@ -77,7 +80,7 @@ campaignAnalyticsRouter.get('/summary', async (req, res) => {
 // you sure" confirm() before ever calling it, but the real guard is the
 // credentials check here (same as /summary), since this is a real,
 // irreversible mutation reachable by anyone who can reach the API.
-campaignAnalyticsRouter.post('/reset', async (req, res) => {
+campaignAnalyticsRouter.post('/reset', loginLimiter, async (req, res) => {
   if (!hasValidCredentials(req)) {
     res.status(401).json({ error: 'Incorrect username or password' });
     return;

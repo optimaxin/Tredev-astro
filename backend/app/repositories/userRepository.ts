@@ -102,17 +102,27 @@ export async function updateUserName(userId: string, name: string) {
 
 // ── Refresh tokens ───────────────────────────────────────────────────────
 
-export async function insertRefreshToken(params: { userId: string; tokenHash: string; expiresAt: number }) {
+export async function insertRefreshToken(params: { userId: string; tokenHash: string; expiresAt: number; familyId: string }) {
   const id = randomUUID();
   await query(
-    'INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)',
-    [id, params.userId, params.tokenHash, params.expiresAt, Date.now()]
+    'INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, family_id) VALUES ($1, $2, $3, $4, $5, $6)',
+    [id, params.userId, params.tokenHash, params.expiresAt, Date.now(), params.familyId]
   );
   return id;
 }
 
+// A session (refresh-token family, see migration 048) is live while any of
+// its tokens is unrevoked and unexpired — rotation revokes the old token
+// only after inserting the new one, so a rotating session never looks dead.
+export async function isSessionActive(userId: string, familyId: string) {
+  return !!await queryOne(
+    'SELECT 1 FROM refresh_tokens WHERE user_id = $1 AND (family_id = $2 OR id = $2) AND revoked_at IS NULL AND expires_at > $3 LIMIT 1',
+    [userId, familyId, Date.now()]
+  );
+}
+
 export function findActiveRefreshToken(tokenHash: string) {
-  return queryOne<{ id: string; user_id: string; expires_at: number }>(
+  return queryOne<{ id: string; user_id: string; expires_at: number; family_id: string | null }>(
     'SELECT * FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > $2',
     [tokenHash, Date.now()]
   );

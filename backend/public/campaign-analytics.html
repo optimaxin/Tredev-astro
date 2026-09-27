@@ -267,7 +267,7 @@
   }
 
   async function loadSummary(username, password) {
-    const res = await fetch(`${API_BASE}/api/campaign-analytics/summary?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+    const res = await fetch(`${API_BASE}/api/campaign-analytics/summary`, { headers: { 'x-analytics-username': username, 'x-analytics-password': password } });
     if (res.status === 401) throw new Error('unauthorized');
     if (!res.ok) throw new Error('failed');
     return res.json();

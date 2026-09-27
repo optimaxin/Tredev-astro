@@ -246,6 +246,24 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
 
 // Strips characters illegal in Windows/macOS filenames so the birth-details
 // name can go straight into a download filename.
+// An anonymous visitor who clicks Download PDF is sent to log in first (see
+// handleDownloadPdfClick). The already-generated Kundli is stashed here so
+// that, once they're back, it shows up instantly — the same chart, same
+// language — instead of an empty form while it's silently re-fetched.
+const KUNDLI_RESUME_KEY = 'kundliPdfResume';
+interface KundliResume { details: BirthDetailsSubmitValue; result?: KundliFullResult; lang?: 'en' | 'hi' }
+
+function readKundliResume(isLoggedIn: boolean): KundliResume | null {
+  if (!isLoggedIn) return null;
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(KUNDLI_RESUME_KEY) || 'null');
+    // Older stashes held just the bare birth details.
+    return parsed && !parsed.details ? { details: parsed } : parsed;
+  } catch {
+    return null;
+  }
+}
+
 function sanitizeFileName(name: string): string {
   return name.replace(/[<>:"/\\|?*]/g, '').trim() || 'User';
 }
@@ -346,8 +364,12 @@ interface KundliSectionProps {
 
 export default function KundliSection({ skipPdfLoginGate = false, litePdf = false, pdfBannerImageSrc, serverPdfUrl, hideAstrologerCta = false, hideHistoryAndSave = false }: KundliSectionProps = {}) {
   const { birthProfile, setBirthProfile, setKundliGenerated, currentUser, isLoggedIn, saveBirthDetails, setPage, pendingAction, setPendingAction, setShowLoginModal, language } = useAppContext();
-  const [fullResult, setFullResult] = useState<KundliFullResult | null>(null);
-  const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(null);
+  // Read once at mount — synchronously, so the resumed chart is on screen
+  // from the very first render (no empty-form flash). Cleared in the
+  // resume effect below.
+  const [resumed] = useState(() => readKundliResume(isLoggedIn));
+  const [fullResult, setFullResult] = useState<KundliFullResult | null>(resumed?.result ?? null);
+  const [submittedDetails, setSubmittedDetails] = useState<BirthDetailsSubmitValue | null>(resumed?.result ? resumed.details : null);
   // The Kundli page's OWN Hindi/English toggle — deliberately scoped to just
   // this page: it drives this page's own labels (via the local `tr()` below,
   // not the site-wide `t()`), which language `fullResult` gets fetched in,
@@ -356,7 +378,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
   // page's language, only ever seeded once from the site's current language
   // at mount (so a visitor already browsing in Hindi lands here in Hindi
   // too), never written back out to it afterward.
-  const [pdfLanguage, setPdfLanguage] = useState<'en' | 'hi'>(() => (language === 'hi' ? 'hi' : 'en'));
+  const [pdfLanguage, setPdfLanguage] = useState<'en' | 'hi'>(() => resumed?.result && resumed.lang ? resumed.lang : (language === 'hi' ? 'hi' : 'en'));
   // Local stand-in for the site-wide t() — same TRANSLATIONS table, but
   // keyed off `pdfLanguage` instead of the site-wide `language`, so this
   // page's own UI strings (tab labels, buttons) follow the toggle above
@@ -431,28 +453,34 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
   const savedBirthDetails = toSavedBirthDetails(currentUser);
   const alreadySavedThisProfile = !!(currentUser?.birthDate && submittedDetails && currentUser.birthDate === submittedDetails.date);
 
+  // Side effects of a Kundli being shown for `details` — shared by a fresh
+  // generation (handleSubmit) and a post-login resume.
+  const onKundliShown = (details: BirthDetailsSubmitValue) => {
+    setSaveState('idle');
+    setBirthProfile({ ...birthProfile, name: details.name, dob: details.date, tob: details.time, place: details.placeName });
+    setKundliGenerated(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Logged-in users get every generated kundli saved to their history
+    // automatically — only the birth-detail inputs, never the computed
+    // result (see kundliHistoryService.ts header comment for why).
+    // Fire-and-forget: a failed save shouldn't block showing the chart.
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (accessToken && !hideHistoryAndSave) {
+      kundliHistoryService
+        .save(accessToken, { name: details.name, date: details.date, time: details.time, timezoneOffsetMinutes: details.timezoneOffsetMinutes, latitude: details.latitude, longitude: details.longitude, placeLabel: details.placeName })
+        .then(entry => setHistory(prev => [entry, ...prev]))
+        .catch(() => {});
+    }
+  };
+
   const handleSubmit = async (details: BirthDetailsSubmitValue) => {
     setError('');
     try {
       const result = await calculatorService.kundliFull(details, pdfLanguage);
       setFullResult(result);
       setSubmittedDetails(details);
-      setSaveState('idle');
-      setBirthProfile({ ...birthProfile, name: details.name, dob: details.date, tob: details.time, place: details.placeName });
-      setKundliGenerated(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // Logged-in users get every generated kundli saved to their history
-      // automatically — only the birth-detail inputs, never the computed
-      // result (see kundliHistoryService.ts header comment for why).
-      // Fire-and-forget: a failed save shouldn't block showing the chart.
-      const accessToken = localStorage.getItem('auth_access_token');
-      if (accessToken && !hideHistoryAndSave) {
-        kundliHistoryService
-          .save(accessToken, { name: details.name, date: details.date, time: details.time, timezoneOffsetMinutes: details.timezoneOffsetMinutes, latitude: details.latitude, longitude: details.longitude, placeLabel: details.placeName })
-          .then(entry => setHistory(prev => [entry, ...prev]))
-          .catch(() => {});
-      }
+      onKundliShown(details);
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Could not generate your Kundli. Please try again.');
     }
@@ -481,23 +509,18 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
     kundliHistoryService.list(accessToken).then(setHistory).catch(() => {});
   }, [isLoggedIn, hideHistoryAndSave]);
 
-  // Resume a PDF download after an anonymous user was sent to log in (see
-  // handleDownloadPdfClick below) — the exact submitted birth details are
-  // stashed in sessionStorage since AuthPage clears `pendingAction` in the
-  // same tick it navigates back here, before this component could read it.
+  // Resume after an anonymous user was sent to log in (see
+  // handleDownloadPdfClick below) — stashed in sessionStorage since AuthPage
+  // clears `pendingAction` in the same tick it navigates back here, before
+  // this component could read it. Only restores the Kundli itself — the PDF
+  // (and its full-screen loader) starts when the user clicks Download PDF.
   useEffect(() => {
     if (!isLoggedIn) return;
-    const raw = sessionStorage.getItem('kundliPdfResume');
-    if (!raw) return;
-    sessionStorage.removeItem('kundliPdfResume');
-    try {
-      // Only restores the Kundli itself — the PDF (and its full-screen
-      // loader) starts when the user clicks Download PDF, never on its own.
-      const details = JSON.parse(raw) as BirthDetailsSubmitValue;
-      handleSubmit(details);
-    } catch {
-      // Malformed/stale payload — nothing to resume.
-    }
+    const stash = resumed ?? readKundliResume(true);
+    sessionStorage.removeItem(KUNDLI_RESUME_KEY);
+    if (!stash) return;
+    if (stash.result) onKundliShown(stash.details); // already on screen from the first render
+    else handleSubmit(stash.details); // result didn't fit in sessionStorage — regenerate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
@@ -531,7 +554,14 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
   const handleDownloadPdfClick = () => {
     setError('');
     if (!isLoggedIn && !skipPdfLoginGate) {
-      if (submittedDetails) sessionStorage.setItem('kundliPdfResume', JSON.stringify(submittedDetails));
+      if (submittedDetails) {
+        try {
+          sessionStorage.setItem(KUNDLI_RESUME_KEY, JSON.stringify({ details: submittedDetails, result: fullResult ?? undefined, lang: pdfLanguage } satisfies KundliResume));
+        } catch {
+          // Over the storage quota — keep just the birth details; the resume regenerates from them.
+          try { sessionStorage.setItem(KUNDLI_RESUME_KEY, JSON.stringify({ details: submittedDetails } satisfies KundliResume)); } catch { /* storage unavailable */ }
+        }
+      }
       setPendingAction('kundli-pdf');
       setShowLoginModal(true);
       return;

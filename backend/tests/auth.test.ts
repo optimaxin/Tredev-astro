@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 
 const { pool, runMigrations } = await import('../app/core/db.ts');
-const { register, login, refresh, logout, verifyAccessToken, AuthError } = await import('../app/services/authService.ts');
+const { register, login, refresh, logout, verifyAccessToken, authenticate, AuthError } = await import('../app/services/authService.ts');
 
 await runMigrations();
 
@@ -47,10 +47,21 @@ async function main() {
   await assert.rejects(refresh(refreshToken), AuthError);
   console.log('✓ refresh token rotates and old token is invalidated');
 
-  // Logout revokes the current refresh token
+  // Rotation keeps the session: the new access token still authenticates
+  const authed = await authenticate(rotated.accessToken);
+  assert.equal(authed?.id, user.id);
+  assert.equal(authed?.email, testEmail);
+  console.log('✓ rotated access token authenticates against the DB');
+
+  // Logout revokes the current refresh token AND kills that session's access token
   await logout(rotated.refreshToken);
   await assert.rejects(refresh(rotated.refreshToken), AuthError);
-  console.log('✓ logout revokes the refresh token');
+  assert.equal(await authenticate(rotated.accessToken), null);
+  console.log('✓ logout revokes the refresh token and its access token immediately');
+
+  // Another session of the same user is unaffected by that logout
+  assert.equal((await authenticate(loginResult.accessToken))?.id, user.id);
+  console.log('✓ logout only ends its own session');
 
   console.log('\nAll auth smoke tests passed.');
 }

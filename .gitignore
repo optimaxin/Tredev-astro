@@ -46,10 +46,33 @@ mobile/.cxx/
 .claude-flow
 
 
-# Ruflo local secrets and runtime data
+# Environment & secrets (see secuarity.md §4) — .env.example stays tracked.
 .env
 .env.local
 .env.*.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Build / test / misc outputs
+build/
+.next/
+out/
+coverage/
+.nyc_output/
+.cache/
+.tmp/
+tmp/
+Thumbs.db
+
+# Ruflo local runtime data
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/

@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import { bus } from './bus.ts';
+import { authenticate, type AuthenticatedUser } from '../services/authService.ts';
 import { getAstrologerByEmail, getAstrologerSyncSnapshot, getConsultation, getUserSyncSnapshot, listPublicAstrologers, touchActivity } from '../services/realtimeStore.ts';
 
 async function resyncAstrologer(io: Server, astrologerId: number) {
@@ -7,10 +8,6 @@ async function resyncAstrologer(io: Server, astrologerId: number) {
   if (snapshot) io.to(astroRoom(astrologerId)).emit('sync:astrologer', snapshot);
 }
 
-interface HandshakeAuth {
-  email?: string;
-  role?: 'ASTROLOGIST' | 'USER' | 'ADMIN';
-}
 
 function astroRoom(id: number) {
   return `astro:${id}`;
@@ -21,9 +18,18 @@ function userRoom(email: string) {
 const PUBLIC_ROOM = 'public:astrologers';
 
 export function attachSockets(io: Server) {
+  // Identity comes only from a verified access token in the handshake —
+  // never a client-claimed email/role. No/invalid token = anonymous socket
+  // that only gets the public availability room.
+  io.use((socket, next) => {
+    const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
+    if (typeof token !== 'string') return next();
+    authenticate(token).then(user => { if (user) socket.data.user = user; next(); }, () => next());
+  });
+
   io.on('connection', (socket: Socket) => {
-    const auth = (socket.handshake.auth || {}) as HandshakeAuth;
-    const email = auth.email?.toLowerCase();
+    const user = socket.data.user as AuthenticatedUser | undefined;
+    const email = user?.email;
 
     // Every client gets live public availability updates for astrologer cards.
     socket.join(PUBLIC_ROOM);
@@ -32,7 +38,7 @@ export function attachSockets(io: Server) {
     if (email) {
       socket.join(userRoom(email));
 
-      if (auth.role === 'ASTROLOGIST') {
+      if (user!.role === 'ASTROLOGIST') {
         const astro = getAstrologerByEmail(email);
         if (astro) {
           socket.join(astroRoom(astro.id));
@@ -50,13 +56,18 @@ export function attachSockets(io: Server) {
     // in a consultation exchange SDP offers/answers and ICE candidates
     // directly over their existing socket connection rather than a REST
     // round trip, since none of this needs a database record (unlike chat
-    // messages). getConsultation confirms `consultationId` is real before
+    // messages). getConsultation confirms `consultationId` is real and that
+    // this socket's verified user is one of its two participants before
     // forwarding, and `.except(socket.id)` keeps the sender from getting an
     // echo of its own signal back.
     (['call:offer', 'call:answer', 'call:ice-candidate', 'call:hangup'] as const).forEach(event => {
       socket.on(event, (data: { consultationId: string; payload?: unknown }) => {
+        if (!email || typeof data?.consultationId !== 'string') return;
         getConsultation(data.consultationId).then(consultation => {
           if (!consultation) return;
+          const isParticipant = consultation.userEmail.toLowerCase() === email
+            || getAstrologerByEmail(email)?.id === consultation.astrologerId;
+          if (!isParticipant) return;
           io.to(astroRoom(consultation.astrologerId)).to(userRoom(consultation.userEmail)).except(socket.id).emit(event, data);
         }).catch(console.error);
       });

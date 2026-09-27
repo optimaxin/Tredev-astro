@@ -29,9 +29,9 @@ export function countryFromRequest(req: Request): string | null {
   // — so every local request during development would otherwise always
   // see the default, unadjusted price. That makes the whole feature look
   // broken while testing even though it works correctly for a real
-  // visitor's real public IP once deployed. Disabled outright in
-  // production so it can never be used to under/overpay for real.
-  if (config.nodeEnv !== 'production') {
+  // visitor's real public IP once deployed. Opt-in (DEV_SHORTCUTS=true)
+  // so it can never be used to under/overpay for real.
+  if (config.devShortcuts) {
     const override = req.query.debugCountry;
     if (typeof override === 'string' && override.length === 2) return override.toUpperCase();
   }

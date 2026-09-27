@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import { z } from 'zod';
 import {
   acceptConsultation, cancelQueueEntry, declineConsultation, endConsultation, extendConsultation,
   getAdminConfig, getAstrologer, getAstrologerByEmail, getAstrologerSyncSnapshot,
@@ -9,23 +10,20 @@ import {
 import type { ConsultationType } from '../models/types.ts';
 import { countryFromRequest } from '../services/geoLocation.ts';
 import { listActiveBanners } from '../repositories/bannerRepository.ts';
+import { requireAuth, requireRole } from '../middleware/auth.ts';
 
 export const router = Router();
 
-// Every route below trusts the caller-supplied email/role the same way the
-// rest of this mock-auth app already does (see AppContext.tsx) — there is no
-// real credential backend to verify against. What IS enforced server-side is
-// *ownership*: an astrologer can only accept/decline/end their OWN
-// consultations, and a user can only cancel their OWN queue entry (see
-// assertOwnership in store.ts). That's the actual authorization boundary
-// this spec cares about (section 38) — it doesn't depend on the identity
-// itself being cryptographically verified, which nothing else in this app
-// does either.
+// Identity comes ONLY from the verified bearer token (req.user, set by
+// requireAuth from the JWT + users row) — never from an `email` the client
+// puts in the body/query. On top of that, ownership is enforced in
+// realtimeStore.ts: an astrologer can only accept/decline/end their OWN
+// consultations, and a user can only cancel their OWN queue entry.
 
-function astrologerIdFromEmail(email: string | undefined, res: import('express').Response) {
-  if (!email) { res.status(400).json({ error: 'email is required' }); return null; }
-  const astro = getAstrologerByEmail(email);
-  if (!astro) { res.status(404).json({ error: 'Not a known astrologer account' }); return null; }
+// The logged-in astrologer's catalog record, or a 403 if this account isn't one.
+function myAstrologer(req: Request, res: Response) {
+  const astro = getAstrologerByEmail(req.user!.email);
+  if (!astro) { res.status(403).json({ error: 'Not an astrologer account' }); return null; }
   return astro;
 }
 
@@ -56,9 +54,12 @@ router.get('/astrologers/:id/recommendations', async (req, res) => {
   res.json(result);
 });
 
+// Everything below needs a logged-in user.
+router.use(['/availability', '/heartbeat', '/astrologers/:id/sync', '/users', '/consultations', '/queue', '/notifications', '/admin'], requireAuth);
+
 router.post('/availability', async (req, res) => {
-  const { email, intent } = req.body as { email?: string; intent?: 'ONLINE' | 'OFFLINE' };
-  const astro = astrologerIdFromEmail(email, res);
+  const { intent } = req.body as { intent?: 'ONLINE' | 'OFFLINE' };
+  const astro = myAstrologer(req, res);
   if (!astro) return;
   if (intent !== 'ONLINE' && intent !== 'OFFLINE') return res.status(400).json({ error: 'intent must be ONLINE or OFFLINE' });
   const status = await setIntent(astro.id, intent);
@@ -66,32 +67,40 @@ router.post('/availability', async (req, res) => {
 });
 
 router.post('/heartbeat', async (req, res) => {
-  const { email } = req.body as { email?: string };
-  const astro = astrologerIdFromEmail(email, res);
+  const astro = myAstrologer(req, res);
   if (!astro) return;
   await touchActivity(astro.id);
   res.json({ ok: true });
 });
 
 router.get('/astrologers/:id/sync', async (req, res) => {
+  // An astrologer's private dashboard state — only that astrologer (or an admin).
+  if (req.user!.role !== 'ADMIN' && getAstrologerByEmail(req.user!.email)?.id !== Number(req.params.id)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   const snapshot = await getAstrologerSyncSnapshot(Number(req.params.id));
   if (!snapshot) return res.status(404).json({ error: 'Unknown astrologer' });
   res.json(snapshot);
 });
 
 router.get('/users/sync', async (req, res) => {
-  const email = String(req.query.email || '');
-  if (!email) return res.status(400).json({ error: 'email is required' });
-  res.json(await getUserSyncSnapshot(email));
+  res.json(await getUserSyncSnapshot(req.user!.email));
+});
+
+const requestSchema = z.object({
+  requestId: z.string().min(1).max(100),
+  astrologerId: z.number().int().positive(),
+  userName: z.string().trim().min(1).max(100),
+  category: z.string().trim().min(1).max(100),
+  type: z.enum(['chat', 'voice', 'video']) satisfies z.ZodType<ConsultationType>,
+  durationMinutes: z.number().int().positive().max(600).optional(),
 });
 
 router.post('/consultations/request', async (req, res) => {
-  const { requestId, astrologerId, userEmail, userName, category, type, durationMinutes } = req.body as {
-    requestId?: string; astrologerId?: number; userEmail?: string; userName?: string; category?: string; type?: ConsultationType; durationMinutes?: number;
-  };
-  if (!requestId || !astrologerId || !userEmail || !userName || !category || !type) {
-    return res.status(400).json({ error: 'requestId, astrologerId, userEmail, userName, category, type are required' });
-  }
+  const parsed = requestSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ') });
+  const { requestId, astrologerId, userName, category, type, durationMinutes } = parsed.data;
+  const userEmail = req.user!.email;
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
   const countryCode = countryFromRequest(req);
@@ -101,7 +110,7 @@ router.post('/consultations/request', async (req, res) => {
 
 router.post('/consultations/:id/accept', async (req, res) => {
   try {
-    res.json(await acceptConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await acceptConsultation(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
@@ -109,7 +118,7 @@ router.post('/consultations/:id/accept', async (req, res) => {
 
 router.post('/consultations/:id/decline', async (req, res) => {
   try {
-    res.json(await declineConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await declineConsultation(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
@@ -117,7 +126,7 @@ router.post('/consultations/:id/decline', async (req, res) => {
 
 router.post('/consultations/:id/end', async (req, res) => {
   try {
-    res.json(await endConsultation(req.params.id, String(req.body.email || '')));
+    res.json(await endConsultation(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
@@ -125,7 +134,7 @@ router.post('/consultations/:id/end', async (req, res) => {
 
 router.post('/consultations/:id/extend', async (req, res) => {
   try {
-    res.json(await extendConsultation(req.params.id, String(req.body.email || ''), Number(req.body.extraMinutes)));
+    res.json(await extendConsultation(req.params.id, req.user!.email, Number(req.body.extraMinutes)));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
@@ -133,43 +142,51 @@ router.post('/consultations/:id/extend', async (req, res) => {
 
 router.post('/queue/:id/cancel', async (req, res) => {
   try {
-    res.json(await cancelQueueEntry(req.params.id, String(req.body.email || '')));
+    res.json(await cancelQueueEntry(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
 router.get('/notifications', async (req, res) => {
-  const astro = astrologerIdFromEmail(String(req.query.email || ''), res);
+  const astro = myAstrologer(req, res);
   if (!astro) return;
   res.json(await listNotifications(astro.id));
 });
 
 router.post('/notifications/:id/read', async (req, res) => {
-  const astro = astrologerIdFromEmail(String(req.body.email || ''), res);
+  const astro = myAstrologer(req, res);
   if (!astro) return;
   await markNotificationRead(astro.id, req.params.id);
   res.json({ ok: true });
 });
 
 router.post('/notifications/read-all', async (req, res) => {
-  const astro = astrologerIdFromEmail(String(req.body.email || ''), res);
+  const astro = myAstrologer(req, res);
   if (!astro) return;
   await markAllNotificationsRead(astro.id);
   res.json({ ok: true });
 });
 
-// Admin config — same mock-trust model as the rest of this app; the frontend
-// only exposes this UI to ADMIN-role accounts (see admin dashboard).
-router.get('/admin/config', (_req, res) => {
+// Admin config — ADMIN only, enforced here (the frontend hiding the UI is
+// cosmetic). Only these known keys, each a sane positive integer.
+const minutes = z.number().int().positive().max(24 * 60);
+const adminConfigSchema = z.object({
+  maxQueueWaitMinutes: minutes, awayTimeoutMinutes: minutes, defaultConsultationMinutes: minutes,
+  defaultMaxConcurrent: z.number().int().positive().max(100),
+}).partial().strict();
+
+router.get('/admin/config', requireRole('ADMIN'), (_req, res) => {
   res.json(getAdminConfig());
 });
 
-router.post('/admin/config', (req, res) => {
-  res.json(updateAdminConfig(req.body || {}));
+router.post('/admin/config', requireRole('ADMIN'), (req, res) => {
+  const parsed = adminConfigSchema.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid config values' });
+  res.json(updateAdminConfig(parsed.data));
 });
 
-router.post('/admin/astrologers/:id/max-concurrent', async (req, res) => {
+router.post('/admin/astrologers/:id/max-concurrent', requireRole('ADMIN'), async (req, res) => {
   try {
     const max = await setMaxConcurrent(Number(req.params.id), Number(req.body.maxConcurrent));
     res.json({ maxConcurrent: max });

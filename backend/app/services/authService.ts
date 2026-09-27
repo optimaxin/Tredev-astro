@@ -1,10 +1,10 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from '../core/config.ts';
 import {
   createUser, findActivePasswordResetToken, findActiveRefreshToken, findUserByEmail, findUserByFirebaseUid, findUserById, findUserByPhone,
-  insertPasswordResetToken, insertRefreshToken, linkFirebaseUid, markPasswordResetTokenUsed,
+  insertPasswordResetToken, insertRefreshToken, isSessionActive, linkFirebaseUid, markPasswordResetTokenUsed,
   markPhoneVerified, revokeAllRefreshTokensForUser, revokeRefreshToken, setVerifiedPhone, updatePasswordHash,
 } from '../repositories/userRepository.ts';
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
@@ -26,11 +26,14 @@ interface TokenPair {
   refreshToken: string;
 }
 
-async function issueTokenPair(userId: string, role: Role): Promise<TokenPair> {
-  const accessToken = jwt.sign({ sub: userId, role }, config.jwt.accessSecret, { expiresIn: config.jwt.accessTtl as jwt.SignOptions['expiresIn'] });
+// `familyId` identifies the login session across refresh rotations — it is
+// embedded in the access token as `sid` so requireAuth can kill that access
+// token as soon as the session is logged out/revoked (see authenticate).
+async function issueTokenPair(userId: string, role: Role, familyId: string = randomUUID()): Promise<TokenPair> {
+  const accessToken = jwt.sign({ sub: userId, role, sid: familyId }, config.jwt.accessSecret, { expiresIn: config.jwt.accessTtl as jwt.SignOptions['expiresIn'] });
   const refreshRaw = randomBytes(40).toString('hex');
   const expiresAt = Date.now() + config.jwt.refreshTtlDays * 86_400_000;
-  await insertRefreshToken({ userId, tokenHash: hashToken(refreshRaw), expiresAt });
+  await insertRefreshToken({ userId, tokenHash: hashToken(refreshRaw), expiresAt, familyId });
   return { accessToken, refreshToken: refreshRaw };
 }
 
@@ -78,8 +81,11 @@ export async function refresh(refreshTokenRaw: string): Promise<TokenPair> {
   if (!user || user.status === 'SUSPENDED') throw new AuthError('Account unavailable', 403);
   // Rotate: the old refresh token is single-use, so a stolen-and-replayed
   // token gets invalidated the moment the legitimate client uses it again.
+  // New token first, then revoke — the session (family) must never have a
+  // moment with zero live tokens, or in-flight access tokens would 401.
+  const pair = await issueTokenPair(user.id, user.role, record.family_id ?? record.id);
   await revokeRefreshToken(record.id);
-  return await issueTokenPair(user.id, user.role);
+  return pair;
 }
 
 export async function logout(refreshTokenRaw: string) {
@@ -87,8 +93,30 @@ export async function logout(refreshTokenRaw: string) {
   if (record) await revokeRefreshToken(record.id);
 }
 
-export function verifyAccessToken(token: string): { sub: string; role: Role } {
-  return jwt.verify(token, config.jwt.accessSecret) as { sub: string; role: Role };
+export function verifyAccessToken(token: string): { sub: string; role: Role; sid?: string } {
+  return jwt.verify(token, config.jwt.accessSecret, { algorithms: ['HS256'] }) as { sub: string; role: Role; sid?: string };
+}
+
+export interface AuthenticatedUser { id: string; role: Role; email: string }
+
+// Signature + expiry check, then the database has the final word: the user
+// must still exist and not be suspended, the role comes from the users row
+// (never the JWT payload alone — a revoked role takes effect immediately),
+// and the token's session must not have been logged out. Returns null for
+// any rejection; callers turn that into a 401.
+export async function authenticate(token: string): Promise<AuthenticatedUser | null> {
+  let payload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch {
+    return null;
+  }
+  const row = await findUserById(payload.sub);
+  if (!row || row.status === 'SUSPENDED') return null;
+  // ponytail: tokens minted before migration 048 have no sid — accepted
+  // until they expire (≤ JWT_EXPIRATION); every new token carries one.
+  if (payload.sid && !await isSessionActive(row.id, payload.sid)) return null;
+  return { id: row.id, role: row.role, email: row.email.toLowerCase() };
 }
 
 export async function getPublicUser(userId: string): Promise<PublicUser | undefined> {
@@ -105,7 +133,7 @@ export async function requestPasswordReset(email: string): Promise<{ devResetTok
   if (!row) return {}; // don't reveal whether the email exists
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
-  return config.nodeEnv === 'production' ? {} : { devResetToken: raw };
+  return config.devShortcuts ? { devResetToken: raw } : {};
 }
 
 export async function resetPassword(rawToken: string, newPassword: string) {

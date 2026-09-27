@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAppContext } from '../context/AppContext';
-import { realtimeApi, SERVER_URL } from './api';
+import { getAccessToken, realtimeApi, SERVER_URL } from './api';
 import { playExpiryWarningBeep, playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
 import type {
   AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
@@ -139,7 +139,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const socket = io(SERVER_URL, { auth: { email: currentUser.email, role: currentUser.role }, transports: ['websocket', 'polling'] });
+    // Function form: re-evaluated on every (re)connect, so a reconnect after
+    // the access token expired still authenticates with a fresh one.
+    const socket = io(SERVER_URL, { auth: cb => { getAccessToken().then(token => cb({ token })); }, transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));

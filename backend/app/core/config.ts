@@ -2,13 +2,12 @@
 // should read `process.env` directly — that keeps every required variable
 // discoverable in one file and makes `.env.example` easy to keep in sync.
 
-function required(name: string, devFallback: string): string {
+// No dev fallbacks for secrets — a hardcoded fallback is a secret in source
+// and silently becomes the real one on any host that forgets to set it.
+function required(name: string): string {
   const value = process.env[name];
-  if (value) return value;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return devFallback;
+  if (!value) throw new Error(`Missing required environment variable: ${name} (see backend/.env.example)`);
+  return value;
 }
 
 export const config = {
@@ -32,11 +31,14 @@ export const config = {
     if (!url) throw new Error('Missing required environment variable: DATABASE_URL (see backend/.env.example)');
     return url;
   })(),
+  // Dev-only shortcuts (returning the password-reset token in the API
+  // response — see authService.ts — plus geoLocation.ts's ?debugCountry=
+  // pricing override). Must be
+  // switched on explicitly; never inferred from NODE_ENV being unset.
+  devShortcuts: process.env.DEV_SHORTCUTS === 'true' && process.env.NODE_ENV !== 'production',
   jwt: {
-    // Dev-only fallback secrets so the app runs out of the box locally.
-    // Production MUST set real secrets — required() throws otherwise.
-    accessSecret: required('JWT_SECRET', 'dev-insecure-access-secret-change-me'),
-    refreshSecret: required('REFRESH_TOKEN_SECRET', 'dev-insecure-refresh-secret-change-me'),
+    accessSecret: required('JWT_SECRET'),
+    refreshSecret: required('REFRESH_TOKEN_SECRET'),
     accessTtl: process.env.JWT_EXPIRATION || '15m',
     refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 7,
   },
@@ -69,8 +71,9 @@ export const config = {
   // dashboard page — deliberately a single shared username+password, not
   // full user/JWT auth, since this is a small internal "how many people
   // clicked what" view for the campaign, not an account-scoped admin feature.
-  campaignAnalyticsUsername: required('CAMPAIGN_ANALYTICS_USERNAME', 'ganesh-admin'),
-  campaignAnalyticsPassword: required('CAMPAIGN_ANALYTICS_PASSWORD', 'ganesh-analytics-2026'),
+  // Unset → the dashboard just rejects every login (see campaignAnalytics.routes.ts).
+  campaignAnalyticsUsername: process.env.CAMPAIGN_ANALYTICS_USERNAME || '',
+  campaignAnalyticsPassword: process.env.CAMPAIGN_ANALYTICS_PASSWORD || '',
   cloudflareTurn: {
     // Optional, like cashfree/aws above — CallWindow.tsx's TURN-credentials
     // route falls back to STUN-only when these aren't set (fine for
