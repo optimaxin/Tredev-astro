@@ -57,6 +57,7 @@ import chartStyles from './KundliSection.module.css';
 // below it.
 const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', LINE = '#E8DEC8', TINT = '#F2EBD9', PAGE_BG = '#FAF7F0';
 const FONT = { title: 30, section: 14, sub: 12.5, body: 11.5, label: 9.5 };
+const COVER_BANNER_SRC = '/images/kundli-cover-banner.jpg';
 
 // Every divisional chart the app computes, in ascending order — D1/D9 are
 // already shown in "02 Kundli" above, so only the rest appears here.
@@ -89,7 +90,7 @@ const LABELS = {
     kundli: 'Kundli', lagnaChart: 'Lagna Chart (D1)', navamsaChart: 'Navamsa Chart (D9)',
     planetaryPositions: 'Planetary Positions', colPlanet: 'Planet', colSign: 'Sign', colNakshatra: 'Nakshatra',
     colNakshLord: 'Naksh Lord', colDegree: 'Degree', colRetro: 'Retro', yes: 'Yes', no: 'No',
-    vimshottariDasha: 'Vimshottari Dasha — Mahadasha', mahadasha: 'Mahadasha', antardasha: 'Antardasha', active: 'active',
+    vimshottariDasha: 'Vimshottari Dasha', mahadasha: 'Mahadasha', antardasha: 'Antardasha', active: 'active',
     shadbala: 'Shadbala — Planetary Strength', colTotalRupas: 'Total (Rupas)', colRequired: 'Required', colRatio: 'Ratio',
     colVerdict: 'Verdict', strong: 'Strong', weak: 'Weak',
     bhavbala: 'Bhavbala — House Strength', colHouse: 'House', colAdhipatiBala: 'Adhipati Bala', colDigBala: 'Dig Bala',
@@ -118,6 +119,18 @@ const LABELS = {
     sadeSatiText: (p: string) => `Saturn's Sade Sati is currently in its ${p} phase.`, sadeSatiFreeText: 'Sade Sati is not currently active.',
     journeyContinues: (n: string) => `Your journey continues, ${n}`,
     coverTitle: (n: string) => `${n}'s Kundli`,
+    vedicReport: 'Vedic Astrology Report', latitude: 'Latitude', longitude: 'Longitude', timezone: 'Timezone', ascendantLord: 'Ascendant Lord',
+    birth: 'Birth', startDate: 'Start Date', endDate: 'End Date',
+    shadbalaDesc: 'Six-fold strength analysis of planets — a key metric for evaluating planetary power in your chart.',
+    bhavbalaDesc: 'House strength analysis — shows the relative power of each of the 12 bhavas in your chart.',
+    component: 'Component', sthanaBala: 'Sthaana Bala', kaalaBala: 'Kaala Bala', cheshtaBala: 'Cheshta Bala', naisargikaBala: 'Naisargika Bala',
+    totalShadbala: 'Total Shad Bala', shadbalaRupas: 'Shad Bala Rupas', ranking: 'Ranking', ishtaPhala: 'Ishta Phala', kashtaPhala: 'Kashta Phala',
+    totalBhavabala: 'Total Bhava Bala', bhavabalaRupas: 'Bhava Bala (Rupas)',
+    description: 'Description', planetaryPredictionsDesc: 'What each planet means for you, based on its house, sign and nakshatra placement.',
+    yogaDesc: 'Special planetary alignments present in your chart.', gemstoneDesc: 'Each stone supports a different area of life.',
+    gemstone: 'Gemstone', metal: 'Metal', wearOn: 'How to wear', mantra: 'Mantra',
+    closingInvite: 'Want a deeper, personalised reading? Chat with a verified TredevaAstro astrologer for one-on-one guidance on your chart.',
+    endOfReport: '— End of Report —',
   },
   hi: {
     brand: 'TredevaAstro · वैदिक ज्योतिष रिपोर्ट', generated: 'तैयार किया गया',
@@ -132,7 +145,7 @@ const LABELS = {
     kundli: 'कुंडली', lagnaChart: 'लग्न चार्ट (D1)', navamsaChart: 'नवांश चार्ट (D9)',
     planetaryPositions: 'ग्रह स्थिति', colPlanet: 'ग्रह', colSign: 'राशि', colNakshatra: 'नक्षत्र',
     colNakshLord: 'नक्ष. स्वामी', colDegree: 'अंश', colRetro: 'वक्री', yes: 'हाँ', no: 'नहीं',
-    vimshottariDasha: 'विंशोत्तरी दशा — महादशा', mahadasha: 'महादशा', antardasha: 'अंतर्दशा', active: 'सक्रिय',
+    vimshottariDasha: 'विंशोत्तरी दशा', mahadasha: 'महादशा', antardasha: 'अंतर्दशा', active: 'सक्रिय',
     shadbala: 'षड्बल — ग्रह शक्ति', colTotalRupas: 'कुल (रूपा)', colRequired: 'आवश्यक', colRatio: 'अनुपात',
     colVerdict: 'निष्कर्ष', strong: 'मजबूत', weak: 'कमजोर',
     bhavbala: 'भावबल — भाव शक्ति', colHouse: 'भाव', colAdhipatiBala: 'अधिपति बल', colDigBala: 'दिग् बल',
@@ -161,6 +174,18 @@ const LABELS = {
     sadeSatiText: (p: string) => `शनि की साढ़े साती वर्तमान में अपने ${p} चरण में है।`, sadeSatiFreeText: 'साढ़े साती वर्तमान में सक्रिय नहीं है।',
     journeyContinues: (n: string) => `आपकी यात्रा जारी है, ${n}`,
     coverTitle: (n: string) => `${n} की कुंडली`,
+    vedicReport: 'वैदिक ज्योतिष रिपोर्ट', latitude: 'अक्षांश', longitude: 'देशांतर', timezone: 'समय क्षेत्र', ascendantLord: 'लग्न स्वामी',
+    birth: 'जन्म', startDate: 'प्रारंभ तिथि', endDate: 'समाप्ति तिथि',
+    shadbalaDesc: 'ग्रहों का षड्विध बल विश्लेषण — आपकी कुंडली में ग्रहों की शक्ति आंकने का प्रमुख मापदंड।',
+    bhavbalaDesc: 'भाव बल विश्लेषण — आपकी कुंडली के 12 भावों की सापेक्ष शक्ति दर्शाता है।',
+    component: 'घटक', sthanaBala: 'स्थान बल', kaalaBala: 'काल बल', cheshtaBala: 'चेष्टा बल', naisargikaBala: 'नैसर्गिक बल',
+    totalShadbala: 'कुल षड्बल', shadbalaRupas: 'षड्बल रूपा', ranking: 'क्रम', ishtaPhala: 'इष्ट फल', kashtaPhala: 'कष्ट फल',
+    totalBhavabala: 'कुल भावबल', bhavabalaRupas: 'भावबल (रूपा)',
+    description: 'विवरण', planetaryPredictionsDesc: 'भाव, राशि और नक्षत्र स्थिति के आधार पर प्रत्येक ग्रह आपके लिए क्या दर्शाता है।',
+    yogaDesc: 'आपकी कुंडली में उपस्थित विशेष ग्रह योग।', gemstoneDesc: 'प्रत्येक रत्न जीवन के एक अलग क्षेत्र को सहारा देता है।',
+    gemstone: 'रत्न', metal: 'धातु', wearOn: 'कैसे पहनें', mantra: 'मंत्र',
+    closingInvite: 'और गहराई से व्यक्तिगत विश्लेषण चाहते हैं? अपनी कुंडली पर व्यक्तिगत मार्गदर्शन के लिए TredevaAstro के सत्यापित ज्योतिषी से बात करें।',
+    endOfReport: '— रिपोर्ट समाप्त —',
   },
 } as const;
 
@@ -176,6 +201,10 @@ interface KundliPrintLayoutProps {
   // For converting the Panchang's UTC sunrise/sunset instants back to the
   // birth place's local clock time — see formatLocalTime below.
   timezoneOffsetMinutes: number;
+  // Birth coordinates, printed as-is in Birth Details (optional — older
+  // callers such as saved-history resumes may not have them handy).
+  latitude?: number;
+  longitude?: number;
   result: KundliFullResult;
   // "05 Charts" (Chandra + every D2-D60 varga chart, one full html2canvas
   // capture EACH) is by far the single biggest cost in this report — ~19 of
@@ -200,7 +229,7 @@ interface KundliPrintLayoutProps {
   language?: Language;
 }
 
-export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
+export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, latitude, longitude, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
   const L = LABELS[language];
   const isHi = language === 'hi';
 
@@ -218,6 +247,12 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
   const pakshaText = (p: string) => (isHi ? PAKSHA_HI[p] || p : p);
   const yogaNameText = (y: string) => (isHi ? HINDI_YOGA[y] || y : y);
   const karanaText = (k: string) => (isHi ? HINDI_KARANA[k] || k : k);
+  // Backend dates are plain YYYY-MM-DD — shown as "Jun 12, 2016" (UTC so the
+  // viewer's own timezone can never shift the printed day).
+  const fmtDate = (iso: string) => {
+    const d = new Date(`${iso}T00:00:00Z`);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(isHi ? 'hi-IN' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric', timeZone: 'UTC' });
+  };
 
   const chartPlanets = toChartPlanets(result.kundli, result.bhavChalit);
   const navamsaPlanets = toSimpleChartPlanets(result.navamsaChart);
@@ -229,6 +264,10 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
   const gems = [result.gemstones.life, result.gemstones.lucky, result.gemstones.fortune];
   const presentYogas = result.yogas.filter(y => y.present);
   const moonSign = result.kundli.planets.find(p => p.id === 'moon')?.rashi ?? '—';
+  // Sign lords straight from the backend's KP table (asc + every planet) —
+  // no separate lookup table to drift out of sync with the engine.
+  const signLordById = new Map(result.kp.table.map(r => [r.id, r.signLord]));
+  const ascLord = signLordById.get('asc');
   const bhavHouseById = new Map(result.bhavChalit.planets.map(p => [p.id, p.house]));
   const generatedDate = new Date().toLocaleDateString(isHi ? 'hi-IN' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' });
   const ASHTAKAVARGA_GROUPS = [
@@ -262,21 +301,26 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
           {/* The Acharya portrait lives in the running header of every page
               instead (see drawHeader in KundliSection.tsx) — the cover
               stays a clean, single-focal-point brand mark. */}
-          {bannerImageSrc ? (
-            // eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic
-            <img src={bannerImageSrc} style={{ width: '100%', maxWidth: 480, height: 'auto', borderRadius: 12, marginBottom: 26 }} />
-          ) : (
-            // eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic
-            <img src="/logo.png" style={{ width: 120, height: 120, objectFit: 'contain', marginBottom: 22 }} />
-          )}
-          <div style={{ fontSize: FONT.label, letterSpacing: '0.15em', color: GOLD, textTransform: 'uppercase', marginBottom: 14, fontWeight: 700 }}>{L.brand}</div>
-          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '4px 0 14px', maxWidth: 560 }}>{L.coverTitle(name)}</div>
-          <div style={{ fontSize: FONT.body, color: MUTED, marginBottom: 22 }}>{dob} · {tob} · {place}</div>
+          {/* Festive cover banner — the same on every report (main site and
+              campaign alike); the caller's own bannerImageSrc still appears
+              on the closing page. */}
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+          <img src={COVER_BANNER_SRC} style={{ width: '100%', height: 'auto', borderRadius: 14, marginBottom: 34, boxShadow: '0 10px 28px rgba(122, 44, 20, 0.16)' }} />
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+          <img src="/logo.png" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
+          <div style={{ fontSize: FONT.label, letterSpacing: '0.28em', color: MUTED, textTransform: 'uppercase', fontWeight: 700 }}>TredevaAstro</div>
+          <div style={{ fontSize: FONT.label, letterSpacing: '0.22em', color: GOLD, textTransform: 'uppercase', margin: '8px 0 14px', fontWeight: 700 }}>{L.vedicReport}</div>
+          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ width: 40, height: 1, background: GOLD }} />
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: GOLD }} />
+            <span style={{ width: 40, height: 1, background: GOLD }} />
+          </div>
+          <div style={{ fontSize: FONT.body, color: MUTED, marginBottom: 20 }}>{dob} · {timeUnknown ? L.tobNotProvided : tob} · {place}</div>
           <span style={{ display: 'inline-block', padding: '5px 16px', borderRadius: 999, background: GOLD, color: '#FAF7F0', fontSize: FONT.label, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
             {L.generated} {generatedDate}
           </span>
-          {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
-          <img src="/logo.png" style={{ width: 56, height: 56, objectFit: 'contain', opacity: 0.9, marginTop: 26 }} />
+          <div style={{ fontSize: 8.5, letterSpacing: '0.2em', color: FAINT, textTransform: 'uppercase', marginTop: 22 }}>{L.brandFooter}</div>
         </div>
 
         {/* ── 01 Basic ── */}
@@ -291,6 +335,9 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
                 below says a time was assumed. */}
             <KVRow label={L.tob}>{timeUnknown ? L.tobNotProvided : tob}</KVRow>
             <KVRow label={L.pob}>{place}</KVRow>
+            {latitude != null && <KVRow label={L.latitude}>{latitude.toFixed(4)}</KVRow>}
+            {longitude != null && <KVRow label={L.longitude}>{longitude.toFixed(4)}</KVRow>}
+            <KVRow label={L.timezone}>{formatGmtOffset(timezoneOffsetMinutes)}</KVRow>
           </KVGrid>
           {timeUnknown && (
             <p style={{ fontSize: FONT.label, color: '#b8860b', margin: '6px 0 0', lineHeight: 1.5 }}>⚠ {L.timeUnknownNotice}</p>
@@ -304,6 +351,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
             <KVRow label={L.nakshatra}>{nakshatraText(result.kundli.moonNakshatra.name)}</KVRow>
             <KVRow label={L.nakshatraLord}>{planetText(result.kundli.moonNakshatra.lord)}</KVRow>
             <KVRow label={L.ascendant}>{rashiText(result.kundli.ascendant.rashi)}</KVRow>
+            {ascLord && <KVRow label={L.ascendantLord}>{planetText(ascLord)}</KVRow>}
             {result.panchang.sunrise && <KVRow label={L.sunrise}>{formatLocalTime(result.panchang.sunrise, timezoneOffsetMinutes)}</KVRow>}
             {result.panchang.sunset && <KVRow label={L.sunset}>{formatLocalTime(result.panchang.sunset, timezoneOffsetMinutes)}</KVRow>}
           </KVGrid>
@@ -345,75 +393,99 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>{L.planetaryPositions}</SubHeading>
-          <Table head={[L.colPlanet, L.colSign, L.colNakshatra, L.colNakshLord, L.colDegree, L.colRetro]}>
+          <Table head={[L.colPlanet, L.colSign, L.colSignLord, L.colNakshatra, L.colNakshLord, L.colDegree, L.colRetro]}>
             <tr style={{ borderTop: `1px solid ${LINE}` }}>
-              <Td><b>{L.ascendant}</b></Td><Td>{rashiText(result.kundli.ascendant.rashi)}</Td><Td>—</Td><Td>—</Td><Td>{formatDeg(result.kundli.ascendant.degreeInSign)}</Td><Td>{L.no}</Td>
+              <Td><b>{L.ascendant}</b></Td><Td>{rashiText(result.kundli.ascendant.rashi)}</Td><Td>{ascLord ? planetText(ascLord) : '—'}</Td><Td>—</Td><Td>—</Td><Td>{formatDeg(result.kundli.ascendant.degreeInSign)}</Td><Td>{L.no}</Td>
             </tr>
             {result.kundli.planets.map(p => (
               <tr key={p.id} style={{ borderTop: `1px solid ${LINE}` }}>
-                <Td><b>{planetText(p.id)}</b></Td><Td>{rashiText(p.rashi)}</Td><Td>{nakshatraText(p.nakshatra)}</Td><Td>{planetText(p.nakshatraLord)}</Td><Td>{formatDeg(p.degreeInSign)}</Td><Td>{yesNoText(p.retrograde)}</Td>
+                <Td><b>{planetText(p.id)}</b></Td><Td>{rashiText(p.rashi)}</Td><Td>{signLordById.has(p.id) ? planetText(signLordById.get(p.id)!) : '—'}</Td><Td>{nakshatraText(p.nakshatra)}</Td><Td>{planetText(p.nakshatraLord)}</Td><Td>{formatDeg(p.degreeInSign)}</Td><Td>{yesNoText(p.retrograde)}</Td>
               </tr>
             ))}
           </Table>
         </div>
 
-        {/* Mahadasha periods batched 3-per-block (was 1-per-block) — still
-            small enough per block to never need the oversized-block split
-            fallback, at a third of the capture count. */}
-        <div data-pdf-block style={{ marginBottom: 8 }}>
+        {/* Vimshottari: a Mahadasha summary table, then every Antardasha as
+            3-across cards (one row = one capture block). */}
+        <div data-pdf-block style={{ marginBottom: 14 }}>
           <SubHeading>{L.vimshottariDasha}</SubHeading>
+          <MinorHeading>{L.mahadasha}</MinorHeading>
+          <Table head={[L.colPlanet, L.startDate, L.endDate]}>
+            {result.mahadashaTimeline.map((period, i) => (
+              <tr key={i} style={{ borderTop: `1px solid ${LINE}`, background: period.active ? TINT : undefined }}>
+                <Td><b>{planetText(period.lord)}</b>{period.active && <ActiveBadge label={L.active} />}</Td>
+                <Td>{i === 0 ? L.birth : fmtDate(period.startsAt)}</Td>
+                <Td>{fmtDate(period.endsAt)}</Td>
+              </tr>
+            ))}
+          </Table>
+        </div>
+        <div data-pdf-block style={{ marginBottom: 6 }}>
+          <MinorHeading>{L.antardasha}</MinorHeading>
         </div>
         {chunk(result.mahadashaTimeline, 3).map((group, gi) => (
-          <div key={gi} data-pdf-block style={{ marginBottom: 10 }}>
+          <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10, alignItems: 'start' }}>
             {group.map((period, i) => (
-              // breakInside: 'avoid' — without it, native print pagination
-              // (page.pdf() in kundliPdf.routes.ts) could split ONE
-              // Mahadasha's own header from its Antardasha list, or cut the
-              // Antardasha list itself mid-row, right at a page boundary.
-              // This keeps one whole Mahadasha+its-Antardashas together,
-              // pushing it to the next page entirely if it doesn't fit
-              // rather than slicing it.
-              <div key={i} style={{ marginBottom: 6, breakInside: 'avoid' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 6px', background: period.active ? TINT : undefined, borderTop: `1px solid ${LINE}`, fontSize: FONT.body }}>
-                  <span style={{ fontWeight: period.active ? 700 : 500 }}>{planetText(period.lord)} {L.mahadasha}{period.active ? ` (${L.active})` : ''}</span>
-                  <span style={{ color: MUTED }}>{period.startsAt} → {period.endsAt}</span>
+              <div key={i} style={{ border: `1px solid ${period.active ? GOLD : LINE}`, borderRadius: 8, padding: '8px 8px 6px', background: period.active ? TINT : PAGE_BG }}>
+                <div style={{ textAlign: 'center', fontSize: FONT.body, fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>
+                  {planetText(period.lord)}{period.active && <ActiveBadge label={L.active} />}
                 </div>
-                <div style={{ paddingLeft: 14 }}>
-                  {period.antardashas.map((sub, j) => (
-                    <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 6px', fontSize: FONT.label, color: MUTED, borderBottom: `1px dashed ${LINE}` }}>
-                      <span>{planetText(sub.lord)} {L.antardasha}</span><span>{sub.startsAt} → {sub.endsAt}</span>
-                    </div>
-                  ))}
+                <div style={{ textAlign: 'center', fontSize: 8.5, color: MUTED, marginBottom: 6 }}>
+                  {gi === 0 && i === 0 ? L.birth : fmtDate(period.startsAt)} – {fmtDate(period.endsAt)}
                 </div>
+                {period.antardashas.map((sub, j) => (
+                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', gap: 4, padding: '3px 0', borderTop: `1px solid ${LINE}`, fontSize: 8.5 }}>
+                    <span style={{ fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>{planetText(sub.lord)}</span>
+                    <span style={{ color: MUTED }}>{fmtDate(sub.startsAt)} – {fmtDate(sub.endsAt)}</span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
         ))}
 
-        {/* Shadbala/Bhavbala split into 2 blocks (was 1) — that combined
-            block was one of the tallest in the report and packed poorly,
-            leaving large blank gaps under it on whichever page it landed;
-            splitting gives the page-fill packer more flexibility. */}
+        {/* Shadbala / Bhavbala — every component the engine computes, planets
+            (or houses) as columns like the reference report. Ranking is by
+            total strength (1 = strongest). */}
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>{L.shadbala}</SubHeading>
-          <Table head={[L.colPlanet, L.colTotalRupas, L.colRequired, L.colRatio, L.colVerdict]}>
-            {result.shadbala.planets.map(p => (
-              <tr key={p.planet} style={{ borderTop: `1px solid ${LINE}` }}>
-                <Td><b>{planetText(p.planet)}</b></Td><Td>{p.rupas.toFixed(2)}</Td><Td>{p.minRequiredRupas.toFixed(2)}</Td><Td>{(p.rupas / p.minRequiredRupas).toFixed(2)}</Td>
-                <Td><span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span></Td>
-              </tr>
-            ))}
-          </Table>
+          <p style={{ fontSize: FONT.label, color: MUTED, margin: '0 0 8px' }}>{L.shadbalaDesc}</p>
+          <MatrixTable
+            corner={L.component}
+            columns={result.shadbala.planets.map(p => planetText(p.planet))}
+            rows={[
+              { label: L.sthanaBala, cells: result.shadbala.planets.map(p => p.sthanabala.total.toFixed(2)) },
+              { label: L.kaalaBala, cells: result.shadbala.planets.map(p => p.kaalabala.total.toFixed(2)) },
+              { label: L.colDigBala, cells: result.shadbala.planets.map(p => p.digbala.toFixed(2)) },
+              { label: L.cheshtaBala, cells: result.shadbala.planets.map(p => p.cheshtabala.toFixed(2)) },
+              { label: L.naisargikaBala, cells: result.shadbala.planets.map(p => p.naisargikabala.toFixed(2)) },
+              { label: L.colDrikBala, cells: result.shadbala.planets.map(p => p.drikbala.toFixed(2)) },
+              { label: L.totalShadbala, strong: true, cells: result.shadbala.planets.map(p => p.totalVirupas.toFixed(2)) },
+              { label: L.shadbalaRupas, strong: true, cells: result.shadbala.planets.map(p => p.rupas.toFixed(2)) },
+              { label: L.colRequired, cells: result.shadbala.planets.map(p => p.minRequiredRupas.toFixed(2)) },
+              { label: L.colRatio, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{(p.rupas / p.minRequiredRupas).toFixed(2)}</span>) },
+              { label: L.ranking, cells: rankDesc(result.shadbala.planets.map(p => p.rupas)).map(String) },
+              { label: L.ishtaPhala, cells: result.shadbala.planets.map(p => p.ishtabala.toFixed(2)) },
+              { label: L.kashtaPhala, cells: result.shadbala.planets.map(p => p.kashtabala.toFixed(2)) },
+              { label: L.colVerdict, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span>) },
+            ]}
+          />
         </div>
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>{L.bhavbala}</SubHeading>
-          <Table head={[L.colHouse, L.colAdhipatiBala, L.colDigBala, L.colDrikBala, L.colTotal]}>
-            {result.shadbala.houses.map(h => (
-              <tr key={h.house} style={{ borderTop: `1px solid ${LINE}` }}>
-                <Td><b>{isHi ? `भा${h.house}` : `H${h.house}`}</b></Td><Td>{h.adhipatiBala.toFixed(1)}</Td><Td>{h.digBala.toFixed(1)}</Td><Td>{h.drikBala.toFixed(1)}</Td><Td>{h.total.toFixed(1)}</Td>
-              </tr>
-            ))}
-          </Table>
+          <p style={{ fontSize: FONT.label, color: MUTED, margin: '0 0 8px' }}>{L.bhavbalaDesc}</p>
+          <MatrixTable
+            corner={L.component}
+            columns={result.shadbala.houses.map(h => (isHi ? `भा${h.house}` : `H${h.house}`))}
+            rows={[
+              { label: L.colAdhipatiBala, cells: result.shadbala.houses.map(h => h.adhipatiBala.toFixed(0)) },
+              { label: L.colDigBala, cells: result.shadbala.houses.map(h => h.digBala.toFixed(0)) },
+              { label: L.colDrikBala, cells: result.shadbala.houses.map(h => h.drikBala.toFixed(0)) },
+              { label: L.totalBhavabala, strong: true, cells: result.shadbala.houses.map(h => h.total.toFixed(0)) },
+              { label: L.bhavabalaRupas, strong: true, cells: result.shadbala.houses.map(h => (h.total / 60).toFixed(2)) },
+              { label: L.ranking, cells: rankDesc(result.shadbala.houses.map(h => h.total)).map(String) },
+            ]}
+          />
         </div>
 
         {/* ── 03 KP ── */}
@@ -497,9 +569,9 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               <SectionHeader num="05" title={L.charts} />
               <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>{L.chartsDesc}</p>
             </div>
-            {chunk(allCharts, 3).map((row, gi) => (
-              <div key={gi} data-pdf-block data-pdf-weight="3" style={{ display: 'grid', gridTemplateColumns: `repeat(${row.length}, 1fr)`, gap: 12, marginBottom: 16 }}>
-                {row.map(c => <MiniChart key={c.title} title={c.title} planets={c.planets} ascendantRashi={c.ascendantRashi} small language={language} />)}
+            {chunk(allCharts, 2).map((row, gi) => (
+              <div key={gi} data-pdf-block data-pdf-weight="2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+                {row.map(c => <MiniChart key={c.title} title={c.title} planets={c.planets} ascendantRashi={c.ascendantRashi} language={language} />)}
               </div>
             ))}
           </>
@@ -510,13 +582,13 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
           <SectionHeader num="06" title={L.dasha} />
           <p style={{ fontSize: FONT.body, color: MUTED, margin: 0 }}>{L.dashaDesc}</p>
         </div>
-        {chunk(result.dashaPredictions, 3).map((group, gi) => (
+        {chunk(result.dashaPredictions, 2).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             {group.map(d => {
               const period = result.mahadashaTimeline.find(m => m.lord === d.lord);
               return (
-                <PredictionCard key={d.lord} title={`${planetText(d.lord)} ${L.mahadasha}${period?.active ? ` (${cap(L.active)})` : ''}`} subtitle={period ? `${period.startsAt} – ${period.endsAt}` : undefined} active={period?.active}>
-                  {shorten(d.text, 130)}
+                <PredictionCard key={d.lord} title={`${planetText(d.lord)} ${L.mahadasha}${period?.active ? ` (${cap(L.active)})` : ''}`} subtitle={period ? `${fmtDate(period.startsAt)} – ${fmtDate(period.endsAt)}` : undefined} active={period?.active}>
+                  {d.text}
                 </PredictionCard>
               );
             })}
@@ -538,16 +610,16 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
         <div data-pdf-block data-pdf-newpage="true" style={{ marginBottom: 22, breakBefore: 'page' }}>
           <SectionHeader num="07" title={L.freeReport} />
           <SubHeading>{L.ascendantPredictionsFor(rashiText(result.ascendantPredictions.ascendant))}</SubHeading>
-          <p style={{ fontSize: FONT.body, lineHeight: 1.7, margin: '0 0 12px' }}>{shorten(result.ascendantPredictions.description, 220)}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {([
+              [L.description, result.ascendantPredictions.description],
               [L.personality, result.ascendantPredictions.personality],
               [L.physical, result.ascendantPredictions.physical],
               [L.health, result.ascendantPredictions.health],
               [L.career, result.ascendantPredictions.career],
               [L.relationship, result.ascendantPredictions.relationship],
             ] as const).map(([label, text]) => (
-              <PredictionCard key={label} title={label}>{shorten(text, 210)}</PredictionCard>
+              <PredictionCard key={label} title={label}>{text}</PredictionCard>
             ))}
           </div>
 
@@ -574,18 +646,20 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
         <div data-pdf-block style={{ marginBottom: 8 }}>
           <SubHeading>{L.planetaryPredictions}</SubHeading>
+          <p style={{ fontSize: FONT.label, color: MUTED, margin: 0 }}>{L.planetaryPredictionsDesc}</p>
         </div>
-        {chunk(result.analysis.planets, 3).map((group, gi) => (
+        {chunk(result.analysis.planets, 2).map((group, gi) => (
           <div key={gi} data-pdf-block style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            {group.map(p => <PredictionCard key={p.id} title={L.considerationFor(planetText(p.id))}>{shorten(p.text, 110)}</PredictionCard>)}
+            {group.map(p => <PredictionCard key={p.id} title={L.considerationFor(planetText(p.id))}>{p.text}</PredictionCard>)}
           </div>
         ))}
 
         {presentYogas.length > 0 && (
           <div data-pdf-block style={{ marginBottom: 22 }}>
             <SubHeading>{L.yogaCombinations}</SubHeading>
+            <p style={{ fontSize: FONT.label, color: MUTED, margin: '0 0 8px' }}>{L.yogaDesc}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {presentYogas.map(y => <PredictionCard key={y.name} title={y.name}>{shorten(y.description, 110)}</PredictionCard>)}
+              {presentYogas.map(y => <PredictionCard key={y.name} title={yogaNameText(y.name)}>{y.description}</PredictionCard>)}
             </div>
           </div>
         )}
@@ -613,16 +687,22 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
         <div data-pdf-block style={{ marginBottom: 22 }}>
           <SubHeading>{L.gemstoneRecommendations}</SubHeading>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            {gems.map(g => (
-              <div key={g.purpose} style={{ border: `1px solid ${LINE}`, borderRadius: 8, padding: 10 }}>
-                <div style={{ fontSize: FONT.label, color: FAINT, textTransform: 'uppercase', marginBottom: 2, letterSpacing: '0.05em' }}>{g.purpose}</div>
-                <div style={{ fontSize: FONT.sub, fontWeight: 700 }}>{g.gemstone} ({g.sanskritName})</div>
-                <div style={{ fontSize: FONT.label, color: MUTED, margin: '2px 0' }}>{g.metal} · {g.finger} {L.finger}</div>
-                <div style={{ fontSize: FONT.label, fontStyle: 'italic', color: GOLD }}>{g.mantra}</div>
+          <p style={{ fontSize: FONT.label, color: MUTED, margin: '0 0 8px' }}>{L.gemstoneDesc}</p>
+          {gems.map(g => (
+            <div key={g.purpose} style={{ borderTop: `1px solid ${LINE}`, padding: '10px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                <span style={{ fontSize: FONT.sub, fontWeight: 700, color: INK, textTransform: 'uppercase' }}>{g.purpose} — {g.gemstone} ({g.sanskritName})</span>
               </div>
-            ))}
-          </div>
+              <p style={{ fontSize: FONT.label, lineHeight: 1.6, color: MUTED, margin: '0 0 6px' }}>{g.reason}</p>
+              <KVGrid cols={2}>
+                <KVRow label={L.gemstone}>{g.gemstone} ({g.sanskritName})</KVRow>
+                <KVRow label={L.metal}>{g.metal}</KVRow>
+                <KVRow label={L.wearOn}>{g.finger} {L.finger}</KVRow>
+                <KVRow label={L.mantra}><span style={{ fontStyle: 'italic', color: GOLD }}>{g.mantra}</span></KVRow>
+              </KVGrid>
+            </div>
+          ))}
         </div>
 
         <div data-pdf-block style={{ marginBottom: 22 }}>
@@ -663,9 +743,11 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               page — reads as a designed closing panel rather than
               leftover text under the banner. */}
           <div style={{ border: `1px solid ${LINE}`, borderRadius: 14, background: TINT, padding: '28px 36px', maxWidth: 460 }}>
-            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '0 0 20px' }}>{L.journeyContinues(name)}</div>
+            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
+            <p style={{ fontSize: FONT.body, lineHeight: 1.6, color: MUTED, margin: '0 0 16px' }}>{L.closingInvite}</p>
             <div style={{ width: 48, height: 2, background: GOLD, margin: '0 auto 14px' }} />
             <div style={{ fontSize: FONT.label, color: FAINT, letterSpacing: '0.08em' }}>{L.brandFooter}</div>
+            <div style={{ fontSize: 8.5, color: FAINT, letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: 10 }}>{L.endOfReport}</div>
           </div>
         </div>
       </div>
@@ -679,24 +761,27 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-// The PDF favors a brief, scannable read over the live site's full prediction
-// text — cut at the end of the first sentence within `max` chars, falling
-// back to a hard cut only if no sentence boundary exists in range. Only used
-// here; the live Predictions tab still shows the full text. Hindi sentences
-// end in "।" (danda) rather than ". " — cut on whichever the text actually
-// uses instead of assuming Latin punctuation.
-function shorten(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const lastPeriod = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('। '), cut.lastIndexOf('।'));
-  if (lastPeriod > max * 0.4) return cut.slice(0, lastPeriod + 1);
-  return `${cut.trimEnd()}…`;
+// "Ranking" rows: 1 = highest value.
+function rankDesc(values: number[]): number[] {
+  const order = values.map((v, i) => [v, i] as const).sort((x, y) => y[0] - x[0]);
+  const ranks: number[] = [];
+  order.forEach(([, i], r) => { ranks[i] = r + 1; });
+  return ranks;
 }
 
+// Floors through arc-seconds so 19.9999° reads 19° 59′ 59″, never the
+// "19° 60′" plain minute rounding used to print.
 function formatDeg(degreeInSign: number): string {
-  const deg = Math.floor(degreeInSign);
-  const min = Math.round((degreeInSign - deg) * 60);
-  return `${deg}° ${min}′`;
+  const totalSec = Math.floor(degreeInSign * 3600);
+  const deg = Math.floor(totalSec / 3600);
+  const min = Math.floor((totalSec % 3600) / 60);
+  return `${deg}° ${min}′ ${totalSec % 60}″`;
+}
+
+// "local = UTC + offset" minutes (IST = +330) -> "GMT +05:30".
+function formatGmtOffset(offsetMinutes: number): string {
+  const abs = Math.abs(offsetMinutes);
+  return `GMT ${offsetMinutes < 0 ? '-' : '+'}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
 }
 
 // Panchang sunrise/sunset come back as UTC ISO instants — shift to the
@@ -779,6 +864,38 @@ function Table({ head, children }: { head: string[]; children: ReactNode }) {
         </tr>
       </thead>
       <tbody>{children}</tbody>
+    </table>
+  );
+}
+
+// Small gold uppercase label under a SubHeading (e.g. MAHADASHA / ANTARDASHA).
+function MinorHeading({ children }: { children: ReactNode }) {
+  return <div style={{ fontSize: FONT.label, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 6px' }}>{children}</div>;
+}
+
+function ActiveBadge({ label }: { label: string }) {
+  return <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 999, background: GOLD, color: '#FAF7F0', fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', verticalAlign: 'middle' }}>{label}</span>;
+}
+
+// Rows-by-columns grid (components down the side, planets/houses across the
+// top) — the reference report's Shadbala/Bhavbala layout.
+function MatrixTable({ corner, columns, rows }: { corner: string; columns: string[]; rows: { label: string; cells: ReactNode[]; strong?: boolean }[] }) {
+  return (
+    <table style={{ width: '100%', fontSize: FONT.label, borderCollapse: 'collapse', border: `1px solid ${LINE}` }}>
+      <thead>
+        <tr style={{ color: FAINT, textTransform: 'uppercase', fontSize: 8 }}>
+          <th style={{ padding: '5px 6px', textAlign: 'left' }}>{corner}</th>
+          {columns.map(c => <th key={c} style={{ padding: '5px 3px', textAlign: 'center' }}>{c}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.label} style={{ borderTop: `1px solid ${LINE}`, background: r.strong ? TINT : undefined, fontWeight: r.strong ? 700 : 400 }}>
+            <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>{r.label}</td>
+            {r.cells.map((c, i) => <td key={i} style={{ padding: '4px 3px', textAlign: 'center' }}>{c}</td>)}
+          </tr>
+        ))}
+      </tbody>
     </table>
   );
 }

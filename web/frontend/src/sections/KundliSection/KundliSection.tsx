@@ -22,6 +22,7 @@ import {
 import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import KundliPrintLayout from './KundliPrintLayout';
+import PdfLoader from './PdfLoader';
 import { HINDI_PLANET, HINDI_RASHI, HINDI_NAKSHATRA, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, HINDI_WEEKDAY, PAKSHA_HI, hindiOr } from '../../utils/panchangHindi';
 import { getVastuChartReading, VASTU_CHART_VERDICT_META } from '../../data/vastuKundli';
 import styles from './KundliSection.module.css';
@@ -490,8 +491,9 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
     if (!raw) return;
     sessionStorage.removeItem('kundliPdfResume');
     try {
+      // Only restores the Kundli itself — the PDF (and its full-screen
+      // loader) starts when the user clicks Download PDF, never on its own.
       const details = JSON.parse(raw) as BirthDetailsSubmitValue;
-      setAutoDownloadPending(true);
       handleSubmit(details);
     } catch {
       // Malformed/stale payload — nothing to resume.
@@ -929,6 +931,60 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
         // spent on everything before it. Now it's logged and skipped —
         // worst case, one section is missing from an otherwise-complete PDF
         // instead of the whole generation failing.
+        // Capturing speed: html2canvas pays a big FIXED cost per call — it
+        // builds a fresh iframe, clones the document into it, re-parses
+        // every stylesheet and waits on fonts/images (~0.3-0.5s even for a
+        // 3-element block). Capturing ~40 blocks one by one was ~20s of pure
+        // overhead, and cloning the whole live site each time (WebGL
+        // backdrop, nav, every section) made each call far worse. So blocks
+        // are captured in groups of ~2400px: one call clones only <head>
+        // plus that group's blocks, then the group canvas is sliced back
+        // into per-block canvases using each block's position measured in
+        // the clone itself. The rest of the pipeline is unchanged.
+        const CAPTURE_SCALE = 1.25; // legible print quality (0.8/1 both visibly blurred once printed/zoomed)
+        const GROUP_MAX_PX = 2400; // keeps each group canvas ~3MP — well inside iOS Safari's canvas-area limit
+        const captureGroup = async (group: HTMLElement[]): Promise<HTMLCanvasElement[]> => {
+          let rects: { x: number; y: number; w: number; h: number }[] = [];
+          const whole = await html2canvas(root, {
+            scale: CAPTURE_SCALE,
+            backgroundColor: '#FAF7F0',
+            logging: false,
+            ignoreElements: node => !(document.head.contains(node) || node.contains(root) || group.some(b => b.contains(node) || node.contains(b))),
+            onclone: (_doc, clonedRoot) => {
+              // The live root sits in a 0x0 clipping wrapper, so its own box is
+              // 0px wide (blocks just overflow it) — give the clone its real
+              // content width or html2canvas renders an empty 0-width canvas.
+              clonedRoot.style.width = `${root.scrollWidth}px`;
+              const r = clonedRoot.getBoundingClientRect();
+              rects = Array.from(clonedRoot.querySelectorAll<HTMLElement>('[data-pdf-block]'), b => {
+                const br = b.getBoundingClientRect();
+                return { x: br.left - r.left, y: br.top - r.top, w: br.width, h: br.height };
+              });
+            },
+          });
+          if (rects.length !== group.length) throw new Error(`Cloned ${rects.length} blocks, expected ${group.length}`);
+          return rects.map(({ x, y, w, h }) => {
+            const c = document.createElement('canvas');
+            c.width = Math.round(w * CAPTURE_SCALE);
+            c.height = Math.round(h * CAPTURE_SCALE);
+            c.getContext('2d')!.drawImage(whole, Math.round(x * CAPTURE_SCALE), Math.round(y * CAPTURE_SCALE), c.width, c.height, 0, 0, c.width, c.height);
+            return c;
+          });
+        };
+        const groups: number[][] = [];
+        {
+          let cur: number[] = [];
+          let curH = 0;
+          blocks.forEach((b, i) => {
+            const h = b.offsetHeight;
+            if (cur.length && curH + h > GROUP_MAX_PX) { groups.push(cur); cur = []; curH = 0; }
+            cur.push(i);
+            curH += h;
+          });
+          if (cur.length) groups.push(cur);
+        }
+        const canvases: (HTMLCanvasElement | null | undefined)[] = [];
+
         let weightDone = 0;
         for (let i = 0; i < blocks.length; i++) {
           if (cancelled) break; // safety timer fired — stop instead of capturing against a DOM React already unmounted
@@ -946,25 +1002,31 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
           // before the next capture starts.
           await new Promise(resolve => window.setTimeout(resolve, 0));
           if (cancelled) break;
-          // One retry before giving up — the report was intermittently
-          // coming out with fewer pages than it should on some machines,
-          // and a transient html2canvas failure on a single block (a chart
-          // SVG mid-layout, a font not quite settled) silently dropping
-          // that one section is exactly the kind of thing this covers,
-          // since a real, permanent failure will still fail the same way
-          // on the second attempt and fall through to the skip below.
-          let canvas: HTMLCanvasElement | null = null;
-          for (let attempt = 0; attempt < 2 && !canvas; attempt++) {
-            try {
-              // scale 1.25: legible print quality (0.8/1 both visibly blurred
-              // once printed/zoomed) — quality matters more than shaving a
-              // few more seconds off a generation that already runs silently
-              // in the background instead of blocking the click.
-              canvas = await html2canvas(el, { scale: 1.25, backgroundColor: '#FAF7F0', logging: false });
-            } catch (e) {
-              if (attempt === 1) console.error(`PDF block ${i + 1}/${blocks.length} failed to capture (after retry), skipping:`, e);
+          if (canvases[i] === undefined) {
+            const group = groups.find(g => g.includes(i))!;
+            const els = group.map(j => blocks[j]);
+            let captured: (HTMLCanvasElement | null)[] | null = null;
+            // One retry before giving up on the grouped capture, then fall
+            // back to capturing each block on its own — a transient failure
+            // or one quirky block must never drop a whole group of sections.
+            for (let attempt = 0; attempt < 2 && !captured; attempt++) {
+              try { captured = await captureGroup(els); } catch (e) {
+                if (attempt === 1) console.error(`PDF group capture failed, falling back to per-block:`, e);
+              }
             }
+            if (!captured) {
+              captured = [];
+              for (const one of els) {
+                try { captured.push((await captureGroup([one]))[0]); } catch (e) {
+                  console.error('PDF block failed to capture, skipping:', e);
+                  captured.push(null);
+                }
+              }
+            }
+            group.forEach((j, k) => { canvases[j] = captured![k]; });
           }
+          const canvas = canvases[i];
+          canvases[i] = null; // release the pixels once placed
           weightDone += weights[i];
           if (!canvas) {
             setPdfProgress({ weightDone, totalWeight });
@@ -1157,8 +1219,14 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                         </button>
                       ))}
                     </div>
-                    {/* Download PDF button paused along with Chromium PDF
-                        generation — see docs/chromium-pdf-pause.md. */}
+                    <button
+                      className="btn btn-gold"
+                      onClick={handleDownloadPdfClick}
+                      disabled={pdfState === 'generating'}
+                      id="kundli-download-pdf-btn"
+                    >
+                      {tr('kundli_download_pdf')}
+                    </button>
                     <button
                       className="btn btn-outline-gold"
                       onClick={() => setFullResult(null)}
@@ -1167,8 +1235,11 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                       {tr('kundli_edit_details')}
                     </button>
                   </div>
-                  {pdfState === 'generating' && !serverPdfUrl && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{pdfStatusMsg}</span>
+                  {pdfState === 'generating' && (
+                    <PdfLoader
+                      message={serverPdfUrl ? PDF_STATUS_MESSAGES[0] : pdfStatusMsg}
+                      progress={pdfProgress && pdfProgress.totalWeight ? pdfProgress.weightDone / pdfProgress.totalWeight : null}
+                    />
                   )}
                 </div>
               </div>
@@ -1186,7 +1257,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                 // into extreme negative space.
                 <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
                   <div ref={printRef}>
-                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} timeUnknown={submittedDetails?.timeUnknown ?? false} place={birthProfile.place} timezoneOffsetMinutes={submittedDetails?.timezoneOffsetMinutes ?? 0} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
+                    <KundliPrintLayout name={pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name} dob={birthProfile.dob} tob={birthProfile.tob} timeUnknown={submittedDetails?.timeUnknown ?? false} place={birthProfile.place} timezoneOffsetMinutes={submittedDetails?.timezoneOffsetMinutes ?? 0} latitude={submittedDetails?.latitude} longitude={submittedDetails?.longitude} result={fullResult} skipExtraDivisionalCharts={litePdf} bannerImageSrc={pdfBannerImageSrc} language={pdfLanguage} />
                   </div>
                 </div>
               )}

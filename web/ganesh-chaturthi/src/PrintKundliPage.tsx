@@ -84,6 +84,8 @@ export default function PrintKundliPage() {
         timeUnknown={timeUnknown}
         place={place}
         timezoneOffsetMinutes={timezoneOffsetMinutes}
+        latitude={latitude}
+        longitude={longitude}
         result={result}
         bannerImageSrc="/images/hero-banner.jpg"
         language={language}
