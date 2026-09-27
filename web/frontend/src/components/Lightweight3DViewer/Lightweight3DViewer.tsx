@@ -178,9 +178,22 @@ export default function Lightweight3DViewer({ type, color = '#C8A96B', className
     };
     window.addEventListener('resize', resize);
 
-    // Animation Loop
+    // Animation Loop — only runs while the canvas is actually on screen.
+    // A 60fps WebGL render loop that never stops kept the main thread and
+    // GPU busy on every page it lived on, even scrolled far out of view,
+    // which is a big part of what made scrolling elsewhere feel laggy.
     let animId = 0;
+    let running = false;
+    const start = () => { if (!running) { running = true; animate(); } };
+    const stop = () => { running = false; cancelAnimationFrame(animId); };
+    let onScreen = false;
+    const sync = () => (onScreen && !document.hidden ? start() : stop());
+    const io = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; sync(); });
+    io.observe(container);
+    const onVisibility = sync;
+    document.addEventListener('visibilitychange', onVisibility);
     const animate = () => {
+      if (!running) return;
       animId = requestAnimationFrame(animate);
 
       // Slow continuous spin
@@ -197,10 +210,12 @@ export default function Lightweight3DViewer({ type, color = '#C8A96B', className
       renderer.render(scene, camera);
     };
 
-    animate();
+    renderer.render(scene, camera); // first frame, so it's never blank before the observer fires
 
     return () => {
-      cancelAnimationFrame(animId);
+      stop();
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
       container.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', resize);
       renderer.dispose();

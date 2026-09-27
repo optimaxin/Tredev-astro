@@ -72,8 +72,15 @@
 
 /* Background Cosmic Particles and Star dust */
 .starDust {
+  /* Oversized by one full pattern period (450px = LCM of the 90/150px
+     tiles) and drifted with transform — animating background-position
+     repainted the whole hero every frame; a transform is GPU-composited. */
   position: absolute;
-  inset: 0;
+  top: -450px;
+  left: -450px;
+  width: calc(100% + 450px);
+  height: calc(100% + 450px);
+  will-change: transform;
   background-image: 
     radial-gradient(rgba(245, 183, 42, 0.25) 1px, transparent 1px),
     radial-gradient(rgba(255, 255, 255, 0.18) 1.5px, transparent 1.5px);
@@ -82,12 +89,12 @@
   opacity: 0.7;
   pointer-events: none;
   z-index: 1;
-  animation: slowStarFloat 80s linear infinite;
+  animation: slowStarFloat 400s linear infinite;
 }
 
 @keyframes slowStarFloat {
-  from { background-position: 0 0, 45px 45px; }
-  to { background-position: 90px 90px, 195px 195px; }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(450px, 450px, 0); }
 }
 
 /* Background Radial Glow Elements */
@@ -490,12 +497,15 @@
   width: 1.5px;
   height: 42px;
   background: linear-gradient(to bottom, #E7A51A, transparent);
+  transform-origin: top;
   animation: scrollPulseLine 2.5s ease-in-out infinite;
 }
 
+/* scaleY instead of height (32px -> 50px on a 42px line) — animating
+   height forced a full-page layout on every frame, even while idle. */
 @keyframes scrollPulseLine {
-  0%, 100% { height: 32px; opacity: 0.4; }
-  50% { height: 50px; opacity: 1; }
+  0%, 100% { transform: scaleY(0.76); opacity: 0.4; }
+  50% { transform: scaleY(1.19); opacity: 1; }
 }
 
 .scrollMouse {

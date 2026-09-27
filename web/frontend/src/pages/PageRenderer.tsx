@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useAppContext } from '../context/AppContext';
 import {
   PRODUCTS,
@@ -13,7 +13,10 @@ import styles from './PageRenderer.module.css';
 // Import landing sections
 import Hero from '../sections/Hero/Hero';
 import CampaignBanner from '../sections/CampaignBanner/CampaignBanner';
-import KundliSection from '../sections/KundliSection/KundliSection';
+// Pages the homepage never shows are split into their own chunks so the
+// first load doesn't have to download and parse them (KundliSection alone
+// pulls in the whole PDF template + chart code).
+const KundliSection = lazy(() => import('../sections/KundliSection/KundliSection'));
 import SeekGuidance from '../sections/SeekGuidance/SeekGuidance';
 import FreeTools from '../sections/FreeTools/FreeTools';
 import PanchangSection from '../sections/Panchang/Panchang';
@@ -26,12 +29,12 @@ import AcademySection from '../sections/Academy/Academy';
 import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
-import AuthPage from './AuthPage/AuthPage';
+const AuthPage = lazy(() => import('./AuthPage/AuthPage'));
 import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
-import AstrologistDashboard from './AstrologistDashboard/AstrologistDashboard';
-import GuidanceInfoPage from './GuidanceInfoPage/GuidanceInfoPage';
-import AdminConsole from '../admin/AdminConsole';
+const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/AstrologistDashboard'));
+const GuidanceInfoPage = lazy(() => import('./GuidanceInfoPage/GuidanceInfoPage'));
+const AdminConsole = lazy(() => import('../admin/AdminConsole'));
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
 import type { KundliFullResult } from '../services/calculatorService';
@@ -54,6 +57,14 @@ import type { Order } from '../services/orderService';
 import { paymentService, PaymentApiError } from '../services/paymentService';
 
 export default function PageRenderer() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} aria-busy="true" />}>
+      <PageContent />
+    </Suspense>
+  );
+}
+
+function PageContent() {
   const { page, setPage, selectedId, setSelectedId, cart, addToCart, removeFromCart, clearCart, birthProfile, currentUser } = useAppContext();
 
   // Scroll to top on page navigation

@@ -198,3 +198,18 @@
 /* Devanagari legibility — see src/styles/globals.css typography system */
 html[lang='hi'] .sanskritLabel, html[lang='mr'] .sanskritLabel { font-size: var(--text-xs); }
 html[lang='hi'] .cardCta, html[lang='mr'] .cardCta { font-size: var(--text-sm); }
+
+/* Card icon motion — plain CSS (was framer-motion infinite loops, which
+   rewrote inline SVG styles from JS every frame and forced a page layout
+   60 times a second, even while the section sat off-screen). */
+.spinCw, .spinCcw, .breathe { transform-box: fill-box; transform-origin: center; }
+.spinCw { animation: seekSpin 15s linear infinite; }
+.spinCcw { animation: seekSpin 15s linear infinite reverse; }
+.breathe { animation: seekBreathe 4s ease-in-out infinite; }
+.glowPulse { animation: seekGlow 5s ease-in-out infinite; }
+@keyframes seekSpin { to { transform: rotate(360deg); } }
+@keyframes seekBreathe { 50% { transform: scale(1.08); } }
+@keyframes seekGlow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .spinCw, .spinCcw, .breathe, .glowPulse { animation: none; }
+}

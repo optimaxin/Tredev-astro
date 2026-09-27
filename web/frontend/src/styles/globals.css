@@ -841,7 +841,9 @@ html[lang='mr'] .section-explore-link {
 .cosmic-cloud {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
+  /* No filter: blur() — each cloud is already a radial-gradient fading to
+     transparent, so a 100px blur over ~3.7M px of animated layers was
+     near-invisible yet cost the GPU up to ~1s of raster on scroll. */
   opacity: var(--cloud-item-opacity);
   animation: floatCloud 50s ease-in-out infinite alternate;
   pointer-events: none;
@@ -1036,6 +1038,19 @@ section:not(#hero), [class*="pageWrapper"] {
 }
 
 /* ── Yantra Watermarks & Sacred Geometry Backgrounds ── */
+/* Every homepage section below the fold sits in one of these two wrappers.
+   content-visibility: auto lets the browser skip style, layout, paint AND
+   the looping decorative animations inside a section while it's off-screen
+   — the page was running every section's twinkles/rotations at once, which
+   is what made idle scrolling stutter. They already clip (overflow:hidden),
+   so the paint containment this implies changes nothing visually.
+   contain-intrinsic-size keeps the scrollbar stable before first render. */
+.yantra-watermark-right,
+.yantra-watermark-left {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 .yantra-watermark-right {
   position: relative;
   overflow: hidden;

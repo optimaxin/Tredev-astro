@@ -57,18 +57,8 @@ export default function SeekGuidance() {
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-          <motion.ellipse 
-            cx="42" cy="50" rx="20" ry="10" 
-            stroke="var(--gold-primary)" strokeWidth="1.5" 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.ellipse 
-            cx="58" cy="50" rx="20" ry="10" 
-            stroke="var(--gold-primary)" strokeWidth="1.5" 
-            animate={{ rotate: -360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          />
+          <ellipse className={styles.spinCw} cx="42" cy="50" rx="20" ry="10" stroke="var(--gold-primary)" strokeWidth="1.5" />
+          <ellipse className={styles.spinCcw} cx="58" cy="50" rx="20" ry="10" stroke="var(--gold-primary)" strokeWidth="1.5" />
           <circle cx="42" cy="50" r="3" fill="var(--gold-primary)" />
           <circle cx="58" cy="50" r="3" fill="var(--gold-primary)" />
         </svg>
@@ -85,12 +75,7 @@ export default function SeekGuidance() {
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="34" stroke="currentColor" strokeWidth="0.75" />
-          <motion.circle 
-            cx="50" cy="50" r="16" 
-            stroke="var(--gold-primary)" strokeWidth="2" 
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          />
+          <circle className={styles.breathe} cx="50" cy="50" r="16" stroke="var(--gold-primary)" strokeWidth="2" />
           {Array.from({ length: 12 }, (_, i) => {
             const angle = (i / 12) * Math.PI * 2;
             const x1 = 50 + Math.cos(angle) * 19;
@@ -160,12 +145,7 @@ export default function SeekGuidance() {
       iconSvg: (
         <svg className={styles.icon} viewBox="0 0 100 100" fill="none">
           <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="0.75" strokeDasharray="4 2" />
-          <motion.path 
-            d="M50 25 A 25 25 0 0 1 50 75 A 15 25 0 0 1 50 25 Z" 
-            fill="var(--gold-primary)" 
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          />
+          <path className={styles.glowPulse} d="M50 25 A 25 25 0 0 1 50 75 A 15 25 0 0 1 50 25 Z" fill="var(--gold-primary)" />
           <circle cx="50" cy="50" r="25" stroke="var(--gold-primary)" strokeWidth="1" />
         </svg>
       )
@@ -202,12 +182,7 @@ export default function SeekGuidance() {
           <line x1="80" y1="20" x2="20" y2="80" stroke="currentColor" strokeWidth="0.75" />
           <line x1="50" y1="20" x2="50" y2="80" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 3" />
           <line x1="20" y1="50" x2="80" y2="50" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 3" />
-          <motion.circle 
-            cx="50" cy="50" r="18" 
-            stroke="var(--gold-primary)" strokeWidth="1" 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          />
+          <circle cx="50" cy="50" r="18" stroke="var(--gold-primary)" strokeWidth="1" />
           <circle cx="50" cy="50" r="4" fill="var(--gold-primary)" />
         </svg>
       )

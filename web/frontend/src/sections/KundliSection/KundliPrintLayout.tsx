@@ -297,7 +297,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
             attribute itself is only read by the OLD client-side capture
             loop in KundliSection.tsx now; it doesn't mean anything to the
             server-rendered path on its own. */}
-        <div data-pdf-block data-pdf-cover="true" style={{ minHeight: 620, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '50px 20px', breakAfter: 'page' }}>
+        <div data-pdf-block data-pdf-cover="true" style={{ minHeight: 960, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '50px 20px', breakAfter: 'page' }}>
           {/* The Acharya portrait lives in the running header of every page
               instead (see drawHeader in KundliSection.tsx) — the cover
               stays a clean, single-focal-point brand mark. */}
@@ -698,7 +698,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               <KVGrid cols={2}>
                 <KVRow label={L.gemstone}>{g.gemstone} ({g.sanskritName})</KVRow>
                 <KVRow label={L.metal}>{g.metal}</KVRow>
-                <KVRow label={L.wearOn}>{g.finger} {L.finger}</KVRow>
+                <KVRow label={L.wearOn}>{g.finger}</KVRow>
                 <KVRow label={L.mantra}><span style={{ fontStyle: 'italic', color: GOLD }}>{g.mantra}</span></KVRow>
               </KVGrid>
             </div>
