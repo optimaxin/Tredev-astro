@@ -71,6 +71,30 @@ function toUtcDate(b: z.infer<typeof birthSchema>): Date {
   return new Date(Date.UTC(year, month - 1, day, hour, minute) - b.timezoneOffsetMinutes * 60_000);
 }
 
+// ponytail: in-process TTL cache, oldest-first eviction, per instance.
+// Calculator results are pure functions of their input (plus the clock, so
+// every key below carries the date and a TTL), and the same inputs repeat a
+// lot — every homepage visitor asks for today's Panchang for the same
+// default city; a kundli is re-requested on language toggle / after login.
+function ttlCache<T>(ttlMs: number, maxEntries: number) {
+  const entries = new Map<string, { at: number; value: T }>();
+  return (key: string, compute: () => T): T => {
+    const now = Date.now();
+    const hit = entries.get(key);
+    if (hit && now - hit.at < ttlMs) return hit.value;
+    const value = compute();
+    entries.delete(key);
+    entries.set(key, { at: now, value });
+    if (entries.size > maxEntries) entries.delete(entries.keys().next().value!);
+    return value;
+  };
+}
+
+// 60s: "today's" Panchang is timed from the live clock, so it can't be stale by much.
+const panchangCache = ttlCache<unknown>(60_000, 500);
+// ~53KB each → ≤ ~10MB. Keyed by UTC day too — dasha/sade-sati read "now".
+const kundliFullCache = ttlCache<unknown>(30 * 60_000, 200);
+
 function handle(res: import('express').Response, fn: () => unknown) {
   try {
     res.json({ success: true, data: fn() });
@@ -98,55 +122,60 @@ calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
   handle(res, () => {
     const birth = birthSchema.parse(req.body);
     const language = languageSchema.parse(req.body?.language);
-    const utcDate = toUtcDate(birth);
-    const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
-    const moon = kundli.planets.find(p => p.id === 'moon')!;
-    const moonRashiIndex = getRashi(moon.longitude).index;
-
-    const span = 360 / 27;
-    const fractionElapsed = (moon.longitude % span) / span;
-    const now = new Date();
-    const mahadashaTimeline = getMahadashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
-
-    const yoginiDashaTimeline = getYoginiDashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
-
-    const navamsaChart = getNavamsaChart(kundli);
-    const chandraChart = getChandraChart(kundli);
-    const vargaCharts = getAllVargaCharts(kundli);
-    const [birthHourStr, birthMinuteStr] = birth.time.split(':');
-    const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
-    const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude, kundli.ascendant.longitude);
-
-    return {
-      kundli,
-      navamsaChart,
-      chandraChart,
-      vargaCharts,
-      mahadashaTimeline,
-      yoginiDashaTimeline,
-      shadbala: calculateShadbala({
-        kundli, navamsaChart, vargaCharts, birthUtcDate: utcDate, birthLocalHour,
-        dateOnly: birth.date, latitude: birth.latitude, longitude: birth.longitude,
-      }),
-      doshas: {
-        kaalSarp: checkKaalSarpDosha(kundli),
-        sadeSati: checkSadeSati(moonRashiIndex, now),
-        rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
-      },
-      yogas: checkYogas(kundli, language),
-      analysis: buildKundliAnalysis(kundli, language),
-      ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi, language),
-      dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline, language),
-      avakhada: buildAvakhada(kundli, language),
-      gemstones: recommendGemstones(kundli, language),
-      rudraksha: recommendRudraksha(kundli, language),
-      panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
-      ashtakavarga: calculateAshtakavarga(kundli),
-      kp: buildKpTable(kundli, utcDate, houseCusps),
-      bhavChalit: getBhavChalitChart(kundli, houseCusps),
-    };
+    const key = [birth.date, birth.time, birth.timezoneOffsetMinutes, birth.latitude, birth.longitude, language, new Date().toISOString().slice(0, 10)].join('|');
+    return kundliFullCache(key, () => buildKundliFull(birth, language));
   });
 });
+
+function buildKundliFull(birth: z.infer<typeof birthSchema>, language: 'en' | 'hi') {
+  const utcDate = toUtcDate(birth);
+  const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
+  const moon = kundli.planets.find(p => p.id === 'moon')!;
+  const moonRashiIndex = getRashi(moon.longitude).index;
+
+  const span = 360 / 27;
+  const fractionElapsed = (moon.longitude % span) / span;
+  const now = new Date();
+  const mahadashaTimeline = getMahadashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
+
+  const yoginiDashaTimeline = getYoginiDashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
+
+  const navamsaChart = getNavamsaChart(kundli);
+  const chandraChart = getChandraChart(kundli);
+  const vargaCharts = getAllVargaCharts(kundli);
+  const [birthHourStr, birthMinuteStr] = birth.time.split(':');
+  const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
+  const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude, kundli.ascendant.longitude);
+
+  return {
+    kundli,
+    navamsaChart,
+    chandraChart,
+    vargaCharts,
+    mahadashaTimeline,
+    yoginiDashaTimeline,
+    shadbala: calculateShadbala({
+      kundli, navamsaChart, vargaCharts, birthUtcDate: utcDate, birthLocalHour,
+      dateOnly: birth.date, latitude: birth.latitude, longitude: birth.longitude,
+    }),
+    doshas: {
+      kaalSarp: checkKaalSarpDosha(kundli),
+      sadeSati: checkSadeSati(moonRashiIndex, now),
+      rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
+    },
+    yogas: checkYogas(kundli, language),
+    analysis: buildKundliAnalysis(kundli, language),
+    ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi, language),
+    dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline, language),
+    avakhada: buildAvakhada(kundli, language),
+    gemstones: recommendGemstones(kundli, language),
+    rudraksha: recommendRudraksha(kundli, language),
+    panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
+    ashtakavarga: calculateAshtakavarga(kundli),
+    kp: buildKpTable(kundli, utcDate, houseCusps),
+    bhavChalit: getBhavChalitChart(kundli, houseCusps),
+  };
+}
 
 calculatorsRouter.post('/nakshatra', limiter, (req, res) => {
   handle(res, () => {
@@ -280,7 +309,9 @@ const panchangSchema = z.object({
 calculatorsRouter.post('/panchang', limiter, (req, res) => {
   handle(res, () => {
     const body = panchangSchema.parse(req.body);
-    return calculatePanchang(body.date, body.latitude, body.longitude);
+    // ~1km rounding: plenty for sunrise/tithi timings, lets nearby visitors share an entry.
+    const lat = Math.round(body.latitude * 100) / 100, lon = Math.round(body.longitude * 100) / 100;
+    return panchangCache(`${body.date}|${lat}|${lon}`, () => calculatePanchang(body.date, lat, lon));
   });
 });
 
@@ -316,12 +347,29 @@ const horoscopePeriodSchema = z.object({
   period: z.enum(['weekly', 'monthly', 'half-year', 'full-year']),
 });
 
+// Upcoming transits depend only on the period and the clock — not the
+// rashi — and the full-year scan costs seconds of CPU (hundreds of
+// ephemeris calls), so compute each period once an hour and share it
+// across every visitor/rashi instead of blocking the event loop per request.
+const TRANSITS_TTL_MS = 60 * 60_000;
+const transitsCache = new Map<string, { at: number; events: ReturnType<typeof getUpcomingTransits> }>();
+
+function cachedUpcomingTransits(period: string, now: Date) {
+  let entry = transitsCache.get(period);
+  if (!entry || now.getTime() - entry.at > TRANSITS_TTL_MS) {
+    entry = { at: now.getTime(), events: getUpcomingTransits(now, PERIOD_WINDOW_DAYS[period], PERIOD_PLANETS[period]) };
+    transitsCache.set(period, entry);
+  }
+  const nowIso = now.toISOString();
+  return entry.events.filter(e => e.date > nowIso); // drop any crossing that's passed since caching
+}
+
 calculatorsRouter.post('/horoscope-period', limiter, (req, res) => {
   handle(res, () => {
     const body = horoscopePeriodSchema.parse(req.body);
     const now = new Date();
     const current = getDailyHoroscope(body.rashi, now);
-    const upcomingTransits = getUpcomingTransits(now, PERIOD_WINDOW_DAYS[body.period], PERIOD_PLANETS[body.period]);
+    const upcomingTransits = cachedUpcomingTransits(body.period, now);
     return { ...current, period: body.period, upcomingTransits };
   });
 });

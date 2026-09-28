@@ -152,6 +152,36 @@ export interface EphemerisInput {
   utcDate: Date;
 }
 
+// Just the Sun and Moon sidereal longitudes — the same math as
+// getPlanetaryPositions below, minus the other 10 bodies and the next-day
+// retrograde pass. Panchang's boundary searches (tithi/yoga/karana/
+// nakshatra) call this hundreds of times per request; using the full
+// version there made one Panchang cost ~1.5s of blocked event loop.
+export function getSunMoonLongitudes(utcDate: Date): { sun: number; moon: number } {
+  const jd = julian.DateToJD(utcDate);
+  const ayanamsa = lahiriAyanamsa(jd);
+  const earthPos = new planetposition.Planet(data.earth as ConstructorParameters<typeof planetposition.Planet>[0]).position(jd);
+  const sunTropical = normalize360((earthPos.lon * DEG) + 180);
+  const moonTropical = normalize360(moonposition.position(jd).lon * DEG);
+  return { sun: normalize360(sunTropical - ayanamsa), moon: normalize360(moonTropical - ayanamsa) };
+}
+
+// One body's sidereal longitude — identical math to getPlanetaryPositions,
+// for callers that sample a few planets across many dates (upcomingTransits.ts)
+// and would otherwise pay for all 12 bodies, twice, on every sample.
+export function getSiderealLongitude(id: PlanetId, utcDate: Date): number {
+  if (id === 'sun' || id === 'moon') return getSunMoonLongitudes(utcDate)[id];
+  if (id === 'pluto') return getPluto(utcDate).longitude;
+  const jd = julian.DateToJD(utcDate);
+  const ayanamsa = lahiriAyanamsa(jd);
+  if (id === 'rahu' || id === 'ketu') {
+    const rahuTropical = normalize360(125.04452 - 1934.136261 * base.J2000Century(jd));
+    return normalize360(rahuTropical + (id === 'ketu' ? 180 : 0) - ayanamsa);
+  }
+  const earthPos = new planetposition.Planet(data.earth as ConstructorParameters<typeof planetposition.Planet>[0]).position(jd);
+  return normalize360(geocentricEclipticLonLat(HELIOCENTRIC_PLANETS[id], earthPos, jd).lon - ayanamsa);
+}
+
 export function getPlanetaryPositions({ utcDate }: EphemerisInput): PlanetPosition[] {
   const jd = julian.DateToJD(utcDate);
   const jdNextDay = jd + 1;

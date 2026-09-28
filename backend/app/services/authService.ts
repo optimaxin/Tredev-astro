@@ -49,7 +49,7 @@ export async function register(params: {
   if (params.phoneNumber && await findUserByPhone(params.phoneNumber)) {
     throw new AuthError('An account with this phone number already exists — please log in instead', 409);
   }
-  const passwordHash = bcrypt.hashSync(params.password, BCRYPT_ROUNDS);
+  const passwordHash = await bcrypt.hash(params.password, BCRYPT_ROUNDS);
   const row = await createUser({
     name: params.name, email: params.email, passwordHash, role: params.role, phoneNumber: params.phoneNumber,
     birthDate: params.birthDate, birthTime: params.birthTime, birthPlace: params.birthPlace,
@@ -66,7 +66,7 @@ export async function login(email: string, password: string): Promise<{ user: Pu
   const row = await findUserByEmail(email);
   // Same generic error whether the email is unknown or the password is wrong —
   // never reveal which one it was (avoids account enumeration).
-  if (!row || !bcrypt.compareSync(password, row.password_hash)) {
+  if (!row || !await bcrypt.compare(password, row.password_hash)) {
     throw new AuthError('Invalid email or password', 401);
   }
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
@@ -140,7 +140,7 @@ export async function resetPassword(rawToken: string, newPassword: string) {
   const record = await findActivePasswordResetToken(hashToken(rawToken));
   if (!record) throw new AuthError('Invalid or expired reset token', 400);
   await markPasswordResetTokenUsed(record.id);
-  await updatePasswordHash(record.user_id, bcrypt.hashSync(newPassword, BCRYPT_ROUNDS));
+  await updatePasswordHash(record.user_id, await bcrypt.hash(newPassword, BCRYPT_ROUNDS));
   await revokeAllRefreshTokensForUser(record.user_id); // force re-login everywhere after a password reset
 }
 
@@ -180,7 +180,7 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
     // This account only ever signs in via Firebase — the password hash is
     // unusable filler, same reasoning as every NOT NULL column that doesn't
     // apply to a given signup path elsewhere in this file.
-    const passwordHash = bcrypt.hashSync(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
     row = await createUser({
       name: name || (email ? email.split('@')[0] : phoneNumber!),
       email: email || `${uid}@firebase.local`,

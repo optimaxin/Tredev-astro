@@ -947,8 +947,8 @@ adminRouter.patch('/me', staffOrAdmin, async (req, res) => {
   const me = await findUserById(req.user!.id);
   if (!me) return fail(res, 404, 'NOT_FOUND', 'Account not found');
   if (parsed.data.newPassword) {
-    if (!bcrypt.compareSync(parsed.data.currentPassword!, me.password_hash)) return fail(res, 401, 'INVALID_PASSWORD', 'Current password is incorrect');
-    await updatePasswordHash(me.id, bcrypt.hashSync(parsed.data.newPassword, 12));
+    if (!await bcrypt.compare(parsed.data.currentPassword!, me.password_hash)) return fail(res, 401, 'INVALID_PASSWORD', 'Current password is incorrect');
+    await updatePasswordHash(me.id, await bcrypt.hash(parsed.data.newPassword, 12));
   }
   if (parsed.data.name) await updateUserName(me.id, parsed.data.name);
   await audit(req, 'account.profile.update', me.email);

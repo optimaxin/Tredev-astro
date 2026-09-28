@@ -3,7 +3,7 @@
 // Moon positions and a real sunrise/sunset calculation (astronomia's
 // `sunrise` module) — no field here is hardcoded per date.
 import { julian, sunrise as sunriseModule } from 'astronomia';
-import { getPlanetaryPositions } from './ephemeris.ts';
+import { getPlanetaryPositions, getSunMoonLongitudes } from './ephemeris.ts';
 import { getNakshatra, getRashi } from './zodiac.ts';
 import { getMoonRiseSet } from './swissEphemeris.ts';
 
@@ -69,7 +69,7 @@ function findMoonLongitudeCrossing(targetLongitude: number, guessDate: Date): Da
   let lo = guessDate.getTime() - 3 * 86_400_000;
   let hi = guessDate.getTime() + 3 * 86_400_000;
   const signedDiff = (ms: number) => {
-    const lon = getPlanetaryPositions({ utcDate: new Date(ms) }).find(p => p.id === 'moon')!.longitude;
+    const lon = getSunMoonLongitudes(new Date(ms)).moon;
     return (((lon - targetLongitude + 540) % 360) + 360) % 360 - 180; // negative before crossing, positive after
   };
   for (let i = 0; i < 40; i++) {
@@ -89,9 +89,7 @@ function findTithiBoundaryCrossing(targetDiff: number, guessDate: Date): Date {
   let lo = guessDate.getTime() - 2 * 86_400_000;
   let hi = guessDate.getTime() + 2 * 86_400_000;
   const signedDiff = (ms: number) => {
-    const pos = getPlanetaryPositions({ utcDate: new Date(ms) });
-    const s = pos.find(p => p.id === 'sun')!.longitude;
-    const m = pos.find(p => p.id === 'moon')!.longitude;
+    const { sun: s, moon: m } = getSunMoonLongitudes(new Date(ms));
     const d = ((m - s) % 360 + 360) % 360;
     return (((d - targetDiff + 540) % 360) + 360) % 360 - 180; // negative before crossing, positive after
   };
@@ -111,8 +109,8 @@ function findYogaBoundaryCrossing(targetSum: number, guessDate: Date): Date {
   let lo = guessDate.getTime() - 2 * 86_400_000;
   let hi = guessDate.getTime() + 2 * 86_400_000;
   const signedDiff = (ms: number) => {
-    const pos = getPlanetaryPositions({ utcDate: new Date(ms) });
-    const sum = ((pos.find(p => p.id === 'sun')!.longitude + pos.find(p => p.id === 'moon')!.longitude) % 360 + 360) % 360;
+    const { sun, moon } = getSunMoonLongitudes(new Date(ms));
+    const sum = ((sun + moon) % 360 + 360) % 360;
     return (((sum - targetSum + 540) % 360) + 360) % 360 - 180;
   };
   for (let i = 0; i < 40; i++) {
@@ -287,7 +285,7 @@ export function calculatePanchang(dateOnly: string, latitude: number, longitude:
   // time Moon-minus-Sun crossed 0°), then name the month after the rashi the
   // Sun occupied at that instant.
   const currentNewMoon = findTithiBoundaryCrossing(0, new Date(angaInstant.getTime() - 15 * 86_400_000));
-  const sunRashiAtNewMoon = getRashi(getPlanetaryPositions({ utcDate: currentNewMoon }).find(p => p.id === 'sun')!.longitude);
+  const sunRashiAtNewMoon = getRashi(getSunMoonLongitudes(currentNewMoon).sun);
   const maas = MAAS_BY_SUN_RASHI_AT_NEW_MOON[sunRashiAtNewMoon.index];
   const ritu = RITU_BY_MAAS[maas];
 
