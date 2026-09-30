@@ -27,6 +27,13 @@ export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
 
+  // Required consent — gates both sign-up paths below (phone OTP and
+  // Google), since loginWithFirebase creates the account transparently on
+  // first sign-in for either one; there's no separate "create account" step
+  // to hang this on instead. A returning user sees it too — same as any
+  // combined login/signup screen elsewhere.
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
   // Phone entry + OTP — country defaults to India, then swapped for the
   // visitor's actual country as soon as IP geolocation resolves (same
   // free, offline lookup lib/geoLocation.ts already uses for pricing;
@@ -76,6 +83,8 @@ export default function AuthPage() {
     else if (action === 'kundli-pdf') setPage('free-kundli');
     else if (action === 'astrologers') setPage('astrologers');
     else if (action === 'calculator') setPage('astrology-tools');
+    else if (action === 'pooja') setPage('pooja');
+    else if (action === 'raghav-booking') setPage('raghav-booking');
     else setPage('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -88,6 +97,7 @@ export default function AuthPage() {
 
   const handleGoogleSignIn = async () => {
     setGoogleError('');
+    if (!agreedToTerms) { setGoogleError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.'); return; }
     setGoogleLoading(true);
     try {
       const idToken = await signInWithGooglePopup();
@@ -106,6 +116,7 @@ export default function AuthPage() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
+    if (!agreedToTerms) { setPhoneError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.'); return; }
     setOtpSendLoading(true);
     try {
       const result = await sendFirebasePhoneOtp(toE164(phoneNumber, country.dialCode), 'firebase-recaptcha-container');
@@ -372,6 +383,8 @@ export default function AuthPage() {
                   </div>
                 </div>
 
+                <ConsentCheckbox agreed={agreedToTerms} onChange={setAgreedToTerms} goToPage={setPage} />
+
                 {phoneError && (
                   <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{phoneError}</p>
                 )}
@@ -379,7 +392,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   className={styles.waxSealBtn}
-                  disabled={otpSendLoading}
+                  disabled={otpSendLoading || !agreedToTerms}
                   id="auth-send-otp"
                 >
                   <div className={styles.sealEmblemInside}>ॐ</div>
@@ -613,6 +626,37 @@ export default function AuthPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// Required before either sign-up path (phone OTP or Google) proceeds — see
+// the `agreedToTerms` comment above. The Terms/Privacy/Safety links navigate
+// away from this modal (setPage), losing whatever's been typed so far — this
+// app has no real per-page URLs to open in a new tab instead, and that's the
+// same tradeoff the footer's own links already make.
+function ConsentCheckbox({ agreed, onChange, goToPage }: { agreed: boolean; onChange: (v: boolean) => void; goToPage: (p: string) => void }) {
+  const linkStyle: React.CSSProperties = { textDecoration: 'underline', color: 'inherit', fontWeight: 600 };
+  const goTo = (page: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    goToPage(page);
+  };
+  return (
+    <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0 8px', fontSize: '0.8rem', lineHeight: 1.5, cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={agreed}
+        onChange={e => onChange(e.target.checked)}
+        style={{ marginTop: '3px', flexShrink: 0 }}
+        required
+        id="auth-consent-checkbox"
+      />
+      <span>
+        I agree to the{' '}
+        <button type="button" onClick={goTo('terms')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Terms of Service</button>,{' '}
+        <button type="button" onClick={goTo('privacy')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Privacy Policy</button>, and{' '}
+        <button type="button" onClick={goTo('safety')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Safety</button> guidelines.
+      </span>
+    </label>
   );
 }
 

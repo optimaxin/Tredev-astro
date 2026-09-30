@@ -10,6 +10,10 @@ import {
 import type { ConsultationType } from '../models/types.ts';
 import { countryFromRequest } from '../services/geoLocation.ts';
 import { listActiveBanners } from '../repositories/bannerRepository.ts';
+import {
+  countPoojaSessionRegistrations, findPoojaSession, isRegisteredForPoojaSession, listPoojaBooks, listPoojaVideos,
+  listUpcomingPoojaSessions, registerForPoojaSession,
+} from '../repositories/poojaRepository.ts';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 
 export const router = Router();
@@ -54,8 +58,43 @@ router.get('/astrologers/:id/recommendations', async (req, res) => {
   res.json(result);
 });
 
+// Pooja hub — recorded videos, upcoming group sessions and the aarti/book
+// library are all public reads, same trust level as the astrologer catalog.
+router.get('/pooja/videos', async (_req, res) => {
+  res.json(await listPoojaVideos());
+});
+
+// meetingUrl is withheld here — only revealed by the join endpoint below,
+// once the requester is actually registered. registeredCount is attached
+// so the frontend can show a "seats filling up" indicator — this list is
+// small and staff-curated, so an N+1 count per row is fine at this scale.
+router.get('/pooja/sessions', async (_req, res) => {
+  const sessions = await listUpcomingPoojaSessions(Date.now());
+  const withCounts = await Promise.all(sessions.map(async ({ meetingUrl: _meetingUrl, ...s }) => ({
+    ...s, registeredCount: await countPoojaSessionRegistrations(s.id),
+  })));
+  res.json(withCounts);
+});
+
+router.get('/pooja/books', async (_req, res) => {
+  res.json(await listPoojaBooks());
+});
+
 // Everything below needs a logged-in user.
-router.use(['/availability', '/heartbeat', '/astrologers/:id/sync', '/users', '/consultations', '/queue', '/notifications', '/admin'], requireAuth);
+router.use(['/availability', '/heartbeat', '/astrologers/:id/sync', '/users', '/consultations', '/queue', '/notifications', '/admin', '/pooja/sessions/:id/join'], requireAuth);
+
+// RSVP to a group pooja — idempotent, and returns the meeting link only once
+// registered (so it never leaks to someone who hasn't joined).
+router.post('/pooja/sessions/:id/join', async (req, res) => {
+  const session = await findPoojaSession(String(req.params.id));
+  if (!session) return res.status(404).json({ error: 'Unknown session' });
+  await registerForPoojaSession(session.id, req.user!.email, Date.now());
+  res.json({ ...session, registered: true });
+});
+
+router.get('/pooja/sessions/:id/registration', requireAuth, async (req, res) => {
+  res.json({ registered: await isRegisteredForPoojaSession(String(req.params.id), req.user!.email) });
+});
 
 router.post('/availability', async (req, res) => {
   const { intent } = req.body as { intent?: 'ONLINE' | 'OFFLINE' };

@@ -3,6 +3,7 @@ import { createOrder } from '../../repositories/orderRepository.ts';
 import { createReportPurchase } from '../../repositories/reportPurchaseRepository.ts';
 import { creditWallet, findUserById } from '../../repositories/userRepository.ts';
 import { extendConsultation, requestConsultation } from '../realtimeStore.ts';
+import { claimSlot } from '../../repositories/consultationSlotRepository.ts';
 import type { OrderItem } from '../../models/order.ts';
 import type { ReportBundle } from '../../models/reportPurchase.ts';
 import type { ConsultationType } from '../../models/types.ts';
@@ -28,6 +29,10 @@ interface ConsultationPayload {
 interface ConsultationExtendPayload {
   consultationId: string;
   extraMinutes: number;
+}
+
+interface SlotBookingPayload {
+  slotId: string;
 }
 
 // Called once a payment has actually flipped CREATED -> PAID (see
@@ -93,6 +98,17 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
         // charge for a top-up that couldn't actually be applied.
         await creditWallet(payment.user_id, payment.amount);
       }
+      return;
+    }
+    case 'SLOT_BOOKING': {
+      const p = payment.payload as SlotBookingPayload;
+      // Same race as CONSULTATION above: someone else could have paid for
+      // and claimed this exact slot in the gap between this payment being
+      // created and now. claimSlot's UPDATE...WHERE booked_by_user_id IS
+      // NULL is the atomic guard; losing that race means a refund, not a
+      // silently-kept charge for a slot this user doesn't actually have.
+      const claimed = await claimSlot(p.slotId, payment.user_id, Date.now());
+      if (!claimed) await creditWallet(payment.user_id, payment.amount);
       return;
     }
   }

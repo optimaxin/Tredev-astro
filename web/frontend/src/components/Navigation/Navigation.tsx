@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { CartIcon, ProfileIcon, SunIcon, MoonIcon } from '../Icons/Icons';
 import NotificationBell from './NotificationBell';
+import ConsultDropdown from './ConsultDropdown';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
@@ -13,8 +14,8 @@ const NAV_LINKS = [
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },
   { translationKey: 'nav_panchang', page: 'panchang' },
-  { translationKey: 'nav_academy', page: 'academy' },
   { translationKey: 'nav_store', page: 'store' },
+  { translationKey: 'nav_pooja', page: 'pooja' },
 ];
 
 const LANGUAGES = [
@@ -42,17 +43,18 @@ export default function Navigation() {
     language,
     setLanguage,
     t,
-    birthProfile
   } = useAppContext();
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [consultDropdownOpen, setConsultDropdownOpen] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const consultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,10 +79,13 @@ export default function Navigation() {
       if (profileDropdownOpen && profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileDropdownOpen(false);
       }
+      if (consultDropdownOpen && consultRef.current && !consultRef.current.contains(e.target as Node)) {
+        setConsultDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [langDropdownOpen, profileDropdownOpen]);
+  }, [langDropdownOpen, profileDropdownOpen, consultDropdownOpen]);
 
   const handleNavClick = (targetPage: string) => {
     setMenuOpen(false);
@@ -172,12 +177,17 @@ export default function Navigation() {
             {t('nav_free_kundli')}
           </button>
 
-          <button
-            className={`${styles.ctaBtn} ${page === 'astrologers' ? styles.active : ''}`}
-            onClick={handleConsultClick}
-          >
-            {t('nav_consult')}
-          </button>
+          <div style={{ position: 'relative' }} ref={consultRef}>
+            <button
+              className={`${styles.ctaBtn} ${page === 'astrologers' || page === 'raghav-booking' ? styles.active : ''}`}
+              onClick={() => setConsultDropdownOpen(v => !v)}
+            >
+              {t('nav_consult')}
+            </button>
+            {consultDropdownOpen && (
+              <ConsultDropdown onClose={() => setConsultDropdownOpen(false)} onViewAll={handleConsultClick} />
+            )}
+          </div>
 
           {/* Cart Icon */}
           <button
@@ -239,9 +249,9 @@ export default function Navigation() {
                 onClick={() => setProfileDropdownOpen(v => !v)}
               >
                 <div className={styles.avatarCircle}>
-                  {(currentUser?.name || birthProfile.name).substring(0, 1).toUpperCase()}
+                  {(currentUser?.name || 'Yajamana').substring(0, 1).toUpperCase()}
                 </div>
-                <span className={styles.profileNameText}>{(currentUser?.name || birthProfile.name).split(' ')[0]}</span>
+                <span className={styles.profileNameText}>{(currentUser?.name || 'Yajamana').split(' ')[0]}</span>
                 <span className={styles.profileArrow}>▼</span>
               </button>
               {profileDropdownOpen && (

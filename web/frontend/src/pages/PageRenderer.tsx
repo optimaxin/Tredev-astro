@@ -25,6 +25,7 @@ import AstrologersSection from '../sections/Astrologers/Astrologers';
 import AIAstrology from '../sections/AIAstrology/AIAstrology';
 import ReportsSection from '../sections/Reports/Reports';
 import StoreSection from '../sections/Store/Store';
+import PoojaSection from '../sections/Pooja/Pooja';
 import AcademySection from '../sections/Academy/Academy';
 import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
@@ -34,6 +35,8 @@ import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
 const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/AstrologistDashboard'));
 const GuidanceInfoPage = lazy(() => import('./GuidanceInfoPage/GuidanceInfoPage'));
+const LegalPage = lazy(() => import('./LegalPage/LegalPage'));
+const RaghavBookingPage = lazy(() => import('./RaghavBookingPage/RaghavBookingPage'));
 const AdminConsole = lazy(() => import('../admin/AdminConsole'));
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
@@ -249,6 +252,9 @@ function PageContent() {
         </div>
       );
 
+    case 'pooja':
+      return <PoojaSection />;
+
     case 'guidance-info':
       return <GuidanceInfoPage id={selectedId} />;
 
@@ -338,6 +344,18 @@ function PageContent() {
 
     case 'about':
       return <AboutPage />;
+
+    case 'terms':
+      return <LegalPage docId="terms" />;
+
+    case 'privacy':
+      return <LegalPage docId="privacy" />;
+
+    case 'safety':
+      return <LegalPage docId="safety" />;
+
+    case 'raghav-booking':
+      return <RaghavBookingPage />;
 
     default:
       return (
@@ -1919,14 +1937,14 @@ function SavedAstrologersPanel({ onView }: { onView: (id: number) => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileDashboardPage() {
   const {
-    birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction,
+    setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction,
     currentUser,
   } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
   // Same fix as ProfilePage — birthProfile is a local, account-independent
   // "last Kundli generated on this browser" value, not the logged-in
   // account's identity. The real account name always wins when logged in.
-  const displayName = currentUser?.name || birthProfile.name;
+  const displayName = currentUser?.name || 'Yajamana';
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -1943,6 +1961,13 @@ function ProfileDashboardPage() {
   const [myKundliLoading, setMyKundliLoading] = React.useState(false);
   const [myKundliError, setMyKundliError] = React.useState('');
   const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+  // Sidebar summary reuses the same real, account-bound `myKundli` result as
+  // the tab bodies below — never the hardcoded placeholder signs the mock
+  // used to show for every account.
+  const sidebarMoonSign = myKundli ? toChartPlanets(myKundli.kundli, myKundli.bhavChalit).find(p => p.id === 'moon')?.sign : undefined;
+  const sidebarSummary = myKundli
+    ? `${cap(myKundli.kundli.ascendant.rashi)} Lagna · ${cap(sidebarMoonSign ?? '—')} Chandra`
+    : hasBirthDetails ? 'Loading your chart…' : 'Generate your Kundli to see your Lagna & Chandra';
 
   React.useEffect(() => {
     if ((activeTab !== 'my-kundli' && activeTab !== 'my-jyotish') || !hasBirthDetails || myKundli || myKundliLoading) return;
@@ -1982,7 +2007,7 @@ function ProfileDashboardPage() {
           <div className={styles.profileCard}>
             <div className={styles.profileAvatar}>✦</div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{displayName}</div>
-            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>Simha Lagna · Vrishabha Chandra</div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{sidebarSummary}</div>
           </div>
           {SIDEBAR_ITEMS.map(item => (
             <button
@@ -2003,7 +2028,7 @@ function ProfileDashboardPage() {
               <div style={{ marginBottom: 'var(--space-8)' }}>
                 <span className="section-eyebrow">Meri Kundli</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Jyotish</h1>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}</p>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {displayName}{hasBirthDetails ? ` · Born ${currentUser?.birthDate}` : ''}</p>
               </div>
 
               {!hasBirthDetails ? (
@@ -2090,7 +2115,7 @@ function ProfileDashboardPage() {
                 <span className="section-eyebrow">Your Birth Blueprint</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Kundli Chart</h1>
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
-                  Janam Kundli for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}
+                  Janam Kundli for {displayName}{hasBirthDetails ? ` · Born ${currentUser?.birthDate}` : ''}
                 </p>
               </div>
 

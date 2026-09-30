@@ -39,7 +39,7 @@ export interface CartItem {
 
 export interface PaymentResultInfo {
   status: 'success' | 'failed';
-  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
+  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND' | 'SLOT_BOOKING';
   amount: number;
   message?: string;
 }
@@ -419,6 +419,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_panchang: 'Panchang',
     nav_academy: 'Academy',
     nav_store: 'Store',
+    nav_pooja: 'Pooja',
     nav_free_kundli: 'Free Kundli',
     nav_consult: 'Consult',
     nav_login: 'LOGIN',
@@ -639,6 +640,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_help_centre: 'Help Centre',
     footer_privacy_policy: 'Privacy Policy',
     footer_terms_of_service: 'Terms of Service',
+    footer_safety: 'Safety',
     footer_contact_us: 'Contact Us',
     footer_copyright: '© 2026 TredevaAstro. All rights reserved.',
     footer_privacy_short: 'Privacy',
@@ -744,6 +746,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_settings: 'Settings',
     'admin_sidebar_call-recordings': 'Call Recordings',
     'admin_sidebar_banners': 'Banners',
+    'admin_sidebar_pooja': 'Pooja',
     admin_call_recordings_desc: 'Recorded voice consultations. Staff-only, and each recording is automatically deleted 10 days after the call.',
     admin_call_recordings_col_user: 'User',
     admin_call_recordings_col_recorded: 'Recorded',

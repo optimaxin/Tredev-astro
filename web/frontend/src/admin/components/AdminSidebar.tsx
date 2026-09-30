@@ -21,6 +21,7 @@ const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'settings', icon: '⚙', labelKey: 'admin_sidebar_settings' },
   { key: 'call-recordings', icon: '🎙', labelKey: 'admin_sidebar_call-recordings' },
   { key: 'banners', icon: '🖼', labelKey: 'admin_sidebar_banners' },
+  { key: 'pooja', icon: '◔', labelKey: 'admin_sidebar_pooja' },
 ];
 
 interface Props {

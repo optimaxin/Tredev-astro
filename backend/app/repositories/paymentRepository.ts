@@ -1,6 +1,6 @@
 import { query, queryOne } from '../core/db.ts';
 
-export type PaymentPurpose = 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
+export type PaymentPurpose = 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND' | 'SLOT_BOOKING';
 export type PaymentStatus = 'CREATED' | 'PAID' | 'FAILED';
 export type PaymentGateway = 'cashfree' | 'razorpay';
 

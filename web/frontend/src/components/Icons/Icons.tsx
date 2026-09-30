@@ -154,6 +154,29 @@ export function BellIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
+// Recorded Pooja / video-play affordance — a plain triangle-in-circle,
+// same stroke recipe as every other icon here, instead of the Unicode
+// "▶" glyph (renders as a colored emoji triangle on some platforms).
+export function PlayIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8.5v7l6-3.5-6-3.5Z" />
+    </svg>
+  );
+}
+
+// Pooja / ritual flame — a diya's flame redrawn as line art (the "🪔" emoji
+// renders as a full-colour picture that clashes with this app's monochrome
+// icon language; this reads the same at a glance without that mismatch).
+export function FlameIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 2c2 3-1 4-1 6.5A3 3 0 0 0 14 11c1-1.5.5-3 .5-3 2 2 3 4.5 3 6.5a5.5 5.5 0 1 1-11 0C6.5 9 9 6 12 2Z" />
+    </svg>
+  );
+}
+
 export function ProfileIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>

@@ -11,6 +11,7 @@ import { findAstrologyReportById } from '../repositories/astrologyReportReposito
 import { findUserById } from '../repositories/userRepository.ts';
 import { findAstrologerById } from '../repositories/astrologerRepository.ts';
 import { findConsultationById } from '../repositories/consultationRepository.ts';
+import { findSlot } from '../repositories/consultationSlotRepository.ts';
 import { getLoyalty } from '../repositories/loyaltyRepository.ts';
 import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
@@ -82,6 +83,7 @@ const createIntentSchema = z.discriminatedUnion('purpose', [
   z.object({ purpose: z.literal('WALLET_RECHARGE'), amount: z.number().int().min(100).max(500000) }),
   z.object({ purpose: z.literal('CONSULTATION'), astrologerId: z.number().int(), category: z.string().trim().min(1).max(100), type: z.enum(['chat', 'voice', 'video']), durationMinutes: z.number().int().min(5).max(120) }),
   z.object({ purpose: z.literal('CONSULTATION_EXTEND'), consultationId: z.string().trim().min(1), extraMinutes: z.number().int().min(1).max(120) }),
+  z.object({ purpose: z.literal('SLOT_BOOKING'), slotId: z.string().trim().min(1) }),
 ]);
 
 // Which processor actually handles the money is decided here, server-side,
@@ -135,6 +137,13 @@ paymentsRouter.post('/orders', async (req, res) => {
     if (consultation.status !== 'ACTIVE') return fail(res, 422, 'VALIDATION_ERROR', 'Consultation is not active');
     amount = consultation.pricePerMin * parsed.data.extraMinutes;
     payload = { consultationId: parsed.data.consultationId, extraMinutes: parsed.data.extraMinutes };
+  } else if (parsed.data.purpose === 'SLOT_BOOKING') {
+    const slot = await findSlot(parsed.data.slotId);
+    if (!slot) return fail(res, 404, 'NOT_FOUND', 'Slot not found');
+    if (slot.bookedByUserId) return fail(res, 409, 'ALREADY_BOOKED', 'This slot has already been booked');
+    if (slot.scheduledAt <= Date.now()) return fail(res, 422, 'VALIDATION_ERROR', 'This slot is no longer available');
+    amount = slot.price;
+    payload = { slotId: slot.id };
   } else {
     amount = parsed.data.amount;
     payload = { amount };

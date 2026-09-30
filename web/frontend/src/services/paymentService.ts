@@ -42,11 +42,12 @@ export type ReportPurchaseIntent = { purpose: 'REPORT_PURCHASE'; reportId: numbe
 export type WalletRechargeIntent = { purpose: 'WALLET_RECHARGE'; amount: number };
 export type ConsultationIntent = { purpose: 'CONSULTATION'; astrologerId: number; category: string; type: 'chat' | 'voice' | 'video'; durationMinutes: number };
 export type ConsultationExtendIntent = { purpose: 'CONSULTATION_EXTEND'; consultationId: string; extraMinutes: number };
-export type PaymentIntent = StoreOrderIntent | ReportPurchaseIntent | WalletRechargeIntent | ConsultationIntent | ConsultationExtendIntent;
+export type SlotBookingIntent = { purpose: 'SLOT_BOOKING'; slotId: string };
+export type PaymentIntent = StoreOrderIntent | ReportPurchaseIntent | WalletRechargeIntent | ConsultationIntent | ConsultationExtendIntent | SlotBookingIntent;
 
 export interface PaymentStatusResult {
   status: 'CREATED' | 'PAID' | 'FAILED';
-  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
+  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND' | 'SLOT_BOOKING';
   amount: number;
 }
 
