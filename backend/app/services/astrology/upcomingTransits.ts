@@ -3,7 +3,7 @@
 // generated prediction paragraph: it reports exactly when each planet's
 // real computed position crosses into a new sign within the window, same
 // spirit as the rest of this codebase's calculators (compute, don't invent).
-import { getPlanetaryPositions } from './ephemeris.ts';
+import { getSiderealLongitude } from './ephemeris.ts';
 import type { PlanetId } from './ephemeris.ts';
 import { RASHIS } from './zodiac.ts';
 
@@ -15,8 +15,7 @@ export interface UpcomingTransitEvent {
 }
 
 function rashiIndexAt(utcDate: Date, planetId: PlanetId): number {
-  const pos = getPlanetaryPositions({ utcDate }).find(p => p.id === planetId)!;
-  return Math.floor((((pos.longitude % 360) + 360) % 360) / 30);
+  return Math.floor((((getSiderealLongitude(planetId, utcDate) % 360) + 360) % 360) / 30);
 }
 
 // Binary-search the exact crossing instant between two dates known to
@@ -39,12 +38,8 @@ export function getUpcomingTransits(fromDate: Date, windowDays: number, planetId
   const samples: { date: Date; index: Record<string, number> }[] = [];
   for (let d = 0; d <= windowDays; d++) {
     const date = new Date(fromDate.getTime() + d * 86_400_000);
-    const positions = getPlanetaryPositions({ utcDate: date });
     const index: Record<string, number> = {};
-    for (const id of planetIds) {
-      const pos = positions.find(p => p.id === id)!;
-      index[id] = Math.floor((((pos.longitude % 360) + 360) % 360) / 30);
-    }
+    for (const id of planetIds) index[id] = rashiIndexAt(date, id);
     samples.push({ date, index });
   }
 

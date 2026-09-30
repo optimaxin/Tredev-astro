@@ -28,10 +28,10 @@ interface Bubble {
 }
 
 // Assistant replies arrive as several short messages at once. They are
-// revealed one at a time so the panel reads like a conversation rather than
-// dumping a wall of text — this is presentation only, the content is already
-// complete by the time the first bubble appears.
-const BUBBLE_STAGGER_MS = 550;
+// revealed one at a time, with the typing dots in between, so it reads like a
+// person texting — presentation only, the content is already complete. The
+// pause scales with the next bubble's length, between 1 and 2 seconds.
+const typingDelayMs = (text: string) => Math.min(2000, Math.max(1000, 700 + text.length * 11));
 
 const SUGGESTIONS = [
   'What does my chart say about my career?',
@@ -89,7 +89,7 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
     const timer = window.setTimeout(() => {
       setBubbles(prev => [...prev, queue[0]]);
       setQueue(prev => prev.slice(1));
-    }, BUBBLE_STAGGER_MS);
+    }, typingDelayMs(queue[0].text));
     return () => window.clearTimeout(timer);
   }, [queue]);
 
@@ -157,17 +157,26 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
   return (
     <>
       <button
-        className={styles.launcher}
+        className={`${styles.launcher} ${open ? styles.launcherOpen : ''}`}
         onClick={() => setOpen(o => !o)}
         aria-label={open ? 'Close the astrology assistant' : 'Ask the astrology assistant'}
       >
-        {open ? '✕' : '💬'}
+        {/* The monk is the assistant's face. It used to be a separate
+            site-wide notification FAB that sat in this same corner — two of
+            them collided on the Kundli page, so the widget adopted it and
+            the standalone one was removed from App.tsx. */}
+        {open ? (
+          <span className={styles.launcherClose} aria-hidden="true">✕</span>
+        ) : (
+          <img src="/images/monk.png" alt="" className={styles.launcherMonk} aria-hidden="true" />
+        )}
       </button>
 
       {open && (
         <aside className={styles.panel} role="dialog" aria-label="Astrology assistant">
           <header className={styles.header}>
-            <div>
+            <img src="/images/monk.png" alt="" className={styles.headerMonk} aria-hidden="true" />
+            <div className={styles.headerText}>
               <div className={styles.headerTitle}>Ask about your Kundli</div>
               <div className={styles.headerSub}>AI assistant · reads only your chart</div>
             </div>
