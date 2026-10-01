@@ -229,10 +229,30 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   await decideApplication(application.id, parsed.data.decision);
   if (parsed.data.decision === 'APPROVED') {
     await updateUserRole(applicant.id, 'ASTROLOGIST');
-    const catalogRow = await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    const catalogRow = await insertAstrologerForUser(applicant.id, application.full_name || applicant.name, application.expertise);
+    // Carries what the applicant actually submitted (bio, languages,
+    // declared experience) into the real catalog row instead of leaving it
+    // at insertAstrologerForUser's bare defaults — best-effort only, so a
+    // malformed "experience" string (e.g. no leading number) just falls
+    // back to 0 rather than blocking the approval itself.
+    const experienceYears = parseInt(application.experience, 10) || 0;
+    const languages = (application.languages || '').split(',').map(l => l.trim()).filter(Boolean);
+    const updated = await updateAstrologerProfile(catalogRow.id, {
+      title: catalogRow.title,
+      bio: application.bio || catalogRow.bio,
+      avatar: catalogRow.avatar,
+      languages: languages.length > 0 ? languages : JSON.parse(catalogRow.languages),
+      categories: JSON.parse(catalogRow.categories),
+      expertise: JSON.parse(catalogRow.expertise),
+      consultationTypes: JSON.parse(catalogRow.consultation_types),
+      chatPrice: catalogRow.chat_price,
+      callPrice: catalogRow.call_price,
+      videoPrice: catalogRow.video_price,
+      experienceYears,
+    });
     // Without this, the new astrologer can't go online / accept anything
     // until the process restarts — see registerNewAstrologer's own comment.
-    await registerNewAstrologer(catalogRow);
+    await registerNewAstrologer(updated ?? catalogRow);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });

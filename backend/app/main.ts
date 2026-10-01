@@ -70,18 +70,19 @@ app.set('trust proxy', 1);
 // responses directly (e.g. call-recording audio), which same-origin would block.
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: corsOrigin }));
-// Default 100kb is fine for everything except chat's IMAGE/AUDIO messages
-// and admin banner uploads, which arrive as a base64 data URL (see
-// chat.routes.ts's sendMessageSchema / admin banners for the real per-item
-// caps this just needs to fit under) — only those two prefixes get 8mb.
-// body-parser skips a body that's already been parsed, so the path-scoped
-// parsers win and the global one below covers everything else.
+// Default 100kb is fine for everything except chat's IMAGE/AUDIO messages,
+// admin banner uploads, and the astrologer/pandit application's resume
+// upload, which all arrive as a base64 data URL (see chat.routes.ts's
+// sendMessageSchema / admin banners / astrologers.routes.ts's applicationSchema
+// for the real per-item caps this just needs to fit under) — only those
+// prefixes get 8mb. body-parser skips a body that's already been parsed, so
+// the path-scoped parsers win and the global one below covers everything else.
 // `verify` stashes the exact raw bytes on req.rawBody — payments.routes.ts's
 // webhook needs those (not the re-serialized req.body) to check Cashfree's
 // HMAC signature, since JSON.stringify(parsed) is not guaranteed byte-for-byte
 // identical to what Cashfree actually sent and signed.
 const keepRawBody = (req: express.Request, _res: unknown, buf: Buffer) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf; };
-app.use(['/api/consultations', '/api/admin'], express.json({ limit: '8mb', verify: keepRawBody }));
+app.use(['/api/consultations', '/api/admin', '/api/astrologers/applications'], express.json({ limit: '8mb', verify: keepRawBody }));
 app.use(express.json({ limit: '100kb', verify: keepRawBody }));
 app.use('/api/auth', authRouter);
 app.use('/api/astrologers', astrologersCatalogRouter);

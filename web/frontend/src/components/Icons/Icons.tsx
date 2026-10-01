@@ -154,6 +154,35 @@ export function BellIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
+// Consultation type indicators — chat/voice/video slot cards on the
+// Raghav booking page (and anywhere else a 1:1 session type needs marking).
+export function ChatBubbleIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 5h16v11H8l-4 4V5Z" />
+      <line x1="8" y1="9" x2="16" y2="9" />
+      <line x1="8" y1="12.5" x2="13" y2="12.5" />
+    </svg>
+  );
+}
+
+export function PhoneCallIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v3a2 2 0 0 1-2.2 2A16 16 0 0 1 3 5.2 2 2 0 0 1 5 4Z" />
+    </svg>
+  );
+}
+
+export function VideoCameraIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="M16 10.5 21 7v10l-5-3.5Z" />
+    </svg>
+  );
+}
+
 // Recorded Pooja / video-play affordance — a plain triangle-in-circle,
 // same stroke recipe as every other icon here, instead of the Unicode
 // "▶" glyph (renders as a colored emoji triangle on some platforms).

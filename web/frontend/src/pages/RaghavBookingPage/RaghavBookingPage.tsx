@@ -6,13 +6,22 @@ import { astrologerService } from '../../services/astrologerService';
 import type { ConsultationSlot, MyConsultationSlot } from '../../services/astrologerService';
 import { paymentService, PaymentApiError } from '../../services/paymentService';
 import { RAGHAV_ASTROLOGER_ID as RAGHAV_ID } from '../../data/raghav';
+import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
+import {
+  ClockIcon, AcharyaIcon, CheckCircleIcon, LockIcon, ChatBubbleIcon, PhoneCallIcon, VideoCameraIcon,
+} from '../../components/Icons/Icons';
+import type { IconProps } from '../../components/Icons/Icons';
 import pageStyles from '../PageRenderer.module.css';
 
 // A dedicated page for one specific astrologer's real, pay-up-front
 // scheduled slots — distinct from the generic ConsultationBookingPage's
 // instant chat/voice queue, which every other astrologer still uses.
 
-const TYPE_LABEL: Record<string, string> = { chat: 'Live Chat', voice: 'Voice Call', video: 'Video Call' };
+const TYPE_META: Record<string, { label: string; Icon: React.ComponentType<IconProps> }> = {
+  chat: { label: 'Live Chat', Icon: ChatBubbleIcon },
+  voice: { label: 'Voice Call', Icon: PhoneCallIcon },
+  video: { label: 'Video Call', Icon: VideoCameraIcon },
+};
 
 const card: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
@@ -21,17 +30,17 @@ const card: React.CSSProperties = {
 // Generic, not fabricated per-person claims — real differences between this
 // dedicated page and the instant-queue flow every other astrologer uses.
 const WHY_CHOOSE = [
-  { title: 'A Real Scheduled Time', body: "Pick a slot and it's yours — no waiting in a live queue for whoever's online." },
-  { title: 'Classically Trained', body: 'Reads Dashas, transits, and divisional charts the traditional way, not just a quick sun-sign summary.' },
-  { title: 'Direct, Not Vague', body: 'Practical guidance you can act on, in plain language — see his profile above for how he puts it himself.' },
-  { title: 'Secure Payment, Confirmed Instantly', body: 'Pay through the same gateway every purchase on this site uses — your slot locks the moment payment clears.' },
+  { Icon: ClockIcon, title: 'A Real Scheduled Time', body: "Pick a slot and it's yours — no waiting in a live queue for whoever's online." },
+  { Icon: AcharyaIcon, title: 'Classically Trained', body: 'Reads Dashas, transits, and divisional charts the traditional way, not just a quick sun-sign summary.' },
+  { Icon: CheckCircleIcon, title: 'Direct, Not Vague', body: 'Practical guidance you can act on, in plain language.' },
+  { Icon: LockIcon, title: 'Secure, Confirmed Instantly', body: 'Pay through the same trusted checkout as the rest of the site — your slot locks the moment payment clears.' },
 ];
 
 const HOW_IT_WORKS = [
-  { step: '1', title: 'Pick a Slot', body: 'Choose a day and time that works for you from the list below.' },
-  { step: '2', title: 'Pay Securely', body: 'Confirm the type and price, then pay — same trusted checkout as the rest of the site.' },
-  { step: '3', title: 'Get Confirmed', body: "The slot is yours the moment payment clears — you'll see it under Your Upcoming Sessions." },
-  { step: '4', title: 'Join at Your Time', body: 'Be ready for your chat/voice/video session at the scheduled time.' },
+  { title: 'Pick a Slot', body: 'Choose a day and time that works for you from the list below.' },
+  { title: 'Pay Securely', body: 'Confirm the type and price, then pay — same trusted checkout as the rest of the site.' },
+  { title: 'Get Confirmed', body: "The slot is yours the moment payment clears — you'll see it under Your Upcoming Sessions." },
+  { title: 'Join at Your Time', body: 'Be ready for your chat/voice/video session at the scheduled time.' },
 ];
 
 const FAQ: { q: string; a: string }[] = [
@@ -60,6 +69,27 @@ function groupByDay(slots: ConsultationSlot[]): { day: string; slots: Consultati
   return Array.from(groups.entries()).map(([day, slots]) => ({ day, slots }));
 }
 
+function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div style={card}>
+      <button
+        onClick={onToggle}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+      >
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{q}</span>
+        <motion.span animate={{ rotate: open ? 45 : 0 }} style={{ fontSize: 'var(--text-lg)', color: 'var(--gold-primary)', flexShrink: 0, marginLeft: 'var(--space-3)' }}>+</motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-3)', lineHeight: 1.6 }}>{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function RaghavBookingPage() {
   const { isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
   const { astrologer, loading: profileLoading, notFound } = useAstrologer(RAGHAV_ID);
@@ -68,6 +98,7 @@ export default function RaghavBookingPage() {
   const [selected, setSelected] = React.useState<ConsultationSlot | null>(null);
   const [booking, setBooking] = React.useState(false);
   const [bookError, setBookError] = React.useState('');
+  const [openFaq, setOpenFaq] = React.useState<number | null>(0);
 
   const loadSlots = React.useCallback(() => {
     astrologerService.listSlots(RAGHAV_ID).then(setSlots).catch(() => setSlots([]));
@@ -114,96 +145,102 @@ export default function RaghavBookingPage() {
   }
 
   const dayGroups = groupByDay((slots ?? []).filter(s => !s.isBooked));
+  const tags = Array.from(new Set([...astrologer.specialization, ...astrologer.category]));
 
   return (
-    <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`}>
-      <div className={pageStyles.container} style={{ maxWidth: '960px' }}>
-        {/* Hero */}
-        <motion.div
-          className={pageStyles.pageHeader}
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-        >
-          <span className="section-eyebrow-gold">1:1 Vedic Consultation</span>
-          <h1 className={pageStyles.pageTitle}>Talk Directly with {astrologer.name}</h1>
-          <div className={pageStyles.divider}>✦ ❖ ✦</div>
-          <p className={pageStyles.pageSubtitle}>A real, scheduled session — pick your slot, pay securely, and it's confirmed. No queue, no waiting for whoever's online.</p>
-          <button
-            className="btn btn-gold"
-            style={{ marginTop: 'var(--space-5)' }}
-            onClick={() => document.getElementById('raghav-slots')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          >
-            Schedule a Session →
-          </button>
-        </motion.div>
-
-        {/* Service details */}
-        <div style={{ ...card, display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap', marginBottom: 'var(--space-8)' }}>
-          <div style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {astrologer.avatar ? (
-              <img src={astrologer.avatar} alt={astrologer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', color: 'var(--gold-primary)' }}>{astrologer.name.charAt(0)}</span>
-            )}
-          </div>
-          <div style={{ flex: '1 1 260px' }}>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{astrologer.name}</div>
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--gold-primary)' }}>{astrologer.title}</div>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.6 }}>{astrologer.about}</p>
-            <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-              <span>★ {astrologer.rating.toFixed(1)} ({astrologer.reviews} reviews)</span>
-              <span>{astrologer.experience}+ yrs experience</span>
-              <span>{astrologer.languages.join(', ')}</span>
-              <span>₹{astrologer.price}/min</span>
-            </div>
-            {astrologer.specialization.length > 0 && (
-              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
-                {astrologer.specialization.map(s => (
-                  <span key={s} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{s}</span>
-                ))}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      {/* Hero */}
+      <div style={{
+        paddingTop: 'calc(var(--nav-height) + var(--space-10))', paddingBottom: 'var(--space-10)',
+        background: 'radial-gradient(circle at 20% 20%, rgba(181,138,59,0.18), transparent 55%), linear-gradient(160deg, #1c0f0c, #3a1a12)',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <CelestialBackdrop variant="surya" intensity="medium" />
+        <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 24px', position: 'relative' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-8)' }}>
+            <motion.div
+              style={{ flex: '1 1 420px' }}
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            >
+              <span style={{ fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold-primary)' }}>1:1 Vedic Consultation</span>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 300, color: '#fff', marginTop: 'var(--space-2)' }}>
+                Talk Directly with {astrologer.name}
+              </h1>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-3)', maxWidth: '480px', lineHeight: 1.6 }}>
+                {astrologer.about}
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap', marginTop: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.65)' }}>
+                <span>★ {astrologer.rating.toFixed(1)} ({astrologer.reviews} reviews)</span>
+                <span>{astrologer.experience}+ yrs experience</span>
+                <span>{astrologer.languages.join(', ')}</span>
+                <span style={{ color: 'var(--gold-primary)' }}>₹{astrologer.price}/min</span>
               </div>
-            )}
+              {tags.length > 0 && (
+                <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-4)' }}>
+                  {tags.map(t => (
+                    <span key={t} style={{ fontSize: '11px', padding: '4px 12px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.85)' }}>{t}</span>
+                  ))}
+                </div>
+              )}
+              <button
+                className="btn btn-gold"
+                style={{ marginTop: 'var(--space-6)' }}
+                onClick={() => document.getElementById('raghav-slots')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              >
+                Schedule a Session →
+              </button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.1 }}
+              style={{ flex: '0 0 auto', width: '176px', height: '176px', borderRadius: '50%', position: 'relative' }}
+            >
+              <div style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }} />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '3px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {astrologer.avatar ? (
+                  <img src={astrologer.avatar} alt={astrologer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: '4rem', color: 'var(--gold-primary)' }}>{astrologer.name.charAt(0)}</span>
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
+      </div>
 
+      <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 24px', paddingBottom: 'var(--space-16)' }}>
         {/* Why choose */}
-        <div style={{ marginBottom: 'var(--space-8)' }}>
+        <div style={{ marginTop: 'var(--space-10)', marginBottom: 'var(--space-10)' }}>
           <h3 className={pageStyles.contentSectionTitle}>Why Book Through This Page</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
             {WHY_CHOOSE.map(w => (
-              <div key={w.title} style={card}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{w.title}</div>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{w.body}</p>
-              </div>
+              <motion.div key={w.title} whileHover={{ y: -3 }} style={{ ...card, display: 'flex', gap: 'var(--space-4)' }}>
+                <w.Icon size={28} style={{ color: 'var(--gold-primary)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{w.title}</div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-1)', lineHeight: 1.5 }}>{w.body}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
-        {/* What you can ask about — his real categories */}
-        {astrologer.category.length > 0 && (
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <h3 className={pageStyles.contentSectionTitle}>What You Can Ask About</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
-              {astrologer.category.map(c => (
-                <div key={c} style={{ ...card, textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--gold-primary)' }}>{c}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* My upcoming bookings with Raghav */}
         {myUpcomingWithRaghav.length > 0 && (
-          <div style={{ marginBottom: 'var(--space-8)' }}>
+          <div style={{ marginBottom: 'var(--space-10)' }}>
             <h3 className={pageStyles.contentSectionTitle}>Your Upcoming Sessions</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
               {myUpcomingWithRaghav.map(s => {
                 const { day, time } = formatSlotTime(s.scheduledAt);
+                const Meta = TYPE_META[s.type];
                 return (
-                  <div key={s.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                    <div>
-                      <div style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>{day} · {time}</div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{TYPE_LABEL[s.type]} · {s.durationMinutes} min</div>
+                  <div key={s.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)', borderLeft: '3px solid var(--gold-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                      <Meta.Icon size={22} style={{ color: 'var(--gold-primary)' }} />
+                      <div>
+                        <div style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>{day} · {time}</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{Meta.label} · {s.durationMinutes} min</div>
+                      </div>
                     </div>
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--gold-primary)' }}>✓ Confirmed</span>
                   </div>
@@ -214,47 +251,58 @@ export default function RaghavBookingPage() {
         )}
 
         {/* Available slots */}
-        <div id="raghav-slots" style={{ scrollMarginTop: 'calc(var(--nav-height) + var(--space-6))' }}>
-        <h3 className={pageStyles.contentSectionTitle}>Available Slots</h3>
-        {slots === null ? (
-          <p className={pageStyles.contentText}>Loading available slots…</p>
-        ) : dayGroups.length === 0 ? (
-          <p className={pageStyles.contentText}>No open slots right now — check back soon.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', marginTop: 'var(--space-4)' }}>
-            {dayGroups.map(group => (
-              <div key={group.day}>
-                <div style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>{group.day}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
-                  {group.slots.map(s => {
-                    const { time } = formatSlotTime(s.scheduledAt);
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => openBooking(s)}
-                        style={{ ...card, textAlign: 'left', cursor: 'pointer', padding: 'var(--space-4)' }}
-                      >
-                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{time}</div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>{TYPE_LABEL[s.type]} · {s.durationMinutes} min</div>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--gold-primary)', marginTop: 'var(--space-2)' }}>₹{s.price}</div>
-                      </button>
-                    );
-                  })}
+        <div id="raghav-slots" style={{ scrollMarginTop: 'calc(var(--nav-height) + var(--space-6))', marginBottom: 'var(--space-10)' }}>
+          <h3 className={pageStyles.contentSectionTitle}>Available Slots</h3>
+          {slots === null ? (
+            <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-4)' }}>Loading available slots…</p>
+          ) : dayGroups.length === 0 ? (
+            <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-4)' }}>No open slots right now — check back soon.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', marginTop: 'var(--space-4)' }}>
+              {dayGroups.map(group => (
+                <div key={group.day}>
+                  <div style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>{group.day}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--space-3)' }}>
+                    {group.slots.map(s => {
+                      const { time } = formatSlotTime(s.scheduledAt);
+                      const Meta = TYPE_META[s.type];
+                      return (
+                        <motion.button
+                          key={s.id} whileHover={{ y: -3, borderColor: 'var(--gold-primary)' }}
+                          onClick={() => openBooking(s)}
+                          style={{ ...card, textAlign: 'left', cursor: 'pointer', padding: 'var(--space-4)' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--gold-primary)' }}>
+                            <Meta.Icon size={18} />
+                            <span style={{ fontSize: 'var(--text-xs)' }}>{Meta.label}</span>
+                          </div>
+                          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>{time}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{s.durationMinutes} min</span>
+                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>₹{s.price}</span>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </div>
 
         {/* How it works */}
-        <div style={{ margin: 'var(--space-10) 0 var(--space-8)' }}>
+        <div style={{ marginBottom: 'var(--space-10)' }}>
           <h3 className={pageStyles.contentSectionTitle}>How Booking Works</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
-            {HOW_IT_WORKS.map(s => (
-              <div key={s.step} style={card}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', color: 'var(--gold-primary)' }}>{s.step}</div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-1)' }}>{s.title}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+            {HOW_IT_WORKS.map((s, i) => (
+              <div key={s.title} style={card}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--gold-primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--gold-primary)',
+                }}>{i + 1}</div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-3)' }}>{s.title}</div>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{s.body}</p>
               </div>
             ))}
@@ -262,14 +310,11 @@ export default function RaghavBookingPage() {
         </div>
 
         {/* FAQ */}
-        <div style={{ marginBottom: 'var(--space-8)' }}>
+        <div style={{ marginBottom: 'var(--space-10)' }}>
           <h3 className={pageStyles.contentSectionTitle}>Frequently Asked Questions</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-            {FAQ.map(f => (
-              <div key={f.q} style={card}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{f.q}</div>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{f.a}</p>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+            {FAQ.map((f, i) => (
+              <FaqItem key={f.q} q={f.q} a={f.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
             ))}
           </div>
         </div>
@@ -277,11 +322,13 @@ export default function RaghavBookingPage() {
         {/* Reviews — honest empty state rather than fabricated testimonials */}
         <div>
           <h3 className={pageStyles.contentSectionTitle}>Reviews</h3>
-          {astrologer.reviews > 0 ? (
-            <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-3)' }}>★ {astrologer.rating.toFixed(1)} average from {astrologer.reviews} sessions.</p>
-          ) : (
-            <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-3)' }}>No reviews yet — book a session and be the first to share how it went.</p>
-          )}
+          <div style={{ ...card, marginTop: 'var(--space-4)', textAlign: 'center' }}>
+            {astrologer.reviews > 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>★ {astrologer.rating.toFixed(1)} average from {astrologer.reviews} sessions.</p>
+            ) : (
+              <p style={{ color: 'var(--text-muted)' }}>No reviews yet — book a session and be the first to share how it went.</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -302,7 +349,7 @@ export default function RaghavBookingPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 <div>With <strong style={{ color: 'var(--text-primary)' }}>{astrologer.name}</strong></div>
                 <div>{formatSlotTime(selected.scheduledAt).day} at {formatSlotTime(selected.scheduledAt).time}</div>
-                <div>{TYPE_LABEL[selected.type]} · {selected.durationMinutes} minutes</div>
+                <div>{TYPE_META[selected.type].label} · {selected.durationMinutes} minutes</div>
                 <div style={{ fontSize: 'var(--text-lg)', color: 'var(--gold-primary)', marginTop: 'var(--space-2)' }}>₹{selected.price}</div>
               </div>
               {bookError && <p style={{ color: '#c0392b', fontSize: 'var(--text-sm)', marginTop: 'var(--space-3)' }}>{bookError}</p>}

@@ -240,6 +240,13 @@ export interface ApiApplication {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   submittedAt: number;
   decidedAt: number | null;
+  fullName: string | null;
+  phoneNumber: string | null;
+  email: string | null;
+  languages: string | null;
+  bio: string | null;
+  resumeData: string | null;
+  driveLink: string | null;
 }
 
 // Live availability from the realtime server, not account status — see

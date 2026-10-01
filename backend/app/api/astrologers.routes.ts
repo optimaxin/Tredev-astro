@@ -269,9 +269,21 @@ astrologersCatalogRouter.delete('/:id/favorite', requireAuth, async (req, res) =
 
 // ── Become an astrologer ─────────────────────────────────────────────────
 
+// Same ~5MB raw-file ceiling as banner uploads (see bannerService.ts) —
+// comfortably under the 8mb JSON body limit main.ts scopes to this exact
+// path (/api/astrologers/applications), unlike the rest of /api/astrologers.
+const MAX_RESUME_DATA_CHARS = 7_000_000;
+
 const applicationSchema = z.object({
   expertise: z.string().trim().min(2).max(200),
   experience: z.string().trim().min(1).max(200),
+  fullName: z.string().trim().min(2).max(150),
+  phoneNumber: z.string().trim().min(6).max(20),
+  email: z.string().trim().email().max(200),
+  languages: z.string().trim().min(1).max(300),
+  bio: z.string().trim().min(10).max(3000),
+  resumeData: z.string().max(MAX_RESUME_DATA_CHARS).nullable().default(null),
+  driveLink: z.string().trim().url().max(500).nullable().default(null),
 });
 
 astrologersCatalogRouter.post('/applications', requireAuth, async (req, res) => {
@@ -280,7 +292,7 @@ astrologersCatalogRouter.post('/applications', requireAuth, async (req, res) => 
   if (await findPendingApplicationForUser(req.user!.id)) {
     return res.status(409).json({ success: false, error: { code: 'ALREADY_PENDING', message: 'You already have a pending application' } });
   }
-  const row = await createApplication(req.user!.id, parsed.data.expertise, parsed.data.experience);
+  const row = await createApplication({ userId: req.user!.id, ...parsed.data });
   res.status(201).json({ success: true, data: row });
 });
 

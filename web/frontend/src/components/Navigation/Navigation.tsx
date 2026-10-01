@@ -15,7 +15,6 @@ const NAV_LINKS = [
   { translationKey: 'nav_reports', page: 'reports' },
   { translationKey: 'nav_panchang', page: 'panchang' },
   { translationKey: 'nav_store', page: 'store' },
-  { translationKey: 'nav_pooja', page: 'pooja' },
 ];
 
 const LANGUAGES = [
@@ -175,6 +174,13 @@ export default function Navigation() {
             onClick={handleFreeKundliClick}
           >
             {t('nav_free_kundli')}
+          </button>
+
+          <button
+            className={`${styles.ctaBtn} ${page === 'pooja' ? styles.active : ''}`}
+            onClick={() => handleNavClick('pooja')}
+          >
+            {t('nav_pooja')}
           </button>
 
           <div style={{ position: 'relative' }} ref={consultRef}>
@@ -339,6 +345,12 @@ export default function Navigation() {
             onClick={() => handleNavClick('free-kundli')}
           >
             {t('nav_free_kundli')}
+          </button>
+          <button
+            className={`${styles.mobileLink} ${styles.mobileCta}`}
+            onClick={() => handleNavClick('pooja')}
+          >
+            {t('nav_pooja')}
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}

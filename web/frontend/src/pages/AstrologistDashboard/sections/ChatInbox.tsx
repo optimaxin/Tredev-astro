@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRealtime } from '../../../realtime/RealtimeContext';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
+import ClientKundliPanel from '../ClientKundliPanel';
 import { EmptyState, SectionHeader, Panel } from './shared';
 import styles from './sections.module.css';
 
@@ -40,7 +41,10 @@ export default function ChatInbox() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <span className={styles.tableMuted}>{activeChat.category}</span>
           </div>
-          <ChatWindow consultationId={activeChat.id} otherPartyName={activeChat.userName} />
+          <div className={styles.split6535}>
+            <ChatWindow consultationId={activeChat.id} otherPartyName={activeChat.userName} />
+            <ClientKundliPanel consultationId={activeChat.id} fallbackName={activeChat.userName} />
+          </div>
         </Panel>
       )}
 

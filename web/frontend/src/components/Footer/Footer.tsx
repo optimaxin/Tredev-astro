@@ -37,10 +37,13 @@ const FOOTER_LINKS: Record<string, FooterLink[]> = {
     { labelKey: 'course_4_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(4); setPage('course-detail'); } },
   ],
   footer_col_company: [
-    // No dedicated Careers/Press/Approach pages exist in this app yet — route to About until they do.
+    // No dedicated Approach/Press pages exist in this app yet — route to
+    // About until they do. "Join as an Astrologer/Pandit" is real (see
+    // pages/ApplyAstrologerPage).
     { labelKey: 'footer_about_us', onClick: ({ setPage }) => setPage('about') },
     { labelKey: 'footer_our_approach', onClick: ({ setPage }) => setPage('about') },
     { labelKey: 'footer_careers', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_join_astrologer', onClick: ({ setPage }) => setPage('apply-astrologer') },
     { labelKey: 'footer_press', onClick: ({ setPage }) => setPage('about') },
   ],
   footer_col_support: [

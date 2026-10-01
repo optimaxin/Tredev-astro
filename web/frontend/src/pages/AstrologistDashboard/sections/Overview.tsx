@@ -6,6 +6,7 @@ import { consultationService } from '../../../services/consultationService';
 import type { MyConsultationAsAstrologer } from '../../../services/consultationService';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
 import CallWindow from '../../../components/CallWindow/CallWindow';
+import ClientKundliPanel from '../ClientKundliPanel';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
   EmptyState, KpiCard, MiniBarChart, Panel, ConfirmModal,
@@ -75,12 +76,13 @@ function LiveStatusCard() {
               <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--gold-primary)' }}>{elapsed}</div>
             </div>
           </div>
-          <div style={{ marginTop: 16 }}>
+          <div className={styles.split6535} style={{ marginTop: 16 }}>
             {active.type === 'voice' ? (
               <CallWindow consultationId={active.id} otherPartyName={active.userName} isInitiator={false} />
             ) : (
               <ChatWindow consultationId={active.id} otherPartyName={active.userName} />
             )}
+            <ClientKundliPanel consultationId={active.id} fallbackName={active.userName} />
           </div>
         </div>
       )}

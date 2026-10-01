@@ -37,6 +37,7 @@ const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/Astrologi
 const GuidanceInfoPage = lazy(() => import('./GuidanceInfoPage/GuidanceInfoPage'));
 const LegalPage = lazy(() => import('./LegalPage/LegalPage'));
 const RaghavBookingPage = lazy(() => import('./RaghavBookingPage/RaghavBookingPage'));
+const ApplyAstrologerPage = lazy(() => import('./ApplyAstrologerPage/ApplyAstrologerPage'));
 const AdminConsole = lazy(() => import('../admin/AdminConsole'));
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
@@ -356,6 +357,9 @@ function PageContent() {
 
     case 'raghav-booking':
       return <RaghavBookingPage />;
+
+    case 'apply-astrologer':
+      return <ApplyAstrologerPage />;
 
     default:
       return (

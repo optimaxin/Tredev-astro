@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { authService, ApiRequestError } from '../services/authService';
 import type { ApiUser, RegisterBirthDetails } from '../services/authService';
 import { adminService } from '../services/adminService';
-import { astrologerService } from '../services/astrologerService';
 import { paymentService } from '../services/paymentService';
 
 export interface BirthProfile {
@@ -358,7 +357,6 @@ interface AppContextValue {
   // an account (e.g. AstrologersPage's "Add Astrologer") can refresh the
   // list itself instead of waiting for the next full page load.
   refreshAdminData: () => Promise<void>;
-  applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => Promise<void>;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
   // Admin console actions — real backend, requires an ADMIN-role JWT
@@ -636,6 +634,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_about_us: 'About Us',
     footer_our_approach: 'Our Approach',
     footer_careers: 'Careers',
+    footer_join_astrologer: 'Join as an Astrologer/Pandit',
     footer_press: 'Press',
     footer_help_centre: 'Help Centre',
     footer_privacy_policy: 'Privacy Policy',
@@ -3036,11 +3035,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
   };
 
-  const applyToBecomeAstrologer = async (details: { expertise: string; experience: string }) => {
-    if (!currentUser) return;
-    await astrologerService.submitApplication(details.expertise, details.experience);
-  };
-
   const suspendAccount = async (email: string) => {
     const acc = accounts.find(a => normalizeEmail(a.email) === normalizeEmail(email));
     if (!acc) return;
@@ -3370,7 +3364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, logout,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
-      accounts, refreshAdminData, applyToBecomeAstrologer,
+      accounts, refreshAdminData,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
       suspendAccount, restoreAccount, updateAccountRole, updateMyProfile,

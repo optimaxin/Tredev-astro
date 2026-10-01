@@ -85,6 +85,7 @@ export default function AuthPage() {
     else if (action === 'calculator') setPage('astrology-tools');
     else if (action === 'pooja') setPage('pooja');
     else if (action === 'raghav-booking') setPage('raghav-booking');
+    else if (action === 'apply-astrologer') setPage('apply-astrologer');
     else setPage('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

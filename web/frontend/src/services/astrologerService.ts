@@ -94,6 +94,18 @@ async function authedRequest<T>(path: string, options: RequestInit = {}): Promis
   return body.data as T;
 }
 
+export interface NewAstrologerApplication {
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  expertise: string;
+  experience: string;
+  languages: string;
+  bio: string;
+  resumeData: string | null;
+  driveLink: string | null;
+}
+
 export interface ConsultationSlot {
   id: string;
   astrologerId: number;
@@ -182,9 +194,9 @@ export const astrologerService = {
   listFavorites: (): Promise<UiAstrologer[]> =>
     authedRequest<ApiAstrologerProfile[]>('/api/favorites').then(rows => rows.map(adapt)),
 
-  // ── Become an astrologer ─────────────────────────────────────────────
-  submitApplication: (expertise: string, experience: string) =>
-    authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify({ expertise, experience }) }),
+  // ── Become an astrologer/pandit ──────────────────────────────────────
+  submitApplication: (input: NewAstrologerApplication) =>
+    authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify(input) }),
   myApplication: () => authedRequest<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>('/api/astrologers/applications/mine'),
 
   // ── Offers (percentage discounts, astrologer self-service) ──────────
