@@ -190,3 +190,19 @@ export async function getWalletBalance(userId: string): Promise<number> {
   const row = await queryOne<{ wallet_balance: number }>('SELECT wallet_balance FROM users WHERE id = $1', [userId]);
   return Number(row?.wallet_balance ?? 0);
 }
+
+// Clamped to never overdraw — debits min(amount, current balance), atomically
+// (the CTE locks the row before computing how much is actually available).
+// Used by per-minute consultation billing (realtimeStore.ts), where the
+// amount owed is computed from elapsed time and could in principle exceed
+// whatever's left if a debit landed late.
+export async function debitWallet(userId: string, amount: number): Promise<{ debited: number; balance: number }> {
+  const row = await queryOne<{ balance: number; debited: number }>(
+    `WITH old AS (SELECT wallet_balance FROM users WHERE id = $2 FOR UPDATE)
+     UPDATE users SET wallet_balance = wallet_balance - LEAST($1::numeric, (SELECT wallet_balance FROM old))
+     WHERE id = $2
+     RETURNING wallet_balance AS balance, LEAST($1::numeric, (SELECT wallet_balance FROM old)) AS debited`,
+    [amount, userId]
+  );
+  return { debited: Number(row?.debited ?? 0), balance: Number(row?.balance ?? 0) };
+}

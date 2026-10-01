@@ -58,11 +58,20 @@ export interface Consultation {
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
-  durationMinutes: number; // chosen by the user at booking time
-  extendedMinutes: number; // accumulated top-ups added mid-call
+  // Wallet-affordable minutes (walletBalance / pricePerMin), computed fresh
+  // at acceptConsultation and recomputed on every mid-call wallet top-up
+  // (see realtimeStore.ts's onWalletTopUp) — not chosen by the user. Almost
+  // never a whole number; see migration 054.
+  durationMinutes: number;
+  extendedMinutes: number; // unused by wallet billing (folded into durationMinutes on top-up) — kept for schema/display compatibility
   pricePerMin: number; // locked in at session start (offer/loyalty/price-increase-adjusted)
   appliedOfferPercent: number; // the discount % actually applied to pricePerMin, for display
   boostId?: number; // set if this session was attributed to an astrologer Boost
+  // Transient, not persisted — set only on the one chat:ended emission that
+  // fires when the wallet-affordability deadline timer fires (see
+  // autoEndConsultation), so the frontend can show the right message instead
+  // of a generic "consultation ended."
+  endReason?: 'INSUFFICIENT_BALANCE';
 }
 
 export interface QueueEntry {

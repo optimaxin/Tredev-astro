@@ -192,6 +192,19 @@ export async function listAllConsultations(page: number, limit: number): Promise
   return { rows: rows.map(fromRow), total: Number(totalRow?.n ?? 0) };
 }
 
+// The user's current live call, if any — used by onWalletTopUp (realtimeStore.ts)
+// to find what to reschedule when a recharge lands mid-consultation. A user
+// can only ever have one ACTIVE consultation at a time (capacity is enforced
+// per-astrologer, and nothing lets a user request a second one while already
+// in one), so LIMIT 1 is safe rather than arbitrary.
+export async function findActiveForUser(userEmail: string): Promise<Consultation | undefined> {
+  const row = await queryOne<ConsultationDbRow>(
+    `SELECT * FROM consultations WHERE user_email = $1 AND status = 'ACTIVE' LIMIT 1`,
+    [userEmail.toLowerCase()]
+  );
+  return row ? fromRow(row) : undefined;
+}
+
 export async function findActiveStartedForAstrologer(astrologerId: number, executor?: Executor): Promise<Consultation[]> {
   const rows = await query<ConsultationDbRow>(
     `SELECT * FROM consultations WHERE astrologer_id = $1 AND status = 'ACTIVE' AND started_at IS NOT NULL`,

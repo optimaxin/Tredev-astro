@@ -154,6 +154,16 @@ export function BellIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
+export function WalletIcon({ size = 26, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 7a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v2" />
+      <path d="M4 7v10a2 2 0 0 0 2 2h12a1 1 0 0 0 1-1v-4" />
+      <path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" />
+    </svg>
+  );
+}
+
 // Consultation type indicators — chat/voice/video slot cards on the
 // Raghav booking page (and anywhere else a 1:1 session type needs marking).
 export function ChatBubbleIcon({ size = 26, ...props }: IconProps) {

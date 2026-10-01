@@ -33,6 +33,7 @@ export interface PublicUser extends BirthDetails {
   status: AccountStatus;
   phone_number: string | null;
   phone_verified: boolean;
+  wallet_balance: number;
 }
 
 export function toPublicUser(row: UserRow): PublicUser {
@@ -42,5 +43,6 @@ export function toPublicUser(row: UserRow): PublicUser {
     birth_latitude: row.birth_latitude, birth_longitude: row.birth_longitude,
     birth_timezone_offset_minutes: row.birth_timezone_offset_minutes,
     phone_number: row.phone_number, phone_verified: row.phone_verified,
+    wallet_balance: row.wallet_balance,
   };
 }

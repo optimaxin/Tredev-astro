@@ -29,8 +29,10 @@ export interface Consultation {
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
-  durationMinutes: number;
+  durationMinutes: number; // wallet-affordable minutes, computed server-side — see backend/app/services/realtimeStore.ts's acceptConsultation
   extendedMinutes: number;
+  pricePerMin: number;
+  endReason?: 'INSUFFICIENT_BALANCE';
 }
 
 export interface QueueEntry {

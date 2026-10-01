@@ -340,6 +340,10 @@ interface AppContextValue {
   isLoggedIn: boolean;
   currentUser: AuthUser | null;
   authLoading: boolean;
+  // Wallet-based consultation billing balance — see its useState's own
+  // comment in the provider for why this isn't part of AuthUser.
+  walletBalance: number | null;
+  refreshWalletBalance: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthUser | null>;
   register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser }>;
   loginWithFirebase: (idToken: string) => Promise<{ user: AuthUser; isNewUser: boolean } | null>;
@@ -2856,9 +2860,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const isLoggedIn = !!currentUser;
 
+  // The wallet-based consultation billing model's balance — deliberately NOT
+  // part of AuthUser (that's a login-time snapshot; this changes mid-session
+  // on every recharge and every consultation that ends) so it's refreshed on
+  // its own schedule: on login, after a WALLET_RECHARGE payment succeeds
+  // (see the payment-status effect below), and after a consultation ends
+  // (RealtimeContext calls refreshWalletBalance via useAppContext).
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const refreshWalletBalance = React.useCallback(async () => {
+    if (!localStorage.getItem('auth_access_token')) { setWalletBalance(null); return; }
+    try {
+      const { balance } = await paymentService.getWalletBalance();
+      setWalletBalance(balance);
+    } catch {
+      // Best-effort — the header just keeps showing whatever it last had.
+    }
+  }, []);
+
   React.useEffect(() => {
     currentUserRoleRef.current = currentUser?.role;
-  }, [currentUser]);
+    if (currentUser) refreshWalletBalance();
+    else setWalletBalance(null);
+  }, [currentUser, refreshWalletBalance]);
 
   // Defense in depth: the popstate handler above already prevents a
   // workspace-role user (ADMIN/STAFF/ASTROLOGIST) from ever landing on a
@@ -3318,6 +3341,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const { status, purpose, amount } = await paymentService.getStatus(paymentId);
           if (status === 'PAID') {
             if (purpose === 'STORE_ORDER') clearCart();
+            // Credited server-side already (fulfillment.ts) — this just
+            // syncs the header's displayed balance with that real outcome,
+            // same best-effort pattern refreshWalletBalance already uses.
+            if (purpose === 'WALLET_RECHARGE') refreshWalletBalance();
             // A consultation is booked server-side only once the payment
             // clears (see fulfillment.ts's CONSULTATION case) — the waiting
             // page itself (driven by the realtime socket's userSync) is the
@@ -3362,6 +3389,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
       isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, logout,
+      walletBalance, refreshWalletBalance,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
       accounts, refreshAdminData,

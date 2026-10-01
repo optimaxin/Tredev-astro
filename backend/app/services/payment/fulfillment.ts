@@ -2,7 +2,7 @@ import type { PaymentRow } from '../../repositories/paymentRepository.ts';
 import { createOrder } from '../../repositories/orderRepository.ts';
 import { createReportPurchase } from '../../repositories/reportPurchaseRepository.ts';
 import { creditWallet, findUserById } from '../../repositories/userRepository.ts';
-import { extendConsultation, requestConsultation } from '../realtimeStore.ts';
+import { extendConsultation, requestConsultation, onWalletTopUp } from '../realtimeStore.ts';
 import { claimSlot } from '../../repositories/consultationSlotRepository.ts';
 import type { OrderItem } from '../../models/order.ts';
 import type { ReportBundle } from '../../models/reportPurchase.ts';
@@ -61,6 +61,11 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
     }
     case 'WALLET_RECHARGE': {
       await creditWallet(payment.user_id, payment.amount);
+      // Recharging mid-call is now how a consultation gets "extended" (the
+      // old CONSULTATION_EXTEND pay-per-block flow is retired) — see
+      // onWalletTopUp's own comment.
+      const user = await findUserById(payment.user_id);
+      if (user) await onWalletTopUp(user.email);
       return;
     }
     case 'CONSULTATION': {

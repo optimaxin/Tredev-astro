@@ -15,6 +15,7 @@ import {
   listUpcomingPoojaSessions, registerForPoojaSession,
 } from '../repositories/poojaRepository.ts';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
+import { findUserByEmail } from '../repositories/userRepository.ts';
 
 export const router = Router();
 
@@ -142,6 +143,14 @@ router.post('/consultations/request', async (req, res) => {
   const userEmail = req.user!.email;
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
+  // Wallet billing (see realtimeStore.ts's acceptConsultation) only computes
+  // a real duration once the astrologer accepts — this is just a cheap
+  // upfront gate so nobody queues (and wastes an astrologer's slot) with
+  // literally nothing to bill.
+  const requester = await findUserByEmail(userEmail);
+  if (!requester || requester.wallet_balance <= 0) {
+    return res.status(402).json({ error: 'Insufficient wallet balance. Please recharge your wallet to start a consultation.' });
+  }
   const countryCode = countryFromRequest(req);
   const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode });
   res.json(result);

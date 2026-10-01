@@ -56,6 +56,7 @@ import { consultationService, ConsultationApiError } from '../services/consultat
 import type { MyConsultation } from '../services/consultationService';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
 import CallWindow from '../components/CallWindow/CallWindow';
+import RechargeWalletModal from '../components/RechargeWalletModal/RechargeWalletModal';
 import { orderService, OrderApiError } from '../services/orderService';
 import type { Order } from '../services/orderService';
 import { paymentService, PaymentApiError } from '../services/paymentService';
@@ -516,14 +517,14 @@ function AstrologerProfilePage({ id }: { id: any }) {
 
 // 4. Consultation Booking Page
 function ConsultationBookingPage({ id }: { id: any }) {
-  const { setPage, currentUser, setShowLoginModal, setPendingAction } = useAppContext();
-  const { publicStates } = useRealtime();
+  const { setPage, currentUser, setShowLoginModal, setPendingAction, walletBalance } = useAppContext();
+  const { publicStates, requestConsultation } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
-  const [durationMinutes, setDurationMinutes] = useState(20);
   const [activeSlot, setActiveSlot] = useState(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecharge, setShowRecharge] = useState(false);
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
   const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
   // Was declared after the astrologerLoading/notFound early returns below,
@@ -562,8 +563,6 @@ function ConsultationBookingPage({ id }: { id: any }) {
     { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
   ];
 
-  const DURATION_STEP = 5, DURATION_MIN = 5, DURATION_MAX = 120;
-
   const SLOTS = [
     'Today - 04:30 PM',
     'Today - 06:00 PM',
@@ -590,17 +589,28 @@ function ConsultationBookingPage({ id }: { id: any }) {
       setShowLoginModal(true);
       return;
     }
+    if (!walletBalance || walletBalance <= 0) {
+      setShowRecharge(true);
+      return;
+    }
     setStarting(true);
     setError(null);
     try {
       const category = astrologer.category[0] || astrologer.specialization[0];
-      // Booking itself now happens server-side, only after payment clears
-      // (see fulfillment.ts's CONSULTATION case) — this redirects the whole
-      // browser to the gateway and never resolves here on success; reaching
-      // the catch below means it failed before that redirect even happened.
-      await paymentService.pay({ purpose: 'CONSULTATION', astrologerId: astrologer.id, category, type: activeType, durationMinutes });
+      // No payment here — the session connects immediately and bills per
+      // minute straight out of the wallet once the astrologer accepts (see
+      // realtimeStore.ts's acceptConsultation). The waiting page reflects
+      // whatever this actually returns (ASSIGNED/QUEUED/UNAVAILABLE).
+      const result = await requestConsultation(astrologer.id, category, activeType);
+      if (result.outcome === 'UNAVAILABLE') {
+        setError(result.reason || 'This astrologer is unavailable right now.');
+        setStarting(false);
+        return;
+      }
+      setPage('consultation-waiting');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      setError(e instanceof PaymentApiError ? e.message : (e as Error).message);
+      setError((e as Error).message);
       setStarting(false);
     }
   };
@@ -653,32 +663,8 @@ function ConsultationBookingPage({ id }: { id: any }) {
                     {effectivePrice.isLoyal ? `Loyalty discount applied — ${effectivePrice.appliedOfferPercent}% off` : `Offer applied — ${effectivePrice.appliedOfferPercent}% off`}
                   </p>
                 )}
-                <h3 className={styles.contentSectionTitle} style={{ border: 'none', marginTop: '20px' }}>Select Duration</h3>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '8px 0' }}>
-                  <button
-                    type="button"
-                    className="btn btn-outline-light btn-sm"
-                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
-                    disabled={durationMinutes <= DURATION_MIN}
-                    onClick={() => setDurationMinutes(m => Math.max(DURATION_MIN, m - DURATION_STEP))}
-                  >
-                    −
-                  </button>
-                  <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-gold)', minWidth: '110px', textAlign: 'center' }}>
-                    {durationMinutes} min
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-outline-light btn-sm"
-                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
-                    disabled={durationMinutes >= DURATION_MAX}
-                    onClick={() => setDurationMinutes(m => Math.min(DURATION_MAX, m + DURATION_STEP))}
-                  >
-                    +
-                  </button>
-                </div>
                 <p className={styles.reviewCount} style={{ marginTop: '16px' }}>
-                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Your chat/call runs for the duration you picked; you'll get an option to extend about a minute before it ends, and you can end it yourself any time.
+                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Once connected, your session bills per minute straight from your wallet and ends automatically the moment your balance runs out — top up any time, including mid-session, and you can end it yourself whenever you like.
                 </p>
               </div>
             </div>
@@ -694,17 +680,22 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span style={{ color: 'var(--color-text-light)' }}>{selectedOpt.label}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
-                <span>Duration</span>
-                <span style={{ color: 'var(--color-text-light)' }}>{durationMinutes} min</span>
+                <span>Rate</span>
+                <span style={{ color: 'var(--color-text-light)' }}>₹{effectivePrice?.pricePerMin ?? astrologer.price}/min</span>
               </div>
               <div style={{ borderTop: '1px solid rgba(184,138,59,0.15)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--color-gold)' }}>
-                <span>Estimated Total</span>
-                <span>₹{(effectivePrice?.pricePerMin ?? astrologer.price) * durationMinutes}</span>
+                <span>Your Wallet Balance</span>
+                <span>₹{walletBalance ?? 0}</span>
               </div>
+              {(!walletBalance || walletBalance <= 0) && (
+                <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>
+                  Your wallet is empty — recharge to start a consultation.
+                </p>
+              )}
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
               {isUnavailable && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>This astrologer appears to be unavailable right now.</p>}
               <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting || isUnavailable} onClick={handleStartNow}>
-                {starting ? 'Redirecting to payment…' : 'Pay & Start Consultation'}
+                {starting ? 'Connecting…' : (!walletBalance || walletBalance <= 0) ? 'Recharge Wallet' : 'Start Consultation'}
               </button>
             </div>
           </div>
@@ -777,6 +768,7 @@ function ConsultationBookingPage({ id }: { id: any }) {
           </div>
         )}
       </div>
+      {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
     </div>
   );
 }
@@ -785,14 +777,20 @@ function ConsultationBookingPage({ id }: { id: any }) {
 // authoritative queue position and assignment state. Nothing here is
 // computed client-side; it only renders what server/store.ts has decided.
 function ConsultationWaitingPage() {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, walletBalance, refreshWalletBalance } = useAppContext();
   const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, expiringSoon } = useRealtime();
   const [justReviewed, setJustReviewed] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [extending, setExtending] = useState(false);
-  const [extendError, setExtendError] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState('');
+  const [showRecharge, setShowRecharge] = useState(false);
+
+  // The consultation that just ended is the moment billing actually happened
+  // (settleConsultationBilling, backend) — refresh the header's balance once
+  // rather than on every tick.
+  useEffect(() => {
+    if (userSync?.consultation?.status === 'COMPLETED') refreshWalletBalance();
+  }, [userSync?.consultation?.status, refreshWalletBalance]);
 
   // Running elapsed-time display for the user's side, mirroring the
   // astrologer-side one in AstrologistDashboard/sections/Overview.tsx's
@@ -907,51 +905,38 @@ function ConsultationWaitingPage() {
     );
   }
   if (consultation.status === 'ACTIVE' || consultation.status === 'ACCEPTED') {
-    const showTopUp = countdown !== null && expiringSoon?.consultationId === consultation.id;
+    const showLowBalance = countdown !== null && expiringSoon?.consultationId === consultation.id;
+    // Live-feeling estimate only — the server's own deferred-billing settle
+    // (settleConsultationBilling) is the real charge, computed once the
+    // session actually ends, never ticked down client-side.
+    const elapsedMinutes = consultation.startedAt ? (Date.now() - consultation.startedAt) / 60_000 : 0;
+    const estimatedRemaining = walletBalance != null ? Math.max(0, walletBalance - consultation.pricePerMin * elapsedMinutes) : null;
     const handleEnd = async () => {
       setEnding(true);
       try { await endConsultationById(consultation.id); } finally { setEnding(false); }
-    };
-    const handleExtend = async (extraMinutes: number) => {
-      setExtending(true);
-      setExtendError('');
-      try {
-        // Same pattern as booking: pay first, real minutes only get added by
-        // fulfillment.ts's CONSULTATION_EXTEND case once payment clears — a
-        // full gateway redirect away and back (this page is already
-        // `pending_payment_return`'s stashed page, so AppContext lands the
-        // visitor right back here; the modal is skipped for this purpose so
-        // it doesn't pop up over an active chat/call).
-        await paymentService.pay({ purpose: 'CONSULTATION_EXTEND', consultationId: consultation.id, extraMinutes });
-      } catch (e) {
-        setExtendError(e instanceof PaymentApiError ? e.message : (e as Error).message);
-        setExtending(false);
-      }
     };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ maxWidth: '600px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2>Your consultation with {astrologer?.name} is now active</h2>
-            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · {consultation.durationMinutes + consultation.extendedMinutes} min</p>
+            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · ₹{consultation.pricePerMin}/min</p>
             {elapsed && (
               <p style={{ marginTop: '8px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-gold)' }}>{elapsed}</p>
             )}
+            {estimatedRemaining !== null && (
+              <p style={{ marginTop: '4px', fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
+                ~₹{Math.round(estimatedRemaining)} wallet balance remaining
+              </p>
+            )}
           </div>
 
-          {showTopUp && (
+          {showLowBalance && (
             <div style={{ border: '1px solid var(--color-gold)', background: 'rgba(184,138,59,0.08)', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px', textAlign: 'center' }}>
               <p style={{ margin: '0 0 10px', fontSize: '14px' }}>
-                Your session ends in <strong>{countdown}s</strong> — want more time?
+                Your balance runs out in <strong>{countdown}s</strong> — recharge to keep going.
               </p>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {[5, 10, 15].map(mins => (
-                  <button key={mins} className="btn btn-gold btn-sm" disabled={extending} onClick={() => handleExtend(mins)}>
-                    {extending ? 'Redirecting…' : `+${mins} min`}
-                  </button>
-                ))}
-              </div>
-              {extendError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '10px' }}>{extendError}</p>}
+              <button className="btn btn-gold btn-sm" onClick={() => setShowRecharge(true)}>Recharge Wallet</button>
             </div>
           )}
 
@@ -964,6 +949,7 @@ function ConsultationWaitingPage() {
             <button className="btn btn-outline-light" disabled={ending} onClick={handleEnd}>{ending ? 'Ending…' : 'End Consultation'}</button>
           </div>
         </div>
+        {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
       </div>
     );
   }
@@ -972,11 +958,18 @@ function ConsultationWaitingPage() {
     // this same completed consultation re-shows the form; submitting again
     // just surfaces the backend's ALREADY_REVIEWED error. Fine for now — a
     // real fix needs `reviewed` on the realtime Consultation type itself.
+    const insufficientBalance = consultation.endReason === 'INSUFFICIENT_BALANCE';
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ maxWidth: '480px', textAlign: 'center', padding: '60px 20px' }}>
           <h2>Your consultation with {astrologer?.name || 'your astrologer'} has ended</h2>
           <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
+          {insufficientBalance && (
+            <div style={{ border: '1px solid var(--color-gold)', background: 'rgba(184,138,59,0.08)', borderRadius: '8px', padding: '14px 16px', margin: '16px 0', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '14px' }}>Your wallet balance ran out, so the session ended automatically.</p>
+              <button className="btn btn-gold btn-sm" onClick={() => setShowRecharge(true)}>Recharge Wallet</button>
+            </div>
+          )}
           {justReviewed ? (
             <p className={styles.reviewCount} style={{ marginTop: '16px', color: 'var(--color-gold)' }}>✦ Thanks for your feedback!</p>
           ) : (
@@ -984,6 +977,7 @@ function ConsultationWaitingPage() {
           )}
           <button className="btn btn-outline-light" style={{ marginTop: '20px' }} onClick={() => setPage('home')}>Back to Home</button>
         </div>
+        {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
       </div>
     );
   }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { CartIcon, ProfileIcon, SunIcon, MoonIcon } from '../Icons/Icons';
+import { CartIcon, ProfileIcon, SunIcon, MoonIcon, WalletIcon } from '../Icons/Icons';
 import NotificationBell from './NotificationBell';
 import ConsultDropdown from './ConsultDropdown';
+import RechargeWalletModal from '../RechargeWalletModal/RechargeWalletModal';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
@@ -42,6 +43,7 @@ export default function Navigation() {
     language,
     setLanguage,
     t,
+    walletBalance,
   } = useAppContext();
 
   const [scrolled, setScrolled] = useState(false);
@@ -49,6 +51,7 @@ export default function Navigation() {
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [consultDropdownOpen, setConsultDropdownOpen] = useState(false);
+  const [showRecharge, setShowRecharge] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -194,6 +197,21 @@ export default function Navigation() {
               <ConsultDropdown onClose={() => setConsultDropdownOpen(false)} onViewAll={handleConsultClick} />
             )}
           </div>
+
+          {/* Wallet balance — consultations bill straight out of this (see
+              realtimeStore.ts's acceptConsultation); click opens the recharge modal. */}
+          {isLoggedIn && (
+            <button
+              className={styles.cartBtn}
+              onClick={() => setShowRecharge(true)}
+              aria-label="Recharge wallet"
+              title="Recharge wallet"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', width: 'auto', padding: '0 8px' }}
+            >
+              <WalletIcon size={22} />
+              <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-sans)' }}>₹{walletBalance ?? '—'}</span>
+            </button>
+          )}
 
           {/* Cart Icon */}
           <button
@@ -384,6 +402,8 @@ export default function Navigation() {
           </button>
         </div>
       </div>
+
+      {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
     </header>
   );
 }

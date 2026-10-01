@@ -80,7 +80,10 @@ const shippingSchema = z.object({
 const createIntentSchema = z.discriminatedUnion('purpose', [
   z.object({ purpose: z.literal('STORE_ORDER'), items: z.array(orderItemSchema).min(1).max(50), shipping: shippingSchema }),
   z.object({ purpose: z.literal('REPORT_PURCHASE'), reportId: z.number().int(), bundle: z.enum(['report-only', 'report-qa', 'report-consult']) }),
-  z.object({ purpose: z.literal('WALLET_RECHARGE'), amount: z.number().int().min(100).max(500000) }),
+  z.object({
+    purpose: z.literal('WALLET_RECHARGE'),
+    amount: z.number().int().min(50).max(500000).refine(n => n % 50 === 0, 'Amount must be a multiple of ₹50'),
+  }),
   z.object({ purpose: z.literal('CONSULTATION'), astrologerId: z.number().int(), category: z.string().trim().min(1).max(100), type: z.enum(['chat', 'voice', 'video']), durationMinutes: z.number().int().min(5).max(120) }),
   z.object({ purpose: z.literal('CONSULTATION_EXTEND'), consultationId: z.string().trim().min(1), extraMinutes: z.number().int().min(1).max(120) }),
   z.object({ purpose: z.literal('SLOT_BOOKING'), slotId: z.string().trim().min(1) }),
