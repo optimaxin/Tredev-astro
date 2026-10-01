@@ -554,6 +554,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_numerology: 'Numerology',
     cat_tarot: 'Tarot',
     cat_vastu: 'Vastu Shastra',
+    cat_family: 'Family & Heritage',
+    cat_pooja: 'Pooja & Rituals',
+    // Astrologers.tsx's "All" filter pill deliberately does NOT reuse cat_all
+    // above — that key means "All Remedies" (Store's own "All" category) and
+    // was leaking onto this unrelated page's All pill before this existed.
+    cat_all_astrologers: 'All Astrologers',
 
     // Reports translations
     report_1_title: 'Career Intelligence',
@@ -1251,6 +1257,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_numerology: 'अंकशास्त्र',
     cat_tarot: 'टैरो',
     cat_vastu: 'वास्तु शास्त्र',
+    cat_family: 'परिवार व विरासत',
+    cat_pooja: 'पूजा व अनुष्ठान',
+    cat_all_astrologers: 'सभी ज्योतिषी',
 
     report_1_title: 'करियर इंटेलिजेंस',
     report_1_sub: 'आपका व्यावसायिक मार्ग, डिकोड किया गया',

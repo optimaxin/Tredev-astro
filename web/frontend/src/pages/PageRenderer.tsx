@@ -517,7 +517,7 @@ function AstrologerProfilePage({ id }: { id: any }) {
 
 // 4. Consultation Booking Page
 function ConsultationBookingPage({ id }: { id: any }) {
-  const { setPage, currentUser, setShowLoginModal, setPendingAction, walletBalance } = useAppContext();
+  const { setPage, currentUser, setShowLoginModal, setPendingAction, walletBalance, saveBirthDetails } = useAppContext();
   const { publicStates, requestConsultation } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
@@ -525,6 +525,8 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRecharge, setShowRecharge] = useState(false);
+  const [savingBirthDetails, setSavingBirthDetails] = useState(false);
+  const [birthDetailsError, setBirthDetailsError] = useState('');
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
   const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
   // Was declared after the astrologerLoading/notFound early returns below,
@@ -554,6 +556,29 @@ function ConsultationBookingPage({ id }: { id: any }) {
   // real at payment fulfillment time and auto-refunds to wallet if it turns
   // out unavailable by then (see fulfillment.ts's CONSULTATION case).
   const isUnavailable = live?.status === 'OFFLINE' || live?.status === 'AWAY';
+
+  // Gates the "now" tab behind a one-time birth-details step — the
+  // astrologer's client-Kundli sidebar (ClientKundliPanel.tsx, astrologer
+  // dashboard) reads straight from these same account columns, so capturing
+  // them here is what actually puts a real chart in front of the astrologer
+  // once the session starts, instead of its "no saved birth details" empty
+  // state. Same hasBirthDetails shape as PageRenderer's My Jyotish page.
+  const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+
+  const handleSaveBirthDetails = async (details: BirthDetailsSubmitValue) => {
+    setSavingBirthDetails(true);
+    setBirthDetailsError('');
+    const ok = await saveBirthDetails({
+      birthDate: details.date,
+      birthTime: details.time,
+      birthPlace: details.placeName,
+      birthLatitude: details.latitude,
+      birthLongitude: details.longitude,
+      birthTimezoneOffsetMinutes: details.timezoneOffsetMinutes,
+    });
+    if (!ok) setBirthDetailsError('Could not save your birth details. Please try again.');
+    setSavingBirthDetails(false);
+  };
 
   // Video call is coming later (WebRTC signaling isn't built yet) — chat and
   // voice already run on the real consultation queue/socket pipeline, so
@@ -632,7 +657,25 @@ function ConsultationBookingPage({ id }: { id: any }) {
           <button className={mode === 'schedule' ? 'btn btn-gold btn-sm' : 'btn btn-outline-light btn-sm'} onClick={() => setMode('schedule')}>Schedule for Later</button>
         </div>
 
-        {mode === 'now' ? (
+        {mode === 'now' && currentUser && !hasBirthDetails ? (
+          <div className={styles.bookingLayout}>
+            <div className={styles.bookingOptionsCard}>
+              <div className={styles.contentSection}>
+                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>Your Birth Details</h3>
+                <p className={styles.reviewCount} style={{ marginBottom: '16px' }}>
+                  {astrologer.name} needs this to read your chart — the same details a Kundli is built from. Saved once to your account, so you won't be asked again next time.
+                </p>
+                <BirthDetailsForm
+                  onSubmit={handleSaveBirthDetails}
+                  submitLabel={savingBirthDetails ? 'Saving…' : 'Save & Continue'}
+                  idPrefix="consult-birth"
+                  initialValues={toSavedBirthDetails(currentUser)}
+                />
+                {birthDetailsError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{birthDetailsError}</p>}
+              </div>
+            </div>
+          </div>
+        ) : mode === 'now' ? (
           <div className={styles.bookingLayout}>
             <div className={styles.bookingOptionsCard}>
               <div className={styles.contentSection}>

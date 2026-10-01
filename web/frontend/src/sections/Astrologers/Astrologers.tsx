@@ -9,18 +9,6 @@ import styles from './Astrologers.module.css';
 
 const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vastu', 'Spirituality', 'Pooja'];
 
-const FILTER_LABELS: Record<string, string> = {
-  All: 'All Acharyas',
-  Love: 'Prem',
-  Marriage: 'Vivah',
-  Career: 'Career',
-  Finance: 'Dhan',
-  Family: 'Parivaar',
-  Vastu: 'Vastu',
-  Spirituality: 'Adhyatma',
-  Pooja: 'Pandits',
-};
-
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
   const { setPage, t, astrologerFilter, setAstrologerFilter } = useAppContext();
   // Seeded from SeekGuidance's category cards (e.g. "Career & Business" ->
@@ -143,7 +131,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
                   onClick={() => setActiveFilter(f)}
                   id={`astrologer-filter-${f.toLowerCase()}`}
                 >
-                  {t('cat_' + f.toLowerCase()) || FILTER_LABELS[f] || f}
+                  {f === 'All' ? t('cat_all_astrologers') : t('cat_' + f.toLowerCase())}
                 </button>
               ))}
             </div>

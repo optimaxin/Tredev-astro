@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { paymentService, PaymentApiError } from '../../services/paymentService';
 import { WalletIcon } from '../Icons/Icons';
 import modalStyles from '../PaymentResultModal/PaymentResultModal.module.css';
@@ -36,7 +37,13 @@ export default function RechargeWalletModal({ onClose }: { onClose: () => void }
     }
   };
 
-  return (
+  // Portalled to <body> — mounted from Navigation.tsx's <header>, which has
+  // its own `transform` (centers the pill nav bar). A transformed ancestor
+  // becomes the containing block for `position: fixed` descendants per the
+  // CSS spec, which silently broke this modal's backdrop/centering when it
+  // rendered inline there. Same fix, same reason, as PdfLoader.tsx's own
+  // portal (framer-motion ancestors cause the identical problem elsewhere).
+  return createPortal(
     <div className={modalStyles.backdrop} onClick={onClose} role="presentation">
       <div className={modalStyles.card} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Recharge wallet">
         <div className={modalStyles.icon} style={{ background: 'rgba(181,138,59,0.1)', border: '1.5px solid var(--gold-primary)', color: 'var(--gold-primary)' }}>
@@ -87,6 +94,7 @@ export default function RechargeWalletModal({ onClose }: { onClose: () => void }
           <button type="button" className="btn btn-outline-light" onClick={onClose} disabled={paying}>Cancel</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

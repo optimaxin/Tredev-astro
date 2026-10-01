@@ -237,6 +237,28 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [currentUser?.email, currentUser?.role, notifyAstrologer, pushToast]);
 
+  // Keeps an online astrologer's lastActivityAt fresh while they just sit on
+  // the dashboard waiting for a request — previously the ONLY thing that
+  // reset it was a consultation lifecycle event (accept/end/decline/extend)
+  // or manually clicking "Stay Online" on the idle-warning banner, so simply
+  // being online and present (the single most common state) still hit
+  // runMaintenanceTick's awayTimeoutMinutes and got silently flipped to AWAY
+  // — which read to an astrologer as "I go offline on my own after a while"
+  // even though they never left. 60s is comfortably under the default
+  // 5-minute awayTimeoutMinutes (and the 70%-of-timeout idle-warning point);
+  // that admin-configurable value lives behind an ADMIN-only endpoint an
+  // astrologer account can't call, so this doesn't try to read it live. The
+  // banner/manual stayOnline still exist as a fallback for whenever this
+  // interval itself couldn't fire (tab frozen/backgrounded heavily, network blip).
+  const intent = astrologerSync?.intent;
+  useEffect(() => {
+    if (!currentUser || intent !== 'ONLINE') return;
+    const id = window.setInterval(() => {
+      realtimeApi.heartbeat(currentUser.email).catch(() => {});
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [currentUser, intent]);
+
   // Loops a beep until the astrologer actually accepts (or the request
   // otherwise leaves pendingAssignments) — a single chime was easy to miss
   // if they weren't looking at the screen right when it fired. Respects the
