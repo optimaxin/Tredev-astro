@@ -558,6 +558,29 @@ export async function declineConsultation(consultationId: string, astrologerEmai
   return c;
 }
 
+// The user's own way out of a request the astrologer hasn't responded to
+// yet — previously there was genuinely no path here: endConsultation only
+// accepts ACTIVE, and declineConsultation can only be called by the
+// astrologer (assertOwnership). Without this, an ASSIGNED request nobody
+// ever acted on left the user stuck on the waiting screen with no way out
+// but abandoning the tab (reopening the app lands them right back on it,
+// since this is server-tracked state). Separate from declineConsultation
+// (and its own `chat:declined` event) rather than reusing it, since that
+// path's "your request was declined" toast would be the wrong message for
+// something the user themselves chose to do.
+export async function cancelConsultation(consultationId: string, requesterEmail: string): Promise<Consultation> {
+  const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
+  if (c.status !== 'ASSIGNED') throw new Error(`Cannot cancel a consultation in status ${c.status}`);
+  c.status = 'CANCELLED';
+  c.endedAt = Date.now();
+  await consultationRepo.updateConsultation(c);
+  await touchActivity(c.astrologerId);
+  await recomputeStatus(c.astrologerId);
+  bus.emitTyped('chat:cancelled', c);
+  await processQueue(c.astrologerId);
+  return c;
+}
+
 // Either the astrologer or the user can end an active consultation now —
 // previously only the astrologer could (assertOwnership), leaving the user
 // with no way to disconnect on their own.

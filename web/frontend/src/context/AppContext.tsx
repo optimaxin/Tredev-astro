@@ -479,6 +479,33 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_cta_consult: 'Consult an Astrologist',
     hero_trust_acharyas: 'Verified Acharyas',
     hero_trust_jyotish: 'Personalized Jyotish',
+
+    // Homepage campaign carousel (CampaignBanner.tsx) — its own Google
+    // Translate pass is unreliable (verified live: text repeatedly stayed
+    // English) because each slide fully unmounts/remounts every 6s via
+    // framer-motion, which races Google's translation faster than it can
+    // keep up — so this carousel's copy is translated through this
+    // dictionary like the rest of the site instead of relying on Google.
+    banner_0_category: 'VEDIC JYOTISH',
+    banner_0_title: 'Discover the Map\nWritten at Your Birth.',
+    banner_0_desc: 'Explore your Rashis, Grahas and Nakshatras through an authentic Vedic Kundli — free, instantly.',
+    banner_0_cta: 'Generate Free Kundli',
+    banner_1_category: 'Astrologist CONSULTATION',
+    banner_1_title: 'Speak to an Astrologist\nWho Understands.',
+    banner_1_desc: 'Connect with verified Vedic astrologers for personalized guidance on your life\'s most important questions.',
+    banner_1_cta: 'Consult an Astrologist',
+    banner_2_category: 'JYOTISH REPORTS',
+    banner_2_title: 'Go Deeper into\nYour Planetary Patterns.',
+    banner_2_desc: 'Detailed Jyotish analysis across career, marriage, health and destiny by classical Vedic methods.',
+    banner_2_cta: 'Explore Reports',
+    banner_3_category: 'TREDEVASTORE',
+    banner_3_title: 'Sacred Objects Chosen\nfor Your Journey.',
+    banner_3_desc: 'Authentic gemstones, Rudraksha, Yantras and sacred objects — energized for your Kundli.',
+    banner_3_cta: 'Explore TredevaStore',
+    banner_4_category: 'TREDEVAASTRO GURUKUL',
+    banner_4_title: 'Learn the Language\nof Jyotish.',
+    banner_4_desc: 'Study Vedic astrology from foundation to mastery through structured courses taught by expert Acharyas.',
+    banner_4_cta: 'Explore Gurukul',
     hero_trust_secure: 'Private & Secure',
     hero_scroll_text: 'Scroll to explore',
 
@@ -1187,6 +1214,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_secure: 'निजी और सुरक्षित',
     hero_scroll_text: 'खोजने के लिए स्क्रॉल करें',
 
+    banner_0_category: 'वैदिक ज्योतिष',
+    banner_0_title: 'वह नक्शा खोजें\nजो आपके जन्म पर लिखा गया।',
+    banner_0_desc: 'एक प्रामाणिक वैदिक कुंडली के माध्यम से अपनी राशियों, ग्रहों और नक्षत्रों को जानें — मुफ़्त, तुरंत।',
+    banner_0_cta: 'मुफ़्त कुंडली बनाएं',
+    banner_1_category: 'ज्योतिषी परामर्श',
+    banner_1_title: 'एक ज्योतिषी से बात करें\nजो आपको समझे।',
+    banner_1_desc: 'अपने जीवन के सबसे महत्वपूर्ण प्रश्नों पर व्यक्तिगत मार्गदर्शन के लिए सत्यापित वैदिक ज्योतिषियों से जुड़ें।',
+    banner_1_cta: 'ज्योतिषी से परामर्श करें',
+    banner_2_category: 'ज्योतिष रिपोर्ट्स',
+    banner_2_title: 'अपने ग्रहों के पैटर्न में\nऔर गहराई से जाएं।',
+    banner_2_desc: 'पारंपरिक वैदिक विधियों द्वारा करियर, विवाह, स्वास्थ्य और भाग्य पर विस्तृत ज्योतिष विश्लेषण।',
+    banner_2_cta: 'रिपोर्ट्स देखें',
+    banner_3_category: 'ट्रेडेवास्टोर',
+    banner_3_title: 'आपकी यात्रा के लिए\nचुनी गई पवित्र वस्तुएं।',
+    banner_3_desc: 'प्रामाणिक रत्न, रुद्राक्ष, यंत्र और पवित्र वस्तुएं — आपकी कुंडली के लिए ऊर्जावान।',
+    banner_3_cta: 'ट्रेडेवास्टोर देखें',
+    banner_4_category: 'ट्रेडेवाएस्ट्रो गुरुकुल',
+    banner_4_title: 'ज्योतिष की भाषा\nसीखें।',
+    banner_4_desc: 'विशेषज्ञ आचार्यों द्वारा संरचित पाठ्यक्रमों के माध्यम से आधार से लेकर निपुणता तक वैदिक ज्योतिष का अध्ययन करें।',
+    banner_4_cta: 'गुरुकुल देखें',
+
     // Guidance Banner
     guidance_eyebrow: '✦ ज्योतिष मार्गदर्शन',
     guidance_headline: 'जब रास्ता अस्पष्ट लगे,',
@@ -1771,6 +1819,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_secure: 'खाजगी आणि सुरक्षित',
     hero_scroll_text: 'अन्वेषण करण्यासाठी स्क्रोल करा',
 
+    banner_0_category: 'वैदिक ज्योतिष',
+    banner_0_title: 'तो नकाशा शोधा\nजो तुमच्या जन्मावेळी लिहिला गेला.',
+    banner_0_desc: 'अस्सल वैदिक कुंडलीद्वारे तुमच्या राशी, ग्रह आणि नक्षत्रे जाणून घ्या — मोफत, त्वरित.',
+    banner_0_cta: 'मोफत कुंडली तयार करा',
+    banner_1_category: 'ज्योतिषी सल्लामसलत',
+    banner_1_title: 'अशा ज्योतिषीशी बोला\nजो तुम्हाला समजतो.',
+    banner_1_desc: 'तुमच्या आयुष्यातील सर्वात महत्त्वाच्या प्रश्नांसाठी वैयक्तिक मार्गदर्शनासाठी सत्यापित वैदिक ज्योतिषींशी संपर्क साधा.',
+    banner_1_cta: 'ज्योतिषीशी सल्लामसलत करा',
+    banner_2_category: 'ज्योतिष अहवाल',
+    banner_2_title: 'तुमच्या ग्रहस्थितींमध्ये\nअधिक खोलवर जा.',
+    banner_2_desc: 'पारंपरिक वैदिक पद्धतींद्वारे करिअर, विवाह, आरोग्य आणि नशिबाचे सविस्तर ज्योतिष विश्लेषण.',
+    banner_2_cta: 'अहवाल पहा',
+    banner_3_category: 'ट्रेडेवास्टोअर',
+    banner_3_title: 'तुमच्या प्रवासासाठी\nनिवडलेल्या पवित्र वस्तू.',
+    banner_3_desc: 'अस्सल रत्ने, रुद्राक्ष, यंत्रे आणि पवित्र वस्तू — तुमच्या कुंडलीसाठी ऊर्जान्वित.',
+    banner_3_cta: 'ट्रेडेवास्टोअर पहा',
+    banner_4_category: 'ट्रेडेवाअॅस्ट्रो गुरुकुल',
+    banner_4_title: 'ज्योतिषाची भाषा\nशिका.',
+    banner_4_desc: 'तज्ञ आचार्यांनी शिकवलेल्या संरचित अभ्यासक्रमांद्वारे पायाभूत ते प्रावीण्यापर्यंत वैदिक ज्योतिषाचा अभ्यास करा.',
+    banner_4_cta: 'गुरुकुल पहा',
+
     // Guidance Banner
     guidance_eyebrow: '✦ ज्योतिषीय मार्गदर्शन',
     guidance_headline: 'जेव्हा मार्ग अस्पष्ट वाटतो,',
@@ -2333,6 +2402,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_secure: 'ব্যক্তিগত ও সুরক্ষিত',
     hero_scroll_text: 'আবিষ্কার করতে স্ক্রোল করুন',
 
+    banner_0_category: 'বৈদিক জ্যোতিষ',
+    banner_0_title: 'সেই মানচিত্র আবিষ্কার করুন\nযা আপনার জন্মের সময় লেখা হয়েছিল।',
+    banner_0_desc: 'একটি সত্যিকারের বৈদিক কুণ্ডলীর মাধ্যমে আপনার রাশি, গ্রহ এবং নক্ষত্র সম্পর্কে জানুন — বিনামূল্যে, তাৎক্ষণিকভাবে।',
+    banner_0_cta: 'বিনামূল্যে কুণ্ডলী তৈরি করুন',
+    banner_1_category: 'জ্যোতিষী পরামর্শ',
+    banner_1_title: 'এমন একজন জ্যোতিষীর সাথে কথা বলুন\nযিনি আপনাকে বোঝেন।',
+    banner_1_desc: 'আপনার জীবনের সবচেয়ে গুরুত্বপূর্ণ প্রশ্নগুলির জন্য ব্যক্তিগত নির্দেশনার জন্য যাচাইকৃত বৈদিক জ্যোতিষীদের সাথে সংযুক্ত হন।',
+    banner_1_cta: 'জ্যোতিষীর সাথে পরামর্শ করুন',
+    banner_2_category: 'জ্যোতিষ প্রতিবেদন',
+    banner_2_title: 'আপনার গ্রহের অবস্থান সম্পর্কে\nআরও গভীরে যান।',
+    banner_2_desc: 'ক্লাসিক্যাল বৈদিক পদ্ধতিতে কর্মজীবন, বিবাহ, স্বাস্থ্য এবং ভাগ্য জুড়ে বিস্তারিত জ্যোতিষ বিশ্লেষণ।',
+    banner_2_cta: 'প্রতিবেদন দেখুন',
+    banner_3_category: 'ট্রেডেভাস্টোর',
+    banner_3_title: 'আপনার যাত্রার জন্য\nনির্বাচিত পবিত্র বস্তু।',
+    banner_3_desc: 'প্রকৃত রত্ন, রুদ্রাক্ষ, যন্ত্র এবং পবিত্র বস্তু — আপনার কুণ্ডলীর জন্য শক্তিসম্পন্ন।',
+    banner_3_cta: 'ট্রেডেভাস্টোর দেখুন',
+    banner_4_category: 'ট্রেডেভাঅ্যাস্ট্রো গুরুকুল',
+    banner_4_title: 'জ্যোতিষের ভাষা\nশিখুন।',
+    banner_4_desc: 'বিশেষজ্ঞ আচার্যদের দ্বারা পরিচালিত কাঠামোবদ্ধ কোর্সের মাধ্যমে ভিত্তি থেকে দক্ষতা পর্যন্ত বৈদিক জ্যোতিষ অধ্যয়ন করুন।',
+    banner_4_cta: 'গুরুকুল দেখুন',
+
     // Guidance Banner
     guidance_eyebrow: '✦ জ্যোতিষীয় নির্দেশনা',
     guidance_headline: 'যখন পথ অস্পষ্ট মনে হয়,',
@@ -2487,6 +2577,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'தனிப்பயனாக்கப்பட்ட ஜோதிடம்',
     hero_trust_secure: 'தனிப்பட்ட மற்றும் பாதுகாப்பானது',
     hero_scroll_text: 'ஆராய கீழே உருட்டவும்',
+
+    banner_0_category: 'வேத ஜோதிடம்',
+    banner_0_title: 'உங்கள் பிறப்பில் எழுதப்பட்ட\nவரைபடத்தைக் கண்டறியுங்கள்.',
+    banner_0_desc: 'உண்மையான வேத ஜாதகத்தின் மூலம் உங்கள் ராசிகள், கிரகங்கள் மற்றும் நட்சத்திரங்களை ஆராயுங்கள் — இலவசமாக, உடனடியாக.',
+    banner_0_cta: 'இலவச ஜாதகம் உருவாக்கவும்',
+    banner_1_category: 'ஜோதிடர் ஆலோசனை',
+    banner_1_title: 'உங்களைப் புரிந்துகொள்ளும்\nஜோதிடருடன் பேசுங்கள்.',
+    banner_1_desc: 'உங்கள் வாழ்க்கையின் மிக முக்கியமான கேள்விகளுக்கு தனிப்பயனாக்கப்பட்ட வழிகாட்டுதலுக்காக சரிபார்க்கப்பட்ட வேத ஜோதிடர்களுடன் இணையுங்கள்.',
+    banner_1_cta: 'ஜோதிடரிடம் ஆலோசிக்கவும்',
+    banner_2_category: 'ஜோதிட அறிக்கைகள்',
+    banner_2_title: 'உங்கள் கிரக அமைப்புகளில்\nஆழமாகச் செல்லுங்கள்.',
+    banner_2_desc: 'பாரம்பரிய வேத முறைகள் மூலம் தொழில், திருமணம், ஆரோக்கியம் மற்றும் தலைவிதி குறித்த விரிவான ஜோதிட பகுப்பாய்வு.',
+    banner_2_cta: 'அறிக்கைகளை ஆராயுங்கள்',
+    banner_3_category: 'ட்ரெடேவாஸ்டோர்',
+    banner_3_title: 'உங்கள் பயணத்திற்காகத்\nதேர்ந்தெடுக்கப்பட்ட புனித பொருட்கள்.',
+    banner_3_desc: 'உண்மையான ரத்தினங்கள், உருத்திராட்சம், யந்திரங்கள் மற்றும் புனித பொருட்கள் — உங்கள் ஜாதகத்திற்காக சக்தியூட்டப்பட்டவை.',
+    banner_3_cta: 'ட்ரெடேவாஸ்டோரை ஆராயுங்கள்',
+    banner_4_category: 'ட்ரெடேவாஜோதிடம் குருகுலம்',
+    banner_4_title: 'ஜோதிடத்தின் மொழியைக்\nகற்றுக்கொள்ளுங்கள்.',
+    banner_4_desc: 'நிபுணர் ஆசார்யர்களால் கற்பிக்கப்படும் கட்டமைக்கப்பட்ட பாடநெறிகள் மூலம் அடிப்படையிலிருந்து தேர்ச்சி வரை வேத ஜோதிடத்தைப் படியுங்கள்.',
+    banner_4_cta: 'குருகுலத்தை ஆராயுங்கள்',
 
     // Guidance Banner
     guidance_eyebrow: '✦ ஜோதிட வழிகாட்டுதல்',
@@ -2643,6 +2754,27 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_secure: 'వ్యక్తిగత & సురక్షితం',
     hero_scroll_text: 'అన్వేషించడానికి స్క్రోల్ చేయండి',
 
+    banner_0_category: 'వైదిక జ్యోతిష్యం',
+    banner_0_title: 'మీ జననం వద్ద వ్రాయబడిన\nపటాన్ని కనుగొనండి.',
+    banner_0_desc: 'ప్రామాణికమైన వేద జాతకం ద్వారా మీ రాశులు, గ్రహాలు మరియు నక్షత్రాలను అన్వేషించండి — ఉచితంగా, తక్షణమే.',
+    banner_0_cta: 'ఉచిత జాతకం సృష్టించండి',
+    banner_1_category: 'జ్యోతిష్కుడి సంప్రదింపు',
+    banner_1_title: 'మిమ్మల్ని అర్థం చేసుకునే\nజ్యోతిష్కుడితో మాట్లాడండి.',
+    banner_1_desc: 'మీ జీవితంలోని అతి ముఖ్యమైన ప్రశ్నలపై వ్యక్తిగత మార్గదర్శకత్వం కోసం ధృవీకరించబడిన వేద జ్యోతిష్కులతో కనెక్ట్ అవ్వండి.',
+    banner_1_cta: 'జ్యోతిష్కుడిని సంప్రదించండి',
+    banner_2_category: 'జ్యోతిష్య నివేదికలు',
+    banner_2_title: 'మీ గ్రహ నమూనాలలో\nమరింత లోతుగా వెళ్ళండి.',
+    banner_2_desc: 'సాంప్రదాయ వేద పద్ధతుల ద్వారా వృత్తి, వివాహం, ఆరోగ్యం మరియు విధి గురించి వివరణాత్మక జ్యోతిష్య విశ్లేషణ.',
+    banner_2_cta: 'నివేదికలను అన్వేషించండి',
+    banner_3_category: 'ట్రెడేవాస్టోర్',
+    banner_3_title: 'మీ ప్రయాణం కోసం\nఎంచుకున్న పవిత్ర వస్తువులు.',
+    banner_3_desc: 'ప్రామాణికమైన రత్నాలు, రుద్రాక్షలు, యంత్రాలు మరియు పవిత్ర వస్తువులు — మీ జాతకం కోసం శక్తివంతం చేయబడ్డాయి.',
+    banner_3_cta: 'ట్రెడేవాస్టోర్‌ను అన్వేషించండి',
+    banner_4_category: 'ట్రెడేవాఆస్ట్రో గురుకులం',
+    banner_4_title: 'జ్యోతిష్య భాషను\nనేర్చుకోండి.',
+    banner_4_desc: 'నిపుణులైన ఆచార్యులు బోధించే నిర్మాణాత్మక కోర్సుల ద్వారా పునాది నుండి నైపుణ్యం వరకు వేద జ్యోతిష్యాన్ని అధ్యయనం చేయండి.',
+    banner_4_cta: 'గురుకులాన్ని అన్వేషించండి',
+
     // Guidance Banner
     guidance_eyebrow: '✦ జ్యోతిష్య మార్గదర్శకత్వం',
     guidance_headline: 'మార్గం అస్పష్టంగా అనిపించినప్పుడు,',
@@ -2786,7 +2918,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (window.history.state && window.history.state.selectedId) || null;
   });
   const [paymentResult, setPaymentResult] = useState<PaymentResultInfo | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Was plain in-memory state — any reload (including the one Google
+  // Translate's own revert-to-English path does; see utils/googleTranslate.ts)
+  // silently wiped whatever someone was building, with no explanation. Every
+  // other cross-reload state here already persists this same way.
+  const [cart, setCart] = useState<CartItem[]>(() => loadLS('cart', [] as CartItem[]));
 
   const setPage = (p: string) => {
     setPageState(p);
@@ -3282,21 +3418,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const persistCart = (next: CartItem[]) => {
+    setCart(next);
+    try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
+  };
+
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const exists = prev.find(i => i.id === item.id);
-      if (exists) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, item];
+      const next = exists ? prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i) : [...prev, item];
+      try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
+      return next;
     });
   };
 
   const removeFromCart = (id: number) => {
-    setCart(prev => prev.filter(i => i.id !== id));
+    setCart(prev => {
+      const next = prev.filter(i => i.id !== id);
+      try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
+      return next;
+    });
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => persistCart([]);
 
   // Picks up after a gateway's hosted payment page (see paymentService.pay's
   // redirect) redirects the browser back to `/?payment_id=...`

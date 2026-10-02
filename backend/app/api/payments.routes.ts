@@ -50,7 +50,20 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
 
   if (paymentStatus === 'SUCCESS') {
     const updated = await markPaymentPaid(orderId, cfPaymentId);
-    if (updated) await fulfillPayment(updated);
+    // markPaymentPaid's guard is `WHERE status = 'CREATED'` — once this
+    // flips, no retry (a redelivered webhook, or the status-poll fallback
+    // below) will ever call fulfillPayment again for this payment. If it
+    // throws, the customer's money is taken with nothing granted and no
+    // visible trace — loud logging here is the least that must exist so
+    // this doesn't fail completely silently; a real reconciliation/retry
+    // queue is the fuller fix this doesn't attempt.
+    if (updated) {
+      try {
+        await fulfillPayment(updated);
+      } catch (err) {
+        console.error(`[payments] fulfillPayment failed after webhook marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
+      }
+    }
   } else if (paymentStatus === 'FAILED' || paymentStatus === 'USER_DROPPED' || paymentStatus === 'VOID') {
     await markPaymentFailed(orderId);
   }
@@ -203,7 +216,16 @@ paymentsRouter.get('/orders/:id/status', async (req, res) => {
         const cfOrder = await fetchCashfreeOrder(payment.id);
         if (cfOrder.order_status === 'PAID') {
           const updated = await markPaymentPaid(payment.id, null);
-          if (updated) await fulfillPayment(updated);
+          // Separate try/catch from the gateway-lookup one below — once
+          // markPaymentPaid flips CREATED->PAID, nothing will ever call
+          // fulfillPayment for this payment again (same reasoning as the
+          // webhook handler above), so a failure here must be logged
+          // distinctly, not folded into "gateway lookup failed, ignore."
+          if (updated) {
+            try { await fulfillPayment(updated); } catch (err) {
+              console.error(`[payments] fulfillPayment failed after status-poll marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
+            }
+          }
         } else if (cfOrder.order_status === 'EXPIRED' || cfOrder.order_status === 'TERMINATED') {
           await markPaymentFailed(payment.id);
         }
@@ -211,7 +233,11 @@ paymentsRouter.get('/orders/:id/status', async (req, res) => {
         const link = await fetchPaymentLink(payment.gateway_ref);
         if (link.status === 'paid') {
           const updated = await markPaymentPaid(payment.id, link.id);
-          if (updated) await fulfillPayment(updated);
+          if (updated) {
+            try { await fulfillPayment(updated); } catch (err) {
+              console.error(`[payments] fulfillPayment failed after status-poll marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
+            }
+          }
         } else if (link.status === 'expired' || link.status === 'cancelled') {
           await markPaymentFailed(payment.id);
         }

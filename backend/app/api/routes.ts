@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
-  acceptConsultation, cancelQueueEntry, declineConsultation, endConsultation, extendConsultation,
+  acceptConsultation, cancelConsultation, cancelQueueEntry, declineConsultation, endConsultation,
   getAdminConfig, getAstrologer, getAstrologerByEmail, getAstrologerSyncSnapshot,
   getRecommendations, getUserSyncSnapshot, listNotifications, listPublicAstrologers,
   markAllNotificationsRead, markNotificationRead, requestConsultation, setIntent,
@@ -16,6 +16,8 @@ import {
 } from '../repositories/poojaRepository.ts';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import { findUserByEmail } from '../repositories/userRepository.ts';
+import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
+import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
 
 export const router = Router();
 
@@ -151,6 +153,23 @@ router.post('/consultations/request', async (req, res) => {
   if (!requester || requester.wallet_balance <= 0) {
     return res.status(402).json({ error: 'Insufficient wallet balance. Please recharge your wallet to start a consultation.' });
   }
+  // A second simultaneous request would let two different astrologers'
+  // acceptConsultation calls each size their own session off the SAME,
+  // still-undiminished wallet balance (see findNonTerminalForUser's own
+  // comment) — requestConsultation only locks the target astrologer's row,
+  // so this is the only place that actually stops it.
+  // ponytail: check-then-act, not locked — closes the common case (one
+  // request at a time) but two truly simultaneous requests from the same
+  // user could still both pass this check before either's row exists.
+  // Upgrade path: a per-user advisory lock (pg_advisory_xact_lock) around
+  // this check + requestConsultation if that narrow race ever matters in
+  // practice.
+  if (await findNonTerminalForUser(userEmail)) {
+    return res.status(409).json({ error: 'You already have an active or pending consultation.' });
+  }
+  if (await findQueuedEntryForUserEmail(userEmail)) {
+    return res.status(409).json({ error: 'You are already in a queue for another astrologer.' });
+  }
   const countryCode = countryFromRequest(req);
   const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode });
   res.json(result);
@@ -180,9 +199,20 @@ router.post('/consultations/:id/end', async (req, res) => {
   }
 });
 
-router.post('/consultations/:id/extend', async (req, res) => {
+// No direct REST route for /extend — this used to exist here unguarded
+// (any logged-in participant could add arbitrary free minutes to any
+// consultation, fully bypassing wallet billing; a real, live exploit, not
+// hypothetical). The wallet-billing model's real equivalent is implicit:
+// recharging mid-call re-runs the same balance/pricePerMin math via
+// onWalletTopUp (realtimeStore.ts) and reschedules the session automatically
+// — no separate "add minutes" action should exist. extendConsultation()
+// itself is kept only for the legacy, payment-gated CONSULTATION_EXTEND
+// purpose in fulfillment.ts, which computes and charges a real amount
+// server-side before ever calling it.
+
+router.post('/consultations/:id/cancel', async (req, res) => {
   try {
-    res.json(await extendConsultation(req.params.id, req.user!.email, Number(req.body.extraMinutes)));
+    res.json(await cancelConsultation(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }

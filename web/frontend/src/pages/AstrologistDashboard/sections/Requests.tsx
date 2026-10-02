@@ -11,13 +11,18 @@ function timeAgo(ts: number): string {
 }
 
 export default function Requests() {
-  const { astrologerSync, acceptAssignment } = useRealtime();
+  const { astrologerSync, acceptAssignment, declineAssignment } = useRealtime();
   const [busyId, setBusyId] = useState<string | null>(null);
   const pending = astrologerSync?.pendingAssignments || [];
 
   const handleAccept = async (id: string) => {
     setBusyId(id);
     try { await acceptAssignment(id); } finally { setBusyId(null); }
+  };
+
+  const handleDecline = async (id: string) => {
+    setBusyId(id);
+    try { await declineAssignment(id); } finally { setBusyId(null); }
   };
 
   return (
@@ -39,6 +44,7 @@ export default function Requests() {
               </div>
               <div className={styles.requestActions}>
                 <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busyId === req.id} onClick={() => handleAccept(req.id)}>Accept</button>
+                <button className={`${styles.btnSm} ${styles.btnDanger}`} disabled={busyId === req.id} onClick={() => handleDecline(req.id)}>Decline</button>
               </div>
             </div>
           ))}

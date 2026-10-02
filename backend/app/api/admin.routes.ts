@@ -222,11 +222,15 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  if (application.status !== 'PENDING') return fail(res, 409, 'ALREADY_DECIDED', 'This application was already decided');
   const applicant = await findUserById(application.user_id);
   if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account not found');
 
-  await decideApplication(application.id, parsed.data.decision);
+  // Atomic PENDING->decision transition is the real guard (decideApplication
+  // only flips rows still PENDING and reports whether it did) — closes the
+  // race a separate "is it still PENDING?" pre-check had against a
+  // double-click or two staff racing the same Approve.
+  const decided = await decideApplication(application.id, parsed.data.decision);
+  if (!decided) return fail(res, 409, 'ALREADY_DECIDED', 'This application was already decided');
   if (parsed.data.decision === 'APPROVED') {
     await updateUserRole(applicant.id, 'ASTROLOGIST');
     const catalogRow = await insertAstrologerForUser(applicant.id, application.full_name || applicant.name, application.expertise);

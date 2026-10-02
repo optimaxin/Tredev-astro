@@ -94,6 +94,21 @@ export async function countActiveForAstrologer(astrologerId: number, executor?: 
   return Number(row?.n ?? 0);
 }
 
+// Used by routes.ts's /consultations/request to stop a user from being
+// assigned to two astrologers at once — nothing else enforced this (see
+// its own call-site comment): requestConsultation only locks the TARGET
+// astrologer's row, so two different astrologers' requests never serialize
+// against each other, and acceptConsultation independently sizes each
+// session's duration off the same, still-undiminished wallet balance —
+// without this check, one of the two ends up free.
+export async function findNonTerminalForUser(userEmail: string): Promise<Consultation | undefined> {
+  const row = await queryOne<ConsultationDbRow>(
+    `SELECT * FROM consultations WHERE user_email = $1 AND status = ANY($2::text[]) LIMIT 1`,
+    [userEmail.toLowerCase(), ACTIVE_STATUSES]
+  );
+  return row ? fromRow(row) : undefined;
+}
+
 export async function findActiveOrAcceptedForAstrologer(astrologerId: number): Promise<Consultation | undefined> {
   const row = await queryOne<ConsultationDbRow>(
     `SELECT * FROM consultations WHERE astrologer_id = $1 AND status IN ('ACCEPTED', 'ACTIVE') LIMIT 1`,

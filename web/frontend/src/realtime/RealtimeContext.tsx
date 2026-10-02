@@ -56,11 +56,12 @@ interface RealtimeContextValue {
   queueExpired: boolean;
   clearQueueExpired: () => void;
 
-  // Time-boxed consultations — either party can end early; either can top
-  // up once the "expiring soon" warning fires (~1 min before the chosen
-  // duration, plus any prior top-ups, runs out).
+  // Time-boxed consultations — either party can end early; wallet top-ups
+  // extend automatically now (see onWalletTopUp, backend), so there's no
+  // separate pay-to-extend action here any more.
   endConsultationById: (id: string) => Promise<void>;
-  extendConsultationById: (id: string, extraMinutes: number) => Promise<void>;
+  // The user's own way out of a request the astrologer hasn't accepted yet.
+  cancelConsultationById: (id: string) => Promise<void>;
   expiringSoon: { consultationId: string; remainingSeconds: number } | null;
 
   toasts: Toast[];
@@ -181,6 +182,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on('chat:declined', (consultation) => {
       setUserSync(prev => prev ? { ...prev, consultation } : prev);
       pushToast('Your consultation request was declined.', 'warning');
+    });
+    // Distinct from chat:declined — this fires when the USER themselves
+    // cancels their own still-pending request, so "was declined" would be
+    // the wrong message. See cancelConsultationById below.
+    socket.on('chat:cancelled', (consultation) => {
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
     });
     socket.on('chat:ended', (consultation) => {
       setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === consultation.id ? null : prev.activeConsultation } : prev);
@@ -317,9 +324,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     await realtimeApi.endConsultation(id, currentUser.email);
   }, [currentUser]);
 
-  const extendConsultationById = useCallback(async (id: string, extraMinutes: number) => {
+  const cancelConsultationById = useCallback(async (id: string) => {
     if (!currentUser) return;
-    await realtimeApi.extendConsultation(id, currentUser.email, extraMinutes);
+    await realtimeApi.cancelConsultation(id, currentUser.email);
   }, [currentUser]);
 
   const markNotifRead = useCallback(async (id: string) => {
@@ -378,7 +385,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
-      endConsultationById, extendConsultationById, expiringSoon,
+      endConsultationById, cancelConsultationById, expiringSoon,
       toasts, dismissToast, liveChatMessages,
       sendCallSignal, onCallSignal,
     }}>

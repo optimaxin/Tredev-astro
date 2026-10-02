@@ -20,6 +20,7 @@ interface BusEvents {
   'chat:accepted': [Consultation];
   'chat:started': [Consultation];
   'chat:declined': [Consultation];
+  'chat:cancelled': [Consultation];
   'chat:ended': [Consultation];
   'queue:position': [QueuePositionPayload];
   'queue:promoted': [{ entry: QueueEntry; consultation: Consultation }];

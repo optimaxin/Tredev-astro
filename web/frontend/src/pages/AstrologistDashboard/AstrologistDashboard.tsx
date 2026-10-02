@@ -98,7 +98,7 @@ const LIVE_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function AstrologistDashboard() {
-  const { currentUser, logout, setPage, astrologerNotifications, consultationRequests } = useAppContext();
+  const { currentUser, logout, setPage, astrologerNotifications } = useAppContext();
   const { astrologerSync, goOnline, goOffline, connected } = useRealtime();
   const [section, setSection] = useState<SectionKey>('overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -109,7 +109,12 @@ export default function AstrologistDashboard() {
   const liveStatus = astrologerSync?.status || 'OFFLINE';
   const isOnline = astrologerSync?.intent === 'ONLINE';
   const unread = astrologerNotifications.filter(n => !n.read).length + (astrologerSync?.notifications.filter(n => !n.read).length || 0);
-  const pendingCount = consultationRequests.filter(r => r.status === 'PENDING').length;
+  // Was reading AppContext's `consultationRequests` — the legacy mock
+  // prototype state (seedAstrologistDemoData, localStorage['astro_requests']),
+  // never written to by the real realtime backend. A genuine incoming
+  // request never moved this badge at all; any stale demo data could show
+  // one that didn't match what was actually in the Requests section.
+  const pendingCount = astrologerSync?.pendingAssignments.length || 0;
   const pendingChatCount = astrologerSync?.pendingAssignments.filter(p => p.type === 'chat').length || 0;
   const liveQueueCount = astrologerSync?.queue.length || 0;
 

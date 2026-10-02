@@ -140,14 +140,20 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
-  // Scoped to this card only — deliberately NOT the site-wide language
-  // toggle (AppContext's language/setLanguage), so switching this doesn't
-  // also change the rest of the site's language. Defaults to English (not
-  // Hindi) to match the rest of the home page's default — a visitor who
-  // hasn't touched any language toggle shouldn't see this one card start in
-  // a different language than everything else.
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme, language: siteLanguage } = useAppContext();
+  // Starts from (and follows) the site-wide language toggle — this card's
+  // own Prahar/weekday/tithi labels live as real SVG <text> and hardcoded
+  // strings, neither of which Google Translate (see utils/googleTranslate.ts)
+  // can reach, so without this sync the card silently stayed in whatever it
+  // last was regardless of the nav's language picker. The dedicated
+  // English/हिंदी button below still lets a visitor flip just this card on
+  // its own afterward (this card only ever supports those two — picking any
+  // other site language just falls back to English here).
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>(siteLanguage === 'hi' ? 'hi' : 'en');
+  useEffect(() => {
+    setPanchangLang(siteLanguage === 'hi' ? 'hi' : 'en');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteLanguage]);
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');

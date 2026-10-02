@@ -529,12 +529,6 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const [birthDetailsError, setBirthDetailsError] = useState('');
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
   const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
-  // Was declared after the astrologerLoading/notFound early returns below,
-  // so React called this hook on some renders and skipped it on others
-  // (whenever loading flipped to loaded within the same mount) — a Rules of
-  // Hooks violation that could crash this page. Hooks must run
-  // unconditionally, every render.
-  const [scheduleNotice, setScheduleNotice] = useState(false);
 
   // The real, offer/loyalty-adjusted price for this exact type — recomputed
   // whenever the user switches format, so what they see here always matches
@@ -602,11 +596,10 @@ function ConsultationBookingPage({ id }: { id: any }) {
   // Scheduling a FUTURE slot needs real infrastructure this app doesn't have
   // yet (a stored booking, a job to actually fire the request at that time,
   // reminders...) — the realtime engine only ever handles "right now"
-  // requests. This used to fake a success (an alert + navigate) without
-  // charging anything or creating any real booking at all, which is exactly
-  // the "booked without payment" bug — replaced with an honest notice
-  // instead of pretending it worked.
-  const handleConfirm = () => setScheduleNotice(true);
+  // requests. This used to fake a success (an alert + navigate), then later
+  // a notice that only appeared after clicking Confirm; the tab itself now
+  // says upfront this doesn't work and its Confirm button is disabled,
+  // instead of a user discovering that only after picking a slot.
 
   const handleStartNow = async () => {
     if (!currentUser) {
@@ -764,6 +757,9 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
               <div className={styles.slotsSection}>
                 <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>2. Available Time Slots</h3>
+                <p className={styles.reviewCount} style={{ marginBottom: '12px', color: '#c0392b' }}>
+                  Scheduling a future slot isn't available yet — these times aren't real bookable slots. Use "Consult Now" above for an immediate session instead.
+                </p>
                 <div className={styles.slotsGrid}>
                   {SLOTS.map((s, idx) => (
                     <button
@@ -799,13 +795,8 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span>₹{selectedOpt.price}</span>
               </div>
 
-              {scheduleNotice && (
-                <p style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '12px' }}>
-                  Scheduling a future slot isn't available yet — please use "Consult Now" for an immediate session instead.
-                </p>
-              )}
-              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} onClick={handleConfirm}>
-                Confirm Booking
+              <button className="btn btn-outline-light" disabled style={{ width: '100%', marginTop: '20px', cursor: 'not-allowed' }} title="Not available yet — use Consult Now instead">
+                Not Available Yet
               </button>
             </div>
           </div>
@@ -821,7 +812,8 @@ function ConsultationBookingPage({ id }: { id: any }) {
 // computed client-side; it only renders what server/store.ts has decided.
 function ConsultationWaitingPage() {
   const { setPage, setSelectedId, walletBalance, refreshWalletBalance } = useAppContext();
-  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, expiringSoon } = useRealtime();
+  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, cancelConsultationById, expiringSoon } = useRealtime();
+  const [cancellingRequest, setCancellingRequest] = useState(false);
   const [justReviewed, setJustReviewed] = useState(false);
   const [ending, setEnding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -905,6 +897,14 @@ function ConsultationWaitingPage() {
             <h1 className={styles.pageTitle}>This consultation is taking longer than expected</h1>
             <p className={styles.pageSubtitle}>Your wait for {astrologer?.name || 'this astrologer'} timed out. Choose another astrologer below, or check back later.</p>
           </div>
+          {/* recsBlock only renders once recommendations have actually
+              loaded — without a real fallback, a visitor with none left this
+              page with no in-page action at all. */}
+          {!recsBlock && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Browse Astrologers</button>
+            </div>
+          )}
           {recsBlock}
         </div>
       </div>
@@ -938,11 +938,20 @@ function ConsultationWaitingPage() {
 
   const consultation = userSync.consultation!;
   if (consultation.status === 'ASSIGNED') {
+    const handleCancelRequest = async () => {
+      setCancellingRequest(true);
+      try { await cancelConsultationById(consultation.id); } finally { setCancellingRequest(false); }
+    };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ textAlign: 'center', padding: '80px 20px' }}>
           <h2>Connecting you to {astrologer?.name}…</h2>
           <p className={styles.reviewCount} style={{ marginTop: '8px' }}>Waiting for them to accept your request.</p>
+          {/* Previously no way out at all if the astrologer never responds
+              — reopening the app just landed back on this same screen. */}
+          <button className="btn btn-outline-light" style={{ marginTop: '24px' }} disabled={cancellingRequest} onClick={handleCancelRequest}>
+            {cancellingRequest ? 'Cancelling…' : 'Cancel Request'}
+          </button>
         </div>
       </div>
     );
@@ -1032,6 +1041,11 @@ function ConsultationWaitingPage() {
             <h1 className={styles.pageTitle}>Your request was declined</h1>
             <p className={styles.pageSubtitle}>{astrologer?.name} wasn't able to take this consultation. Try another astrologer below.</p>
           </div>
+          {!recsBlock && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Browse Astrologers</button>
+            </div>
+          )}
           {recsBlock}
         </div>
       </div>

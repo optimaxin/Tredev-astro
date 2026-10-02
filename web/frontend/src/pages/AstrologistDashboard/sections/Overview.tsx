@@ -173,7 +173,7 @@ function BoostCard() {
 
 export default function Overview() {
   const { t, currentUser } = useAppContext();
-  const { astrologerSync, acceptAssignment } = useRealtime();
+  const { astrologerSync, acceptAssignment, declineAssignment } = useRealtime();
   const { navigate } = useDashboardNav();
   const [rating, setRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -214,6 +214,7 @@ export default function Overview() {
   const firstName = currentUser?.name?.split(' ').slice(-1)[0];
 
   const handleAccept = async (id: string) => { setBusyId(id); try { await acceptAssignment(id); } finally { setBusyId(null); } };
+  const handleDecline = async (id: string) => { setBusyId(id); try { await declineAssignment(id); } finally { setBusyId(null); } };
 
   return (
     <div>
@@ -278,6 +279,7 @@ export default function Overview() {
                 </div>
                 <div className={styles.requestActions}>
                   <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busyId === req.id} onClick={() => handleAccept(req.id)}>{t('astro_action_accept')}</button>
+                  <button className={`${styles.btnSm} ${styles.btnDanger}`} disabled={busyId === req.id} onClick={() => handleDecline(req.id)}>{t('astro_action_decline')}</button>
                 </div>
               </div>
             ))

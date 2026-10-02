@@ -1096,3 +1096,26 @@ section:not(#hero), [class*="pageWrapper"] {
   pointer-events: none;
   z-index: 0;
 }
+
+/* Google Translate (see components/GoogleTranslate) — our own language
+   dropdown (Navigation.tsx) is the only translation control a visitor ever
+   sees; Google's own top banner iframe and its underline/highlight on
+   translated words are suppressed here so the page looks untouched by it. */
+/* The banner's actual class names are auto-generated/obfuscated and change
+   across Google's own widget versions (verified live: not .goog-te-banner-
+   frame, the commonly-documented but outdated selector) — `iframe.
+   skiptranslate` is the one stable marker Google consistently puts on this
+   injected chrome regardless of version. Our own #google_translate_element
+   container isn't an iframe, so this never touches it. */
+iframe.skiptranslate,
+.goog-te-balloon-frame,
+#goog-gt-tt {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}

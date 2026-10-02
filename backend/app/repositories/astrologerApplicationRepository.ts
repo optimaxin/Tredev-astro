@@ -86,6 +86,17 @@ export async function listApplicationsWithUsers(): Promise<PublicAstrologerAppli
   return rows.map(toPublic);
 }
 
-export async function decideApplication(id: string, status: Exclude<ApplicationStatus, 'PENDING'>) {
-  await query('UPDATE astrologer_applications SET status = $1, decided_at = $2 WHERE id = $3', [status, Date.now(), id]);
+// Only flips PENDING -> APPROVED/REJECTED and reports whether it actually
+// did — same idempotency shape as paymentRepository's markPaymentPaid. A
+// double-click (or two staff racing) on Approve previously had no guard
+// here at all: both calls would pass the route's own separate PENDING
+// check, then both attempt the downstream role/catalog-row side effects
+// (admin.routes.ts), which aren't designed to run twice for the same
+// application.
+export async function decideApplication(id: string, status: Exclude<ApplicationStatus, 'PENDING'>): Promise<boolean> {
+  const rows = await query(
+    `UPDATE astrologer_applications SET status = $1, decided_at = $2 WHERE id = $3 AND status = 'PENDING' RETURNING id`,
+    [status, Date.now(), id]
+  );
+  return rows.length > 0;
 }
