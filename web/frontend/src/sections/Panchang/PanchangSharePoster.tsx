@@ -180,7 +180,7 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
         lang={isHindi ? 'hi' : 'en'}
         style={{
           width: 900, background: p.page, color: p.ink, padding: 26,
-          fontFamily: "'Noto Serif', 'Georgia', serif",
+          fontFamily: 'var(--font-serif)',
         }}
       >
         <div style={{ border: `2px solid ${p.goldDim}`, borderRadius: 14, padding: '22px 24px 18px', position: 'relative' }}>

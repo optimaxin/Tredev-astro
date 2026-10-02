@@ -289,7 +289,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
   return (
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
-      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
+      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'var(--font-sans)', padding: 40 }}>
 
         {/* Cover — its own dedicated first page. `breakAfter: 'page'` is
             what actually enforces that under native print pagination
@@ -310,7 +310,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
           <img src="/logo.png" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
           <div style={{ fontSize: FONT.label, letterSpacing: '0.28em', color: MUTED, textTransform: 'uppercase', fontWeight: 700 }}>TredevaAstro</div>
           <div style={{ fontSize: FONT.label, letterSpacing: '0.22em', color: GOLD, textTransform: 'uppercase', margin: '8px 0 14px', fontWeight: 700 }}>{L.vedicReport}</div>
-          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 40, height: 1, background: GOLD }} />
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: GOLD }} />
@@ -743,7 +743,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               page — reads as a designed closing panel rather than
               leftover text under the banner. */}
           <div style={{ border: `1px solid ${LINE}`, borderRadius: 14, background: TINT, padding: '28px 36px', maxWidth: 460 }}>
-            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
             <p style={{ fontSize: FONT.body, lineHeight: 1.6, color: MUTED, margin: '0 0 16px' }}>{L.closingInvite}</p>
             <div style={{ width: 48, height: 2, background: GOLD, margin: '0 auto 14px' }} />
             <div style={{ fontSize: FONT.label, color: FAINT, letterSpacing: '0.08em' }}>{L.brandFooter}</div>
