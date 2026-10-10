@@ -2,7 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { logCampaignEvent, summarizeCampaignEvents, summarizeCampaignEventsByUser, listRegisteredUsers, resetCampaignEvents } from '../repositories/campaignEventRepository.ts';
+import { logCampaignEvent, summarizeCampaignEvents, summarizeCampaignEventsByUser, listRegisteredUsers, listCampaigns, resetCampaignEvents } from '../repositories/campaignEventRepository.ts';
+
+const GANESH_CAMPAIGN = 'ganesh-chaturthi';
 import { config } from '../core/config.ts';
 
 export const campaignAnalyticsRouter = Router();
@@ -24,6 +26,10 @@ const trackSchema = z.object({
   userName: z.string().max(200).optional(),
   userEmail: z.string().max(200).optional(),
   userPhone: z.string().max(50).optional(),
+  // Which campaign microsite this came from (e.g. 'ganesh-chaturthi',
+  // 'navratri-2026') — absent for the Ganesh client, which predates this
+  // field and is backfilled server-side (see logCampaignEvent's default).
+  campaign: z.string().min(1).max(60).optional(),
 });
 
 // Public, unauthenticated — the campaign site's visitors identify
@@ -41,7 +47,7 @@ campaignAnalyticsRouter.post('/track', trackLimiter, async (req, res) => {
   try {
     await logCampaignEvent(parsed.data.eventType, parsed.data.eventLabel, parsed.data.meta, {
       name: parsed.data.userName, email: parsed.data.userEmail, phone: parsed.data.userPhone,
-    });
+    }, parsed.data.campaign);
     res.status(204).end();
   } catch (err) {
     console.error('Failed to log campaign event:', err);
@@ -67,26 +73,45 @@ function hasValidCredentials(req: import('express').Request): boolean {
     && safeEqual(password, config.campaignAnalyticsPassword);
 }
 
+// Lets the dashboard show a campaign picker before loading any data, instead
+// of merging every campaign sharing this table into one meaningless total.
+campaignAnalyticsRouter.get('/campaigns', loginLimiter, async (req, res) => {
+  if (!hasValidCredentials(req)) {
+    res.status(401).json({ error: 'Incorrect username or password' });
+    return;
+  }
+  res.json({ campaigns: await listCampaigns() });
+});
+
 campaignAnalyticsRouter.get('/summary', loginLimiter, async (req, res) => {
   if (!hasValidCredentials(req)) {
     res.status(401).json({ error: 'Incorrect username or password' });
     return;
   }
-  const [events, byUser, users] = await Promise.all([summarizeCampaignEvents(), summarizeCampaignEventsByUser(), listRegisteredUsers()]);
+  const campaign = typeof req.query.campaign === 'string' && req.query.campaign ? req.query.campaign : GANESH_CAMPAIGN;
+  const [events, byUser, users] = await Promise.all([
+    summarizeCampaignEvents(campaign),
+    summarizeCampaignEventsByUser(campaign),
+    // Registered-account listing only applies to Ganesh (see listRegisteredUsers' own comment) — an empty list for any other campaign.
+    campaign === GANESH_CAMPAIGN ? listRegisteredUsers() : Promise.resolve([]),
+  ]);
   res.json({ events, byUser, users });
 });
 
-// Wipes every recorded event — the dashboard gates this behind its own "are
-// you sure" confirm() before ever calling it, but the real guard is the
-// credentials check here (same as /summary), since this is a real,
-// irreversible mutation reachable by anyone who can reach the API.
+// Wipes every recorded event for ONE campaign — the dashboard gates this
+// behind its own "are you sure" confirm() before ever calling it, but the
+// real guard is the credentials check here (same as /summary), since this
+// is a real, irreversible mutation reachable by anyone who can reach the
+// API. Scoped by campaign so resetting Navratri's data can't also wipe
+// Ganesh's (or vice versa).
 campaignAnalyticsRouter.post('/reset', loginLimiter, async (req, res) => {
   if (!hasValidCredentials(req)) {
     res.status(401).json({ error: 'Incorrect username or password' });
     return;
   }
+  const campaign = typeof req.body?.campaign === 'string' && req.body.campaign ? req.body.campaign : GANESH_CAMPAIGN;
   try {
-    await resetCampaignEvents();
+    await resetCampaignEvents(campaign);
     res.status(204).end();
   } catch (err) {
     console.error('Failed to reset campaign events:', err);

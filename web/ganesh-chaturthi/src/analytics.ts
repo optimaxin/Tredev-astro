@@ -28,6 +28,7 @@ export function trackEvent(eventType: string, eventLabel: string, meta?: Record<
       userName: currentAnalyticsUser?.name,
       userEmail: currentAnalyticsUser?.email,
       userPhone: currentAnalyticsUser?.phone,
+      campaign: 'ganesh-chaturthi',
     }),
     keepalive: true,
   }).catch(() => {});

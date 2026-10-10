@@ -14,6 +14,13 @@
   h2.section-title { font-size: 1.05rem; margin: 2rem 0 0.75rem; }
   .sub { color: #7a6f5d; font-size: 0.9rem; margin: 0 0 1.5rem; }
   .gate { max-width: 360px; margin: 3rem auto; background: #fff; border: 1px solid #e4dccb; border-radius: 12px; padding: 1.75rem; text-align: center; }
+  .picker { max-width: 480px; margin: 3rem auto; text-align: center; }
+  .picker h1 { margin-bottom: 1.5rem; }
+  .picker-list { display: grid; gap: 0.75rem; }
+  .picker-list button { width: 100%; background: #fff; color: #2a2118; border: 1px solid #e4dccb; border-radius: 10px; padding: 1rem 1.25rem; font-size: 1rem; text-align: left; }
+  .picker-list button:hover { background: #f0ead9; border-color: #d8cdb6; }
+  .back-link { background: none; border: none; color: #7a6f5d; padding: 0; font-size: 0.85rem; text-decoration: underline; cursor: pointer; font-weight: 400; }
+  .back-link:hover { background: none; color: #2a2118; }
   .gate input { width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #d8cdb6; border-radius: 8px; font-size: 1rem; margin: 1rem 0 0.75rem; }
   .pw-field { position: relative; margin: 1rem 0 0.75rem; }
   .pw-field input { padding-right: 2.5rem; margin: 0; }
@@ -61,16 +68,23 @@
       <p class="error" id="gate-error"></p>
     </div>
 
+    <div id="picker" class="picker" hidden>
+      <h1>Choose a campaign</h1>
+      <div id="picker-list" class="picker-list"></div>
+      <p class="error" id="picker-error"></p>
+    </div>
+
     <div id="dashboard" hidden>
       <div class="toolbar">
         <div>
-          <h1>Campaign Analytics</h1>
-          <p class="sub">What visitors clicked on the Ganesh Chaturthi campaign site.</p>
+          <button type="button" class="back-link" id="back-to-picker">← All campaigns</button>
+          <h1 id="dashboard-title">Campaign Analytics</h1>
+          <p class="sub">What visitors clicked on this campaign's site.</p>
         </div>
         <div class="toolbar-actions">
           <button id="refresh" class="secondary">↻ Refresh</button>
           <button id="download-csv" class="secondary">⬇ Download CSV</button>
-          <button id="reset" class="danger">⚠ Reset All Data</button>
+          <button id="reset" class="danger">⚠ Reset This Campaign's Data</button>
         </div>
       </div>
       <p class="error" id="action-error"></p>
@@ -85,13 +99,30 @@
 <script>
   const API_BASE = window.location.origin;
   const gate = document.getElementById('gate');
+  const picker = document.getElementById('picker');
+  const pickerList = document.getElementById('picker-list');
+  const pickerError = document.getElementById('picker-error');
   const dashboard = document.getElementById('dashboard');
+  const dashboardTitle = document.getElementById('dashboard-title');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const gateError = document.getElementById('gate-error');
   const actionError = document.getElementById('action-error');
   const content = document.getElementById('content');
   const usersContent = document.getElementById('users-content');
+
+  // Which campaign's data is currently on screen — set when a picker button
+  // is clicked, read by refresh/reset/download-csv so they act on the right
+  // one instead of always assuming Ganesh.
+  let currentCampaign = null;
+
+  const CAMPAIGN_LABELS = {
+    'ganesh-chaturthi': 'Ganesh Chaturthi',
+    'navratri-2026': 'Navratri — Nine Nights of Love',
+  };
+  function campaignLabel(slug) {
+    return CAMPAIGN_LABELS[slug] || slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
 
   function getStoredCredentials() {
     return { username: sessionStorage.getItem('campaign_analytics_user') || '', password: sessionStorage.getItem('campaign_analytics_pw') || '' };
@@ -152,12 +183,18 @@
       byType.get(e.event_type).push(e);
     }
 
-    // Calculator opens always list every calculator (0 if unused yet) —
-    // everything else stays purely reactive to whatever's actually happened.
-    const toolRows = byType.get('tool_open') || [];
-    const toolTotals = new Map(toolRows.map(r => [r.event_label, r]));
-    const fullToolRows = TOOL_IDS.map(id => toolTotals.get(id) || { event_label: id, total: '0' });
-    byType.set('tool_open', fullToolRows.sort((a, b) => Number(b.total) - Number(a.total)));
+    // Calculator opens always list every calculator (0 if unused yet) — but
+    // TOOL_IDS is Ganesh Chaturthi's own calculator list, so this seeding
+    // only makes sense while viewing that campaign; another campaign's
+    // tool_open-shaped events (if it ever has any) are left purely reactive.
+    const isGanesh = currentCampaign === 'ganesh-chaturthi';
+    let fullToolRows = [];
+    if (isGanesh) {
+      const toolRows = byType.get('tool_open') || [];
+      const toolTotals = new Map(toolRows.map(r => [r.event_label, r]));
+      fullToolRows = TOOL_IDS.map(id => toolTotals.get(id) || { event_label: id, total: '0' });
+      byType.set('tool_open', fullToolRows.sort((a, b) => Number(b.total) - Number(a.total)));
+    }
 
     if (!events.length && !fullToolRows.some(r => Number(r.total) > 0)) {
       content.innerHTML = '<div class="empty">No events recorded yet.</div>';
@@ -166,9 +203,16 @@
     const allTotals = [...events.map(e => Number(e.total)), ...fullToolRows.map(r => Number(r.total))];
     const maxTotal = Math.max(...allTotals);
     let html = '';
-    // tool_open first (the full calculator list), then whatever other event
-    // types actually occurred, in the order EVENT_TYPE_LABELS declares them.
-    const typeOrder = ['tool_open', ...Object.keys(EVENT_TYPE_LABELS).filter(t => t !== 'tool_open')];
+    // tool_open first (the full calculator list), then every other event
+    // type that actually occurred — known ones (EVENT_TYPE_LABELS) in their
+    // declared order first, then any the dashboard doesn't have a label for
+    // yet (e.g. a different campaign's own event types), labelled with their
+    // raw event_type so nothing recorded is ever silently dropped here.
+    const typeOrder = [
+      'tool_open',
+      ...Object.keys(EVENT_TYPE_LABELS).filter(t => t !== 'tool_open'),
+      ...[...byType.keys()].filter(t => t !== 'tool_open' && !(t in EVENT_TYPE_LABELS)),
+    ];
     for (const type of typeOrder) {
       const rows = byType.get(type);
       if (!rows || !rows.length) continue;
@@ -200,10 +244,14 @@
     const users = new Map();
     const featureKeys = [];
     const featureLabels = new Map();
-    for (const id of TOOL_IDS) {
-      const key = 'tool_open::' + id;
-      featureKeys.push(key);
-      featureLabels.set(key, 'Calculator: ' + TOOL_LABELS[id]);
+    // Same Ganesh-only seeding as renderEvents above — another campaign's
+    // feature columns are built purely from whatever byUser actually contains.
+    if (currentCampaign === 'ganesh-chaturthi') {
+      for (const id of TOOL_IDS) {
+        const key = 'tool_open::' + id;
+        featureKeys.push(key);
+        featureLabels.set(key, 'Calculator: ' + TOOL_LABELS[id]);
+      }
     }
     // Seed every registered user first (0s across the board) — otherwise a
     // user who signed up but never triggered a tracked event (no calculator
@@ -266,22 +314,55 @@
     URL.revokeObjectURL(url);
   }
 
-  async function loadSummary(username, password) {
-    const res = await fetch(`${API_BASE}/api/campaign-analytics/summary`, { headers: { 'x-analytics-username': username, 'x-analytics-password': password } });
+  async function loadCampaigns(username, password) {
+    const res = await fetch(`${API_BASE}/api/campaign-analytics/campaigns`, { headers: { 'x-analytics-username': username, 'x-analytics-password': password } });
     if (res.status === 401) throw new Error('unauthorized');
     if (!res.ok) throw new Error('failed');
     return res.json();
   }
 
-  async function tryUnlock(username, password) {
-    gateError.textContent = '';
+  async function loadSummary(username, password, campaign) {
+    const res = await fetch(`${API_BASE}/api/campaign-analytics/summary?campaign=${encodeURIComponent(campaign)}`, { headers: { 'x-analytics-username': username, 'x-analytics-password': password } });
+    if (res.status === 401) throw new Error('unauthorized');
+    if (!res.ok) throw new Error('failed');
+    return res.json();
+  }
+
+  function renderPicker(campaigns) {
+    pickerList.innerHTML = '';
+    for (const slug of campaigns) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = campaignLabel(slug);
+      btn.addEventListener('click', () => openCampaign(slug));
+      pickerList.appendChild(btn);
+    }
+  }
+
+  async function openCampaign(slug) {
+    actionError.textContent = '';
     try {
-      const data = await loadSummary(username, password);
-      storeCredentials(username, password);
-      gate.hidden = true;
+      const { username, password } = getStoredCredentials();
+      const data = await loadSummary(username, password, slug);
+      currentCampaign = slug;
+      dashboardTitle.textContent = `Campaign Analytics — ${campaignLabel(slug)}`;
+      picker.hidden = true;
       dashboard.hidden = false;
       renderEvents(data.events);
       renderUsers(data.byUser || [], data.users || []);
+    } catch (err) {
+      pickerError.textContent = 'Could not load that campaign’s data.';
+    }
+  }
+
+  async function tryUnlock(username, password) {
+    gateError.textContent = '';
+    try {
+      const { campaigns } = await loadCampaigns(username, password);
+      storeCredentials(username, password);
+      gate.hidden = true;
+      renderPicker(campaigns);
+      picker.hidden = false;
     } catch (err) {
       gateError.textContent = err.message === 'unauthorized' ? 'Incorrect ID or password.' : 'Could not load data — check the backend is running.';
     }
@@ -299,11 +380,17 @@
     el.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(usernameInput.value, passwordInput.value); });
   }
 
+  document.getElementById('back-to-picker').addEventListener('click', () => {
+    dashboard.hidden = true;
+    picker.hidden = false;
+    currentCampaign = null;
+  });
+
   document.getElementById('refresh').addEventListener('click', async () => {
     actionError.textContent = '';
     try {
       const { username, password } = getStoredCredentials();
-      const data = await loadSummary(username, password);
+      const data = await loadSummary(username, password, currentCampaign);
       renderEvents(data.events);
       renderUsers(data.byUser || [], data.users || []);
     } catch { /* credentials expired mid-session — ignore, next full load will re-gate */ }
@@ -313,16 +400,16 @@
 
   document.getElementById('reset').addEventListener('click', async () => {
     actionError.textContent = '';
-    if (!confirm('Are you sure you want to reset? This will permanently delete ALL recorded analytics data — this cannot be undone.')) return;
+    if (!confirm(`Are you sure you want to reset? This will permanently delete ALL recorded analytics data for ${campaignLabel(currentCampaign)} — this cannot be undone.`)) return;
     try {
       const { username, password } = getStoredCredentials();
       const res = await fetch(`${API_BASE}/api/campaign-analytics/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, campaign: currentCampaign }),
       });
       if (!res.ok) throw new Error('failed');
-      const data = await loadSummary(username, password);
+      const data = await loadSummary(username, password, currentCampaign);
       renderEvents(data.events);
       renderUsers(data.byUser || [], data.users || []);
     } catch {
