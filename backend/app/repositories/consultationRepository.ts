@@ -1,5 +1,5 @@
 import { query, queryOne, type Executor } from '../core/db.ts';
-import type { Consultation, ConsultationStatus, ConsultationType } from '../models/types.ts';
+import type { Consultation, ConsultationKundliDetails, ConsultationStatus, ConsultationType } from '../models/types.ts';
 
 interface ConsultationDbRow {
   id: string;
@@ -20,6 +20,7 @@ interface ConsultationDbRow {
   price_per_min: number;
   applied_offer_percent: number;
   boost_id: number | null;
+  kundli_details: string | null;
 }
 
 function fromRow(row: ConsultationDbRow): Consultation {
@@ -42,6 +43,7 @@ function fromRow(row: ConsultationDbRow): Consultation {
     pricePerMin: row.price_per_min,
     appliedOfferPercent: row.applied_offer_percent,
     boostId: row.boost_id ?? undefined,
+    kundliDetails: row.kundli_details ? (JSON.parse(row.kundli_details) as ConsultationKundliDetails) : undefined,
   };
 }
 
@@ -52,12 +54,13 @@ function fromRow(row: ConsultationDbRow): Consultation {
 export async function insertConsultation(c: Consultation, executor?: Executor) {
   await query(
     `INSERT INTO consultations
-      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes, price_per_min, applied_offer_percent, boost_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes, price_per_min, applied_offer_percent, boost_id, kundli_details)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
     [
       c.id, c.astrologerId, c.userEmail.toLowerCase(), c.userName, c.category, c.type, c.status,
       c.fromQueue ? 1 : 0, c.requestId, c.createdAt, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null,
       c.durationMinutes, c.extendedMinutes, c.pricePerMin, c.appliedOfferPercent, c.boostId ?? null,
+      c.kundliDetails ? JSON.stringify(c.kundliDetails) : null,
     ],
     executor
   );

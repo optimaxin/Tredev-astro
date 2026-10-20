@@ -47,7 +47,11 @@ export interface ClientKundliContext {
   userName: string;
   hasBirthDetails: boolean;
   birthDate?: string;
+  birthTime?: string;
   birthPlace?: string;
+  birthLatitude?: number;
+  birthLongitude?: number;
+  birthTimezoneOffsetMinutes?: number;
   kundliFull?: KundliFullResult;
 }
 

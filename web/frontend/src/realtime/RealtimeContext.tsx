@@ -4,7 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { getAccessToken, realtimeApi, SERVER_URL } from './api';
 import { playExpiryWarningBeep, playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
 import type {
-  AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
+  AstrologerNotification, AstrologerSyncSnapshot, Consultation, ConsultationKundliDetails, ConsultationType, PublicAstrologerState,
   RecommendedAstrologer, RequestResult, UserSyncSnapshot,
 } from './types';
 import type { ChatMessage } from '../services/chatService';
@@ -40,7 +40,7 @@ interface RealtimeContextValue {
   goOffline: () => Promise<void>;
   acceptAssignment: (id: string) => Promise<void>;
   declineAssignment: (id: string) => Promise<void>;
-  endActiveConsultation: () => Promise<void>;
+  endActiveConsultation: () => Promise<Consultation | undefined>;
   markNotifRead: (id: string) => Promise<void>;
   markAllNotifsRead: () => Promise<void>;
   idleWarning: boolean;
@@ -50,7 +50,7 @@ interface RealtimeContextValue {
 
   // User side
   userSync: UserSyncSnapshot | null;
-  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => Promise<RequestResult>;
+  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => Promise<RequestResult>;
   cancelMyQueueEntry: () => Promise<void>;
   recommendations: RecommendedAstrologer[] | null;
   queueExpired: boolean;
@@ -59,9 +59,9 @@ interface RealtimeContextValue {
   // Time-boxed consultations — either party can end early; wallet top-ups
   // extend automatically now (see onWalletTopUp, backend), so there's no
   // separate pay-to-extend action here any more.
-  endConsultationById: (id: string) => Promise<void>;
+  endConsultationById: (id: string) => Promise<Consultation | undefined>;
   // The user's own way out of a request the astrologer hasn't accepted yet.
-  cancelConsultationById: (id: string) => Promise<void>;
+  cancelConsultationById: (id: string) => Promise<Consultation | undefined>;
   expiringSoon: { consultationId: string; remainingSeconds: number } | null;
 
   toasts: Toast[];
@@ -311,8 +311,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   const endActiveConsultation = useCallback(async () => {
-    if (!currentUser || !astrologerSync?.activeConsultation) return;
-    await realtimeApi.endConsultation(astrologerSync.activeConsultation.id, currentUser.email);
+    if (!currentUser) return;
+    const targetId = astrologerSync?.activeConsultation?.id;
+    if (!targetId) return;
+    const ended = await realtimeApi.endConsultation(targetId, currentUser.email);
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: null } : prev);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : prev);
+    setExpiringSoon(prev => prev?.consultationId === targetId ? null : prev);
+    return ended;
   }, [currentUser, astrologerSync]);
 
   // Generic id-based versions (unlike endActiveConsultation, which only
@@ -321,12 +327,18 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   // just take whatever id the caller already has in scope.
   const endConsultationById = useCallback(async (id: string) => {
     if (!currentUser) return;
-    await realtimeApi.endConsultation(id, currentUser.email);
+    const ended = await realtimeApi.endConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : { consultation: ended, queueEntry: null, position: null, eta: null });
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === id ? null : prev.activeConsultation } : prev);
+    setExpiringSoon(prev => prev?.consultationId === id ? null : prev);
+    return ended;
   }, [currentUser]);
 
   const cancelConsultationById = useCallback(async (id: string) => {
     if (!currentUser) return;
-    await realtimeApi.cancelConsultation(id, currentUser.email);
+    const cancelled = await realtimeApi.cancelConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: cancelled } : prev);
+    return cancelled;
   }, [currentUser]);
 
   const markNotifRead = useCallback(async (id: string) => {
@@ -356,10 +368,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('astro_realtime_notif_prefs', JSON.stringify(next));
   }, []);
 
-  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => {
+  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => {
     if (!currentUser) throw new Error('Not logged in');
     const requestId = `req-${currentUser.email}-${astrologerId}-${Date.now()}`;
-    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes });
+    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes, kundliDetails });
     setQueueExpired(false);
     if (result.outcome === 'QUEUED') {
       setUserSync({ consultation: null, queueEntry: result.entry, position: result.position, eta: result.eta });

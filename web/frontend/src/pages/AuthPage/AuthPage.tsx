@@ -4,24 +4,18 @@ import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164 } from '../../services/firebaseClient';
 import { API_URL } from '../../services/apiUrl';
+import { authService, ApiRequestError } from '../../services/authService';
 import { COUNTRY_CODES, DEFAULT_COUNTRY, findByIso2, flagEmoji, type CountryCode } from '../../data/countryCodes';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
-// Unified sign-in/sign-up: phone number (OTP) or "Continue with Google" —
-// no upfront email/password form for new users. Both are the SAME Firebase
-// call for a returning vs. brand-new person (see backend's loginWithFirebase,
-// which creates the account on first sign-in and returns `isNewUser`).
-// Google's token already carries a name, so a new Google user goes straight
-// through; Phone Auth's token doesn't, so a new phone user gets exactly one
-// extra "what's your name?" step. Old-style email+password accounts (the
-// seeded demo accounts, and anyone who signed up before this redesign) still
-// need a way in — that's the small "Log in with email instead" reveal below,
-// not a place to create new password accounts anymore.
+// Unified sign-in/sign-up: phone number (OTP), "Continue with Google", or
+// email/password login and registration. Both Phone and Google use Firebase,
+// while email auth runs through our direct API.
 type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login';
 
 export default function AuthPage() {
-  const { setPage, login, loginWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
+  const { setPage, login, register, loginWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
   const [step, setStep] = useState<Step>('entry');
 
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -68,7 +62,10 @@ export default function AuthPage() {
   const [nameError, setNameError] = useState('');
   const [nameLoading, setNameLoading] = useState(false);
 
-  // Legacy email+password login (existing accounts only — see file comment)
+  // Email login & registration
+  const [emailMode, setEmailMode] = useState<'signin' | 'register'>('signin');
+  const [registerName, setRegisterName] = useState('');
+  const [registerPhone, setRegisterPhone] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -124,17 +121,22 @@ export default function AuthPage() {
       setConfirmationResult(result);
       setStep('otp');
     } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('auth/invalid-phone-number')) {
+        setPhoneError('Please enter a valid phone number with digits only.');
+      } else if (msg.includes('auth/too-many-requests') || msg.includes('quota')) {
+        setPhoneError('SMS quota exceeded or too many requests. Please sign in with Google or Email.');
+      } else if (msg.includes('reCAPTCHA') || msg.includes('captcha')) {
+        setPhoneError('Verification check failed. Please refresh the page and try again.');
+      } else {
+        setPhoneError(msg || 'Could not send verification code. Please try again.');
+      }
     } finally {
       setOtpSendLoading(false);
     }
   };
 
-  // Re-sends via the same Firebase call as the initial send (a new
-  // ConfirmationResult replaces the old one, since the previous code is
-  // still tied to the expired verification attempt) — needed because a
-  // Firebase OTP expires after a few minutes, and without this the only way
-  // out of an expired code was going back and re-entering the phone number.
+  // Re-sends via the same Firebase call as the initial send
   const handleResendOtp = async () => {
     setOtpError('');
     setOtpSendLoading(true);
@@ -143,7 +145,8 @@ export default function AuthPage() {
       setConfirmationResult(result);
       setOtpCode('');
     } catch (err) {
-      setOtpError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.');
+      const msg = err instanceof Error ? err.message : String(err);
+      setOtpError(msg || 'Could not resend the code. Please try again.');
     } finally {
       setOtpSendLoading(false);
     }
@@ -166,10 +169,6 @@ export default function AuthPage() {
         redirectByRole(result.user.role);
       }
     } catch (err) {
-      // Firebase's own Error#message is the raw "Firebase: Error
-      // (auth/code-expired)." string — not something to show as-is. A
-      // Firebase auth error always carries a `.code` like that; map the
-      // common ones to something that tells the person what to actually do.
       const code = (err as { code?: string })?.code;
       if (code === 'auth/code-expired') setOtpError('This code has expired — tap "Resend code" below for a new one.');
       else if (code === 'auth/invalid-verification-code') setOtpError('That code is incorrect — double-check it and try again.');
@@ -196,10 +195,50 @@ export default function AuthPage() {
     e.preventDefault();
     setLoginError('');
     setLoginLoading(true);
-    const user = await login(loginEmail, loginPassword);
-    setLoginLoading(false);
-    if (!user) { setLoginError('Incorrect email or password.'); return; }
-    redirectByRole(user.role);
+    try {
+      const user = await login(loginEmail.trim(), loginPassword);
+      if (!user) {
+        setLoginError('Invalid email or password. If you do not have an account yet, switch to "Create Account" above.');
+        return;
+      }
+      redirectByRole(user.role);
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setLoginError(err.message === 'Invalid email or password' ? 'Invalid email or password. If you do not have an account yet, switch to "Create Account" above.' : err.message);
+      } else {
+        setLoginError(err instanceof Error ? err.message : 'Could not sign in. Please verify your connection.');
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleEmailRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!agreedToTerms) {
+      setLoginError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.');
+      return;
+    }
+    if (loginPassword.length < 8) {
+      setLoginError('Password must be at least 8 characters.');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const phoneVal = registerPhone.trim() ? toE164(registerPhone, country.dialCode) : undefined;
+      const res = await register(
+        registerName.trim(),
+        loginEmail.trim(),
+        loginPassword,
+        phoneVal || '+910000000000'
+      );
+      redirectByRole(res.user.role);
+    } catch (err) {
+      setLoginError(err instanceof ApiRequestError ? err.message : (err instanceof Error ? err.message : 'Could not create account. That email or phone number may already be registered.'));
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   return (
@@ -320,10 +359,14 @@ export default function AuthPage() {
               <span className={styles.starGlyph}>✦</span>
             </div>
             <h1 className={styles.manuscriptTitle}>
-              {step === 'email-login' ? 'सदस्य प्रवेश ग्रन्थ' : 'वैदिक जन्म पत्र ग्रन्थ'}
+              {step === 'email-login'
+                ? (emailMode === 'signin' ? 'सदस्य प्रवेश ग्रन्थ' : 'नया सदस्य पंजीकरण')
+                : 'वैदिक जन्म पत्र ग्रन्थ'}
             </h1>
             <p className={styles.manuscriptSubtitle}>
-              {step === 'email-login' ? t('auth_subtitle_login') : t('auth_subtitle_register')}
+              {step === 'email-login'
+                ? (emailMode === 'signin' ? t('auth_subtitle_login') : 'वैदिक खाता बनाएं एवं अपनी जन्म पत्रिका सुरक्षित रखें')
+                : t('auth_subtitle_register')}
             </p>
           </div>
 
@@ -404,10 +447,10 @@ export default function AuthPage() {
 
                 <button
                   type="button"
-                  onClick={() => setStep('email-login')}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', marginTop: 'var(--space-3)', opacity: 0.7, alignSelf: 'center' }}
+                  onClick={() => { setStep('email-login'); setEmailMode('signin'); setLoginError(''); }}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-3)', opacity: 0.85, alignSelf: 'center' }}
                 >
-                  Already have an account with email &amp; password? Log in instead
+                  ई-मेल द्वारा प्रवेश या नया खाता बनाएं (Sign in or Register with Email)
                 </button>
               </motion.form>
             )}
@@ -543,19 +586,75 @@ export default function AuthPage() {
               </motion.div>
             )}
 
-            {/* LEGACY EMAIL+PASSWORD LOGIN — existing accounts only (the
-                seeded demo accounts, and anyone who signed up before this
-                redesign). Not a signup path anymore; see file comment. */}
+            {/* EMAIL LOGIN & REGISTRATION */}
             {step === 'email-login' && (
               <motion.form
-                key="login-script"
+                key="email-auth-script"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                onSubmit={handleLegacyLogin}
+                onSubmit={emailMode === 'signin' ? handleLegacyLogin : handleEmailRegister}
                 className={styles.scriptForm}
               >
+                {/* Mode Selector Tabs */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setEmailMode('signin'); setLoginError(''); }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: emailMode === 'signin' ? '#8c6d32' : 'rgba(140, 109, 50, 0.1)',
+                      color: emailMode === 'signin' ? '#fff' : 'inherit',
+                      border: '1px solid #8c6d32',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    प्रवेश (Sign In)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmailMode('register'); setLoginError(''); }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: emailMode === 'register' ? '#8c6d32' : 'rgba(140, 109, 50, 0.1)',
+                      color: emailMode === 'register' ? '#fff' : 'inherit',
+                      border: '1px solid #8c6d32',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    नया खाता (Create Account)
+                  </button>
+                </div>
+
+                {emailMode === 'register' && (
+                  <div className={styles.inkField}>
+                    <label className={styles.inkLabel}>
+                      <span className={styles.devanagariTag}>नाम</span> Full Name
+                    </label>
+                    <input
+                      type="text"
+                      className={styles.inkInput}
+                      placeholder="Your full name"
+                      value={registerName}
+                      onChange={e => setRegisterName(e.target.value)}
+                      required
+                      minLength={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
                     <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_login_email')}
@@ -567,9 +666,24 @@ export default function AuthPage() {
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     required
-                    autoFocus
+                    autoFocus={emailMode === 'signin'}
                   />
                 </div>
+
+                {emailMode === 'register' && (
+                  <div className={styles.inkField}>
+                    <label className={styles.inkLabel}>
+                      <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      className={styles.inkInput}
+                      placeholder="Phone number"
+                      value={registerPhone}
+                      onChange={e => setRegisterPhone(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
@@ -578,12 +692,17 @@ export default function AuthPage() {
                   <input
                     type="password"
                     className={styles.inkInput}
-                    placeholder="••••••••"
+                    placeholder="•••••••• (min 8 characters)"
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
                     required
+                    minLength={emailMode === 'register' ? 8 : 1}
                   />
                 </div>
+
+                {emailMode === 'register' && (
+                  <ConsentCheckbox agreed={agreedToTerms} onChange={setAgreedToTerms} goToPage={setPage} />
+                )}
 
                 {loginError && (
                   <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{loginError}</p>
@@ -593,10 +712,14 @@ export default function AuthPage() {
                   type="submit"
                   className={styles.waxSealBtn}
                   disabled={loginLoading}
-                  id="auth-login-submit"
+                  id={emailMode === 'signin' ? 'auth-login-submit' : 'auth-register-submit'}
                 >
-                  <div className={styles.sealEmblemInside}>🗝️</div>
-                  <span>{loginLoading ? t('auth_btn_unlocking') : `प्रवेश करें · ${t('auth_btn_signin_vault')}`}</span>
+                  <div className={styles.sealEmblemInside}>{emailMode === 'signin' ? '🗝️' : 'ॐ'}</div>
+                  <span>
+                    {loginLoading
+                      ? (emailMode === 'signin' ? t('auth_btn_unlocking') : 'Creating account…')
+                      : (emailMode === 'signin' ? `प्रवेश करें · ${t('auth_btn_signin_vault')}` : 'नया खाता बनाएं · Create Account')}
+                  </span>
                 </button>
 
                 <button
@@ -604,7 +727,7 @@ export default function AuthPage() {
                   onClick={() => setStep('entry')}
                   style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
                 >
-                  Back to phone / Google sign-in
+                  ← Back to phone / Google sign-in
                 </button>
               </motion.form>
             )}

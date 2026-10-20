@@ -70,7 +70,11 @@ export interface ClientKundliContext {
   userName: string;
   hasBirthDetails: boolean;
   birthDate?: string;
+  birthTime?: string;
   birthPlace?: string;
+  birthLatitude?: number;
+  birthLongitude?: number;
+  birthTimezoneOffsetMinutes?: number;
   kundliFull?: KundliFullResult;
 }
 
@@ -101,5 +105,15 @@ export async function getClientKundliForAstrologer(consultationId: string, reque
     timezoneOffsetMinutes: client.birth_timezone_offset_minutes!,
   }, 'en');
 
-  return { userName: consultation.userName, hasBirthDetails: true, birthDate: client.birth_date!, birthPlace: client.birth_place ?? undefined, kundliFull };
+  return {
+    userName: consultation.userName,
+    hasBirthDetails: true,
+    birthDate: client.birth_date!,
+    birthTime: client.birth_time ?? undefined,
+    birthPlace: client.birth_place ?? undefined,
+    birthLatitude: client.birth_latitude ?? undefined,
+    birthLongitude: client.birth_longitude ?? undefined,
+    birthTimezoneOffsetMinutes: client.birth_timezone_offset_minutes ?? undefined,
+    kundliFull,
+  };
 }

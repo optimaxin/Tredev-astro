@@ -102,14 +102,13 @@ const createIntentSchema = z.discriminatedUnion('purpose', [
   z.object({ purpose: z.literal('SLOT_BOOKING'), slotId: z.string().trim().min(1) }),
 ]);
 
-// Which processor actually handles the money is decided here, server-side,
-// from the visitor's IP-derived country — never a client choice (see
-// geoLocation.ts, already used the same way for region pricing). India →
-// Cashfree; everyone else (including unresolvable/local IPs) → Razorpay,
-// since Cashfree's India-first onboarding makes it the natural default for
-// domestic traffic and Razorpay the fallback for international cards.
-function gatewayForRequest(req: Request): PaymentGateway {
-  return countryFromRequest(req) === 'IN' ? 'cashfree' : 'razorpay';
+// All transactions across the project are processed via Cashfree as the primary gateway.
+// Can be overridden via config.paymentGateway / PAYMENT_GATEWAY env var if needed.
+function gatewayForRequest(_req?: Request): PaymentGateway {
+  if (config.paymentGateway === 'razorpay' || config.paymentGateway === 'cashfree') {
+    return config.paymentGateway;
+  }
+  return 'cashfree';
 }
 
 // Creates a pending payment intent, then a matching order with whichever

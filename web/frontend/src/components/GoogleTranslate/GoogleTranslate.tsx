@@ -22,13 +22,11 @@ export default function GoogleTranslate() {
 
     window.googleTranslateElementInit = () => {
       if (!window.google) return;
-      // hi/mr excluded — this site's own TRANSLATIONS dictionary already
-      // covers them substantially, and Google has no "already in the target
-      // language, leave it" mode (it blindly re-translates every text node
-      // from the declared pageLanguage), which was corrupting that already-
-      // correct text. See utils/googleTranslate.ts's own comment.
+      // Every language the picker offers. `pageLanguage: 'en'` is accurate
+      // because t() always renders English regardless of the selected
+      // language — Google is the only thing that translates this site.
       new window.google.translate.TranslateElement(
-        { pageLanguage: 'en', includedLanguages: 'bn,ta,te', autoDisplay: false },
+        { pageLanguage: 'en', includedLanguages: 'hi,mr,bn,ta,te', autoDisplay: false },
         'google_translate_element'
       );
     };

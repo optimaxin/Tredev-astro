@@ -19,7 +19,20 @@ export function findUserByFirebaseUid(uid: string): Promise<UserRow | undefined>
 // Used at registration to enforce "one account per phone number" — see
 // authService.ts's register().
 export function findUserByPhone(phoneNumber: string): Promise<UserRow | undefined> {
-  return queryOne<UserRow>('SELECT * FROM users WHERE phone_number = $1', [phoneNumber.trim()]);
+  const trimmed = phoneNumber.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+  if (!last10) {
+    return queryOne<UserRow>('SELECT * FROM users WHERE phone_number = $1', [trimmed]);
+  }
+  return queryOne<UserRow>(
+    `SELECT * FROM users 
+     WHERE phone_number = $1 
+        OR (phone_number IS NOT NULL AND RIGHT(regexp_replace(phone_number, '[^0-9]', '', 'g'), 10) = $2)
+     ORDER BY (phone_number = $1) DESC
+     LIMIT 1`,
+    [trimmed, last10]
+  );
 }
 
 // Links an existing account (found by email match) to a Firebase identity

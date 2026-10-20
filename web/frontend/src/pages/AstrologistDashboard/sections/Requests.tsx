@@ -42,6 +42,13 @@ export default function Requests() {
                   <div className={styles.requestMeta}>{req.category} · {req.type} · {timeAgo(req.createdAt)}</div>
                 </div>
               </div>
+              {req.kundliDetails && (
+                <div className={styles.requestMeta}>
+                  Kundli: {req.kundliDetails.name} · {req.kundliDetails.date}
+                  {req.kundliDetails.time ? ` ${req.kundliDetails.time}` : ''}
+                  {req.kundliDetails.placeName ? ` · ${req.kundliDetails.placeName}` : ''}
+                </div>
+              )}
               <div className={styles.requestActions}>
                 <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busyId === req.id} onClick={() => handleAccept(req.id)}>Accept</button>
                 <button className={`${styles.btnSm} ${styles.btnDanger}`} disabled={busyId === req.id} onClick={() => handleDecline(req.id)}>Decline</button>

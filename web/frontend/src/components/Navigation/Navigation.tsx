@@ -245,10 +245,13 @@ export default function Navigation() {
               aria-label="Language settings"
             >
               <span className={styles.langGlobe}>🌐</span>
-              <span className={styles.langText}>{currentLangLabel}</span>
+              <span className={styles.langText} translate="no">{currentLangLabel}</span>
             </button>
             {langDropdownOpen && (
-              <div className={styles.langDropdown}>
+              /* Each language is named in its own script — Google Translate
+                 would otherwise translate those names into the language
+                 currently selected, leaving the picker unreadable. */
+              <div className={styles.langDropdown} translate="no">
                 {LANGUAGES.map(lang => (
                   <button
                     key={lang.code}
@@ -341,7 +344,7 @@ export default function Navigation() {
           <div className={styles.mobileDivider} />
 
           {/* Language selector in Mobile Menu */}
-          <div className={styles.mobileLangList}>
+          <div className={styles.mobileLangList} translate="no">
             {LANGUAGES.map(lang => (
               <button
                 key={lang.code}

@@ -15,6 +15,16 @@ export interface PublicAstrologerState {
   queueLength: number;
 }
 
+export interface ConsultationKundliDetails {
+  name: string;
+  date: string;
+  time?: string;
+  placeName?: string;
+  latitude?: number;
+  longitude?: number;
+  timezoneOffsetMinutes?: number;
+}
+
 export interface Consultation {
   id: string;
   astrologerId: number;
@@ -26,6 +36,7 @@ export interface Consultation {
   fromQueue: boolean;
   requestId: string;
   createdAt: number;
+  kundliDetails?: ConsultationKundliDetails;
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
@@ -45,6 +56,7 @@ export interface QueueEntry {
   status: 'QUEUED' | 'PROMOTED' | 'CANCELLED' | 'EXPIRED';
   requestId: string;
   joinedAt: number;
+  kundliDetails?: ConsultationKundliDetails;
 }
 
 export interface EtaEstimate {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
@@ -32,22 +33,30 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tredevastro.app.i18n.tr
+import com.tredevastro.app.network.TokenStore
 import com.tredevastro.app.ui.components.CosmicBackground
 import com.tredevastro.app.ui.components.GlassCard
 import com.tredevastro.app.ui.components.OutlineGoldButton
 import com.tredevastro.app.ui.components.SectionHeader
 import com.tredevastro.app.ui.theme.LocalAppColors
 import com.tredevastro.app.ui.theme.ThemeMode
-import com.tredevastro.app.ui.theme.YatraOne
+import com.tredevastro.app.ui.theme.NotoSerif
 
 @Composable
 fun ProfileScreen(
     themeMode: ThemeMode,
     onToggleTheme: () -> Unit,
     onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    onOpenWallet: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     var notificationsEnabled by remember { mutableStateOf(true) }
+    val signedIn = TokenStore.isSignedIn
+    val displayName = TokenStore.userName?.takeIf { it.isNotBlank() } ?: tr("Guest User")
+    val displaySubtitle = if (signedIn) TokenStore.userEmail ?: "" else "Sign in to sync your Kundli & bookings"
+    val initial = displayName.take(1).uppercase()
 
     Box(modifier = Modifier.fillMaxSize()) {
         CosmicBackground()
@@ -60,18 +69,24 @@ fun ProfileScreen(
                         .background(colors.goldPrimary.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("G", color = colors.goldPrimary, fontFamily = YatraOne, fontSize = 26.sp)
+                    Text(initial, color = colors.goldPrimary, fontFamily = NotoSerif, fontSize = 26.sp)
                 }
                 Column(modifier = Modifier.padding(start = 16.dp)) {
-                    Text("Guest User", color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-                    Text("Sign in to sync your Kundli & bookings", color = colors.textSecondary, fontSize = 12.sp)
+                    Text(displayName, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                    Text(tr(displaySubtitle), color = colors.textSecondary, fontSize = 12.sp)
                 }
+            }
+
+            GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 20.dp), onClick = onOpenWallet) {
+                SettingsRow(icon = Icons.Filled.AccountBalanceWallet, label = "Wallet", trailing = {
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = colors.textMuted)
+                })
             }
 
             SectionHeader(
                 eyebrow = "Settings",
                 title = "Preferences",
-                modifier = Modifier.padding(top = 32.dp, bottom = 16.dp),
+                modifier = Modifier.padding(top = 24.dp, bottom = 16.dp),
             )
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -104,7 +119,7 @@ fun ProfileScreen(
                     label = "Language",
                     trailing = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("English", color = colors.textMuted, fontSize = 13.sp)
+                            Text(tr("English"), color = colors.textMuted, fontSize = 13.sp)
                             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = colors.textMuted)
                         }
                     },
@@ -112,14 +127,14 @@ fun ProfileScreen(
                 SettingsDivider()
                 SettingsRow(
                     icon = Icons.Filled.Info,
-                    label = "About TredevAstro",
+                    label = "About TredevaAstro",
                     trailing = { Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = colors.textMuted) },
                 )
             }
 
             OutlineGoldButton(
-                text = "Sign In",
-                onClick = onSignIn,
+                text = if (signedIn) "Sign Out" else "Sign In",
+                onClick = if (signedIn) { { TokenStore.clear(); onSignOut() } } else onSignIn,
                 modifier = Modifier.padding(top = 32.dp),
             )
         }
@@ -137,7 +152,7 @@ private fun SettingsRow(icon: ImageVector, label: String, trailing: @Composable 
     ) {
         Icon(icon, contentDescription = null, tint = colors.goldPrimary, modifier = Modifier.size(20.dp))
         Text(
-            text = label,
+            text = tr(label),
             color = colors.textPrimary,
             fontSize = 14.sp,
             modifier = Modifier.weight(1f).padding(start = 14.dp),

@@ -22,8 +22,9 @@ function timeAgo(ts: number): string {
 }
 
 function LiveStatusCard() {
-  const { astrologerSync, goOnline, goOffline, connected } = useRealtime();
+  const { astrologerSync, goOnline, goOffline, connected, endActiveConsultation } = useRealtime();
   const [busy, setBusy] = useState(false);
+  const [endingConsultation, setEndingConsultation] = useState(false);
   const [elapsed, setElapsed] = useState('');
 
   const active = astrologerSync?.activeConsultation;
@@ -49,6 +50,17 @@ function LiveStatusCard() {
     try { await (isOnline ? goOffline() : goOnline()); } finally { setBusy(false); }
   };
 
+  const handleEndConsultation = async () => {
+    setEndingConsultation(true);
+    try {
+      await endActiveConsultation();
+    } catch (e) {
+      console.error('Failed to end consultation:', e);
+    } finally {
+      setEndingConsultation(false);
+    }
+  };
+
   return (
     <Panel title="Live Status">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -72,8 +84,16 @@ function LiveStatusCard() {
               <div className={styles.tablePrimary}>{active.userName}</div>
               <div className={styles.tableMuted}>{active.category} · {active.type}</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--gold-primary)' }}>{elapsed}</div>
+              <button
+                type="button"
+                className={`${styles.btnSm} ${styles.btnDanger}`}
+                disabled={endingConsultation}
+                onClick={handleEndConsultation}
+              >
+                {endingConsultation ? 'Ending…' : 'End Consultation'}
+              </button>
             </div>
           </div>
           <div className={styles.split6535} style={{ marginTop: 16 }}>

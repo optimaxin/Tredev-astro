@@ -13,7 +13,7 @@ import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts'
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
-  AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
+  AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationKundliDetails, ConsultationType,
   EtaEstimate, NotificationKind, PublicAstrologerState, QueueEntry, RequestResult,
 } from '../models/types.ts';
 import type { AstrologerCatalogRow } from '../models/astrologer.ts';
@@ -273,6 +273,7 @@ export interface RequestParams {
   // price multiplier so what's actually charged matches what the catalog
   // and effective-price endpoints showed this same visitor before booking.
   countryCode?: string | null;
+  kundliDetails?: ConsultationKundliDetails;
 }
 
 export async function requestConsultation(params: RequestParams): Promise<RequestResult> {
@@ -297,6 +298,7 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
         id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
         category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
         durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
+        kundliDetails: params.kundliDetails,
       };
       await queueRepo.insertQueueEntry(entry, client);
       const queued = await queueRepo.listQueuedForAstrologer(astro.id, client);
@@ -359,6 +361,7 @@ async function createConsultation(astrologerId: number, params: Omit<RequestPara
     durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
     extendedMinutes: 0,
     pricePerMin, appliedOfferPercent, boostId,
+    kundliDetails: params.kundliDetails,
   };
   await consultationRepo.insertConsultation(consultation, executor);
   if (attribution) await boostRepo.consumeAttribution(attribution.id, consultation.id, executor);
@@ -384,9 +387,12 @@ function assertOwnership(consultation: Consultation | undefined, astrologerEmail
 // astrologer to hang up.
 function assertParticipant(consultation: Consultation | undefined, requesterEmail: string): Consultation {
   if (!consultation) throw new Error('Consultation not found');
+  const email = requesterEmail.trim().toLowerCase();
   const astro = astrologers.get(consultation.astrologerId);
-  const email = requesterEmail.toLowerCase();
-  if (astro?.email.toLowerCase() !== email && consultation.userEmail.toLowerCase() !== email) {
+  const astroByEmail = getAstrologerByEmail(email);
+  const isAstro = (astro && astro.email.trim().toLowerCase() === email) || (astroByEmail && astroByEmail.id === consultation.astrologerId);
+  const isUser = consultation.userEmail.trim().toLowerCase() === email;
+  if (!isAstro && !isUser) {
     throw new Error('Not authorized for this consultation');
   }
   return consultation;
@@ -586,7 +592,13 @@ export async function cancelConsultation(consultationId: string, requesterEmail:
 // with no way to disconnect on their own.
 export async function endConsultation(consultationId: string, requesterEmail: string): Promise<Consultation> {
   const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
-  if (c.status !== 'ACTIVE') throw new Error(`Cannot end a consultation in status ${c.status}`);
+  if (c.status === 'COMPLETED') {
+    // Idempotent: already ended, return immediately so client transitions smoothly
+    return c;
+  }
+  if (c.status !== 'ACTIVE' && c.status !== 'ACCEPTED') {
+    throw new Error(`Cannot end a consultation in status ${c.status}`);
+  }
   clearExpiryTimers(c.id);
   c.status = 'COMPLETED';
   c.endedAt = Date.now();

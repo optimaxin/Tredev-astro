@@ -20,8 +20,9 @@ function timeAgo(ts: number): string {
 // already keeps ringing until one of these gets accepted — nothing extra
 // needed here for that.
 export default function ChatInbox() {
-  const { astrologerSync, acceptAssignment } = useRealtime();
+  const { astrologerSync, acceptAssignment, endActiveConsultation } = useRealtime();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
 
   const pendingChats = (astrologerSync?.pendingAssignments || []).filter(p => p.type === 'chat');
   const active = astrologerSync?.activeConsultation;
@@ -32,6 +33,17 @@ export default function ChatInbox() {
     try { await acceptAssignment(id); } finally { setBusyId(null); }
   };
 
+  const handleEnd = async () => {
+    setEnding(true);
+    try {
+      await endActiveConsultation();
+    } catch (e) {
+      console.error('Failed to end consultation:', e);
+    } finally {
+      setEnding(false);
+    }
+  };
+
   return (
     <div>
       <SectionHeader title="Chat" subtitle="Incoming chat requests and your live chat, all in one place." />
@@ -40,6 +52,14 @@ export default function ChatInbox() {
         <Panel title={`Chatting with ${activeChat.userName}`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <span className={styles.tableMuted}>{activeChat.category}</span>
+            <button
+              type="button"
+              className={`${styles.btnSm} ${styles.btnDanger}`}
+              disabled={ending}
+              onClick={handleEnd}
+            >
+              {ending ? 'Ending…' : 'End Consultation'}
+            </button>
           </div>
           <div className={styles.split6535}>
             <ChatWindow consultationId={activeChat.id} otherPartyName={activeChat.userName} />

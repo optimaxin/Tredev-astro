@@ -527,6 +527,9 @@ function ConsultationBookingPage({ id }: { id: any }) {
   const [showRecharge, setShowRecharge] = useState(false);
   const [savingBirthDetails, setSavingBirthDetails] = useState(false);
   const [birthDetailsError, setBirthDetailsError] = useState('');
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [bookingKundli, setBookingKundli] = useState<KundliFullResult | null>(null);
+  const [bookingKundliLoading, setBookingKundliLoading] = useState(false);
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
   const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
 
@@ -541,23 +544,35 @@ function ConsultationBookingPage({ id }: { id: any }) {
     return () => { cancelled = true; };
   }, [astrologer?.id, activeType]);
 
+  const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+
+  // Auto-compute Kundli preview when user has birth details saved
+  useEffect(() => {
+    if (!currentUser?.birthDate || !currentUser?.birthTime || currentUser?.birthLatitude == null || currentUser?.birthLongitude == null || currentUser?.birthTimezoneOffsetMinutes == null) {
+      setBookingKundli(null);
+      return;
+    }
+    let cancelled = false;
+    setBookingKundliLoading(true);
+    calculatorService.kundliFull({
+      date: currentUser.birthDate,
+      time: currentUser.birthTime,
+      latitude: currentUser.birthLatitude,
+      longitude: currentUser.birthLongitude,
+      timezoneOffsetMinutes: currentUser.birthTimezoneOffsetMinutes,
+    })
+      .then(res => { if (!cancelled) setBookingKundli(res); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setBookingKundliLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentUser?.birthDate, currentUser?.birthTime, currentUser?.birthLatitude, currentUser?.birthLongitude, currentUser?.birthTimezoneOffsetMinutes]);
+
   if (astrologerLoading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
   if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
 
   const live = publicStates[astrologer.id];
   const liveLabel = !live ? null : live.status === 'ONLINE_AVAILABLE' ? '🟢 Available now' : live.status === 'ONLINE_BUSY' ? '🟡 Currently busy' : live.status === 'AWAY' ? '⚪ Away' : '⚪ Offline';
-  // Only a soft client-side hint — the backend re-checks availability for
-  // real at payment fulfillment time and auto-refunds to wallet if it turns
-  // out unavailable by then (see fulfillment.ts's CONSULTATION case).
   const isUnavailable = live?.status === 'OFFLINE' || live?.status === 'AWAY';
-
-  // Gates the "now" tab behind a one-time birth-details step — the
-  // astrologer's client-Kundli sidebar (ClientKundliPanel.tsx, astrologer
-  // dashboard) reads straight from these same account columns, so capturing
-  // them here is what actually puts a real chart in front of the astrologer
-  // once the session starts, instead of its "no saved birth details" empty
-  // state. Same hasBirthDetails shape as PageRenderer's My Jyotish page.
-  const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
 
   const handleSaveBirthDetails = async (details: BirthDetailsSubmitValue) => {
     setSavingBirthDetails(true);
@@ -570,16 +585,30 @@ function ConsultationBookingPage({ id }: { id: any }) {
       birthLongitude: details.longitude,
       birthTimezoneOffsetMinutes: details.timezoneOffsetMinutes,
     });
-    if (!ok) setBirthDetailsError('Could not save your birth details. Please try again.');
+    if (!ok) {
+      setBirthDetailsError('Could not save your birth details. Please try again.');
+      setSavingBirthDetails(false);
+      return;
+    }
+    try {
+      const k = await calculatorService.kundliFull({
+        date: details.date,
+        time: details.time,
+        latitude: details.latitude,
+        longitude: details.longitude,
+        timezoneOffsetMinutes: details.timezoneOffsetMinutes,
+      });
+      setBookingKundli(k);
+    } catch {
+      // Non-blocking fallback
+    }
+    setIsEditingDetails(false);
     setSavingBirthDetails(false);
   };
 
-  // Video call is coming later (WebRTC signaling isn't built yet) — chat and
-  // voice already run on the real consultation queue/socket pipeline, so
-  // only those two are offered for now.
   const OPTIONS = [
-    { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: '20-min session text consultation' },
-    { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
+    { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: 'Real-time text consultation' },
+    { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: 'Live voice guidance call' },
   ];
 
   const SLOTS = [
@@ -593,18 +622,14 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
   const selectedOpt = OPTIONS.find(o => o.type === activeType)!;
 
-  // Scheduling a FUTURE slot needs real infrastructure this app doesn't have
-  // yet (a stored booking, a job to actually fire the request at that time,
-  // reminders...) — the realtime engine only ever handles "right now"
-  // requests. This used to fake a success (an alert + navigate), then later
-  // a notice that only appeared after clicking Confirm; the tab itself now
-  // says upfront this doesn't work and its Confirm button is disabled,
-  // instead of a user discovering that only after picking a slot.
-
   const handleStartNow = async () => {
     if (!currentUser) {
-      setPendingAction('astrologers');
+      setPendingAction('consultation-booking');
       setShowLoginModal(true);
+      return;
+    }
+    if (!hasBirthDetails) {
+      setIsEditingDetails(true);
       return;
     }
     if (!walletBalance || walletBalance <= 0) {
@@ -615,11 +640,16 @@ function ConsultationBookingPage({ id }: { id: any }) {
     setError(null);
     try {
       const category = astrologer.category[0] || astrologer.specialization[0];
-      // No payment here — the session connects immediately and bills per
-      // minute straight out of the wallet once the astrologer accepts (see
-      // realtimeStore.ts's acceptConsultation). The waiting page reflects
-      // whatever this actually returns (ASSIGNED/QUEUED/UNAVAILABLE).
-      const result = await requestConsultation(astrologer.id, category, activeType);
+      const kundliDetails = hasBirthDetails && currentUser ? {
+        name: currentUser.name,
+        date: currentUser.birthDate!,
+        time: currentUser.birthTime || undefined,
+        placeName: currentUser.birthPlace || undefined,
+        latitude: currentUser.birthLatitude ?? undefined,
+        longitude: currentUser.birthLongitude ?? undefined,
+        timezoneOffsetMinutes: currentUser.birthTimezoneOffsetMinutes ?? undefined,
+      } : undefined;
+      const result = await requestConsultation(astrologer.id, category, activeType, undefined, kundliDetails);
       if (result.outcome === 'UNAVAILABLE') {
         setError(result.reason || 'This astrologer is unavailable right now.');
         setStarting(false);
@@ -650,29 +680,53 @@ function ConsultationBookingPage({ id }: { id: any }) {
           <button className={mode === 'schedule' ? 'btn btn-gold btn-sm' : 'btn btn-outline-light btn-sm'} onClick={() => setMode('schedule')}>Schedule for Later</button>
         </div>
 
-        {mode === 'now' && currentUser && !hasBirthDetails ? (
+        {!currentUser ? (
           <div className={styles.bookingLayout}>
-            <div className={styles.bookingOptionsCard}>
-              <div className={styles.contentSection}>
-                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>Your Birth Details</h3>
-                <p className={styles.reviewCount} style={{ marginBottom: '16px' }}>
-                  {astrologer.name} needs this to read your chart — the same details a Kundli is built from. Saved once to your account, so you won't be asked again next time.
-                </p>
-                <BirthDetailsForm
-                  onSubmit={handleSaveBirthDetails}
-                  submitLabel={savingBirthDetails ? 'Saving…' : 'Save & Continue'}
-                  idPrefix="consult-birth"
-                  initialValues={toSavedBirthDetails(currentUser)}
-                />
-                {birthDetailsError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{birthDetailsError}</p>}
+            <div className={styles.bookingOptionsCard} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '16px', color: 'var(--color-gold)' }}>✦</div>
+              <h2 className={styles.contentSectionTitle} style={{ border: 'none', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '12px' }}>
+                Sign In to Prepare Your Kundli
+              </h2>
+              <p className={styles.reviewCount} style={{ maxWidth: '540px', margin: '0 auto 28px', lineHeight: 1.6, fontSize: '14px' }}>
+                To connect with <strong>{astrologer.name}</strong>, your birth details (Date, Time, & Place of Birth) are required. TredevAstro automatically generates your Vedic Kundli so the astrologer can review your charts, dashas, and planetary placements live during your session.
+              </p>
+              <button
+                className="btn btn-gold"
+                style={{ padding: '12px 36px', fontSize: '15px' }}
+                onClick={() => {
+                  setPendingAction('consultation-booking');
+                  setShowLoginModal(true);
+                }}
+              >
+                Log In or Sign Up to Continue
+              </button>
+            </div>
+
+            <div className={styles.profileSidebar} style={{ textAlign: 'left' }}>
+              <h3 className={styles.sidebarName} style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Consultation Info</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                <span>Astrologist</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{astrologer.name}</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                <span>Experience</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{astrologer.experience}+ Years</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
+                <span>Rate</span>
+                <span style={{ color: 'var(--color-text-light)' }}>₹{astrologer.price}/min</span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Sign in to view your real-time wallet balance and generate your Kundli for {astrologer.name}.
+              </p>
             </div>
           </div>
         ) : mode === 'now' ? (
           <div className={styles.bookingLayout}>
             <div className={styles.bookingOptionsCard}>
+              {/* Step 1: Format selection */}
               <div className={styles.contentSection}>
-                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>Select Consultation Format</h3>
+                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>1. Select Consultation Format</h3>
                 <div className={styles.optionSelectGrid}>
                   {OPTIONS.map(opt => (
                     <div
@@ -699,10 +753,204 @@ function ConsultationBookingPage({ id }: { id: any }) {
                     {effectivePrice.isLoyal ? `Loyalty discount applied — ${effectivePrice.appliedOfferPercent}% off` : `Offer applied — ${effectivePrice.appliedOfferPercent}% off`}
                   </p>
                 )}
-                <p className={styles.reviewCount} style={{ marginTop: '16px' }}>
-                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Once connected, your session bills per minute straight from your wallet and ends automatically the moment your balance runs out — top up any time, including mid-session, and you can end it yourself whenever you like.
-                </p>
               </div>
+
+              {/* Step 2: Birth Details & Kundli Generation */}
+              <div className={styles.contentSection} style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.2))' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 className={styles.contentSectionTitle} style={{ border: 'none', margin: 0 }}>2. Client Kundli & Birth Details</h3>
+                  {hasBirthDetails && !isEditingDetails && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-light btn-sm"
+                      style={{ fontSize: '12px', padding: '5px 14px', borderColor: 'var(--border-strong, #8F6A22)', color: 'var(--text-primary)', fontWeight: 500, borderRadius: '6px' }}
+                      onClick={() => setIsEditingDetails(true)}
+                    >
+                      Change Details
+                    </button>
+                  )}
+                </div>
+
+                {!hasBirthDetails || isEditingDetails ? (
+                  <div>
+                    <p className={styles.reviewCount} style={{ marginBottom: '16px' }}>
+                      {astrologer.name} needs your birth details to generate your Kundli chart. Saved once to your profile so it's ready for this and future consultations.
+                    </p>
+                    <BirthDetailsForm
+                      onSubmit={handleSaveBirthDetails}
+                      submitLabel={savingBirthDetails ? 'Generating Kundli…' : 'Generate Kundli for Consultation'}
+                      idPrefix="consult-birth"
+                      initialValues={toSavedBirthDetails(currentUser)}
+                      showNameField={true}
+                      showGenderField={true}
+                    />
+                    {isEditingDetails && hasBirthDetails && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-light btn-sm"
+                        style={{ marginTop: '12px' }}
+                        onClick={() => setIsEditingDetails(false)}
+                      >
+                        Cancel & Keep Saved Details
+                      </button>
+                    )}
+                    {birthDetailsError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{birthDetailsError}</p>}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      background: 'var(--surface-elevated, #FAF7F0)',
+                      border: '1.5px solid var(--border-strong, rgba(181, 138, 59, 0.35))',
+                      borderRadius: '12px',
+                      padding: '20px 22px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--gold-secondary, #8F6A22)' }}>
+                          ✦ {currentUser.name || 'Client'}'s Kundli
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary, #68717A)', marginTop: 4, fontWeight: 400 }}>
+                          Born <strong>{currentUser.birthDate}</strong> at <strong>{currentUser.birthTime || 'Time not specified'}</strong> · {currentUser.birthPlace || 'Location specified'}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          background: 'rgba(46, 125, 50, 0.12)',
+                          color: '#2e7d32',
+                          border: '1px solid rgba(46, 125, 50, 0.3)',
+                          padding: '4px 12px',
+                          borderRadius: '999px',
+                          fontWeight: 600,
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        ✓ Kundli Ready for Review
+                      </div>
+                    </div>
+
+                    {bookingKundliLoading ? (
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted, #8C8A84)', padding: '20px 0', textAlign: 'center' }}>
+                        Computing astrological chart for {astrologer.name}…
+                      </div>
+                    ) : bookingKundli ? (
+                      <div>
+                        {(() => {
+                          const moonSign = toChartPlanets(bookingKundli.kundli, bookingKundli.bhavChalit).find(p => p.id === 'moon')?.sign || '—';
+                          const activeMaha = bookingKundli.mahadashaTimeline.find(m => m.active);
+                          const doshas = [
+                            bookingKundli.doshas.kaalSarp.isKaalSarp && 'Kaal Sarp Dosha',
+                            bookingKundli.doshas.sadeSati.active && 'Sade Sati Active',
+                          ].filter(Boolean);
+
+                          const statBoxStyle: React.CSSProperties = {
+                            background: 'var(--surface, #FAF7F0)',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.22))',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
+                          };
+
+                          const labelStyle: React.CSSProperties = {
+                            fontSize: '10.5px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            fontWeight: 600,
+                            color: 'var(--text-secondary, #68717A)',
+                            marginBottom: '4px',
+                          };
+
+                          const valStyle: React.CSSProperties = {
+                            fontSize: '14.5px',
+                            fontWeight: 700,
+                            color: 'var(--text-primary, #182333)',
+                            letterSpacing: '0.01em',
+                          };
+
+                          return (
+                            <div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Lagna (Ascendant)</div>
+                                  <div style={valStyle}>{cap(bookingKundli.kundli.ascendant.rashi)}</div>
+                                </div>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Chandra Rashi</div>
+                                  <div style={valStyle}>{cap(moonSign)}</div>
+                                </div>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Nakshatra</div>
+                                  <div style={valStyle}>
+                                    {bookingKundli.kundli.moonNakshatra.name} (Pada {bookingKundli.kundli.moonNakshatra.pada})
+                                  </div>
+                                </div>
+                                {activeMaha && (
+                                  <div style={statBoxStyle}>
+                                    <div style={labelStyle}>Current Mahadasha</div>
+                                    <div style={valStyle}>{cap(activeMaha.lord)}</div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {doshas.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                                  {doshas.map(d => (
+                                    <span
+                                      key={String(d)}
+                                      style={{
+                                        fontSize: '11.5px',
+                                        padding: '3px 12px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(181, 138, 59, 0.12)',
+                                        border: '1px solid var(--border-strong, rgba(181, 138, 59, 0.4))',
+                                        color: 'var(--gold-secondary, #8F6A22)',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {d}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div
+                                style={{
+                                  marginTop: '12px',
+                                  padding: '10px 14px',
+                                  background: 'rgba(181, 138, 59, 0.08)',
+                                  border: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.2))',
+                                  borderRadius: '6px',
+                                  color: 'var(--text-primary, #182333)',
+                                  fontSize: '12px',
+                                  lineHeight: 1.6,
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '8px',
+                                }}
+                              >
+                                <span style={{ color: 'var(--gold-secondary, #8F6A22)', flexShrink: 0, fontSize: '13px' }}>✦</span>
+                                <span>
+                                  <strong>{astrologer.name}</strong> will review your complete Kundli, divisional placements (D1, D9, Bhav Chalit), and dashas inside the astrologer console during the consultation.
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary, #68717A)', margin: 0 }}>
+                        Your birth details are attached. {astrologer.name} will compute and review your Kundli as soon as you connect.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <p className={styles.reviewCount} style={{ marginTop: '20px' }}>
+                This connects you to the astrologer's real-time queue. Once connected, your session bills per minute straight from your wallet and ends automatically if your balance runs out — top up any time, including mid-session.
+              </p>
             </div>
 
             <div className={styles.profileSidebar} style={{ textAlign: 'left' }}>
@@ -730,8 +978,19 @@ function ConsultationBookingPage({ id }: { id: any }) {
               )}
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
               {isUnavailable && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>This astrologer appears to be unavailable right now.</p>}
-              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting || isUnavailable} onClick={handleStartNow}>
-                {starting ? 'Connecting…' : (!walletBalance || walletBalance <= 0) ? 'Recharge Wallet' : 'Start Consultation'}
+              <button
+                className="btn btn-gold"
+                style={{ width: '100%', marginTop: '20px' }}
+                disabled={starting || isUnavailable || !hasBirthDetails}
+                onClick={handleStartNow}
+              >
+                {starting
+                  ? 'Connecting…'
+                  : !hasBirthDetails
+                  ? 'Enter Birth Details to Continue'
+                  : (!walletBalance || walletBalance <= 0)
+                  ? 'Recharge Wallet'
+                  : 'Start Consultation'}
               </button>
             </div>
           </div>
@@ -816,6 +1075,7 @@ function ConsultationWaitingPage() {
   const [cancellingRequest, setCancellingRequest] = useState(false);
   const [justReviewed, setJustReviewed] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [endError, setEndError] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState('');
   const [showRecharge, setShowRecharge] = useState(false);
@@ -965,7 +1225,15 @@ function ConsultationWaitingPage() {
     const estimatedRemaining = walletBalance != null ? Math.max(0, walletBalance - consultation.pricePerMin * elapsedMinutes) : null;
     const handleEnd = async () => {
       setEnding(true);
-      try { await endConsultationById(consultation.id); } finally { setEnding(false); }
+      setEndError('');
+      try {
+        await endConsultationById(consultation.id);
+      } catch (err) {
+        console.error('Failed to end consultation:', err);
+        setEndError((err as Error).message || 'Failed to end consultation.');
+      } finally {
+        setEnding(false);
+      }
     };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
@@ -997,8 +1265,9 @@ function ConsultationWaitingPage() {
           ) : (
             <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} allowMediaUpload />
           )}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '20px' }}>
             <button className="btn btn-outline-light" disabled={ending} onClick={handleEnd}>{ending ? 'Ending…' : 'End Consultation'}</button>
+            {endError && <p style={{ color: 'var(--danger, #e05252)', fontSize: 13, margin: '4px 0 0' }}>{endError}</p>}
           </div>
         </div>
         {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}

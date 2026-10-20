@@ -3392,12 +3392,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', l);
   };
 
+  // Always English, in every language — Google Translate is what actually
+  // translates this site now (utils/googleTranslate.ts), and it translates
+  // the whole rendered page rather than a list of keys. Returning a
+  // non-English string here would hand Google text that is already in the
+  // target language while it is configured to treat the page as English, and
+  // it would re-translate it into nonsense. Keeping every string English also
+  // means the ~680 keyed strings and the much larger body of hardcoded page
+  // text get translated the same way, instead of only the keyed subset
+  // changing and the rest of the page staying English.
+  //
+  // The non-English TRANSLATIONS entries are kept rather than deleted: they
+  // are hand-written and worth restoring if this site ever moves back to
+  // dictionary-driven translation (which would require marking every one of
+  // these strings translate="no" so Google skips them).
   const t = (key: string): string => {
-    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key;
+    return TRANSLATIONS['en']?.[key] || key;
   };
 
   const tOr = (key: string, fallbackKey: string): string => {
-    return TRANSLATIONS[language]?.[key] || t(fallbackKey);
+    return TRANSLATIONS['en']?.[key] || t(fallbackKey);
   };
 
   const setBirthProfile = (p: BirthProfile) => {

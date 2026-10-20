@@ -44,6 +44,18 @@ export interface AstrologerRecord {
   durationSamplesMs: number[]; // recent completed-consultation durations, for ETA
 }
 
+// Snapshot of the client's saved birth details at request time — enough for
+// the astrologer to review before accepting, without a separate lookup.
+export interface ConsultationKundliDetails {
+  name: string;
+  date: string;
+  time?: string;
+  placeName?: string;
+  latitude?: number;
+  longitude?: number;
+  timezoneOffsetMinutes?: number;
+}
+
 export interface Consultation {
   id: string;
   astrologerId: number;
@@ -55,6 +67,7 @@ export interface Consultation {
   fromQueue: boolean;
   requestId: string;
   createdAt: number;
+  kundliDetails?: ConsultationKundliDetails;
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
@@ -86,6 +99,7 @@ export interface QueueEntry {
   joinedAt: number;
   promotedConsultationId?: string;
   durationMinutes: number; // carried through to the Consultation once promoted
+  kundliDetails?: ConsultationKundliDetails;
 }
 
 export type NotificationKind = 'chat_request' | 'queue_waiting' | 'consultation_completed' | 'system';

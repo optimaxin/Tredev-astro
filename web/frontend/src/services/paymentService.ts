@@ -52,7 +52,7 @@ export interface PaymentStatusResult {
 }
 
 interface CashfreeCheckout {
-  checkout: (opts: { paymentSessionId: string; redirectTarget: '_self' }) => Promise<unknown>;
+  checkout: (opts: { paymentSessionId: string; redirectTarget?: '_self' | '_modal' | '_blank' }) => Promise<unknown>;
 }
 
 let cashfreeSdk: Promise<(opts: { mode: 'sandbox' | 'production' }) => CashfreeCheckout> | null = null;
@@ -72,7 +72,7 @@ function loadCashfreeSdk() {
   return cashfreeSdk;
 }
 
-const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CASHFREE_ENV === 'sandbox' ? 'sandbox' : 'production';
 
 // Creates the payment intent server-side, then sends the whole browser tab
 // to the chosen gateway's own hosted payment page — Cashfree via its JS SDK

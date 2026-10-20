@@ -140,20 +140,17 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme, language: siteLanguage } = useAppContext();
-  // Starts from (and follows) the site-wide language toggle — this card's
-  // own Prahar/weekday/tithi labels live as real SVG <text> and hardcoded
-  // strings, neither of which Google Translate (see utils/googleTranslate.ts)
-  // can reach, so without this sync the card silently stayed in whatever it
-  // last was regardless of the nav's language picker. The dedicated
-  // English/हिंदी button below still lets a visitor flip just this card on
-  // its own afterward (this card only ever supports those two — picking any
-  // other site language just falls back to English here).
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>(siteLanguage === 'hi' ? 'hi' : 'en');
-  useEffect(() => {
-    setPanchangLang(siteLanguage === 'hi' ? 'hi' : 'en');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteLanguage]);
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
+  // Deliberately NOT synced to the site-wide language picker. This card
+  // renders real Devanagari Panchang terms of its own, and the site-wide
+  // picker is Google Translate (utils/googleTranslate.ts), which translates
+  // the rendered page assuming it is English — handing it this card's actual
+  // Hindi would get that Hindi re-translated into nonsense. Left in English,
+  // the card is translated along with the rest of the page like any other
+  // content. The dedicated English/हिंदी button below still switches just
+  // this card to its authentic Devanagari labels, and `translate="no"` on the
+  // card (see the render below) is what keeps Google off it when it does.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');
@@ -511,7 +508,11 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'}>
+              {/* translate="no" only while this card is showing its own real
+                  Devanagari — Google would otherwise re-translate it as if it
+                  were English and mangle it. In English it translates with
+                  the rest of the page like normal content. */}
+              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'} translate={isHindi ? 'no' : undefined}>
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
                 <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashBrandBlock}>

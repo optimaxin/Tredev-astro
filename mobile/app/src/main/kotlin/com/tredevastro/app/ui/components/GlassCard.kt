@@ -36,11 +36,16 @@ fun GlassCard(
         Modifier
     }
 
+    // The dark "cosmic" theme floats cards over animated nebula clouds, so they
+    // stay translucent; the light "sanctuary" theme has a flat paper canvas and
+    // wants a fully opaque surface (Stitch spec: Standard Card, #FAF7F0).
+    val cardBackground = if (colors.isDark) colors.surfaceElevated.copy(alpha = 0.72f) else colors.surface
+
     Column(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(shape)
-            .background(colors.surfaceElevated.copy(alpha = 0.72f))
+            .background(cardBackground)
             .border(width = 1.dp, color = if (pressed) colors.borderStrong else colors.borderSubtle, shape = shape)
             .then(clickableModifier),
         content = content,

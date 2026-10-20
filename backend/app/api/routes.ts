@@ -136,12 +136,21 @@ const requestSchema = z.object({
   category: z.string().trim().min(1).max(100),
   type: z.enum(['chat', 'voice', 'video']) satisfies z.ZodType<ConsultationType>,
   durationMinutes: z.number().int().positive().max(600).optional(),
+  kundliDetails: z.object({
+    name: z.string().trim().min(1).max(100),
+    date: z.string().min(1).max(20),
+    time: z.string().max(20).optional(),
+    placeName: z.string().max(200).optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    timezoneOffsetMinutes: z.number().optional(),
+  }).optional(),
 });
 
 router.post('/consultations/request', async (req, res) => {
   const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ') });
-  const { requestId, astrologerId, userName, category, type, durationMinutes } = parsed.data;
+  const { requestId, astrologerId, userName, category, type, durationMinutes, kundliDetails } = parsed.data;
   const userEmail = req.user!.email;
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
@@ -171,7 +180,7 @@ router.post('/consultations/request', async (req, res) => {
     return res.status(409).json({ error: 'You are already in a queue for another astrologer.' });
   }
   const countryCode = countryFromRequest(req);
-  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode });
+  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode, kundliDetails });
   res.json(result);
 });
 

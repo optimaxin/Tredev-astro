@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "562018162237",
+    "project_id": "tredev-astro",
+    "storage_bucket": "tredev-astro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:562018162237:android:5917c4f2ae81cd272cfc54",
+        "android_client_info": {
+          "package_name": "com.tredevastro.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "562018162237-ll0sr34q0038tfupm3f26f19pmd1igl8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCv6_k7TAlGEy5BYfvGQC4NlBGUODL2z8Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "562018162237-ll0sr34q0038tfupm3f26f19pmd1igl8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

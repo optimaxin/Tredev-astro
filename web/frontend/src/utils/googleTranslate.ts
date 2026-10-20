@@ -5,21 +5,22 @@
 // so no mapping table is needed.
 const COOKIE_NAME = 'googtrans';
 
-// hi/mr have substantial native dictionary coverage in AppContext.tsx's own
-// TRANSLATIONS — Google's widget has no "this text is already in the target
-// language, leave it" mode (it's configured with a single fixed pageLanguage
-// and blindly re-translates every text node it finds from that declared
-// source). Verified live: with pageLanguage fixed at 'en', selecting Hindi
-// made Google re-translate ALREADY-CORRECT Hindi dictionary text as if it
-// were garbled English, replacing it with unrelated/wrong output (e.g. a
-// report card's real title "करियर इंटेलिजेंस" became "ईसाई धर्म" —
-// "Christianity"). Running that same blind pass only where the dictionary
-// has near-zero coverage (bn/ta/te) still carries the same risk for the
-// handful of keys that DO exist there, but that's a small, bounded exposure
-// versus corrupting the (much larger) hi/mr dictionaries outright — so
-// Google Translate is simply never engaged for hi/mr; the existing t()
-// system alone (unchanged, pre-dating this integration) handles those two.
-const GOOGLE_TRANSLATE_LANGS = new Set(['bn', 'ta', 'te']);
+// Google Translate is the ONLY translation system for every non-English
+// language — English is the single source the whole page is written in, and
+// t() deliberately keeps returning English for every language so that stays
+// true (see its own comment in AppContext.tsx).
+//
+// This used to exclude hi/mr, because running Google on top of the app's own
+// already-Hindi dictionary text corrupted it: the widget has no "this text is
+// already in the target language, leave it" mode, so with pageLanguage fixed
+// at 'en' it re-translated correct Hindi as if it were garbled English (a
+// report card titled "करियर इंटेलिजेंस" came out as "ईसाई धर्म" —
+// "Christianity"). Excluding them meant hi/mr only ever translated the ~680
+// keyed strings the dictionary covers while the much larger body of
+// hardcoded page text stayed English, which is not a working translation.
+// Feeding Google a genuinely all-English page fixes both halves at once:
+// nothing is double-translated, and everything on the page gets translated.
+const TRANSLATED_BY_GOOGLE = (lang: string) => lang !== 'en';
 
 function setGoogTransCookie(value: string | null) {
   const host = window.location.hostname;
@@ -46,11 +47,10 @@ function getCombo(): HTMLSelectElement | null {
 // the widget hasn't finished loading yet (e.g. a fresh page load where the
 // user's last-picked language needs to apply before the script is ready).
 export function applyGoogleTranslateLanguage(lang: string) {
-  if (!GOOGLE_TRANSLATE_LANGS.has(lang)) {
-    // en/hi/mr: no Google Translate pass at all (see GOOGLE_TRANSLATE_LANGS'
-    // own comment) — clear the cookie and reload the same way reverting to
-    // English always has, so a previously-engaged bn/ta/te translation
-    // doesn't linger over whatever t() now renders for this language.
+  if (!TRANSLATED_BY_GOOGLE(lang)) {
+    // Back to English: there's no reliable same-page path for this (the
+    // widget's own "restore" throws inside Google's code), so clear the
+    // cookie and reload to get the untranslated page back.
     setGoogTransCookie(null);
     window.location.reload();
     return;

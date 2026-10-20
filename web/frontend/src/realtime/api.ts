@@ -2,7 +2,7 @@
 // (server/). Every write goes through here; the server is the sole source
 // of truth — this file does not cache or reinterpret anything.
 import type {
-  AstrologerSyncSnapshot, PublicAstrologerState, RecommendedAstrologer, RequestResult, UserSyncSnapshot, AstrologerNotification, Consultation, QueueEntry,
+  AstrologerSyncSnapshot, PublicAstrologerState, RecommendedAstrologer, RequestResult, UserSyncSnapshot, AstrologerNotification, Consultation, ConsultationKundliDetails, QueueEntry,
 } from './types';
 import { authService } from '../services/authService';
 
@@ -76,7 +76,7 @@ export const realtimeApi = {
   heartbeat: (email: string) => request('/api/heartbeat', { method: 'POST', body: JSON.stringify({ email }) }),
   astrologerSync: (astrologerId: number) => request<AstrologerSyncSnapshot>(`/api/astrologers/${astrologerId}/sync`),
   userSync: (email: string) => request<UserSyncSnapshot>(`/api/users/sync?email=${encodeURIComponent(email)}`),
-  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string; durationMinutes?: number }) =>
+  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string; durationMinutes?: number; kundliDetails?: ConsultationKundliDetails }) =>
     request<RequestResult>('/api/consultations/request', { method: 'POST', body: JSON.stringify(params) }),
   acceptConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/accept`, { method: 'POST', body: JSON.stringify({ email }) }),
   declineConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/decline`, { method: 'POST', body: JSON.stringify({ email }) }),

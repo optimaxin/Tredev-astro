@@ -5,47 +5,14 @@ import { NorthIndianChart, toChartPlanets, cap, CHART_KEYS, chartLabel, resolveC
 import { ordinal } from '../calculators/CalculatorPages';
 import { EmptyState } from './sections/shared';
 import styles from './sections/sections.module.css';
+import { useAppContext } from '../../context/AppContext';
+import KundliPrintLayout from '../../sections/KundliSection/KundliPrintLayout';
+import { generateKundliPdf } from '../../sections/KundliSection/kundliPdfGenerator';
 
 function shortChartLabel(key: string): string {
   if (key === 'BHAV_CHALIT') return 'Bhav';
   if (key === 'CHANDRA') return 'Chandra';
   return key;
-}
-
-// A condensed, single-page reference PDF — deliberately NOT a reuse of
-// KundliSection.tsx's full consumer report (a ~5-minute, every-divisional-
-// chart-on-its-own-page capture tuned for that exact job). An astrologer
-// mid-consultation needs a quick printable summary of what's already in
-// this sidebar, captured in seconds, not the full report pipeline.
-async function downloadClientKundliPdf(node: HTMLElement, fileName: string) {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-  const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-  const pdf = new jsPDF('p', 'pt', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 32;
-  const usableWidth = pageWidth - margin * 2;
-  const usableHeight = pageHeight - margin * 2;
-  const imgHeight = (canvas.height * usableWidth) / canvas.width;
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-
-  if (imgHeight <= usableHeight) {
-    pdf.addImage(imgData, 'JPEG', margin, margin, usableWidth, imgHeight);
-  } else {
-    // Taller than one page — same repeated-negative-offset technique
-    // KundliSection.tsx's generator uses: draw the whole image at a Y
-    // offset that slides it up by one page's worth each time, clipped by
-    // the page boundary, until it's all been shown once.
-    let remaining = imgHeight;
-    let offset = 0;
-    while (remaining > 0) {
-      pdf.addImage(imgData, 'JPEG', margin, margin - offset, usableWidth, imgHeight);
-      remaining -= usableHeight;
-      offset += usableHeight;
-      if (remaining > 0) pdf.addPage();
-    }
-  }
-  pdf.save(fileName);
 }
 
 // The astrologer's live "what does this person's chart actually say" sidebar
@@ -54,11 +21,15 @@ async function downloadClientKundliPdf(node: HTMLElement, fileName: string) {
 // Reuses the exact same chart data/components as the user's own "My Kundli"
 // page (PageRenderer.tsx) — no separate rendering logic to keep in sync.
 export default function ClientKundliPanel({ consultationId, fallbackName }: { consultationId: string; fallbackName: string }) {
+  const { currentUser, language } = useAppContext();
+  const astrologerName = currentUser?.name || 'Astrologer';
+
   const [data, setData] = React.useState<ClientKundliContext | null>(null);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [chartKey, setChartKey] = React.useState<string>('D1');
   const [pdfGenerating, setPdfGenerating] = React.useState(false);
+  const [pdfProgress, setPdfProgress] = React.useState<{ weightDone: number; totalWeight: number } | null>(null);
   const printRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -74,21 +45,43 @@ export default function ClientKundliPanel({ consultationId, fallbackName }: { co
     return () => { cancelled = true; };
   }, [consultationId]);
 
-  // The printable layout below only mounts while pdfGenerating is true (not
-  // permanently, off-screen) — this effect fires once that mount has
-  // actually committed and printRef.current exists, same gating pattern
-  // KundliSection.tsx's own generator uses and for the same reason (a
-  // permanently-mounted hidden capture target is a wall of sub-12px text
-  // accessibility scanners flag).
+  // Generates the actual full multi-page consumer Kundli report matching
+  // the user's downloaded PDF, attributed with "for (astrologer name)" on
+  // every page (cover, headers, footers, closing).
   React.useEffect(() => {
-    if (!pdfGenerating || !printRef.current || !data?.hasBirthDetails) return;
+    if (!pdfGenerating || !printRef.current || !data?.hasBirthDetails || !data?.kundliFull) return;
     let cancelled = false;
-    downloadClientKundliPdf(printRef.current, `${data.userName.replace(/[^a-z0-9]+/gi, '-')}-kundli.pdf`)
-      .catch(() => { if (!cancelled) setError('Could not generate the PDF. Please try again.'); })
-      .finally(() => { if (!cancelled) setPdfGenerating(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfGenerating]);
+    const sanitizedUserName = data.userName.trim().replace(/[^a-zA-Z0-9_-]+/g, '_') || 'Client';
+    const sanitizedAstroName = astrologerName.trim().replace(/[^a-zA-Z0-9_-]+/g, '_') || 'Astrologer';
+    const fileName = `${sanitizedUserName}_Kundli_for_${sanitizedAstroName}.pdf`;
+
+    generateKundliPdf({
+      root: printRef.current,
+      subjectName: data.userName,
+      fileName,
+      preparedForAstrologer: astrologerName,
+      onProgress: p => {
+        if (!cancelled) setPdfProgress(p);
+      },
+      isCancelled: () => cancelled,
+    })
+      .catch(err => {
+        if (!cancelled) {
+          console.error('Astrologer Kundli PDF generation failed:', err);
+          setError('Could not generate the full Kundli PDF. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPdfGenerating(false);
+          setPdfProgress(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pdfGenerating, data, astrologerName]);
 
   return (
     <div className={styles.panel}>
@@ -125,7 +118,11 @@ export default function ClientKundliPanel({ consultationId, fallbackName }: { co
                 disabled={pdfGenerating}
                 onClick={() => setPdfGenerating(true)}
               >
-                {pdfGenerating ? 'Preparing…' : 'Download PDF'}
+                {pdfGenerating
+                  ? (pdfProgress && pdfProgress.totalWeight > 0
+                      ? `Preparing (${Math.round((pdfProgress.weightDone / pdfProgress.totalWeight) * 100)}%)…`
+                      : 'Preparing…')
+                  : 'Download PDF'}
               </button>
             </div>
 
@@ -185,35 +182,25 @@ export default function ClientKundliPanel({ consultationId, fallbackName }: { co
               </div>
             )}
 
-            {/* Printable capture target — only mounted while generating (see
-                this component's own useEffect), never sitting permanently
-                off-screen. Plain black-on-white regardless of the dashboard's
-                current theme, since a PDF has no "dark mode." */}
-            {pdfGenerating && (
-              <div style={{ position: 'fixed', left: -9999, top: 0, width: 560 }} data-theme="light">
-                <div ref={printRef} style={{ background: '#fff', color: '#1a1a1a', padding: 32, fontFamily: 'var(--font-sans)', width: 560 }}>
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, marginBottom: 4 }}>{data.userName}'s Kundli</div>
-                  <div style={{ fontSize: 12, color: '#555', marginBottom: 18 }}>
-                    Born {data.birthDate}{data.birthPlace ? ` · ${data.birthPlace}` : ''} · Prepared for consultation
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18, fontSize: 13 }}>
-                    <div><strong>Lagna:</strong> {cap(k.kundli.ascendant.rashi)}</div>
-                    <div><strong>Chandra Rashi:</strong> {cap(moonSign)}</div>
-                    <div style={{ gridColumn: 'span 2' }}><strong>Nakshatra:</strong> {k.kundli.moonNakshatra.name} ({ordinal(k.kundli.moonNakshatra.pada)} Pada)</div>
-                    {activeMahadasha && <div style={{ gridColumn: 'span 2' }}><strong>Current Mahadasha:</strong> {cap(activeMahadasha.lord)}</div>}
-                    {flags.length > 0 && <div style={{ gridColumn: 'span 2' }}><strong>Doshas:</strong> {flags.join(', ')}</div>}
-                  </div>
-                  <div style={{ fontSize: 13, marginBottom: 8 }}>{chartLabel(chartKey)}</div>
-                  <div style={{ width: 460, margin: '0 auto' }}>
-                    <NorthIndianChart
-                      planets={chartPlanets}
-                      ascendantRashi={ascendantRashi}
-                      onPlanetHover={() => {}}
-                      onPlanetLeave={() => {}}
-                      onHouseHover={() => {}}
-                      onHouseLeave={() => {}}
-                    />
-                  </div>
+            {/* Printable capture target — mounts the full Kundli report offscreen
+                with data-pdf-block elements, captured via generateKundliPdf.
+                Attribute 'preparedForAstrologer' writes 'for (astrologer name)' on every page. */}
+            {pdfGenerating && data.kundliFull && (
+              <div style={{ position: 'fixed', left: -9999, top: 0, width: 800, overflow: 'visible', zIndex: -1 }} data-theme="light">
+                <div ref={printRef}>
+                  <KundliPrintLayout
+                    name={data.userName}
+                    dob={data.birthDate || ''}
+                    tob={data.birthTime || '12:00'}
+                    timeUnknown={!data.birthTime}
+                    place={data.birthPlace || 'India'}
+                    timezoneOffsetMinutes={data.birthTimezoneOffsetMinutes ?? 330}
+                    latitude={data.birthLatitude}
+                    longitude={data.birthLongitude}
+                    result={data.kundliFull}
+                    language={language === 'hi' ? 'hi' : 'en'}
+                    preparedForAstrologer={astrologerName}
+                  />
                 </div>
               </div>
             )}
