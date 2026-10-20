@@ -20,6 +20,7 @@ backend/data/
 # Personal/scratch workspace — sample kundli PDFs, reference repos, ad-hoc
 # assets. Never meant for the shared repo (real names, unrelated projects).
 Extra/
+Tredeva-Navaratri/
 
 # Android (mobile/)
 mobile/local.properties
