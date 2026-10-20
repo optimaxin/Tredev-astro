@@ -233,7 +233,7 @@
   font-size: 3rem;
   line-height: 1;
   display: block;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   transition: filter 0.3s ease;
   filter: drop-shadow(0 0 0 transparent);
 }

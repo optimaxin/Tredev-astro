@@ -144,7 +144,7 @@ function SlideArtwork({ slide, isActive }: { slide: ReturnType<typeof buildSlide
           fontSize="32"
           fill={slide.artColor}
           opacity="0.85"
-          fontFamily="Georgia, serif"
+          fontFamily="var(--font-serif)"
         >
           {slide.symbol}
         </text>
@@ -157,7 +157,7 @@ function SlideArtwork({ slide, isActive }: { slide: ReturnType<typeof buildSlide
           fontSize="10"
           fill={slide.artColor}
           opacity="0.45"
-          fontFamily="DM Sans, sans-serif"
+          fontFamily="var(--font-sans)"
           letterSpacing="3"
         >
           {slide.symbolLabel.toUpperCase()}

@@ -448,7 +448,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setStep('email-login'); setEmailMode('signin'); setLoginError(''); }}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-3)', opacity: 0.85, alignSelf: 'center' }}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-3)', opacity: 0.85, alignSelf: 'center', fontFamily: 'var(--font-sans)', color: 'inherit' }}
                 >
                   ई-मेल द्वारा प्रवेश या नया खाता बनाएं (Sign in or Register with Email)
                 </button>
@@ -500,14 +500,14 @@ export default function AuthPage() {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={otpSendLoading}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
                   >
                     {otpSendLoading ? 'Sending…' : "Didn't get it? Resend code"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setStep('entry')}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
                   >
                     Wrong number?
                   </button>
@@ -725,7 +725,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => setStep('entry')}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)', fontFamily: 'var(--font-sans)', color: 'inherit' }}
                 >
                   ← Back to phone / Google sign-in
                 </button>
@@ -759,13 +759,13 @@ export default function AuthPage() {
 // app has no real per-page URLs to open in a new tab instead, and that's the
 // same tradeoff the footer's own links already make.
 function ConsentCheckbox({ agreed, onChange, goToPage }: { agreed: boolean; onChange: (v: boolean) => void; goToPage: (p: string) => void }) {
-  const linkStyle: React.CSSProperties = { textDecoration: 'underline', color: 'inherit', fontWeight: 600 };
+  const linkStyle: React.CSSProperties = { textDecoration: 'underline', color: 'inherit', fontWeight: 600, fontFamily: 'inherit' };
   const goTo = (page: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     goToPage(page);
   };
   return (
-    <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0 8px', fontSize: '0.8rem', lineHeight: 1.5, cursor: 'pointer' }}>
+    <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0 8px', fontSize: '0.8rem', lineHeight: 1.5, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
       <input
         type="checkbox"
         checked={agreed}
@@ -794,10 +794,10 @@ export function GoogleSignInButton({ loading, error, onClick }: { loading: boole
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 'var(--space-3) 0' }}>
         <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
-        <span style={{ fontSize: '0.75rem', color: '#8a6d3b' }}>or</span>
+        <span style={{ fontSize: '0.75rem', color: '#8a6d3b', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>or</span>
         <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
       </div>
-      {error && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{error}</p>}
+      {error && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0', fontFamily: 'var(--font-sans)' }}>{error}</p>}
       <button
         type="button"
         onClick={onClick}
@@ -805,7 +805,7 @@ export function GoogleSignInButton({ loading, error, onClick }: { loading: boole
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
           padding: '10px 16px', borderRadius: '6px', border: '1px solid #dadce0', background: '#fff',
-          color: '#3c4043', fontSize: '0.9rem', fontWeight: 500, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
+          color: '#3c4043', fontSize: '0.9rem', fontWeight: 500, fontFamily: 'var(--font-sans)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
         }}
       >
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

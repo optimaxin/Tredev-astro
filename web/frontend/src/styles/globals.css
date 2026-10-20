@@ -9,6 +9,10 @@
   padding: 0;
 }
 
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 html {
   /* Not `scroll-behavior: smooth` here — every scrollTo()/scrollIntoView()
      call in the app already passes `behavior: 'smooth'` explicitly, so this
