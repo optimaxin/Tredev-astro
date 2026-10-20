@@ -243,7 +243,7 @@ private fun CashfreeOrRazorpayCheckout(order: PaymentOrderDto, onDone: () -> Uni
                     if (redirectUrl != null) {
                         loadUrl(redirectUrl)
                     } else if (sessionId != null) {
-                        loadDataWithBaseURL("https://tredevastro.com", cashfreeCheckoutHtml(sessionId), "text/html", "utf-8", null)
+                        loadDataWithBaseURL("https://tredevastro.com", cashfreeCheckoutHtml(sessionId, order.cashfreeMode ?: CASHFREE_MODE), "text/html", "utf-8", null)
                     }
                 }
             },
@@ -251,7 +251,7 @@ private fun CashfreeOrRazorpayCheckout(order: PaymentOrderDto, onDone: () -> Uni
     }
 }
 
-private fun cashfreeCheckoutHtml(sessionId: String) = """
+private fun cashfreeCheckoutHtml(sessionId: String, mode: String = CASHFREE_MODE) = """
     <!DOCTYPE html>
     <html>
     <head>
@@ -260,7 +260,7 @@ private fun cashfreeCheckoutHtml(sessionId: String) = """
     </head>
     <body style="margin:0;background:#faf5e9;">
         <script>
-            var cashfree = Cashfree({ mode: "$CASHFREE_MODE" });
+            var cashfree = Cashfree({ mode: "$mode" });
             cashfree.checkout({ paymentSessionId: "$sessionId", redirectTarget: "_self" });
         </script>
     </body>

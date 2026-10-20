@@ -555,6 +555,7 @@ data class PaymentOrderDto(
     val gateway: String,
     val paymentSessionId: String? = null,
     val redirectUrl: String? = null,
+    val cashfreeMode: String? = null,
 )
 
 /** Mirrors GET /api/payments/orders/:id/status's response. */

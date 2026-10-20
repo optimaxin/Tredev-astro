@@ -84,8 +84,14 @@ const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CAS
 // outcome is decided later, when the gateway redirects back to
 // `/?payment_id=...` and AppContext's bootstrap effect calls getStatus() to
 // find out what happened.
-export async function payWithGateway(intent: PaymentIntent, cashfreeMode: 'sandbox' | 'production' = DEFAULT_CASHFREE_MODE): Promise<void> {
-  const result = await request<{ paymentId: string; gateway: PaymentGateway; paymentSessionId?: string; redirectUrl?: string }>('/orders', {
+export async function payWithGateway(intent: PaymentIntent, cashfreeMode?: 'sandbox' | 'production'): Promise<void> {
+  const result = await request<{
+    paymentId: string;
+    gateway: PaymentGateway;
+    paymentSessionId?: string;
+    redirectUrl?: string;
+    cashfreeMode?: 'sandbox' | 'production';
+  }>('/orders', {
     method: 'POST',
     body: JSON.stringify(intent),
   });
@@ -106,8 +112,9 @@ export async function payWithGateway(intent: PaymentIntent, cashfreeMode: 'sandb
     window.location.href = result.redirectUrl!;
     return;
   }
+  const mode = result.cashfreeMode || cashfreeMode || DEFAULT_CASHFREE_MODE || 'production';
   const Cashfree = await loadCashfreeSdk();
-  const cashfree = Cashfree({ mode: cashfreeMode });
+  const cashfree = Cashfree({ mode });
   await cashfree.checkout({ paymentSessionId: result.paymentSessionId!, redirectTarget: '_self' });
 }
 

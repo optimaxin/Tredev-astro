@@ -183,7 +183,15 @@ paymentsRouter.post('/orders', async (req, res) => {
         { id: user.id, name: user.name, email: user.email, phone: user.phone_number || '' },
         returnUrl
       );
-      res.status(201).json({ success: true, data: { paymentId: id, gateway, paymentSessionId: cfOrder.payment_session_id } });
+      res.status(201).json({
+        success: true,
+        data: {
+          paymentId: id,
+          gateway,
+          paymentSessionId: cfOrder.payment_session_id,
+          cashfreeMode: config.cashfree.env,
+        },
+      });
     } else {
       const link = await createPaymentLink(id, amount, { name: user.name, email: user.email, contact: user.phone_number || '' }, returnUrl);
       // Razorpay assigns its OWN id to the link ("plink_xxx") — not our
