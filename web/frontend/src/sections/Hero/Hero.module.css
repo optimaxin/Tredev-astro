@@ -44,11 +44,19 @@
 }
 
 @media (max-width: 768px) {
-  /* The mobile poster is a full-frame subject (not a side-positioned video
-     scene), so the text column sits directly over its brightest area —
-     needs a stronger, more even scrim than desktop's side vignette. */
+  /* Video is framed with the sage toward the right third — on a narrow
+     portrait crop, centered object-position crops him off past the edge.
+     Shift the visible window right so he lands centered in frame. */
+  .bgVideo {
+    object-position: 78% center;
+  }
+
+  /* The mobile poster is a full-frame subject sitting dead-center behind
+     the headline (not a side-positioned video scene), so the text column
+     sits directly over his face — needs a uniformly darker scrim than
+     desktop's side vignette, with no bright dip, to keep text legible. */
   .overlay {
-    background: linear-gradient(180deg, rgba(18, 7, 4, 0.8) 0%, rgba(18, 7, 4, 0.6) 45%, rgba(18, 7, 4, 0.85) 100%);
+    background: linear-gradient(180deg, rgba(18, 7, 4, 0.82) 0%, rgba(18, 7, 4, 0.74) 45%, rgba(18, 7, 4, 0.88) 100%);
   }
 }
 
