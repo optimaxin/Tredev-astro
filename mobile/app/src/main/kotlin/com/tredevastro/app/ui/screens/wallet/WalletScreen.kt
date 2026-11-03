@@ -243,7 +243,7 @@ private fun CashfreeOrRazorpayCheckout(order: PaymentOrderDto, onDone: () -> Uni
                     if (redirectUrl != null) {
                         loadUrl(redirectUrl)
                     } else if (sessionId != null) {
-                        loadDataWithBaseURL("https://tredevastro.com", cashfreeCheckoutHtml(sessionId, order.cashfreeMode ?: CASHFREE_MODE), "text/html", "utf-8", null)
+                        loadDataWithBaseURL("https://tredevaastro.com", cashfreeCheckoutHtml(sessionId, order.cashfreeMode ?: CASHFREE_MODE), "text/html", "utf-8", null)
                     }
                 }
             },

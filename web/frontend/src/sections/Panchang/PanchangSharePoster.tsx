@@ -352,7 +352,7 @@ export default function PanchangSharePoster({ data, isHindi, location, theme, po
             </div>
           )}
           <div style={{ textAlign: 'center', marginTop: 6, color: p.goldDim, fontSize: 14 }}>
-            tredevastro.com
+            tredevaastro.com
           </div>
         </div>
       </div>

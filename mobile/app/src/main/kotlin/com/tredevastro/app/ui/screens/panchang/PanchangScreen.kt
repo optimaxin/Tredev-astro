@@ -363,7 +363,7 @@ private fun buildPanchangShareBitmap(context: android.content.Context, p: Pancha
     y += px(24f)
     centerText("Om Sarve Bhavantu Sukhinah", cx, y, serif(px(16f), SharePalette.gold, italic = true))
     y += px(22f)
-    centerText("tredevastro.com", cx, y, serif(px(14f), SharePalette.goldDim))
+    centerText("tredevaastro.com", cx, y, serif(px(14f), SharePalette.goldDim))
     y += px(20f)
 
     // Outer card border, sized to the content actually drawn

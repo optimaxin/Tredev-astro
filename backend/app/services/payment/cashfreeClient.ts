@@ -49,7 +49,7 @@ export async function createCashfreeOrder(orderId: string, amount: number, custo
       customer_details: {
         customer_id: customer.id || `cust_${Date.now()}`,
         customer_name: (customer.name || 'Valued Customer').trim() || 'Valued Customer',
-        customer_email: customer.email && customer.email.includes('@') ? customer.email : 'support@tredevastro.com',
+        customer_email: customer.email && customer.email.includes('@') ? customer.email : 'support@tredevaastro.com',
         customer_phone: cleanPhone.length === 10 ? cleanPhone : '9999999999',
       },
       order_meta: { return_url: safeReturnUrl },

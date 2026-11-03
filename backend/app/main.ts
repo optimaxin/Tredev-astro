@@ -34,7 +34,7 @@ import { deleteExpiredBanners } from './repositories/bannerRepository.ts';
 const PORT = Number(process.env.PORT) || 4000;
 // Comma-separated so the main site and the separately-deployed Ganesh
 // Chaturthi campaign app (its own domain) can both be allowlisted, e.g.
-// CLIENT_ORIGIN="https://tredevastro.com,https://ganesh.tredevastro.com".
+// CLIENT_ORIGIN="https://tredevaastro.com,https://ganesh.tredevaastro.com".
 const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
 // Vite bumps to the next free port (5174, 5175, 5176...) whenever a stale
 // dev-server process is still holding an earlier one, which kept breaking
