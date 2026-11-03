@@ -93,6 +93,7 @@ function AppContent() {
       <ActiveSessionBanner />
       {showSiteChat && currentUser && (
         <KundliChatWidget
+          autoOpen={false}
           chartKey={`${currentUser.birthDate}T${currentUser.birthTime}@${currentUser.birthLatitude!.toFixed(4)},${currentUser.birthLongitude!.toFixed(4)}`}
           displayName={currentUser.name}
           birth={{

@@ -61,6 +61,50 @@
   color: var(--surface-elevated);
 }
 
+/* The periodic nudge shown instead of auto-opening the panel outright (see
+   KundliChatWidget's `autoOpen` prop). Sits just above the launcher FAB. */
+.teaserBubble {
+  position: fixed;
+  right: 24px;
+  bottom: 90px;
+  max-width: 230px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--gold-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  padding: 10px 28px 10px 14px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  z-index: 1099;
+  animation: teaserIn 0.25s ease-out;
+}
+
+@keyframes teaserIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teaserBubble { animation: none; }
+}
+
+.teaserClose {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.68rem;
+  opacity: 0.45;
+}
+
+.teaserClose:hover { opacity: 0.9; }
+
+@media (max-width: 767px) {
+  .teaserBubble { right: 16px; bottom: 76px; }
+}
+
 /* Anchored to the TOP, not the bottom. Bottom-anchoring plus a tall panel is
    what pushed the header up under the site nav: the panel grew upward into a
    strip it could not see. Pinning `top` below the nav (68px tall) makes the
