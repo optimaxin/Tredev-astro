@@ -1,0 +1,1965 @@
+{
+ "birth": {
+  "date": "1995-08-15",
+  "time": "10:30",
+  "place": null,
+  "timezone_offset_minutes": -330
+ },
+ "lagna": {
+  "rashi": "Pisces",
+  "degree_in_sign": 21.52095721355215
+ },
+ "planets": [
+  {
+   "planet": "Sun",
+   "classical": true,
+   "rashi": "Cancer",
+   "degree_in_sign": 28.56907219403081,
+   "house": 5,
+   "nakshatra": "Ashlesha",
+   "nakshatra_pada": 4,
+   "nakshatra_lord": "Mercury",
+   "retrograde": false
+  },
+  {
+   "planet": "Moon",
+   "classical": true,
+   "rashi": "Aries",
+   "degree_in_sign": 0.7477325544861628,
+   "house": 2,
+   "nakshatra": "Ashwini",
+   "nakshatra_pada": 1,
+   "nakshatra_lord": "Ketu",
+   "retrograde": false
+  },
+  {
+   "planet": "Mercury",
+   "classical": true,
+   "rashi": "Leo",
+   "degree_in_sign": 16.046995446644928,
+   "house": 6,
+   "nakshatra": "Purva Phalguni",
+   "nakshatra_pada": 1,
+   "nakshatra_lord": "Venus",
+   "retrograde": false
+  },
+  {
+   "planet": "Venus",
+   "classical": true,
+   "rashi": "Cancer",
+   "degree_in_sign": 27.107063445765903,
+   "house": 5,
+   "nakshatra": "Ashlesha",
+   "nakshatra_pada": 4,
+   "nakshatra_lord": "Mercury",
+   "retrograde": false
+  },
+  {
+   "planet": "Mars",
+   "classical": true,
+   "rashi": "Virgo",
+   "degree_in_sign": 21.620243047898498,
+   "house": 7,
+   "nakshatra": "Hasta",
+   "nakshatra_pada": 4,
+   "nakshatra_lord": "Moon",
+   "retrograde": false
+  },
+  {
+   "planet": "Jupiter",
+   "classical": true,
+   "rashi": "Scorpio",
+   "degree_in_sign": 11.99322990583289,
+   "house": 9,
+   "nakshatra": "Anuradha",
+   "nakshatra_pada": 3,
+   "nakshatra_lord": "Saturn",
+   "retrograde": false
+  },
+  {
+   "planet": "Saturn",
+   "classical": true,
+   "rashi": "Aquarius",
+   "degree_in_sign": 29.67362246353548,
+   "house": 12,
+   "nakshatra": "Purva Bhadrapada",
+   "nakshatra_pada": 3,
+   "nakshatra_lord": "Jupiter",
+   "retrograde": true
+  },
+  {
+   "planet": "Uranus",
+   "classical": false,
+   "rashi": "Capricorn",
+   "degree_in_sign": 3.7394734580802833,
+   "house": 11,
+   "nakshatra": "Uttara Ashadha",
+   "nakshatra_pada": 3,
+   "nakshatra_lord": "Sun",
+   "retrograde": true
+  },
+  {
+   "planet": "Neptune",
+   "classical": false,
+   "rashi": "Sagittarius",
+   "degree_in_sign": 29.609251952651448,
+   "house": 10,
+   "nakshatra": "Uttara Ashadha",
+   "nakshatra_pada": 1,
+   "nakshatra_lord": "Sun",
+   "retrograde": true
+  },
+  {
+   "planet": "Pluto",
+   "classical": false,
+   "rashi": "Scorpio",
+   "degree_in_sign": 4.031534353651523,
+   "house": 9,
+   "nakshatra": "Anuradha",
+   "nakshatra_pada": 1,
+   "nakshatra_lord": "Saturn",
+   "retrograde": false
+  },
+  {
+   "planet": "Rahu",
+   "classical": true,
+   "rashi": "Libra",
+   "degree_in_sign": 5.969787521867488,
+   "house": 8,
+   "nakshatra": "Chitra",
+   "nakshatra_pada": 4,
+   "nakshatra_lord": "Mars",
+   "retrograde": true
+  },
+  {
+   "planet": "Ketu",
+   "classical": true,
+   "rashi": "Aries",
+   "degree_in_sign": 5.969787521867488,
+   "house": 2,
+   "nakshatra": "Ashwini",
+   "nakshatra_pada": 2,
+   "nakshatra_lord": "Ketu",
+   "retrograde": true
+  }
+ ],
+ "moon_nakshatra": {
+  "name": "Ashwini",
+  "pada": 1,
+  "lord": "Ketu"
+ },
+ "vimshottari": [
+  {
+   "lord": "Ketu",
+   "starts_at": "1995-08-15",
+   "ends_at": "2002-03-25",
+   "antardashas": [
+    {
+     "lord": "Ketu",
+     "starts_at": "1995-08-15",
+     "ends_at": "1996-01-02"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "1996-01-02",
+     "ends_at": "1997-02-08"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "1997-02-08",
+     "ends_at": "1997-06-08"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "1997-06-08",
+     "ends_at": "1997-12-27"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "1997-12-27",
+     "ends_at": "1998-05-16"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "1998-05-16",
+     "ends_at": "1999-05-13"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "1999-05-13",
+     "ends_at": "2000-03-30"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2000-03-30",
+     "ends_at": "2001-04-17"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2001-04-17",
+     "ends_at": "2002-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Venus",
+   "starts_at": "2002-03-25",
+   "ends_at": "2022-03-25",
+   "antardashas": [
+    {
+     "lord": "Venus",
+     "starts_at": "2002-03-25",
+     "ends_at": "2005-07-24"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2005-07-24",
+     "ends_at": "2006-07-24"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2006-07-24",
+     "ends_at": "2008-03-24"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2008-03-24",
+     "ends_at": "2009-05-24"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2009-05-24",
+     "ends_at": "2012-05-24"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2012-05-24",
+     "ends_at": "2015-01-23"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2015-01-23",
+     "ends_at": "2018-03-25"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2018-03-25",
+     "ends_at": "2021-01-22"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2021-01-22",
+     "ends_at": "2022-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Sun",
+   "starts_at": "2022-03-25",
+   "ends_at": "2028-03-24",
+   "antardashas": [
+    {
+     "lord": "Sun",
+     "starts_at": "2022-03-25",
+     "ends_at": "2022-07-12"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2022-07-12",
+     "ends_at": "2023-01-11"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2023-01-11",
+     "ends_at": "2023-05-18"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2023-05-18",
+     "ends_at": "2024-04-11"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2024-04-11",
+     "ends_at": "2025-01-28"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2025-01-28",
+     "ends_at": "2026-01-10"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2026-01-10",
+     "ends_at": "2026-11-17"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2026-11-17",
+     "ends_at": "2027-03-24"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2027-03-24",
+     "ends_at": "2028-03-24"
+    }
+   ]
+  },
+  {
+   "lord": "Moon",
+   "starts_at": "2028-03-24",
+   "ends_at": "2038-03-25",
+   "antardashas": [
+    {
+     "lord": "Moon",
+     "starts_at": "2028-03-24",
+     "ends_at": "2029-01-22"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2029-01-22",
+     "ends_at": "2029-08-23"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2029-08-23",
+     "ends_at": "2031-02-22"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2031-02-22",
+     "ends_at": "2032-06-23"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2032-06-23",
+     "ends_at": "2034-01-22"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2034-01-22",
+     "ends_at": "2035-06-24"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2035-06-24",
+     "ends_at": "2036-01-23"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2036-01-23",
+     "ends_at": "2037-09-23"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2037-09-23",
+     "ends_at": "2038-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Mars",
+   "starts_at": "2038-03-25",
+   "ends_at": "2045-03-24",
+   "antardashas": [
+    {
+     "lord": "Mars",
+     "starts_at": "2038-03-25",
+     "ends_at": "2038-08-21"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2038-08-21",
+     "ends_at": "2039-09-08"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2039-09-08",
+     "ends_at": "2040-08-14"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2040-08-14",
+     "ends_at": "2041-09-23"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2041-09-23",
+     "ends_at": "2042-09-20"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2042-09-20",
+     "ends_at": "2043-02-16"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2043-02-16",
+     "ends_at": "2044-04-17"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2044-04-17",
+     "ends_at": "2044-08-23"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2044-08-23",
+     "ends_at": "2045-03-24"
+    }
+   ]
+  },
+  {
+   "lord": "Rahu",
+   "starts_at": "2045-03-24",
+   "ends_at": "2063-03-25",
+   "antardashas": [
+    {
+     "lord": "Rahu",
+     "starts_at": "2045-03-24",
+     "ends_at": "2047-12-05"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2047-12-05",
+     "ends_at": "2050-04-29"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2050-04-29",
+     "ends_at": "2053-03-05"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2053-03-05",
+     "ends_at": "2055-09-23"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2055-09-23",
+     "ends_at": "2056-10-10"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2056-10-10",
+     "ends_at": "2059-10-11"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2059-10-11",
+     "ends_at": "2060-09-04"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2060-09-04",
+     "ends_at": "2062-03-06"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2062-03-06",
+     "ends_at": "2063-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Jupiter",
+   "starts_at": "2063-03-25",
+   "ends_at": "2079-03-25",
+   "antardashas": [
+    {
+     "lord": "Jupiter",
+     "starts_at": "2063-03-25",
+     "ends_at": "2065-05-12"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2065-05-12",
+     "ends_at": "2067-11-23"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2067-11-23",
+     "ends_at": "2070-02-28"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2070-02-28",
+     "ends_at": "2071-02-04"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2071-02-04",
+     "ends_at": "2073-10-05"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2073-10-05",
+     "ends_at": "2074-07-24"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2074-07-24",
+     "ends_at": "2075-11-23"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2075-11-23",
+     "ends_at": "2076-10-29"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2076-10-29",
+     "ends_at": "2079-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Saturn",
+   "starts_at": "2079-03-25",
+   "ends_at": "2098-03-25",
+   "antardashas": [
+    {
+     "lord": "Saturn",
+     "starts_at": "2079-03-25",
+     "ends_at": "2082-03-27"
+    },
+    {
+     "lord": "Mercury",
+     "starts_at": "2082-03-27",
+     "ends_at": "2084-12-05"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2084-12-05",
+     "ends_at": "2086-01-13"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2086-01-13",
+     "ends_at": "2089-03-15"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2089-03-15",
+     "ends_at": "2090-02-25"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2090-02-25",
+     "ends_at": "2091-09-26"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2091-09-26",
+     "ends_at": "2092-11-04"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2092-11-04",
+     "ends_at": "2095-09-11"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2095-09-11",
+     "ends_at": "2098-03-25"
+    }
+   ]
+  },
+  {
+   "lord": "Mercury",
+   "starts_at": "2098-03-25",
+   "ends_at": "2115-03-26",
+   "antardashas": [
+    {
+     "lord": "Mercury",
+     "starts_at": "2098-03-25",
+     "ends_at": "2100-08-21"
+    },
+    {
+     "lord": "Ketu",
+     "starts_at": "2100-08-21",
+     "ends_at": "2101-08-18"
+    },
+    {
+     "lord": "Venus",
+     "starts_at": "2101-08-18",
+     "ends_at": "2104-06-18"
+    },
+    {
+     "lord": "Sun",
+     "starts_at": "2104-06-18",
+     "ends_at": "2105-04-25"
+    },
+    {
+     "lord": "Moon",
+     "starts_at": "2105-04-25",
+     "ends_at": "2106-09-24"
+    },
+    {
+     "lord": "Mars",
+     "starts_at": "2106-09-24",
+     "ends_at": "2107-09-21"
+    },
+    {
+     "lord": "Rahu",
+     "starts_at": "2107-09-21",
+     "ends_at": "2110-04-10"
+    },
+    {
+     "lord": "Jupiter",
+     "starts_at": "2110-04-10",
+     "ends_at": "2112-07-15"
+    },
+    {
+     "lord": "Saturn",
+     "starts_at": "2112-07-15",
+     "ends_at": "2115-03-26"
+    }
+   ]
+  }
+ ],
+ "yogini": [
+  {
+   "lord": "Mercury",
+   "starts_at": "1995-08-15",
+   "ends_at": "2000-05-04",
+   "yogini": "Bhadrika"
+  },
+  {
+   "lord": "Saturn",
+   "starts_at": "2000-05-04",
+   "ends_at": "2006-05-05",
+   "yogini": "Ulka"
+  },
+  {
+   "lord": "Venus",
+   "starts_at": "2006-05-05",
+   "ends_at": "2013-05-04",
+   "yogini": "Siddha"
+  },
+  {
+   "lord": "Rahu",
+   "starts_at": "2013-05-04",
+   "ends_at": "2021-05-04",
+   "yogini": "Sankata"
+  },
+  {
+   "lord": "Moon",
+   "starts_at": "2021-05-04",
+   "ends_at": "2022-05-05",
+   "yogini": "Mangala"
+  },
+  {
+   "lord": "Sun",
+   "starts_at": "2022-05-05",
+   "ends_at": "2024-05-04",
+   "yogini": "Pingala"
+  },
+  {
+   "lord": "Jupiter",
+   "starts_at": "2024-05-04",
+   "ends_at": "2027-05-05",
+   "yogini": "Dhanya"
+  },
+  {
+   "lord": "Mars",
+   "starts_at": "2027-05-05",
+   "ends_at": "2031-05-05",
+   "yogini": "Bhramari"
+  }
+ ],
+ "divisional_charts": {
+  "D2": {
+   "ascendant_rashi": "Leo",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Cancer",
+     "house": 12
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Leo",
+     "house": 1
+    }
+   ]
+  },
+  "D3": {
+   "ascendant_rashi": "Scorpio",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Pisces",
+     "house": 5
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 6
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Sagittarius",
+     "house": 2
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Pisces",
+     "house": 5
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Taurus",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Pisces",
+     "house": 5
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Libra",
+     "house": 12
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Capricorn",
+     "house": 3
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Leo",
+     "house": 10
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Scorpio",
+     "house": 1
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Libra",
+     "house": 12
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Aries",
+     "house": 6
+    }
+   ]
+  },
+  "D4": {
+   "ascendant_rashi": "Virgo",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Aries",
+     "house": 8
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 8
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Aquarius",
+     "house": 6
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Aries",
+     "house": 8
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Pisces",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Aquarius",
+     "house": 6
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Scorpio",
+     "house": 3
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Capricorn",
+     "house": 5
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Virgo",
+     "house": 1
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Scorpio",
+     "house": 3
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Libra",
+     "house": 2
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Aries",
+     "house": 8
+    }
+   ]
+  },
+  "D5": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Sagittarius",
+     "house": 12
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Capricorn",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Virgo",
+     "house": 9
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Aries",
+     "house": 4
+    }
+   ]
+  },
+  "D6": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Taurus",
+     "house": 5
+    }
+   ]
+  },
+  "D7": {
+   "ascendant_rashi": "Aquarius",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 3
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Scorpio",
+     "house": 10
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Leo",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Leo",
+     "house": 7
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Gemini",
+     "house": 5
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Taurus",
+     "house": 4
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 10
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Taurus",
+     "house": 4
+    }
+   ]
+  },
+  "D8": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Capricorn",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Pisces",
+     "house": 3
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Pisces",
+     "house": 3
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Capricorn",
+     "house": 1
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Taurus",
+     "house": 5
+    }
+   ]
+  },
+  "D9": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Pisces",
+     "house": 3
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Leo",
+     "house": 8
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Pisces",
+     "house": 3
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Aquarius",
+     "house": 2
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Sagittarius",
+     "house": 12
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Leo",
+     "house": 8
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Taurus",
+     "house": 5
+    }
+   ]
+  },
+  "D10": {
+   "ascendant_rashi": "Gemini",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Sagittarius",
+     "house": 7
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 11
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Capricorn",
+     "house": 8
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Sagittarius",
+     "house": 7
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Sagittarius",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Libra",
+     "house": 5
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Scorpio",
+     "house": 6
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Libra",
+     "house": 5
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Virgo",
+     "house": 4
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Leo",
+     "house": 3
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 6
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Taurus",
+     "house": 12
+    }
+   ]
+  },
+  "D11": {
+   "ascendant_rashi": "Sagittarius",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Scorpio",
+     "house": 12
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 5
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Taurus",
+     "house": 6
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Libra",
+     "house": 11
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Gemini",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Capricorn",
+     "house": 2
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Aries",
+     "house": 5
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Leo",
+     "house": 9
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Gemini",
+     "house": 7
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Libra",
+     "house": 11
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Sagittarius",
+     "house": 1
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Gemini",
+     "house": 7
+    }
+   ]
+  },
+  "D12": {
+   "ascendant_rashi": "Scorpio",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Gemini",
+     "house": 8
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 6
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Aquarius",
+     "house": 4
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Taurus",
+     "house": 7
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Taurus",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Pisces",
+     "house": 5
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Capricorn",
+     "house": 3
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Aquarius",
+     "house": 4
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Scorpio",
+     "house": 1
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Sagittarius",
+     "house": 2
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Sagittarius",
+     "house": 2
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Gemini",
+     "house": 8
+    }
+   ]
+  },
+  "D16": {
+   "ascendant_rashi": "Scorpio",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Cancer",
+     "house": 9
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 6
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Aries",
+     "house": 6
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Gemini",
+     "house": 8
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Scorpio",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Aquarius",
+     "house": 4
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Scorpio",
+     "house": 1
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Taurus",
+     "house": 7
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Pisces",
+     "house": 5
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Libra",
+     "house": 12
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Cancer",
+     "house": 9
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Cancer",
+     "house": 9
+    }
+   ]
+  },
+  "D20": {
+   "ascendant_rashi": "Libra",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Scorpio",
+     "house": 2
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 7
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Libra",
+     "house": 1
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Libra",
+     "house": 1
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Libra",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Cancer",
+     "house": 10
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Cancer",
+     "house": 10
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Gemini",
+     "house": 9
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Pisces",
+     "house": 6
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Aquarius",
+     "house": 5
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Cancer",
+     "house": 10
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Cancer",
+     "house": 10
+    }
+   ]
+  },
+  "D24": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Cancer",
+     "house": 7
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Capricorn",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Gemini",
+     "house": 6
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Scorpio",
+     "house": 11
+    }
+   ]
+  },
+  "D27": {
+   "ascendant_rashi": "Leo",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Aquarius",
+     "house": 7
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 9
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Gemini",
+     "house": 11
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Capricorn",
+     "house": 6
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Aquarius",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Scorpio",
+     "house": 4
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Sagittarius",
+     "house": 5
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Libra",
+     "house": 3
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Gemini",
+     "house": 11
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Aries",
+     "house": 9
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Pisces",
+     "house": 8
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Virgo",
+     "house": 2
+    }
+   ]
+  },
+  "D30": {
+   "ascendant_rashi": "Capricorn",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 4
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Sagittarius",
+     "house": 12
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Scorpio",
+     "house": 11
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Capricorn",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Virgo",
+     "house": 9
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Libra",
+     "house": 10
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Taurus",
+     "house": 5
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Aquarius",
+     "house": 2
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Aquarius",
+     "house": 2
+    }
+   ]
+  },
+  "D40": {
+   "ascendant_rashi": "Aquarius",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Sagittarius",
+     "house": 11
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Aries",
+     "house": 3
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Capricorn",
+     "house": 12
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Libra",
+     "house": 9
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Aquarius",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Capricorn",
+     "house": 12
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Aquarius",
+     "house": 1
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Cancer",
+     "house": 6
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Pisces",
+     "house": 2
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Scorpio",
+     "house": 10
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Scorpio",
+     "house": 10
+    }
+   ]
+  },
+  "D45": {
+   "ascendant_rashi": "Leo",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Libra",
+     "house": 3
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Taurus",
+     "house": 10
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Capricorn",
+     "house": 6
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Aries",
+     "house": 9
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Virgo",
+     "house": 2
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Leo",
+     "house": 1
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Aquarius",
+     "house": 7
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Sagittarius",
+     "house": 5
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Sagittarius",
+     "house": 5
+    }
+   ]
+  },
+  "D60": {
+   "ascendant_rashi": "Libra",
+   "placements": [
+    {
+     "planet": "Sun",
+     "rashi": "Aries",
+     "house": 7
+    },
+    {
+     "planet": "Moon",
+     "rashi": "Taurus",
+     "house": 8
+    },
+    {
+     "planet": "Mercury",
+     "rashi": "Aries",
+     "house": 7
+    },
+    {
+     "planet": "Venus",
+     "rashi": "Capricorn",
+     "house": 4
+    },
+    {
+     "planet": "Mars",
+     "rashi": "Aries",
+     "house": 7
+    },
+    {
+     "planet": "Jupiter",
+     "rashi": "Libra",
+     "house": 1
+    },
+    {
+     "planet": "Saturn",
+     "rashi": "Capricorn",
+     "house": 4
+    },
+    {
+     "planet": "Uranus",
+     "rashi": "Leo",
+     "house": 11
+    },
+    {
+     "planet": "Neptune",
+     "rashi": "Scorpio",
+     "house": 2
+    },
+    {
+     "planet": "Pluto",
+     "rashi": "Cancer",
+     "house": 10
+    },
+    {
+     "planet": "Rahu",
+     "rashi": "Virgo",
+     "house": 12
+    },
+    {
+     "planet": "Ketu",
+     "rashi": "Pisces",
+     "house": 6
+    }
+   ]
+  }
+ },
+ "planet_strength": [
+  {
+   "planet": "Sun",
+   "shadbala_rupas": 10.642359978116938,
+   "min_required_rupas": 6.5,
+   "is_strong": true
+  },
+  {
+   "planet": "Moon",
+   "shadbala_rupas": 6.52871968240498,
+   "min_required_rupas": 6,
+   "is_strong": true
+  },
+  {
+   "planet": "Mars",
+   "shadbala_rupas": 6.2718476937075325,
+   "min_required_rupas": 5,
+   "is_strong": true
+  },
+  {
+   "planet": "Mercury",
+   "shadbala_rupas": 6.317843115463757,
+   "min_required_rupas": 7,
+   "is_strong": false
+  },
+  {
+   "planet": "Jupiter",
+   "shadbala_rupas": 7.117415581215075,
+   "min_required_rupas": 6.5,
+   "is_strong": true
+  },
+  {
+   "planet": "Venus",
+   "shadbala_rupas": 7.165995669694914,
+   "min_required_rupas": 5.5,
+   "is_strong": true
+  },
+  {
+   "planet": "Saturn",
+   "shadbala_rupas": 5.6726318159748965,
+   "min_required_rupas": 5,
+   "is_strong": true
+  }
+ ],
+ "doshas": {
+  "kaal_sarp": {
+   "present": false
+  },
+  "sade_sati": {
+   "active": true,
+   "phase": "rising"
+  },
+  "pitra": {
+   "present": false
+  }
+ },
+ "as_of": "2026-10-08"
+}

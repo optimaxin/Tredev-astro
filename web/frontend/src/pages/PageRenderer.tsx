@@ -30,6 +30,11 @@ import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
 import BlogSection from '../sections/Blog/Blog';
 const AuthPage = lazy(() => import('./AuthPage/AuthPage'));
+// Premium Report screens are their own chunks: the viewer alone pulls in the
+// Markdown renderer + sanitizer, which no other page needs.
+const PremiumReportPage = lazy(() => import('../sections/PremiumReport/PremiumReportPage'));
+const PremiumReportViewer = lazy(() => import('../sections/PremiumReport/PremiumReportViewer'));
+const MyPremiumReports = lazy(() => import('../sections/PremiumReport/MyPremiumReports'));
 import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
 const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/AstrologistDashboard'));
@@ -272,6 +277,46 @@ function PageContent() {
 
     case 'report-detail':
       return <ReportDetailPage id={selectedId} />;
+
+    // ── Premium Report (Stage 6) ────────────────────────────────────────
+    // The report id travels in `selectedId`, which AppContext already keeps
+    // in history.state — so Back/Forward and a refresh all return to the
+    // same report instead of losing it.
+    case 'premium-report':
+      return (
+        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+          <div className={styles.container}>
+            <PremiumReportPage mode="create" />
+          </div>
+        </div>
+      );
+
+    case 'premium-report-status':
+      return (
+        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+          <div className={styles.container}>
+            <PremiumReportPage mode="status" />
+          </div>
+        </div>
+      );
+
+    case 'premium-report-view':
+      // No .container wrapper: the viewer owns its own full-width layout
+      // (sticky contents rail + reading column) and its print stylesheet.
+      return (
+        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+          <PremiumReportViewer reportId={typeof selectedId === 'string' ? selectedId : null} />
+        </div>
+      );
+
+    case 'my-premium-reports':
+      return (
+        <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
+          <div className={styles.container}>
+            <MyPremiumReports />
+          </div>
+        </div>
+      );
 
     case 'store':
       return (

@@ -73,6 +73,25 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
         </div>
 
 
+        {/* Premium Report entry point. Lives on the Reports page because
+            that is where someone looking for a report already is — not as a
+            separate destination competing with the catalogue below. */}
+        <button
+          type="button"
+          className={styles.premiumBanner}
+          onClick={() => { setPage('premium-report'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        >
+          <span className={styles.premiumBannerBody}>
+            <span className={styles.premiumBannerEyebrow}>New · Premium</span>
+            <span className={styles.premiumBannerTitle}>Your full birth-chart reading</span>
+            <span className={styles.premiumBannerText}>
+              A complete, personalised report — your Lagna, Moon, every planet, your Dashas and the
+              life areas they shape — written section by section from classical sources.
+            </span>
+          </span>
+          <span className={styles.premiumBannerCta}>Create My Report →</span>
+        </button>
+
         {/* Report Cards */}
         <div className={styles.reportsGrid} id="reports-grid">
           {(featured ? REPORTS.slice(0, 4) : REPORTS).map((report, i) => (

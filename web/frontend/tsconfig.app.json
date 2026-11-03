@@ -22,5 +22,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* *.test.ts files are Node scripts (node:assert + jsdom), run via
+     `npm run test:markdown`, not part of the browser bundle. They are
+     typechecked by tsconfig.test.json instead (bundler resolution + Node types). */
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

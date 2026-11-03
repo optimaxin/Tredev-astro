@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { translationKey: 'nav_astrology', page: 'horoscope' },
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },
+  { translationKey: 'nav_premium_report', page: 'premium-report' },
   { translationKey: 'nav_panchang', page: 'panchang' },
   { translationKey: 'nav_academy', page: 'academy' },
   { translationKey: 'nav_store', page: 'store' },
@@ -254,6 +255,11 @@ export default function Navigation() {
                       New Kundli
                     </button>
                   )}
+                  {currentUser?.role === 'USER' && (
+                    <button onClick={() => { handleNavClick('my-premium-reports'); setProfileDropdownOpen(false); }}>
+                      My Premium Reports
+                    </button>
+                  )}
                   <button
                     onClick={() => { logout(); setProfileDropdownOpen(false); setPage('home'); }}
                     style={{ color: '#c55' }}
@@ -342,6 +348,14 @@ export default function Navigation() {
           >
             {isLoggedIn ? 'My Profile' : t('nav_login')}
           </button>
+          {isLoggedIn && (
+            <button
+              className={styles.mobileLink}
+              onClick={() => handleNavClick('my-premium-reports')}
+            >
+              My Premium Reports
+            </button>
+          )}
           {isLoggedIn && (
             <button
               className={styles.mobileLink}

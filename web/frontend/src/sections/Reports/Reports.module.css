@@ -414,3 +414,79 @@ html[lang='hi'] .popularBadge, html[lang='mr'] .popularBadge { font-size: var(--
 html[lang='hi'] .reportCategory, html[lang='mr'] .reportCategory { font-size: var(--text-xs); }
 html[lang='hi'] .bundlePopularLabel, html[lang='mr'] .bundlePopularLabel { font-size: var(--text-xs); }
 
+
+
+/* ── Premium Report entry point ───────────────────────────────────────── */
+.premiumBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  width: 100%;
+  margin-bottom: var(--space-10);
+  padding: var(--space-8);
+  text-align: left;
+  background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.premiumBanner:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.premiumBanner:focus-visible {
+  outline: 2px solid var(--gold-primary);
+  outline-offset: 3px;
+}
+
+.premiumBannerBody {
+  display: block;
+  max-width: 62ch;
+}
+
+.premiumBannerEyebrow {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+}
+
+.premiumBannerTitle {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.premiumBannerText {
+  display: block;
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.premiumBannerCta {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: var(--gold-primary);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premiumBanner:hover { transform: none; }
+}
+
+@media (max-width: 640px) {
+  .premiumBanner { padding: var(--space-6); }
+}
