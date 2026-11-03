@@ -5,12 +5,14 @@
   "workspaces": [
     "web/frontend",
     "backend",
-    "web/ganesh-chaturthi"
+    "web/ganesh-chaturthi",
+    "web/premium-report"
   ],
   "scripts": {
     "dev": "npm run dev --workspace tredevastro-frontend",
     "server": "npm run dev --workspace backend",
     "campaign": "npm run dev --workspace ganesh-chaturthi-campaign",
+    "premium": "npm run dev --workspace tradeva-astro-premium",
     "dev:all": "concurrently -n web,api -c blue,magenta \"npm:dev\" \"npm:server\"",
     "build": "npm run build --workspace tredevastro-frontend",
     "lint": "npm run lint --workspace tredevastro-frontend",

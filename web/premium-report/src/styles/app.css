@@ -1,0 +1,59 @@
+/* App-shell layout only. All design tokens, typography, and .btn/.input-field
+   utility classes come from the main frontend's globals.css (imported in
+   App.tsx) — this file adds nothing a theme change there wouldn't already
+   cover. */
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  /* The main site defaults new sessions to the light (parchment) theme —
+     see AppContext's `theme` state comment "DEFAULT IS LIGHT". This app has
+     no theme toggle (a single-feature app doesn't need one), so it simply
+     renders in that same default rather than the dark root tokens. */
+  background: var(--bg-primary);
+}
+
+.pr-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-main {
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+.pr-main-full {
+  max-width: none;
+  padding: 0;
+}
+
+.pr-loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--gold-primary);
+  border-radius: 50%;
+  animation: pr-spin 0.8s linear infinite;
+}
+
+@keyframes pr-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-loading-spinner { animation: none; }
+}
