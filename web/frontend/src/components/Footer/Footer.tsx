@@ -37,17 +37,23 @@ const FOOTER_LINKS: Record<string, FooterLink[]> = {
     { labelKey: 'course_4_title', onClick: ({ setSelectedId, setPage }) => { setSelectedId(4); setPage('course-detail'); } },
   ],
   footer_col_company: [
-    // No dedicated Careers/Press/Approach pages exist in this app yet — route to About until they do.
+    // No dedicated Approach/Press pages exist in this app yet — route to
+    // About until they do. "Join as an Astrologer/Pandit" is real (see
+    // pages/ApplyAstrologerPage).
     { labelKey: 'footer_about_us', onClick: ({ setPage }) => setPage('about') },
     { labelKey: 'footer_our_approach', onClick: ({ setPage }) => setPage('about') },
     { labelKey: 'footer_careers', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_join_astrologer', onClick: ({ setPage }) => setPage('apply-astrologer') },
     { labelKey: 'footer_press', onClick: ({ setPage }) => setPage('about') },
   ],
   footer_col_support: [
-    // No dedicated Help/Privacy/Terms/Contact pages exist in this app yet — route to About until they do.
+    // No dedicated Help Centre/Contact page exists in this app yet — route
+    // to About until it does. Privacy/Terms/Safety are real pages (see
+    // data/legalContent.ts + pages/LegalPage).
     { labelKey: 'footer_help_centre', onClick: ({ setPage }) => setPage('about') },
-    { labelKey: 'footer_privacy_policy', onClick: ({ setPage }) => setPage('about') },
-    { labelKey: 'footer_terms_of_service', onClick: ({ setPage }) => setPage('about') },
+    { labelKey: 'footer_privacy_policy', onClick: ({ setPage }) => setPage('privacy') },
+    { labelKey: 'footer_terms_of_service', onClick: ({ setPage }) => setPage('terms') },
+    { labelKey: 'footer_safety', onClick: ({ setPage }) => setPage('safety') },
     { labelKey: 'footer_contact_us', onClick: ({ setPage }) => setPage('about') },
   ],
 };
@@ -141,9 +147,9 @@ export default function Footer() {
             {t('footer_copyright')}
           </p>
           <div className={styles.bottomLinks}>
-            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_privacy_short')}</button>
-            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_terms_short')}</button>
-            <button className={styles.bottomLink} onClick={() => setPage('about')}>{t('footer_cookies_short')}</button>
+            <button className={styles.bottomLink} onClick={() => setPage('privacy')}>{t('footer_privacy_short')}</button>
+            <button className={styles.bottomLink} onClick={() => setPage('terms')}>{t('footer_terms_short')}</button>
+            <button className={styles.bottomLink} onClick={() => setPage('privacy')}>{t('footer_cookies_short')}</button>
           </div>
           <p className={styles.legalNote}>
             {t('footer_legal_note')}

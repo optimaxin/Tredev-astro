@@ -12,6 +12,7 @@ export const MAINSTREAM_EMAIL_DOMAINS = new Set([
   'protonmail.com', 'proton.me',
   'zoho.com', 'zohomail.com',
   'rediffmail.com',
+  'optimaxin.com', 'tredevaastro.com', 'tredevlearn.com',
 ]);
 
 export function isMainstreamEmail(email: string): boolean {

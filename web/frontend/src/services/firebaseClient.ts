@@ -86,6 +86,12 @@ export async function sendFirebasePhoneOtp(phoneNumberE164: string, containerId:
 export function toE164(raw: string, dialCode: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('+')) return trimmed;
-  const digits = trimmed.replace(/\D/g, '');
+  let digits = trimmed.replace(/\D/g, '');
+  if (dialCode === '91' && digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  if (digits.startsWith(dialCode) && digits.length > dialCode.length + 8) {
+    digits = digits.slice(dialCode.length);
+  }
   return `+${dialCode}${digits}`;
 }

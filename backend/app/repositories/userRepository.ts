@@ -19,7 +19,20 @@ export function findUserByFirebaseUid(uid: string): Promise<UserRow | undefined>
 // Used at registration to enforce "one account per phone number" — see
 // authService.ts's register().
 export function findUserByPhone(phoneNumber: string): Promise<UserRow | undefined> {
-  return queryOne<UserRow>('SELECT * FROM users WHERE phone_number = $1', [phoneNumber.trim()]);
+  const trimmed = phoneNumber.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+  if (!last10) {
+    return queryOne<UserRow>('SELECT * FROM users WHERE phone_number = $1', [trimmed]);
+  }
+  return queryOne<UserRow>(
+    `SELECT * FROM users 
+     WHERE phone_number = $1 
+        OR (phone_number IS NOT NULL AND RIGHT(regexp_replace(phone_number, '[^0-9]', '', 'g'), 10) = $2)
+     ORDER BY (phone_number = $1) DESC
+     LIMIT 1`,
+    [trimmed, last10]
+  );
 }
 
 // Links an existing account (found by email match) to a Firebase identity
@@ -186,7 +199,18 @@ export async function creditWallet(userId: string, amount: number): Promise<numb
   return Number(row?.wallet_balance ?? 0);
 }
 
-export async function getWalletBalance(userId: string): Promise<number> {
-  const row = await queryOne<{ wallet_balance: number }>('SELECT wallet_balance FROM users WHERE id = $1', [userId]);
-  return Number(row?.wallet_balance ?? 0);
+// Clamped to never overdraw — debits min(amount, current balance), atomically
+// (the CTE locks the row before computing how much is actually available).
+// Used by per-minute consultation billing (realtimeStore.ts), where the
+// amount owed is computed from elapsed time and could in principle exceed
+// whatever's left if a debit landed late.
+export async function debitWallet(userId: string, amount: number): Promise<{ debited: number; balance: number }> {
+  const row = await queryOne<{ balance: number; debited: number }>(
+    `WITH old AS (SELECT wallet_balance FROM users WHERE id = $2 FOR UPDATE)
+     UPDATE users SET wallet_balance = wallet_balance - LEAST($1::numeric, (SELECT wallet_balance FROM old))
+     WHERE id = $2
+     RETURNING wallet_balance AS balance, LEAST($1::numeric, (SELECT wallet_balance FROM old)) AS debited`,
+    [amount, userId]
+  );
+  return { debited: Number(row?.debited ?? 0), balance: Number(row?.balance ?? 0) };
 }

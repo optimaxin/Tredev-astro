@@ -1,6 +1,7 @@
 // Thin client for consultation chat messages
 // (backend/app/api/chat.routes.ts's GET/POST /api/consultations/:id/messages).
 import { API_URL } from './apiUrl';
+import type { KundliFullResult } from './calculatorService';
 
 export class ChatApiError extends Error {
   code: string;
@@ -42,6 +43,18 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+export interface ClientKundliContext {
+  userName: string;
+  hasBirthDetails: boolean;
+  birthDate?: string;
+  birthTime?: string;
+  birthPlace?: string;
+  birthLatitude?: number;
+  birthLongitude?: number;
+  birthTimezoneOffsetMinutes?: number;
+  kundliFull?: KundliFullResult;
+}
+
 export const chatService = {
   listMessages: (consultationId: string) => request<ChatMessage[]>(`/${consultationId}/messages`),
   // `content` is plain text for TEXT, a base64 data URL for IMAGE/AUDIO/FILE
@@ -49,4 +62,6 @@ export const chatService = {
   // service exists in this app, so the data URL travels in the message body).
   sendMessage: (consultationId: string, content: string, messageType: MessageType = 'TEXT') =>
     request<ChatMessage>(`/${consultationId}/messages`, { method: 'POST', body: JSON.stringify({ content, messageType }) }),
+  // Astrologer-only — the client's real Kundli for this consultation.
+  getClientKundli: (consultationId: string) => request<ClientKundliContext>(`/${consultationId}/client-kundli`),
 };

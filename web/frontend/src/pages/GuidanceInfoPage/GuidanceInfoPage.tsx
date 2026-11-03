@@ -38,6 +38,12 @@ export default function GuidanceInfoPage({ id }: { id: unknown }) {
     );
   }
 
+  // This page carries its own hand-written Hindi copy, so Hindi visitors get
+  // that rather than a machine translation of the English — but then the page
+  // has to opt out of Google Translate (see the wrapper below), which drives
+  // the site-wide picker and would otherwise re-translate this Hindi as if it
+  // were English. Every other language falls back to English here and is
+  // translated by Google like the rest of the site.
   const lang: 'en' | 'hi' = language === 'hi' ? 'hi' : 'en';
   const name = lang === 'hi' ? content.nameHi : content.nameEn;
 
@@ -48,7 +54,7 @@ export default function GuidanceInfoPage({ id }: { id: unknown }) {
   };
 
   return (
-    <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`}>
+    <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`} translate={lang === 'hi' ? 'no' : undefined}>
       <div className={pageStyles.container}>
         <motion.div className={pageStyles.pageHeader} {...fadeUp} transition={{ duration: 0.6 }}>
           <span className="section-eyebrow-gold">{content.sanskrit}</span>

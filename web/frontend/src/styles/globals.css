@@ -9,6 +9,10 @@
   padding: 0;
 }
 
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 html {
   /* Not `scroll-behavior: smooth` here — every scrollTo()/scrollIntoView()
      call in the app already passes `behavior: 'smooth'` explicitly, so this
@@ -20,7 +24,7 @@ html {
 }
 
 body {
-  font-family: 'Yatra One', 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 400;
   line-height: 1.6;
   color: var(--color-text-dark);
@@ -91,9 +95,18 @@ body {
   --color-border-light: var(--border-subtle);
   --color-overlay:      rgba(6, 9, 20, 0.85);
 
-  /* Typography */
-  --font-serif:  'Yatra One', 'Cormorant Garamond', Georgia, serif;
-  --font-sans:   'Yatra One', 'DM Sans', system-ui, sans-serif;
+  /* Typography — one stack for the whole site, in every language. Cormorant
+     Garamond (an elegant classical serif, reads as "temple manuscript") for
+     headings, DM Sans (clean, legible at body sizes) for everything else.
+     'Hind' closes out both stacks as the Devanagari fallback — neither
+     Cormorant Garamond nor DM Sans has Devanagari glyphs, so the browser
+     renders Latin text in the declared font and Devanagari text in Hind
+     automatically, all from the same font-family value. Yatra One used to be
+     swapped in as the active heading font for Hindi/Marathi (see the
+     html[lang] block below, now removed) — that read as the font visibly
+     changing on every language switch, which is exactly what this replaces. */
+  --font-serif:  'Cormorant Garamond', 'Hind', Georgia, serif;
+  --font-sans:   'DM Sans', 'Hind', system-ui, sans-serif;
 
   /* Type Scale */
   --text-xs:   0.75rem;   /* 12px */
@@ -150,8 +163,10 @@ body {
   --nav-cta-size: 10.5px;
   --nav-badge-size: 11px;
 
-  /* Devanagari-compatible companion to the Latin display/UI fonts above */
-  --font-devanagari: 'Hind', 'Yatra One', 'Noto Sans', sans-serif;
+  /* Devanagari-compatible companion to the Latin display/UI fonts above —
+     used directly by a handful of components (AuthPage.module.css) that want
+     an explicitly Devanagari-first stack rather than relying on fallback. */
+  --font-devanagari: 'Hind', 'Noto Sans', sans-serif;
 
   /* Z-index */
   --z-base:    1;
@@ -205,17 +220,14 @@ body {
 
 
 /* ---------- Devanagari Typography System ----------
-   Hindi & Marathi reuse 'Yatra One' for display headings (it already covers
-   Devanagari) but swap the UI/body font to 'Hind' — a proper Devanagari text
-   face — and scale the whole type ramp up so Devanagari's script proportions
-   read with the same visual weight as the Latin UI at the same hierarchy
-   level. Applied via the document <html lang> attribute, not a class, so it
-   can never be left stale. */
+   Hindi & Marathi render through the same --font-serif/--font-sans stacks as
+   every other language (see their definitions above) — only the type scale
+   changes here, bumped up so Devanagari's script proportions read with the
+   same visual weight as the Latin UI at the same hierarchy level. Applied
+   via the document <html lang> attribute, not a class, so it can never be
+   left stale. */
 html[lang='hi'],
 html[lang='mr'] {
-  --font-sans: var(--font-devanagari), 'DM Sans', system-ui, sans-serif;
-  --font-serif: 'Yatra One', var(--font-devanagari), 'Cormorant Garamond', serif;
-
   --text-xs:   0.875rem;   /* 14px, was 12px */
   --text-sm:   1rem;       /* 16px, was 14px */
   --text-base: 1.1875rem;  /* 19px, was 16px */
@@ -1087,4 +1099,27 @@ section:not(#hero), [class*="pageWrapper"] {
   opacity: 0.14;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Google Translate (see components/GoogleTranslate) — our own language
+   dropdown (Navigation.tsx) is the only translation control a visitor ever
+   sees; Google's own top banner iframe and its underline/highlight on
+   translated words are suppressed here so the page looks untouched by it. */
+/* The banner's actual class names are auto-generated/obfuscated and change
+   across Google's own widget versions (verified live: not .goog-te-banner-
+   frame, the commonly-documented but outdated selector) — `iframe.
+   skiptranslate` is the one stable marker Google consistently puts on this
+   injected chrome regardless of version. Our own #google_translate_element
+   container isn't an iframe, so this never touches it. */
+iframe.skiptranslate,
+.goog-te-balloon-frame,
+#goog-gt-tt {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
 }

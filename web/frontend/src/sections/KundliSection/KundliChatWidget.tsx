@@ -11,7 +11,19 @@ interface Props {
   // starts a fresh conversation rather than continuing the previous one.
   chartKey: string;
   displayName?: string;
+  // Kundli page: true (greets and slides the panel open the moment a chart
+  // is ready). Everywhere else on the site this widget is mounted, it should
+  // stay closed and only nudge the visitor with the teaser bubble below —
+  // popping open uninvited on every page load the moment someone logs in is
+  // what this flag exists to stop.
+  autoOpen?: boolean;
 }
+
+const TEASER_MESSAGES = [
+  'Koi sandeh? Mujhse poochiye ✨',
+  'Any doubt? Just ask me 🙏',
+  'Apni Kundli ya rashi ke baare mein jaanna hai?',
+];
 
 interface Bubble {
   id: string;
@@ -42,13 +54,14 @@ const SUGGESTIONS = [
 let bubbleSeq = 0;
 const nextId = () => `b${++bubbleSeq}`;
 
-export default function KundliChatWidget({ birth, chartKey, displayName }: Props) {
+export default function KundliChatWidget({ birth, chartKey, displayName, autoOpen = true }: Props) {
   const [open, setOpen] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [queue, setQueue] = useState<Bubble[]>([]);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState('');
+  const [teaser, setTeaser] = useState<string | null>(null);
   // request_id -> the vote this user gave it. Local so the thumb stays lit
   // after a reload-free change of mind; the server holds the real record.
   const [feedback, setFeedback] = useState<Record<string, FeedbackType>>({});
@@ -74,14 +87,31 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
     // A short delay lets the chart finish rendering first, so the panel
     // sliding in does not compete with the page settling.
     const timer = window.setTimeout(() => {
-      setOpen(true);
+      if (autoOpen) setOpen(true);
       setBubbles([
         { id: nextId(), role: 'assistant', text: greeting },
         { id: nextId(), role: 'assistant', text: 'Ask me anything about it — I read only your chart, in plain language.' },
       ]);
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [chartKey, displayName]);
+  }, [chartKey, displayName, autoOpen]);
+
+  // When this isn't the self-opening Kundli-page widget, nudge the visitor
+  // every so often with a small teaser bubble instead of popping the whole
+  // panel open uninvited. Clicking it is what actually opens the chat.
+  useEffect(() => {
+    if (autoOpen || open) { setTeaser(null); return; }
+    let hideTimer: number;
+    let msgIndex = 0;
+    const show = () => {
+      setTeaser(TEASER_MESSAGES[msgIndex % TEASER_MESSAGES.length]);
+      msgIndex += 1;
+      hideTimer = window.setTimeout(() => setTeaser(null), 8000);
+    };
+    const firstTimer = window.setTimeout(show, 15000);
+    const interval = window.setInterval(show, 60000);
+    return () => { window.clearTimeout(firstTimer); window.clearInterval(interval); window.clearTimeout(hideTimer); };
+  }, [autoOpen, open]);
 
   // Drain queued assistant bubbles one at a time.
   useEffect(() => {
@@ -156,6 +186,23 @@ export default function KundliChatWidget({ birth, chartKey, displayName }: Props
 
   return (
     <>
+      {teaser && !open && (
+        <button
+          className={styles.teaserBubble}
+          onClick={() => { setOpen(true); setTeaser(null); }}
+        >
+          {teaser}
+          <span
+            className={styles.teaserClose}
+            role="button"
+            aria-label="Dismiss"
+            onClick={e => { e.stopPropagation(); setTeaser(null); }}
+          >
+            ✕
+          </span>
+        </button>
+      )}
+
       <button
         className={`${styles.launcher} ${open ? styles.launcherOpen : ''}`}
         onClick={() => setOpen(o => !o)}

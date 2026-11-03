@@ -11,6 +11,13 @@ const MAINSTREAM_DOMAINS_ARRAY = [...MAINSTREAM_EMAIL_DOMAINS];
 // signups). Kept as a list so adding another marker later is one line.
 const TEST_ACCOUNT_NAME_PATTERNS = ['%sparsh%', '%test%', '%qwert%', '%dummy%'];
 
+// The only campaign whose visitors are real platform accounts (login
+// required before browsing) — see listRegisteredUsers' own comment. Other
+// campaigns (Navratri, and any future one) identify visitors through their
+// own lightweight onboarding gate instead, with no mainstream-email-domain
+// restriction, so that filter only makes sense applied to this one.
+const GANESH_CAMPAIGN = 'ganesh-chaturthi';
+
 export interface CampaignEventSummaryRow {
   event_type: string;
   event_label: string;
@@ -61,46 +68,64 @@ export function listRegisteredUsers(): Promise<RegisteredUserRow[]> {
   );
 }
 
-export async function logCampaignEvent(eventType: string, eventLabel: string, meta?: Record<string, unknown>, user?: CampaignEventUser) {
+export async function logCampaignEvent(eventType: string, eventLabel: string, meta?: Record<string, unknown>, user?: CampaignEventUser, campaign?: string) {
   await query(
-    'INSERT INTO campaign_events (id, event_type, event_label, meta, created_at, user_name, user_email, user_phone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-    [randomUUID(), eventType, eventLabel, meta ? JSON.stringify(meta) : null, Date.now(), user?.name || null, user?.email || null, user?.phone || null]
+    'INSERT INTO campaign_events (id, event_type, event_label, meta, created_at, user_name, user_email, user_phone, campaign) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    [randomUUID(), eventType, eventLabel, meta ? JSON.stringify(meta) : null, Date.now(), user?.name || null, user?.email || null, user?.phone || null, campaign || GANESH_CAMPAIGN]
   );
+}
+
+// Every campaign that has ever logged an event — powers the dashboard's
+// campaign picker. Falls back to just the Ganesh one if the table is
+// completely empty rather than showing an empty picker with nothing to pick.
+export async function listCampaigns(): Promise<string[]> {
+  const rows = await query<{ campaign: string }>(
+    `SELECT DISTINCT campaign FROM campaign_events WHERE campaign IS NOT NULL ORDER BY campaign`
+  );
+  return rows.length ? rows.map(r => r.campaign) : [GANESH_CAMPAIGN];
 }
 
 // One query, grouped by (event_type, event_label) — an all-time total with
 // no time window at all; the only way this data ever clears is the
 // dashboard's explicit "Reset All Data" action (resetCampaignEvents below).
-export function summarizeCampaignEvents(): Promise<CampaignEventSummaryRow[]> {
+// Scoped to one campaign at a time so two campaigns sharing this table
+// (Ganesh, Navratri, ...) don't show up merged into one meaningless total.
+export function summarizeCampaignEvents(campaign: string): Promise<CampaignEventSummaryRow[]> {
   return query<CampaignEventSummaryRow>(
     `SELECT event_type, event_label, COUNT(*)::text AS total
      FROM campaign_events
+     WHERE campaign = $1
      GROUP BY event_type, event_label
-     ORDER BY COUNT(*) DESC`
+     ORDER BY COUNT(*) DESC`,
+    [campaign]
   );
 }
 
 // Per-user feature usage — one row per (user, event_type, event_label)
 // combination with its count; the dashboard pivots this into a name/email/
-// phone + one-column-per-feature table. Only events fired after a real
-// login carry user_email, so anonymous rows (there shouldn't be many, now
-// that login is required before browsing) are simply left out here. Same
-// mainstream-domain filter as listRegisteredUsers above, so a dev/test
-// account's clicks don't show up here even though listRegisteredUsers no
-// longer lists that account either.
-export function summarizeCampaignEventsByUser(): Promise<CampaignEventUserRow[]> {
+// phone + one-column-per-feature table. Only events carrying user_email are
+// counted (there shouldn't be many without one, now that every campaign
+// identifies visitors up front). The mainstream-email-domain + test-name
+// filter only applies to Ganesh Chaturthi, whose visitors are real platform
+// accounts (see listRegisteredUsers and GANESH_CAMPAIGN above) — a Navratri
+// visitor's email was never required to be @gmail.com/etc, so applying that
+// filter there would silently drop real leads.
+export function summarizeCampaignEventsByUser(campaign: string): Promise<CampaignEventUserRow[]> {
+  const extraFilter = campaign === GANESH_CAMPAIGN
+    ? `AND split_part(user_email, '@', 2) = ANY($2::text[]) AND (user_name IS NULL OR NOT (user_name ILIKE ANY($3::text[])))`
+    : '';
+  const params = campaign === GANESH_CAMPAIGN ? [campaign, MAINSTREAM_DOMAINS_ARRAY, TEST_ACCOUNT_NAME_PATTERNS] : [campaign];
   return query<CampaignEventUserRow>(
     `SELECT user_email, MAX(user_name) AS user_name, MAX(user_phone) AS user_phone,
             event_type, event_label, COUNT(*)::text AS total
      FROM campaign_events
-     WHERE user_email IS NOT NULL AND split_part(user_email, '@', 2) = ANY($1::text[])
-       AND (user_name IS NULL OR NOT (user_name ILIKE ANY($2::text[])))
+     WHERE campaign = $1 AND user_email IS NOT NULL ${extraFilter}
      GROUP BY user_email, event_type, event_label
      ORDER BY user_email, event_type, event_label`,
-    [MAINSTREAM_DOMAINS_ARRAY, TEST_ACCOUNT_NAME_PATTERNS]
+    params
   );
 }
 
-export async function resetCampaignEvents() {
-  await query('DELETE FROM campaign_events');
+export async function resetCampaignEvents(campaign: string) {
+  await query('DELETE FROM campaign_events WHERE campaign = $1', [campaign]);
 }

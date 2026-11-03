@@ -104,6 +104,7 @@ export function attachSockets(io: Server) {
   bus.onTyped('chat:accepted', c => { io.to(astroRoom(c.astrologerId)).emit('chat:accepted', c); io.to(userRoom(c.userEmail)).emit('chat:accepted', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
   bus.onTyped('chat:started', c => { io.to(astroRoom(c.astrologerId)).emit('chat:started', c); io.to(userRoom(c.userEmail)).emit('chat:started', c); });
   bus.onTyped('chat:declined', c => { io.to(userRoom(c.userEmail)).emit('chat:declined', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
+  bus.onTyped('chat:cancelled', c => { io.to(userRoom(c.userEmail)).emit('chat:cancelled', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
   bus.onTyped('chat:ended', c => { io.to(astroRoom(c.astrologerId)).emit('chat:ended', c); io.to(userRoom(c.userEmail)).emit('chat:ended', c); resyncAstrologer(io, c.astrologerId).catch(console.error); });
 
   bus.onTyped('queue:position', ({ entry, position, eta }) => io.to(userRoom(entry.userEmail)).emit('queue:position', { position, eta }));

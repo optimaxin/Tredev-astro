@@ -25,6 +25,7 @@ import AstrologersSection from '../sections/Astrologers/Astrologers';
 import AIAstrology from '../sections/AIAstrology/AIAstrology';
 import ReportsSection from '../sections/Reports/Reports';
 import StoreSection from '../sections/Store/Store';
+import PoojaSection from '../sections/Pooja/Pooja';
 import AcademySection from '../sections/Academy/Academy';
 import Testimonials from '../sections/Testimonials/Testimonials';
 import WhyTredevAstro from '../sections/WhyTredevAstro/WhyTredevAstro';
@@ -39,6 +40,9 @@ import BirthDetailsForm from '../components/BirthDetailsForm/BirthDetailsForm';
 import type { BirthDetailsSubmitValue } from '../components/BirthDetailsForm/BirthDetailsForm';
 const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/AstrologistDashboard'));
 const GuidanceInfoPage = lazy(() => import('./GuidanceInfoPage/GuidanceInfoPage'));
+const LegalPage = lazy(() => import('./LegalPage/LegalPage'));
+const RaghavBookingPage = lazy(() => import('./RaghavBookingPage/RaghavBookingPage'));
+const ApplyAstrologerPage = lazy(() => import('./ApplyAstrologerPage/ApplyAstrologerPage'));
 const AdminConsole = lazy(() => import('../admin/AdminConsole'));
 import { useRealtime } from '../realtime/RealtimeContext';
 import { calculatorService, CalculatorApiError } from '../services/calculatorService';
@@ -57,6 +61,7 @@ import { consultationService, ConsultationApiError } from '../services/consultat
 import type { MyConsultation } from '../services/consultationService';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
 import CallWindow from '../components/CallWindow/CallWindow';
+import RechargeWalletModal from '../components/RechargeWalletModal/RechargeWalletModal';
 import { orderService, OrderApiError } from '../services/orderService';
 import type { Order } from '../services/orderService';
 import { paymentService, PaymentApiError } from '../services/paymentService';
@@ -254,6 +259,9 @@ function PageContent() {
         </div>
       );
 
+    case 'pooja':
+      return <PoojaSection />;
+
     case 'guidance-info':
       return <GuidanceInfoPage id={selectedId} />;
 
@@ -383,6 +391,21 @@ function PageContent() {
 
     case 'about':
       return <AboutPage />;
+
+    case 'terms':
+      return <LegalPage docId="terms" />;
+
+    case 'privacy':
+      return <LegalPage docId="privacy" />;
+
+    case 'safety':
+      return <LegalPage docId="safety" />;
+
+    case 'raghav-booking':
+      return <RaghavBookingPage />;
+
+    case 'apply-astrologer':
+      return <ApplyAstrologerPage />;
 
     default:
       return (
@@ -539,22 +562,21 @@ function AstrologerProfilePage({ id }: { id: any }) {
 
 // 4. Consultation Booking Page
 function ConsultationBookingPage({ id }: { id: any }) {
-  const { setPage, currentUser, setShowLoginModal, setPendingAction } = useAppContext();
-  const { publicStates } = useRealtime();
+  const { setPage, currentUser, setShowLoginModal, setPendingAction, walletBalance, saveBirthDetails } = useAppContext();
+  const { publicStates, requestConsultation } = useRealtime();
   const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [activeType, setActiveType] = useState<'chat' | 'voice'>('chat');
-  const [durationMinutes, setDurationMinutes] = useState(20);
   const [activeSlot, setActiveSlot] = useState(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecharge, setShowRecharge] = useState(false);
+  const [savingBirthDetails, setSavingBirthDetails] = useState(false);
+  const [birthDetailsError, setBirthDetailsError] = useState('');
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [bookingKundli, setBookingKundli] = useState<KundliFullResult | null>(null);
+  const [bookingKundliLoading, setBookingKundliLoading] = useState(false);
   const { astrologer, loading: astrologerLoading, notFound } = useAstrologer(id);
   const [effectivePrice, setEffectivePrice] = useState<EffectivePrice | null>(null);
-  // Was declared after the astrologerLoading/notFound early returns below,
-  // so React called this hook on some renders and skipped it on others
-  // (whenever loading flipped to loaded within the same mount) — a Rules of
-  // Hooks violation that could crash this page. Hooks must run
-  // unconditionally, every render.
-  const [scheduleNotice, setScheduleNotice] = useState(false);
 
   // The real, offer/loyalty-adjusted price for this exact type — recomputed
   // whenever the user switches format, so what they see here always matches
@@ -567,25 +589,72 @@ function ConsultationBookingPage({ id }: { id: any }) {
     return () => { cancelled = true; };
   }, [astrologer?.id, activeType]);
 
+  const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+
+  // Auto-compute Kundli preview when user has birth details saved
+  useEffect(() => {
+    if (!currentUser?.birthDate || !currentUser?.birthTime || currentUser?.birthLatitude == null || currentUser?.birthLongitude == null || currentUser?.birthTimezoneOffsetMinutes == null) {
+      setBookingKundli(null);
+      return;
+    }
+    let cancelled = false;
+    setBookingKundliLoading(true);
+    calculatorService.kundliFull({
+      date: currentUser.birthDate,
+      time: currentUser.birthTime,
+      latitude: currentUser.birthLatitude,
+      longitude: currentUser.birthLongitude,
+      timezoneOffsetMinutes: currentUser.birthTimezoneOffsetMinutes,
+    })
+      .then(res => { if (!cancelled) setBookingKundli(res); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setBookingKundliLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentUser?.birthDate, currentUser?.birthTime, currentUser?.birthLatitude, currentUser?.birthLongitude, currentUser?.birthTimezoneOffsetMinutes]);
+
   if (astrologerLoading) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>;
   if (notFound || !astrologer) return <div className={`${styles.pageWrapper} ${styles.darkPage}`} style={{ textAlign: 'center', padding: '100px 20px' }}>Astrologer not found.</div>;
 
   const live = publicStates[astrologer.id];
   const liveLabel = !live ? null : live.status === 'ONLINE_AVAILABLE' ? '🟢 Available now' : live.status === 'ONLINE_BUSY' ? '🟡 Currently busy' : live.status === 'AWAY' ? '⚪ Away' : '⚪ Offline';
-  // Only a soft client-side hint — the backend re-checks availability for
-  // real at payment fulfillment time and auto-refunds to wallet if it turns
-  // out unavailable by then (see fulfillment.ts's CONSULTATION case).
   const isUnavailable = live?.status === 'OFFLINE' || live?.status === 'AWAY';
 
-  // Video call is coming later (WebRTC signaling isn't built yet) — chat and
-  // voice already run on the real consultation queue/socket pipeline, so
-  // only those two are offered for now.
-  const OPTIONS = [
-    { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: '20-min session text consultation' },
-    { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: '25-min live voice guidance call' },
-  ];
+  const handleSaveBirthDetails = async (details: BirthDetailsSubmitValue) => {
+    setSavingBirthDetails(true);
+    setBirthDetailsError('');
+    const ok = await saveBirthDetails({
+      birthDate: details.date,
+      birthTime: details.time,
+      birthPlace: details.placeName,
+      birthLatitude: details.latitude,
+      birthLongitude: details.longitude,
+      birthTimezoneOffsetMinutes: details.timezoneOffsetMinutes,
+    });
+    if (!ok) {
+      setBirthDetailsError('Could not save your birth details. Please try again.');
+      setSavingBirthDetails(false);
+      return;
+    }
+    try {
+      const k = await calculatorService.kundliFull({
+        date: details.date,
+        time: details.time,
+        latitude: details.latitude,
+        longitude: details.longitude,
+        timezoneOffsetMinutes: details.timezoneOffsetMinutes,
+      });
+      setBookingKundli(k);
+    } catch {
+      // Non-blocking fallback
+    }
+    setIsEditingDetails(false);
+    setSavingBirthDetails(false);
+  };
 
-  const DURATION_STEP = 5, DURATION_MIN = 5, DURATION_MAX = 120;
+  const OPTIONS = [
+    { type: 'chat', label: 'Live Chat', price: astrologer.price * 20, desc: 'Real-time text consultation' },
+    { type: 'voice', label: 'Voice Call', price: astrologer.price * 25, desc: 'Live voice guidance call' },
+  ];
 
   const SLOTS = [
     'Today - 04:30 PM',
@@ -598,32 +667,43 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
   const selectedOpt = OPTIONS.find(o => o.type === activeType)!;
 
-  // Scheduling a FUTURE slot needs real infrastructure this app doesn't have
-  // yet (a stored booking, a job to actually fire the request at that time,
-  // reminders...) — the realtime engine only ever handles "right now"
-  // requests. This used to fake a success (an alert + navigate) without
-  // charging anything or creating any real booking at all, which is exactly
-  // the "booked without payment" bug — replaced with an honest notice
-  // instead of pretending it worked.
-  const handleConfirm = () => setScheduleNotice(true);
-
   const handleStartNow = async () => {
     if (!currentUser) {
-      setPendingAction('astrologers');
+      setPendingAction('consultation-booking');
       setShowLoginModal(true);
+      return;
+    }
+    if (!hasBirthDetails) {
+      setIsEditingDetails(true);
+      return;
+    }
+    if (!walletBalance || walletBalance <= 0) {
+      setShowRecharge(true);
       return;
     }
     setStarting(true);
     setError(null);
     try {
       const category = astrologer.category[0] || astrologer.specialization[0];
-      // Booking itself now happens server-side, only after payment clears
-      // (see fulfillment.ts's CONSULTATION case) — this redirects the whole
-      // browser to the gateway and never resolves here on success; reaching
-      // the catch below means it failed before that redirect even happened.
-      await paymentService.pay({ purpose: 'CONSULTATION', astrologerId: astrologer.id, category, type: activeType, durationMinutes });
+      const kundliDetails = hasBirthDetails && currentUser ? {
+        name: currentUser.name,
+        date: currentUser.birthDate!,
+        time: currentUser.birthTime || undefined,
+        placeName: currentUser.birthPlace || undefined,
+        latitude: currentUser.birthLatitude ?? undefined,
+        longitude: currentUser.birthLongitude ?? undefined,
+        timezoneOffsetMinutes: currentUser.birthTimezoneOffsetMinutes ?? undefined,
+      } : undefined;
+      const result = await requestConsultation(astrologer.id, category, activeType, undefined, kundliDetails);
+      if (result.outcome === 'UNAVAILABLE') {
+        setError(result.reason || 'This astrologer is unavailable right now.');
+        setStarting(false);
+        return;
+      }
+      setPage('consultation-waiting');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      setError(e instanceof PaymentApiError ? e.message : (e as Error).message);
+      setError((e as Error).message);
       setStarting(false);
     }
   };
@@ -645,11 +725,53 @@ function ConsultationBookingPage({ id }: { id: any }) {
           <button className={mode === 'schedule' ? 'btn btn-gold btn-sm' : 'btn btn-outline-light btn-sm'} onClick={() => setMode('schedule')}>Schedule for Later</button>
         </div>
 
-        {mode === 'now' ? (
+        {!currentUser ? (
+          <div className={styles.bookingLayout}>
+            <div className={styles.bookingOptionsCard} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '16px', color: 'var(--color-gold)' }}>✦</div>
+              <h2 className={styles.contentSectionTitle} style={{ border: 'none', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '12px' }}>
+                Sign In to Prepare Your Kundli
+              </h2>
+              <p className={styles.reviewCount} style={{ maxWidth: '540px', margin: '0 auto 28px', lineHeight: 1.6, fontSize: '14px' }}>
+                To connect with <strong>{astrologer.name}</strong>, your birth details (Date, Time, & Place of Birth) are required. TredevAstro automatically generates your Vedic Kundli so the astrologer can review your charts, dashas, and planetary placements live during your session.
+              </p>
+              <button
+                className="btn btn-gold"
+                style={{ padding: '12px 36px', fontSize: '15px' }}
+                onClick={() => {
+                  setPendingAction('consultation-booking');
+                  setShowLoginModal(true);
+                }}
+              >
+                Log In or Sign Up to Continue
+              </button>
+            </div>
+
+            <div className={styles.profileSidebar} style={{ textAlign: 'left' }}>
+              <h3 className={styles.sidebarName} style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Consultation Info</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                <span>Astrologist</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{astrologer.name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                <span>Experience</span>
+                <span style={{ color: 'var(--color-text-light)' }}>{astrologer.experience}+ Years</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
+                <span>Rate</span>
+                <span style={{ color: 'var(--color-text-light)' }}>₹{astrologer.price}/min</span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Sign in to view your real-time wallet balance and generate your Kundli for {astrologer.name}.
+              </p>
+            </div>
+          </div>
+        ) : mode === 'now' ? (
           <div className={styles.bookingLayout}>
             <div className={styles.bookingOptionsCard}>
+              {/* Step 1: Format selection */}
               <div className={styles.contentSection}>
-                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>Select Consultation Format</h3>
+                <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>1. Select Consultation Format</h3>
                 <div className={styles.optionSelectGrid}>
                   {OPTIONS.map(opt => (
                     <div
@@ -676,34 +798,204 @@ function ConsultationBookingPage({ id }: { id: any }) {
                     {effectivePrice.isLoyal ? `Loyalty discount applied — ${effectivePrice.appliedOfferPercent}% off` : `Offer applied — ${effectivePrice.appliedOfferPercent}% off`}
                   </p>
                 )}
-                <h3 className={styles.contentSectionTitle} style={{ border: 'none', marginTop: '20px' }}>Select Duration</h3>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '8px 0' }}>
-                  <button
-                    type="button"
-                    className="btn btn-outline-light btn-sm"
-                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
-                    disabled={durationMinutes <= DURATION_MIN}
-                    onClick={() => setDurationMinutes(m => Math.max(DURATION_MIN, m - DURATION_STEP))}
-                  >
-                    −
-                  </button>
-                  <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-gold)', minWidth: '110px', textAlign: 'center' }}>
-                    {durationMinutes} min
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-outline-light btn-sm"
-                    style={{ width: '40px', height: '40px', padding: 0, fontSize: '18px', lineHeight: 1 }}
-                    disabled={durationMinutes >= DURATION_MAX}
-                    onClick={() => setDurationMinutes(m => Math.min(DURATION_MAX, m + DURATION_STEP))}
-                  >
-                    +
-                  </button>
-                </div>
-                <p className={styles.reviewCount} style={{ marginTop: '16px' }}>
-                  This connects you to the astrologer's real-time queue — if they're busy, you'll see your position and estimated wait instead of a fixed appointment slot. Your chat/call runs for the duration you picked; you'll get an option to extend about a minute before it ends, and you can end it yourself any time.
-                </p>
               </div>
+
+              {/* Step 2: Birth Details & Kundli Generation */}
+              <div className={styles.contentSection} style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.2))' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 className={styles.contentSectionTitle} style={{ border: 'none', margin: 0 }}>2. Client Kundli & Birth Details</h3>
+                  {hasBirthDetails && !isEditingDetails && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-light btn-sm"
+                      style={{ fontSize: '12px', padding: '5px 14px', borderColor: 'var(--border-strong, #8F6A22)', color: 'var(--text-primary)', fontWeight: 500, borderRadius: '6px' }}
+                      onClick={() => setIsEditingDetails(true)}
+                    >
+                      Change Details
+                    </button>
+                  )}
+                </div>
+
+                {!hasBirthDetails || isEditingDetails ? (
+                  <div>
+                    <p className={styles.reviewCount} style={{ marginBottom: '16px' }}>
+                      {astrologer.name} needs your birth details to generate your Kundli chart. Saved once to your profile so it's ready for this and future consultations.
+                    </p>
+                    <BirthDetailsForm
+                      onSubmit={handleSaveBirthDetails}
+                      submitLabel={savingBirthDetails ? 'Generating Kundli…' : 'Generate Kundli for Consultation'}
+                      idPrefix="consult-birth"
+                      initialValues={toSavedBirthDetails(currentUser)}
+                      showNameField={true}
+                      showGenderField={true}
+                    />
+                    {isEditingDetails && hasBirthDetails && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-light btn-sm"
+                        style={{ marginTop: '12px' }}
+                        onClick={() => setIsEditingDetails(false)}
+                      >
+                        Cancel & Keep Saved Details
+                      </button>
+                    )}
+                    {birthDetailsError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{birthDetailsError}</p>}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      background: 'var(--surface-elevated, #FAF7F0)',
+                      border: '1.5px solid var(--border-strong, rgba(181, 138, 59, 0.35))',
+                      borderRadius: '12px',
+                      padding: '20px 22px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--gold-secondary, #8F6A22)' }}>
+                          ✦ {currentUser.name || 'Client'}'s Kundli
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary, #68717A)', marginTop: 4, fontWeight: 400 }}>
+                          Born <strong>{currentUser.birthDate}</strong> at <strong>{currentUser.birthTime || 'Time not specified'}</strong> · {currentUser.birthPlace || 'Location specified'}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          background: 'rgba(46, 125, 50, 0.12)',
+                          color: '#2e7d32',
+                          border: '1px solid rgba(46, 125, 50, 0.3)',
+                          padding: '4px 12px',
+                          borderRadius: '999px',
+                          fontWeight: 600,
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        ✓ Kundli Ready for Review
+                      </div>
+                    </div>
+
+                    {bookingKundliLoading ? (
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted, #8C8A84)', padding: '20px 0', textAlign: 'center' }}>
+                        Computing astrological chart for {astrologer.name}…
+                      </div>
+                    ) : bookingKundli ? (
+                      <div>
+                        {(() => {
+                          const moonSign = toChartPlanets(bookingKundli.kundli, bookingKundli.bhavChalit).find(p => p.id === 'moon')?.sign || '—';
+                          const activeMaha = bookingKundli.mahadashaTimeline.find(m => m.active);
+                          const doshas = [
+                            bookingKundli.doshas.kaalSarp.isKaalSarp && 'Kaal Sarp Dosha',
+                            bookingKundli.doshas.sadeSati.active && 'Sade Sati Active',
+                          ].filter(Boolean);
+
+                          const statBoxStyle: React.CSSProperties = {
+                            background: 'var(--surface, #FAF7F0)',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.22))',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
+                          };
+
+                          const labelStyle: React.CSSProperties = {
+                            fontSize: '10.5px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            fontWeight: 600,
+                            color: 'var(--text-secondary, #68717A)',
+                            marginBottom: '4px',
+                          };
+
+                          const valStyle: React.CSSProperties = {
+                            fontSize: '14.5px',
+                            fontWeight: 700,
+                            color: 'var(--text-primary, #182333)',
+                            letterSpacing: '0.01em',
+                          };
+
+                          return (
+                            <div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Lagna (Ascendant)</div>
+                                  <div style={valStyle}>{cap(bookingKundli.kundli.ascendant.rashi)}</div>
+                                </div>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Chandra Rashi</div>
+                                  <div style={valStyle}>{cap(moonSign)}</div>
+                                </div>
+                                <div style={statBoxStyle}>
+                                  <div style={labelStyle}>Nakshatra</div>
+                                  <div style={valStyle}>
+                                    {bookingKundli.kundli.moonNakshatra.name} (Pada {bookingKundli.kundli.moonNakshatra.pada})
+                                  </div>
+                                </div>
+                                {activeMaha && (
+                                  <div style={statBoxStyle}>
+                                    <div style={labelStyle}>Current Mahadasha</div>
+                                    <div style={valStyle}>{cap(activeMaha.lord)}</div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {doshas.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                                  {doshas.map(d => (
+                                    <span
+                                      key={String(d)}
+                                      style={{
+                                        fontSize: '11.5px',
+                                        padding: '3px 12px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(181, 138, 59, 0.12)',
+                                        border: '1px solid var(--border-strong, rgba(181, 138, 59, 0.4))',
+                                        color: 'var(--gold-secondary, #8F6A22)',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {d}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div
+                                style={{
+                                  marginTop: '12px',
+                                  padding: '10px 14px',
+                                  background: 'rgba(181, 138, 59, 0.08)',
+                                  border: '1px solid var(--border-subtle, rgba(181, 138, 59, 0.2))',
+                                  borderRadius: '6px',
+                                  color: 'var(--text-primary, #182333)',
+                                  fontSize: '12px',
+                                  lineHeight: 1.6,
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '8px',
+                                }}
+                              >
+                                <span style={{ color: 'var(--gold-secondary, #8F6A22)', flexShrink: 0, fontSize: '13px' }}>✦</span>
+                                <span>
+                                  <strong>{astrologer.name}</strong> will review your complete Kundli, divisional placements (D1, D9, Bhav Chalit), and dashas inside the astrologer console during the consultation.
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary, #68717A)', margin: 0 }}>
+                        Your birth details are attached. {astrologer.name} will compute and review your Kundli as soon as you connect.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <p className={styles.reviewCount} style={{ marginTop: '20px' }}>
+                This connects you to the astrologer's real-time queue. Once connected, your session bills per minute straight from your wallet and ends automatically if your balance runs out — top up any time, including mid-session.
+              </p>
             </div>
 
             <div className={styles.profileSidebar} style={{ textAlign: 'left' }}>
@@ -717,17 +1009,33 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span style={{ color: 'var(--color-text-light)' }}>{selectedOpt.label}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '13px' }}>
-                <span>Duration</span>
-                <span style={{ color: 'var(--color-text-light)' }}>{durationMinutes} min</span>
+                <span>Rate</span>
+                <span style={{ color: 'var(--color-text-light)' }}>₹{effectivePrice?.pricePerMin ?? astrologer.price}/min</span>
               </div>
               <div style={{ borderTop: '1px solid rgba(184,138,59,0.15)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--color-gold)' }}>
-                <span>Estimated Total</span>
-                <span>₹{(effectivePrice?.pricePerMin ?? astrologer.price) * durationMinutes}</span>
+                <span>Your Wallet Balance</span>
+                <span>₹{walletBalance ?? 0}</span>
               </div>
+              {(!walletBalance || walletBalance <= 0) && (
+                <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>
+                  Your wallet is empty — recharge to start a consultation.
+                </p>
+              )}
               {error && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>{error}</p>}
               {isUnavailable && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '12px' }}>This astrologer appears to be unavailable right now.</p>}
-              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} disabled={starting || isUnavailable} onClick={handleStartNow}>
-                {starting ? 'Redirecting to payment…' : 'Pay & Start Consultation'}
+              <button
+                className="btn btn-gold"
+                style={{ width: '100%', marginTop: '20px' }}
+                disabled={starting || isUnavailable || !hasBirthDetails}
+                onClick={handleStartNow}
+              >
+                {starting
+                  ? 'Connecting…'
+                  : !hasBirthDetails
+                  ? 'Enter Birth Details to Continue'
+                  : (!walletBalance || walletBalance <= 0)
+                  ? 'Recharge Wallet'
+                  : 'Start Consultation'}
               </button>
             </div>
           </div>
@@ -753,6 +1061,9 @@ function ConsultationBookingPage({ id }: { id: any }) {
 
               <div className={styles.slotsSection}>
                 <h3 className={styles.contentSectionTitle} style={{ border: 'none' }}>2. Available Time Slots</h3>
+                <p className={styles.reviewCount} style={{ marginBottom: '12px', color: '#c0392b' }}>
+                  Scheduling a future slot isn't available yet — these times aren't real bookable slots. Use "Consult Now" above for an immediate session instead.
+                </p>
                 <div className={styles.slotsGrid}>
                   {SLOTS.map((s, idx) => (
                     <button
@@ -788,18 +1099,14 @@ function ConsultationBookingPage({ id }: { id: any }) {
                 <span>₹{selectedOpt.price}</span>
               </div>
 
-              {scheduleNotice && (
-                <p style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '12px' }}>
-                  Scheduling a future slot isn't available yet — please use "Consult Now" for an immediate session instead.
-                </p>
-              )}
-              <button className="btn btn-gold" style={{ width: '100%', marginTop: '20px' }} onClick={handleConfirm}>
-                Confirm Booking
+              <button className="btn btn-outline-light" disabled style={{ width: '100%', marginTop: '20px', cursor: 'not-allowed' }} title="Not available yet — use Consult Now instead">
+                Not Available Yet
               </button>
             </div>
           </div>
         )}
       </div>
+      {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
     </div>
   );
 }
@@ -808,14 +1115,22 @@ function ConsultationBookingPage({ id }: { id: any }) {
 // authoritative queue position and assignment state. Nothing here is
 // computed client-side; it only renders what server/store.ts has decided.
 function ConsultationWaitingPage() {
-  const { setPage, setSelectedId } = useAppContext();
-  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, expiringSoon } = useRealtime();
+  const { setPage, setSelectedId, walletBalance, refreshWalletBalance } = useAppContext();
+  const { userSync, recommendations, queueExpired, clearQueueExpired, cancelMyQueueEntry, endConsultationById, cancelConsultationById, expiringSoon } = useRealtime();
+  const [cancellingRequest, setCancellingRequest] = useState(false);
   const [justReviewed, setJustReviewed] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [extending, setExtending] = useState(false);
-  const [extendError, setExtendError] = useState('');
+  const [endError, setEndError] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState('');
+  const [showRecharge, setShowRecharge] = useState(false);
+
+  // The consultation that just ended is the moment billing actually happened
+  // (settleConsultationBilling, backend) — refresh the header's balance once
+  // rather than on every tick.
+  useEffect(() => {
+    if (userSync?.consultation?.status === 'COMPLETED') refreshWalletBalance();
+  }, [userSync?.consultation?.status, refreshWalletBalance]);
 
   // Running elapsed-time display for the user's side, mirroring the
   // astrologer-side one in AstrologistDashboard/sections/Overview.tsx's
@@ -887,6 +1202,14 @@ function ConsultationWaitingPage() {
             <h1 className={styles.pageTitle}>This consultation is taking longer than expected</h1>
             <p className={styles.pageSubtitle}>Your wait for {astrologer?.name || 'this astrologer'} timed out. Choose another astrologer below, or check back later.</p>
           </div>
+          {/* recsBlock only renders once recommendations have actually
+              loaded — without a real fallback, a visitor with none left this
+              page with no in-page action at all. */}
+          {!recsBlock && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Browse Astrologers</button>
+            </div>
+          )}
           {recsBlock}
         </div>
       </div>
@@ -920,35 +1243,41 @@ function ConsultationWaitingPage() {
 
   const consultation = userSync.consultation!;
   if (consultation.status === 'ASSIGNED') {
+    const handleCancelRequest = async () => {
+      setCancellingRequest(true);
+      try { await cancelConsultationById(consultation.id); } finally { setCancellingRequest(false); }
+    };
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ textAlign: 'center', padding: '80px 20px' }}>
           <h2>Connecting you to {astrologer?.name}…</h2>
           <p className={styles.reviewCount} style={{ marginTop: '8px' }}>Waiting for them to accept your request.</p>
+          {/* Previously no way out at all if the astrologer never responds
+              — reopening the app just landed back on this same screen. */}
+          <button className="btn btn-outline-light" style={{ marginTop: '24px' }} disabled={cancellingRequest} onClick={handleCancelRequest}>
+            {cancellingRequest ? 'Cancelling…' : 'Cancel Request'}
+          </button>
         </div>
       </div>
     );
   }
   if (consultation.status === 'ACTIVE' || consultation.status === 'ACCEPTED') {
-    const showTopUp = countdown !== null && expiringSoon?.consultationId === consultation.id;
+    const showLowBalance = countdown !== null && expiringSoon?.consultationId === consultation.id;
+    // Live-feeling estimate only — the server's own deferred-billing settle
+    // (settleConsultationBilling) is the real charge, computed once the
+    // session actually ends, never ticked down client-side.
+    const elapsedMinutes = consultation.startedAt ? (Date.now() - consultation.startedAt) / 60_000 : 0;
+    const estimatedRemaining = walletBalance != null ? Math.max(0, walletBalance - consultation.pricePerMin * elapsedMinutes) : null;
     const handleEnd = async () => {
       setEnding(true);
-      try { await endConsultationById(consultation.id); } finally { setEnding(false); }
-    };
-    const handleExtend = async (extraMinutes: number) => {
-      setExtending(true);
-      setExtendError('');
+      setEndError('');
       try {
-        // Same pattern as booking: pay first, real minutes only get added by
-        // fulfillment.ts's CONSULTATION_EXTEND case once payment clears — a
-        // full gateway redirect away and back (this page is already
-        // `pending_payment_return`'s stashed page, so AppContext lands the
-        // visitor right back here; the modal is skipped for this purpose so
-        // it doesn't pop up over an active chat/call).
-        await paymentService.pay({ purpose: 'CONSULTATION_EXTEND', consultationId: consultation.id, extraMinutes });
-      } catch (e) {
-        setExtendError(e instanceof PaymentApiError ? e.message : (e as Error).message);
-        setExtending(false);
+        await endConsultationById(consultation.id);
+      } catch (err) {
+        console.error('Failed to end consultation:', err);
+        setEndError((err as Error).message || 'Failed to end consultation.');
+      } finally {
+        setEnding(false);
       }
     };
     return (
@@ -956,25 +1285,23 @@ function ConsultationWaitingPage() {
         <div className={styles.container} style={{ maxWidth: '600px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2>Your consultation with {astrologer?.name} is now active</h2>
-            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · {consultation.durationMinutes + consultation.extendedMinutes} min</p>
+            <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type} · ₹{consultation.pricePerMin}/min</p>
             {elapsed && (
               <p style={{ marginTop: '8px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-gold)' }}>{elapsed}</p>
             )}
+            {estimatedRemaining !== null && (
+              <p style={{ marginTop: '4px', fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
+                ~₹{Math.round(estimatedRemaining)} wallet balance remaining
+              </p>
+            )}
           </div>
 
-          {showTopUp && (
+          {showLowBalance && (
             <div style={{ border: '1px solid var(--color-gold)', background: 'rgba(184,138,59,0.08)', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px', textAlign: 'center' }}>
               <p style={{ margin: '0 0 10px', fontSize: '14px' }}>
-                Your session ends in <strong>{countdown}s</strong> — want more time?
+                Your balance runs out in <strong>{countdown}s</strong> — recharge to keep going.
               </p>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {[5, 10, 15].map(mins => (
-                  <button key={mins} className="btn btn-gold btn-sm" disabled={extending} onClick={() => handleExtend(mins)}>
-                    {extending ? 'Redirecting…' : `+${mins} min`}
-                  </button>
-                ))}
-              </div>
-              {extendError && <p style={{ color: '#c0392b', fontSize: '12px', marginTop: '10px' }}>{extendError}</p>}
+              <button className="btn btn-gold btn-sm" onClick={() => setShowRecharge(true)}>Recharge Wallet</button>
             </div>
           )}
 
@@ -983,10 +1310,12 @@ function ConsultationWaitingPage() {
           ) : (
             <ChatWindow consultationId={consultation.id} otherPartyName={astrologer?.name || 'your astrologer'} allowMediaUpload />
           )}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '20px' }}>
             <button className="btn btn-outline-light" disabled={ending} onClick={handleEnd}>{ending ? 'Ending…' : 'End Consultation'}</button>
+            {endError && <p style={{ color: 'var(--danger, #e05252)', fontSize: 13, margin: '4px 0 0' }}>{endError}</p>}
           </div>
         </div>
+        {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
       </div>
     );
   }
@@ -995,11 +1324,18 @@ function ConsultationWaitingPage() {
     // this same completed consultation re-shows the form; submitting again
     // just surfaces the backend's ALREADY_REVIEWED error. Fine for now — a
     // real fix needs `reviewed` on the realtime Consultation type itself.
+    const insufficientBalance = consultation.endReason === 'INSUFFICIENT_BALANCE';
     return (
       <div className={`${styles.pageWrapper} ${styles.darkPage}`}>
         <div className={styles.container} style={{ maxWidth: '480px', textAlign: 'center', padding: '60px 20px' }}>
           <h2>Your consultation with {astrologer?.name || 'your astrologer'} has ended</h2>
           <p className={styles.reviewCount} style={{ marginTop: '8px' }}>{consultation.category} · {consultation.type}</p>
+          {insufficientBalance && (
+            <div style={{ border: '1px solid var(--color-gold)', background: 'rgba(184,138,59,0.08)', borderRadius: '8px', padding: '14px 16px', margin: '16px 0', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '14px' }}>Your wallet balance ran out, so the session ended automatically.</p>
+              <button className="btn btn-gold btn-sm" onClick={() => setShowRecharge(true)}>Recharge Wallet</button>
+            </div>
+          )}
           {justReviewed ? (
             <p className={styles.reviewCount} style={{ marginTop: '16px', color: 'var(--color-gold)' }}>✦ Thanks for your feedback!</p>
           ) : (
@@ -1007,6 +1343,7 @@ function ConsultationWaitingPage() {
           )}
           <button className="btn btn-outline-light" style={{ marginTop: '20px' }} onClick={() => setPage('home')}>Back to Home</button>
         </div>
+        {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
       </div>
     );
   }
@@ -1018,6 +1355,11 @@ function ConsultationWaitingPage() {
             <h1 className={styles.pageTitle}>Your request was declined</h1>
             <p className={styles.pageSubtitle}>{astrologer?.name} wasn't able to take this consultation. Try another astrologer below.</p>
           </div>
+          {!recsBlock && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="btn btn-gold" onClick={() => setPage('astrologers')}>Browse Astrologers</button>
+            </div>
+          )}
           {recsBlock}
         </div>
       </div>
@@ -1964,14 +2306,14 @@ function SavedAstrologersPanel({ onView }: { onView: (id: number) => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileDashboardPage() {
   const {
-    birthProfile, setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction,
+    setPage, setSelectedId, isLoggedIn, setShowLoginModal, setPendingAction,
     currentUser,
   } = useAppContext();
   const [activeTab, setActiveTab] = React.useState('my-jyotish');
   // Same fix as ProfilePage — birthProfile is a local, account-independent
   // "last Kundli generated on this browser" value, not the logged-in
   // account's identity. The real account name always wins when logged in.
-  const displayName = currentUser?.name || birthProfile.name;
+  const displayName = currentUser?.name || 'Yajamana';
 
   React.useEffect(() => {
     if (!isLoggedIn) {
@@ -1988,6 +2330,13 @@ function ProfileDashboardPage() {
   const [myKundliLoading, setMyKundliLoading] = React.useState(false);
   const [myKundliError, setMyKundliError] = React.useState('');
   const hasBirthDetails = !!(currentUser?.birthDate && currentUser?.birthTime && currentUser?.birthLatitude != null && currentUser?.birthLongitude != null && currentUser?.birthTimezoneOffsetMinutes != null);
+  // Sidebar summary reuses the same real, account-bound `myKundli` result as
+  // the tab bodies below — never the hardcoded placeholder signs the mock
+  // used to show for every account.
+  const sidebarMoonSign = myKundli ? toChartPlanets(myKundli.kundli, myKundli.bhavChalit).find(p => p.id === 'moon')?.sign : undefined;
+  const sidebarSummary = myKundli
+    ? `${cap(myKundli.kundli.ascendant.rashi)} Lagna · ${cap(sidebarMoonSign ?? '—')} Chandra`
+    : hasBirthDetails ? 'Loading your chart…' : 'Generate your Kundli to see your Lagna & Chandra';
 
   React.useEffect(() => {
     if ((activeTab !== 'my-kundli' && activeTab !== 'my-jyotish') || !hasBirthDetails || myKundli || myKundliLoading) return;
@@ -2027,7 +2376,7 @@ function ProfileDashboardPage() {
           <div className={styles.profileCard}>
             <div className={styles.profileAvatar}>✦</div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{displayName}</div>
-            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>Simha Lagna · Vrishabha Chandra</div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{sidebarSummary}</div>
           </div>
           {SIDEBAR_ITEMS.map(item => (
             <button
@@ -2048,7 +2397,7 @@ function ProfileDashboardPage() {
               <div style={{ marginBottom: 'var(--space-8)' }}>
                 <span className="section-eyebrow">Meri Kundli</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Jyotish</h1>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}</p>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>Vedic birth chart for {displayName}{hasBirthDetails ? ` · Born ${currentUser?.birthDate}` : ''}</p>
               </div>
 
               {!hasBirthDetails ? (
@@ -2135,7 +2484,7 @@ function ProfileDashboardPage() {
                 <span className="section-eyebrow">Your Birth Blueprint</span>
                 <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 300, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>My Kundli Chart</h1>
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
-                  Janam Kundli for {displayName} · Born {currentUser?.birthDate || birthProfile.dob}
+                  Janam Kundli for {displayName}{hasBirthDetails ? ` · Born ${currentUser?.birthDate}` : ''}
                 </p>
               </div>
 

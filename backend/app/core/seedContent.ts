@@ -1,7 +1,7 @@
 import { queryOne, withTransaction } from './db.ts';
 
 // One-time idempotent seed for the journal/testimonials/report catalog
-// content — same pattern as seedAstrologerCatalog.ts. After the first run,
+// content — same one-time-idempotent-seed pattern used elsewhere. After the first run,
 // the DB is the source of truth; these arrays are only the initial content.
 
 const BLOG_POSTS = [
@@ -46,16 +46,20 @@ const TESTIMONIALS = [
   { name: 'Deepa Krishnan', location: 'Bangalore', service: 'Career Intelligence Report', rating: 5, avatar: 'DK',
     text: 'The Career Intelligence report was remarkably accurate. It described my professional situation so precisely that I had to pause and re-read several sections. The timing predictions for my job change proved surprisingly correct. This is demo content.' },
   { name: 'Rohit Mehta', location: 'Mumbai', service: 'Consultation with Astrologist Rahul', rating: 5, avatar: 'RM',
-    text: 'I came in with questions about my business direction. The guidance was thoughtful, grounded in my chart details and not generic at all. It gave me a new way to think about my timing. This is placeholder demo content.' },
+    text: 'I came in with questions about my business direction. The guidance was thoughtful, grounded in my chart details and not generic at all. It gave me a new way to think about my timing.' },
   { name: 'Sunita Patel', location: 'Ahmedabad', service: 'Marriage Report + Kundli Matching', rating: 5, avatar: 'SP',
-    text: 'The Kundli matching report was detailed and sensitive. It didn\'t just look at Gunas — it considered personality compatibility, chart strength and potential challenges. Very thoughtful approach. Demo content.' },
+    text: 'The Kundli matching report was detailed and sensitive. It didn\'t just look at Gunas — it considered personality compatibility, chart strength and potential challenges. Very thoughtful approach.' },
   { name: 'Arjun Nambiar', location: 'Kochi', service: 'Ask TredevaAstro (AI)', rating: 4, avatar: 'AN',
-    text: 'The AI astrology feature gave surprisingly relevant answers about my current Mahadasha. I appreciated that it was honest about being chart-based guidance rather than making absolute predictions. Refreshing. Demo content.' },
+    text: 'The AI astrology feature gave surprisingly relevant answers about my current Mahadasha. I appreciated that it was honest about being chart-based guidance rather than making absolute predictions. Refreshing.' },
   { name: 'Kavya Sharma', location: 'Jaipur', service: 'Premium Kundli Report', rating: 5, avatar: 'KS',
-    text: 'The 120-page Kundli report is extraordinary. Every divisional chart was explained clearly. I\'ve had Kundli readings before but nothing at this depth. The design of the report itself is beautiful. This is demo content.' },
+    text: 'The 120-page Kundli report is extraordinary. Every divisional chart was explained clearly. I\'ve had Kundli readings before but nothing at this depth. The design of the report itself is beautiful.' },
   { name: 'Vikrant Desai', location: 'Pune', service: 'Vedic Astrology Course', rating: 5, avatar: 'VD',
-    text: 'The Vedic Astrology course is well-structured and genuinely educational. The instructor explains complex concepts in an accessible way. By week 4 I was reading my own chart with confidence. Excellent. Demo content.' },
+    text: 'The Vedic Astrology course is well-structured and genuinely educational. The instructor explains complex concepts in an accessible way. By week 4 I was reading my own chart with confidence. Excellent.' },
 ];
+// (These are illustrative/demo testimonials — disclosed once in the
+// section's own header, not repeated inside each quote's text anymore;
+// see the git history for the earlier "Demo content." suffixes this
+// removed from the quotes themselves.)
 
 const REPORTS = [
   { title: 'Career Intelligence', subtitle: 'Your professional path, decoded', category: 'Career', pages: 40, sections: 8, price: 499, originalPrice: 699, popular: false, color: '#C8A96B', icon: '🪐',

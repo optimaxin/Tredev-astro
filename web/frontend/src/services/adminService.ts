@@ -97,7 +97,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners', 'pooja',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -240,6 +240,13 @@ export interface ApiApplication {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   submittedAt: number;
   decidedAt: number | null;
+  fullName: string | null;
+  phoneNumber: string | null;
+  email: string | null;
+  languages: string | null;
+  bio: string | null;
+  resumeData: string | null;
+  driveLink: string | null;
 }
 
 // Live availability from the realtime server, not account status — see
@@ -640,6 +647,22 @@ export const adminService = {
   updateBanner: (id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }) =>
     request<ApiBanner>(`/banners/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteBanner: (id: string) => request<{ ok: true }>(`/banners/${id}`, { method: 'DELETE' }),
+
+  // ── Pooja hub (recorded videos, group sessions, aarti/book library) ───
+  listPoojaVideos: () => request<ApiPoojaVideo[]>('/pooja/videos'),
+  createPoojaVideo: (v: { title: string; category: string; videoUrl: string; thumbnailUrl: string | null }) =>
+    request<ApiPoojaVideo>('/pooja/videos', { method: 'POST', body: JSON.stringify(v) }),
+  deletePoojaVideo: (id: string) => request<{ ok: true }>(`/pooja/videos/${id}`, { method: 'DELETE' }),
+
+  listPoojaSessions: () => request<ApiPoojaSession[]>('/pooja/sessions'),
+  createPoojaSession: (s: { title: string; panditName: string; scheduledAt: number; meetingUrl: string | null; pricePaise: number | null; capacity: number | null }) =>
+    request<ApiPoojaSession>('/pooja/sessions', { method: 'POST', body: JSON.stringify(s) }),
+  deletePoojaSession: (id: string) => request<{ ok: true }>(`/pooja/sessions/${id}`, { method: 'DELETE' }),
+
+  listPoojaBooks: () => request<ApiPoojaBook[]>('/pooja/books'),
+  createPoojaBook: (b: { title: string; author: string | null; category: string; content: string | null; pdfUrl: string | null; coverImageUrl: string | null }) =>
+    request<ApiPoojaBook>('/pooja/books', { method: 'POST', body: JSON.stringify(b) }),
+  deletePoojaBook: (id: string) => request<{ ok: true }>(`/pooja/books/${id}`, { method: 'DELETE' }),
 };
 
 export interface ApiBanner {
@@ -649,6 +672,37 @@ export interface ApiBanner {
   linkUrl: string | null;
   createdAt: number;
   expiresAt: number | null;
+}
+
+export interface ApiPoojaVideo {
+  id: string;
+  title: string;
+  category: string;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  createdAt: number;
+}
+
+export interface ApiPoojaSession {
+  id: string;
+  title: string;
+  panditName: string;
+  scheduledAt: number;
+  meetingUrl: string | null;
+  pricePaise: number | null;
+  capacity: number | null;
+  createdAt: number;
+}
+
+export interface ApiPoojaBook {
+  id: string;
+  title: string;
+  author: string | null;
+  category: string;
+  content: string | null;
+  pdfUrl: string | null;
+  coverImageUrl: string | null;
+  createdAt: number;
 }
 
 export interface ApiCallRecording {

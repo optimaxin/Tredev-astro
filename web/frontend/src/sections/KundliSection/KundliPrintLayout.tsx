@@ -225,9 +225,12 @@ interface KundliPrintLayoutProps {
   // param) AND which language this file's own labels/computed-value
   // lookups (rashi/nakshatra/planet names, yes/no, ordinals) render in.
   language?: Language;
+  // When generated for an astrologer, attributed with "for (astrologer name)"
+  // across every page of the report.
+  preparedForAstrologer?: string;
 }
 
-export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, latitude, longitude, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
+export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, latitude, longitude, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en', preparedForAstrologer }: KundliPrintLayoutProps) {
   const L = LABELS[language];
   const isHi = language === 'hi';
 
@@ -287,7 +290,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
   return (
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
-      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
+      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'var(--font-sans)', padding: 40 }}>
 
         {/* Cover — its own dedicated first page. `breakAfter: 'page'` is
             what actually enforces that under native print pagination
@@ -308,7 +311,14 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
           <img src="/logo.png" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
           <div style={{ fontSize: FONT.label, letterSpacing: '0.28em', color: MUTED, textTransform: 'uppercase', fontWeight: 700 }}>TredevaAstro</div>
           <div style={{ fontSize: FONT.label, letterSpacing: '0.22em', color: GOLD, textTransform: 'uppercase', margin: '8px 0 14px', fontWeight: 700 }}>{L.vedicReport}</div>
-          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
+          {preparedForAstrologer && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 22px', borderRadius: 999, background: 'rgba(181, 138, 59, 0.12)', border: '1.5px solid rgba(181, 138, 59, 0.45)', color: '#8a641d', fontSize: 14, fontWeight: 700, letterSpacing: '0.04em', margin: '4px 0 14px' }}>
+              <span>✦</span>
+              <span>for {preparedForAstrologer}</span>
+              <span>✦</span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 40, height: 1, background: GOLD }} />
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: GOLD }} />
@@ -336,6 +346,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
             {latitude != null && <KVRow label={L.latitude}>{latitude.toFixed(4)}</KVRow>}
             {longitude != null && <KVRow label={L.longitude}>{longitude.toFixed(4)}</KVRow>}
             <KVRow label={L.timezone}>{formatGmtOffset(timezoneOffsetMinutes)}</KVRow>
+            {preparedForAstrologer && <KVRow label="Prepared For">for {preparedForAstrologer}</KVRow>}
           </KVGrid>
           {timeUnknown && (
             <p style={{ fontSize: FONT.label, color: '#b8860b', margin: '6px 0 0', lineHeight: 1.5 }}>⚠ {L.timeUnknownNotice}</p>
@@ -461,11 +472,11 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               { label: L.totalShadbala, strong: true, cells: result.shadbala.planets.map(p => p.totalVirupas.toFixed(2)) },
               { label: L.shadbalaRupas, strong: true, cells: result.shadbala.planets.map(p => p.rupas.toFixed(2)) },
               { label: L.colRequired, cells: result.shadbala.planets.map(p => p.minRequiredRupas.toFixed(2)) },
-              { label: L.colRatio, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{(p.rupas / p.minRequiredRupas).toFixed(2)}</span>) },
+              { label: L.colRatio, cells: result.shadbala.planets.map((p, idx) => <span key={p.planet || idx} style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{(p.rupas / p.minRequiredRupas).toFixed(2)}</span>) },
               { label: L.ranking, cells: rankDesc(result.shadbala.planets.map(p => p.rupas)).map(String) },
               { label: L.ishtaPhala, cells: result.shadbala.planets.map(p => p.ishtabala.toFixed(2)) },
               { label: L.kashtaPhala, cells: result.shadbala.planets.map(p => p.kashtabala.toFixed(2)) },
-              { label: L.colVerdict, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span>) },
+              { label: L.colVerdict, cells: result.shadbala.planets.map((p, idx) => <span key={p.planet || idx} style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span>) },
             ]}
           />
         </div>
@@ -741,7 +752,12 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               page — reads as a designed closing panel rather than
               leftover text under the banner. */}
           <div style={{ border: `1px solid ${LINE}`, borderRadius: 14, background: TINT, padding: '28px 36px', maxWidth: 460 }}>
-            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
+            {preparedForAstrologer && (
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: GOLD, letterSpacing: '0.04em', marginBottom: 12 }}>
+                for {preparedForAstrologer}
+              </div>
+            )}
             <p style={{ fontSize: FONT.body, lineHeight: 1.6, color: MUTED, margin: '0 0 16px' }}>{L.closingInvite}</p>
             <div style={{ width: 48, height: 2, background: GOLD, margin: '0 auto 14px' }} />
             <div style={{ fontSize: FONT.label, color: FAINT, letterSpacing: '0.08em' }}>{L.brandFooter}</div>

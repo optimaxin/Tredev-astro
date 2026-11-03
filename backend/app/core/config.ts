@@ -58,11 +58,13 @@ export const config = {
     // silently hitting Cashfree with empty credentials.
     appId: process.env.CASHFREE_APP_ID,
     secretKey: process.env.CASHFREE_SECRET_KEY,
-    env: process.env.CASHFREE_ENV || 'sandbox', // 'sandbox' | 'production'
+    env: (process.env.CASHFREE_SECRET_KEY?.startsWith('cfsk_ma_prod_')
+      ? 'production'
+      : (process.env.CASHFREE_ENV || 'sandbox')) as 'sandbox' | 'production',
   },
+  paymentGateway: (process.env.PAYMENT_GATEWAY || 'cashfree') as 'cashfree' | 'razorpay',
   razorpay: {
-    // Second gateway, selectable alongside Cashfree at checkout (see
-    // PaymentGatewayPicker.tsx) — same "undefined check, clear error"
+    // Secondary gateway, selectable or fallback — same "undefined check, clear error"
     // pattern as cashfree above, no dev fallback.
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_KEY_SECRET,

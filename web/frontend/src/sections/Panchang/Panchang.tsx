@@ -141,12 +141,15 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 
 export default function Panchang() {
   const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
-  // Scoped to this card only — deliberately NOT the site-wide language
-  // toggle (AppContext's language/setLanguage), so switching this doesn't
-  // also change the rest of the site's language. Defaults to English (not
-  // Hindi) to match the rest of the home page's default — a visitor who
-  // hasn't touched any language toggle shouldn't see this one card start in
-  // a different language than everything else.
+  // Deliberately NOT synced to the site-wide language picker. This card
+  // renders real Devanagari Panchang terms of its own, and the site-wide
+  // picker is Google Translate (utils/googleTranslate.ts), which translates
+  // the rendered page assuming it is English — handing it this card's actual
+  // Hindi would get that Hindi re-translated into nonsense. Left in English,
+  // the card is translated along with the rest of the page like any other
+  // content. The dedicated English/हिंदी button below still switches just
+  // this card to its authentic Devanagari labels, and `translate="no"` on the
+  // card (see the render below) is what keeps Google off it when it does.
   const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
@@ -505,7 +508,11 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'}>
+              {/* translate="no" only while this card is showing its own real
+                  Devanagari — Google would otherwise re-translate it as if it
+                  were English and mangle it. In English it translates with
+                  the rest of the page like normal content. */}
+              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'} translate={isHindi ? 'no' : undefined}>
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
                 <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashBrandBlock}>

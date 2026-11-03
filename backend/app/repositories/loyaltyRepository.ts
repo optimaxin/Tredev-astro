@@ -29,18 +29,19 @@ export async function getLoyalty(userEmail: string, astrologerId: number, execut
 export async function addSessionMinutes(userEmail: string, astrologerId: number, sessionMs: number, executor?: Executor): Promise<void> {
   if (sessionMs <= 0) return;
   const email = userEmail.toLowerCase();
-  const existing = await queryOne<LoyaltyRow>(
-    'SELECT * FROM user_astrologer_loyalty WHERE user_email = $1 AND astrologer_id = $2',
-    [email, astrologerId],
-    executor
-  );
-  const totalMs = (existing ? Number(existing.total_ms) : 0) + sessionMs;
-  const isLoyal = totalMs > LOYAL_THRESHOLD_MS ? 1 : 0;
+  // Single atomic UPSERT — the increment (sessionMs) and the loyalty
+  // re-check both happen in the same statement Postgres evaluates, instead
+  // of a separate SELECT-then-compute-in-JS-then-UPDATE (two sessions with
+  // the same astrologer ending close together could race that: both read
+  // the same starting total_ms, and whichever UPDATE lands last overwrites
+  // the other's addition, silently undercounting).
   await query(
     `INSERT INTO user_astrologer_loyalty (user_email, astrologer_id, total_ms, is_loyal)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (user_email, astrologer_id) DO UPDATE SET total_ms = $3, is_loyal = $4`,
-    [email, astrologerId, totalMs, isLoyal],
+     VALUES ($1, $2, $3, CASE WHEN $3 > $4 THEN 1 ELSE 0 END)
+     ON CONFLICT (user_email, astrologer_id) DO UPDATE SET
+       total_ms = user_astrologer_loyalty.total_ms + $3,
+       is_loyal = CASE WHEN user_astrologer_loyalty.total_ms + $3 > $4 THEN 1 ELSE 0 END`,
+    [email, astrologerId, sessionMs, LOYAL_THRESHOLD_MS],
     executor
   );
 }

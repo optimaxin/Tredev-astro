@@ -94,6 +94,39 @@ async function authedRequest<T>(path: string, options: RequestInit = {}): Promis
   return body.data as T;
 }
 
+export interface NewAstrologerApplication {
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  expertise: string;
+  experience: string;
+  languages: string;
+  bio: string;
+  resumeData: string | null;
+  driveLink: string | null;
+}
+
+export interface ConsultationSlot {
+  id: string;
+  astrologerId: number;
+  scheduledAt: number;
+  durationMinutes: number;
+  type: 'chat' | 'voice' | 'video';
+  price: number;
+  isBooked: boolean;
+}
+
+export interface MyConsultationSlot {
+  id: string;
+  astrologerId: number;
+  astrologerName: string;
+  astrologerTitle: string;
+  scheduledAt: number;
+  durationMinutes: number;
+  type: 'chat' | 'voice' | 'video';
+  price: number;
+}
+
 export interface Review {
   id: string;
   astrologerId: number;
@@ -138,6 +171,17 @@ export const astrologerService = {
     return body.data as ApiAstrologerProfile;
   },
 
+  // ── 1:1 scheduled slots (consultation_slots) ────────────────────────
+  // Real, pay-up-front appointment times — distinct from the live
+  // chat/voice queue every other astrologer card books into.
+  async listSlots(astrologerId: number): Promise<ConsultationSlot[]> {
+    const res = await fetch(`${API_URL}/api/astrologers/${astrologerId}/slots`);
+    const body = await res.json();
+    if (!body.success) throw new Error(body.error?.message || 'Failed to load slots');
+    return body.data as ConsultationSlot[];
+  },
+  listMySlots: () => authedRequest<MyConsultationSlot[]>('/api/astrologers/slots/mine'),
+
   // ── Reviews ──────────────────────────────────────────────────────────
   listReviews: (astrologerId: number) => authedRequest<Review[]>(`/api/astrologers/${astrologerId}/reviews`),
   submitReview: (astrologerId: number, consultationId: string, rating: number, text: string) =>
@@ -150,9 +194,9 @@ export const astrologerService = {
   listFavorites: (): Promise<UiAstrologer[]> =>
     authedRequest<ApiAstrologerProfile[]>('/api/favorites').then(rows => rows.map(adapt)),
 
-  // ── Become an astrologer ─────────────────────────────────────────────
-  submitApplication: (expertise: string, experience: string) =>
-    authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify({ expertise, experience }) }),
+  // ── Become an astrologer/pandit ──────────────────────────────────────
+  submitApplication: (input: NewAstrologerApplication) =>
+    authedRequest<{ id: string; status: string }>('/api/astrologers/applications', { method: 'POST', body: JSON.stringify(input) }),
   myApplication: () => authedRequest<{ id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' } | null>('/api/astrologers/applications/mine'),
 
   // ── Offers (percentage discounts, astrologer self-service) ──────────

@@ -2,7 +2,7 @@
 // (server/). Every write goes through here; the server is the sole source
 // of truth — this file does not cache or reinterpret anything.
 import type {
-  AstrologerSyncSnapshot, PublicAstrologerState, RecommendedAstrologer, RequestResult, UserSyncSnapshot, AstrologerNotification, Consultation, QueueEntry,
+  AstrologerSyncSnapshot, PublicAstrologerState, RecommendedAstrologer, RequestResult, UserSyncSnapshot, AstrologerNotification, Consultation, ConsultationKundliDetails, QueueEntry,
 } from './types';
 import { authService } from '../services/authService';
 
@@ -76,13 +76,15 @@ export const realtimeApi = {
   heartbeat: (email: string) => request('/api/heartbeat', { method: 'POST', body: JSON.stringify({ email }) }),
   astrologerSync: (astrologerId: number) => request<AstrologerSyncSnapshot>(`/api/astrologers/${astrologerId}/sync`),
   userSync: (email: string) => request<UserSyncSnapshot>(`/api/users/sync?email=${encodeURIComponent(email)}`),
-  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string; durationMinutes?: number }) =>
+  requestConsultation: (params: { requestId: string; astrologerId: number; userEmail: string; userName: string; category: string; type: string; durationMinutes?: number; kundliDetails?: ConsultationKundliDetails }) =>
     request<RequestResult>('/api/consultations/request', { method: 'POST', body: JSON.stringify(params) }),
   acceptConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/accept`, { method: 'POST', body: JSON.stringify({ email }) }),
   declineConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/decline`, { method: 'POST', body: JSON.stringify({ email }) }),
   endConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/end`, { method: 'POST', body: JSON.stringify({ email }) }),
-  extendConsultation: (id: string, email: string, extraMinutes: number) =>
-    request<Consultation>(`/api/consultations/${id}/extend`, { method: 'POST', body: JSON.stringify({ email, extraMinutes }) }),
+  // The user's own way to back out of a request the astrologer hasn't
+  // responded to yet (status ASSIGNED) — previously there was no path here
+  // at all; see backend/app/services/realtimeStore.ts's cancelConsultation.
+  cancelConsultation: (id: string, email: string) => request<Consultation>(`/api/consultations/${id}/cancel`, { method: 'POST', body: JSON.stringify({ email }) }),
   cancelQueueEntry: (id: string, email: string) => request<QueueEntry>(`/api/queue/${id}/cancel`, { method: 'POST', body: JSON.stringify({ email }) }),
   listNotifications: (email: string) => request<AstrologerNotification[]>(`/api/notifications?email=${encodeURIComponent(email)}`),
   markNotificationRead: (id: string, email: string) => request(`/api/notifications/${id}/read`, { method: 'POST', body: JSON.stringify({ email }) }),

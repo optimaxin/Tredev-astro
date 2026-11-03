@@ -4,20 +4,10 @@ import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer } from '../../services/astrologerService';
 import { useAppContext } from '../../context/AppContext';
 import { useRealtime } from '../../realtime/RealtimeContext';
+import { RAGHAV_ASTROLOGER_ID } from '../../data/raghav';
 import styles from './Astrologers.module.css';
 
-const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vastu', 'Spirituality'];
-
-const FILTER_LABELS: Record<string, string> = {
-  All: 'All Acharyas',
-  Love: 'Prem',
-  Marriage: 'Vivah',
-  Career: 'Career',
-  Finance: 'Dhan',
-  Family: 'Parivaar',
-  Vastu: 'Vastu',
-  Spirituality: 'Adhyatma',
-};
+const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vastu', 'Spirituality', 'Pooja'];
 
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
   const { setPage, t, astrologerFilter, setAstrologerFilter } = useAppContext();
@@ -41,7 +31,24 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
     let cancelled = false;
     const params = featured ? { sort: 'rating' as const, limit: 3 } : { category: activeFilter, limit: 50 };
     astrologerService.list(params)
-      .then(({ data }) => { if (!cancelled) setFiltered(data); })
+      .then(async ({ data }) => {
+        if (cancelled || featured) { if (!cancelled) setFiltered(data); return; }
+        // Raghav is pinned to the top of the full directory — he has his own
+        // dedicated booking page (real scheduled slots, see RAGHAV_ASTROLOGER_ID),
+        // not just another row sorted by rating, where a brand-new profile
+        // (0 reviews yet) would otherwise sink to the bottom. Only forced
+        // into an unrelated category filter's results on 'All'; a specific
+        // filter (e.g. Vastu) still only shows him if he genuinely matches it.
+        const already = data.find(a => a.id === RAGHAV_ASTROLOGER_ID);
+        if (already) {
+          setFiltered([already, ...data.filter(a => a.id !== RAGHAV_ASTROLOGER_ID)]);
+        } else if (activeFilter === 'All') {
+          const raghav = await astrologerService.get(RAGHAV_ASTROLOGER_ID).catch(() => null);
+          if (!cancelled) setFiltered(raghav ? [raghav, ...data] : data);
+        } else {
+          setFiltered(data);
+        }
+      })
       .catch(() => { if (!cancelled) setLoadError(true); });
     return () => { cancelled = true; };
   }, [featured, activeFilter]);
@@ -124,7 +131,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
                   onClick={() => setActiveFilter(f)}
                   id={`astrologer-filter-${f.toLowerCase()}`}
                 >
-                  {t('cat_' + f.toLowerCase()) || FILTER_LABELS[f] || f}
+                  {f === 'All' ? t('cat_all_astrologers') : t('cat_' + f.toLowerCase())}
                 </button>
               ))}
             </div>
@@ -170,7 +177,13 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
   const isOnline = live ? live.status === 'ONLINE_AVAILABLE' || live.status === 'ONLINE_BUSY' : false;
   const isBusy = live?.status === 'ONLINE_BUSY';
 
+  // Raghav has his own dedicated page (real scheduled 1:1 slots, paid
+  // up front) instead of the generic profile/instant-queue flow every
+  // other astrologer here still uses — see pages/RaghavBookingPage.
+  const isRaghav = a.id === RAGHAV_ASTROLOGER_ID;
+
   const handleCardClick = () => {
+    if (isRaghav) { setPage('raghav-booking'); return; }
     setSelectedId(a.id);
     setPage('astrologer-profile');
   };
@@ -179,6 +192,7 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
   // stopPropagation so the click doesn't also bubble to handleCardClick above.
   const handleBookNow = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isRaghav) { setPage('raghav-booking'); return; }
     setSelectedId(a.id);
     setPage('consultation-booking');
   };

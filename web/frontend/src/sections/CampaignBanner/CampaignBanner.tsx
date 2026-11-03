@@ -11,13 +11,15 @@ interface ApiBanner {
   linkUrl: string | null;
 }
 
-const SLIDES = [
+// Non-text data only — the actual copy (category/title/description/cta)
+// comes from AppContext's TRANSLATIONS (banner_<id>_*) at render time instead
+// of living here, since this carousel's own Google Translate pass is
+// unreliable (each slide fully unmounts/remounts every 6s via framer-motion,
+// racing faster than Google can keep up — verified live, text stayed
+// English indefinitely) — see buildSlides below.
+const SLIDE_META = [
   {
     id: 0,
-    category: 'VEDIC JYOTISH',
-    title: 'Discover the Map\nWritten at Your Birth.',
-    description: 'Explore your Rashis, Grahas and Nakshatras through an authentic Vedic Kundli — free, instantly.',
-    cta: 'Generate Free Kundli',
     ctaAction: 'free-kundli',
     accentColor: '#C7A15A',
     bgColor: 'linear-gradient(135deg, #080C1C 0%, #0C1830 40%, #17253A 100%)',
@@ -29,10 +31,6 @@ const SLIDES = [
   },
   {
     id: 1,
-    category: 'Astrologist CONSULTATION',
-    title: 'Speak to an Astrologist\nWho Understands.',
-    description: 'Connect with verified Vedic astrologers for personalized guidance on your life\'s most important questions.',
-    cta: 'Consult an Astrologist',
     ctaAction: 'astrologers',
     accentColor: '#A85B2D',
     bgColor: 'linear-gradient(135deg, #17101F 0%, #24131A 40%, #1C0F22 100%)',
@@ -44,10 +42,6 @@ const SLIDES = [
   },
   {
     id: 2,
-    category: 'JYOTISH REPORTS',
-    title: 'Go Deeper into\nYour Planetary Patterns.',
-    description: 'Detailed Jyotish analysis across career, marriage, health and destiny by classical Vedic methods.',
-    cta: 'Explore Reports',
     ctaAction: 'reports',
     accentColor: '#9A5428',
     bgColor: 'linear-gradient(135deg, #0C1230 0%, #111A34 40%, #0A1628 100%)',
@@ -59,10 +53,6 @@ const SLIDES = [
   },
   {
     id: 3,
-    category: 'TREDEVASTORE',
-    title: 'Sacred Objects Chosen\nfor Your Journey.',
-    description: 'Authentic gemstones, Rudraksha, Yantras and sacred objects — energized for your Kundli.',
-    cta: 'Explore TredevaStore',
     ctaAction: 'store',
     accentColor: '#C7A15A',
     bgColor: 'linear-gradient(135deg, #1A1008 0%, #241810 40%, #1A1508 100%)',
@@ -74,10 +64,6 @@ const SLIDES = [
   },
   {
     id: 4,
-    category: 'TREDEVAASTRO GURUKUL',
-    title: 'Learn the Language\nof Jyotish.',
-    description: 'Study Vedic astrology from foundation to mastery through structured courses taught by expert Acharyas.',
-    cta: 'Explore Gurukul',
     ctaAction: 'academy',
     accentColor: '#B58A3B',
     bgColor: 'linear-gradient(135deg, #0A1020 0%, #101828 40%, #0C1420 100%)',
@@ -89,7 +75,17 @@ const SLIDES = [
   },
 ];
 
-function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: boolean }) {
+function buildSlides(t: (key: string) => string) {
+  return SLIDE_META.map(m => ({
+    ...m,
+    category: t(`banner_${m.id}_category`),
+    title: t(`banner_${m.id}_title`),
+    description: t(`banner_${m.id}_desc`),
+    cta: t(`banner_${m.id}_cta`),
+  }));
+}
+
+function SlideArtwork({ slide, isActive }: { slide: ReturnType<typeof buildSlides>[0]; isActive: boolean }) {
   const size = isActive ? 320 : 220;
   return (
     <div className={styles.artwork} style={{ '--art-color': slide.artColor } as React.CSSProperties}>
@@ -148,7 +144,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
           fontSize="32"
           fill={slide.artColor}
           opacity="0.85"
-          fontFamily="Georgia, serif"
+          fontFamily="var(--font-serif)"
         >
           {slide.symbol}
         </text>
@@ -161,7 +157,7 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
           fontSize="10"
           fill={slide.artColor}
           opacity="0.45"
-          fontFamily="DM Sans, sans-serif"
+          fontFamily="var(--font-sans)"
           letterSpacing="3"
         >
           {slide.symbolLabel.toUpperCase()}
@@ -185,12 +181,13 @@ function SlideArtwork({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: 
 // banners yet (see the default export below) — keeps the homepage looking
 // finished out of the box instead of showing an empty section.
 function StaticCampaignBanner() {
-  const { setPage } = useAppContext();
+  const { setPage, t } = useAppContext();
   const [current, setCurrent] = useState(0);
   const [edgeHover, setEdgeHover] = useState<'left' | 'right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const autoRef = useRef<number | null>(null);
 
+  const SLIDES = buildSlides(t);
   const total = SLIDES.length;
 
   const prev = useCallback(() => {

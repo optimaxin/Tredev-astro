@@ -8,6 +8,7 @@ const PURPOSE_LABEL: Record<PaymentResultInfo['purpose'], string> = {
   WALLET_RECHARGE: 'Wallet Recharge',
   CONSULTATION: 'Consultation',
   CONSULTATION_EXTEND: 'Consultation Top-Up',
+  SLOT_BOOKING: '1:1 Session Booking',
 };
 
 // Where the primary/retry buttons send the visitor next. Not a deep link
@@ -25,6 +26,7 @@ const PURPOSE_NAV: Record<PaymentResultInfo['purpose'], { successLabel: string; 
   // Same as CONSULTATION — success never shows this modal, only a failed
   // top-up does; retry just goes back to the same active consultation.
   CONSULTATION_EXTEND: { successLabel: 'View My Consultations', successPage: 'consultation-waiting', retryPage: 'consultation-waiting' },
+  SLOT_BOOKING: { successLabel: 'View Booking', successPage: 'raghav-booking', retryPage: 'raghav-booking' },
 };
 
 // Rendered globally (see App.tsx) so it can pop up over whatever page the

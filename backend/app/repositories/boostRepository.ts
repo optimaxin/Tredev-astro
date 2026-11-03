@@ -1,4 +1,4 @@
-import { query, queryOne, type Executor } from '../core/db.ts';
+import { query, queryOne, withTransaction, type Executor } from '../core/db.ts';
 import { getBoostPayoutSharePercent } from './platformSettingsRepository.ts';
 
 const BOOST_WINDOW_MS = 30 * 60_000;
@@ -44,16 +44,26 @@ export async function getActiveBoost(astrologerId: number, executor?: Executor):
 // already-activated Boost's share, same "lock at creation" rule
 // pricingEngine.ts uses for offer/loyalty pricing.
 export async function activateBoost(astrologerId: number, overridePayoutSharePercent?: number | null): Promise<BoostRow> {
-  const active = await getActiveBoost(astrologerId);
-  if (active) throw new Error('A Boost is already active for this astrologer');
-  const now = Date.now();
-  const payoutSharePercent = overridePayoutSharePercent ?? await getBoostPayoutSharePercent();
-  const rows = await query<BoostRow>(
-    `INSERT INTO boosts (astrologer_id, started_at, ends_at, payout_share_percent)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [astrologerId, now, now + BOOST_WINDOW_MS, payoutSharePercent]
-  );
-  return rows[0]!;
+  // Locks the astrologer's own row for the check+insert (same pattern
+  // realtimeStore.ts's withAstrologerLock uses for consultation capacity) —
+  // without it, two near-simultaneous activate calls (a double-click, or
+  // two staff racing) could both read "no active Boost" before either had
+  // inserted one, creating two overlapping active Boosts for the same
+  // astrologer, each with its own locked-in payout share.
+  return withTransaction(async client => {
+    await client.query('SELECT id FROM astrologers WHERE id = $1 FOR UPDATE', [astrologerId]);
+    const active = await getActiveBoost(astrologerId, client);
+    if (active) throw new Error('A Boost is already active for this astrologer');
+    const now = Date.now();
+    const payoutSharePercent = overridePayoutSharePercent ?? await getBoostPayoutSharePercent();
+    const rows = await query<BoostRow>(
+      `INSERT INTO boosts (astrologer_id, started_at, ends_at, payout_share_percent)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [astrologerId, now, now + BOOST_WINDOW_MS, payoutSharePercent],
+      client
+    );
+    return rows[0];
+  });
 }
 
 export async function listBoostHistory(astrologerId: number): Promise<BoostRow[]> {
@@ -89,6 +99,3 @@ export async function consumeAttribution(attributionId: number, consultationId: 
   await query('UPDATE boost_attributions SET consumed_consultation_id = $1 WHERE id = $2', [consultationId, attributionId], executor);
 }
 
-export async function getBoostById(id: number): Promise<BoostRow | undefined> {
-  return queryOne<BoostRow>('SELECT * FROM boosts WHERE id = $1', [id]);
-}

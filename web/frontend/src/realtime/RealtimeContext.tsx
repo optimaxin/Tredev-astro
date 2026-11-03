@@ -4,7 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { getAccessToken, realtimeApi, SERVER_URL } from './api';
 import { playExpiryWarningBeep, playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
 import type {
-  AstrologerNotification, AstrologerSyncSnapshot, ConsultationType, PublicAstrologerState,
+  AstrologerNotification, AstrologerSyncSnapshot, Consultation, ConsultationKundliDetails, ConsultationType, PublicAstrologerState,
   RecommendedAstrologer, RequestResult, UserSyncSnapshot,
 } from './types';
 import type { ChatMessage } from '../services/chatService';
@@ -40,7 +40,7 @@ interface RealtimeContextValue {
   goOffline: () => Promise<void>;
   acceptAssignment: (id: string) => Promise<void>;
   declineAssignment: (id: string) => Promise<void>;
-  endActiveConsultation: () => Promise<void>;
+  endActiveConsultation: () => Promise<Consultation | undefined>;
   markNotifRead: (id: string) => Promise<void>;
   markAllNotifsRead: () => Promise<void>;
   idleWarning: boolean;
@@ -50,17 +50,18 @@ interface RealtimeContextValue {
 
   // User side
   userSync: UserSyncSnapshot | null;
-  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => Promise<RequestResult>;
+  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => Promise<RequestResult>;
   cancelMyQueueEntry: () => Promise<void>;
   recommendations: RecommendedAstrologer[] | null;
   queueExpired: boolean;
   clearQueueExpired: () => void;
 
-  // Time-boxed consultations — either party can end early; either can top
-  // up once the "expiring soon" warning fires (~1 min before the chosen
-  // duration, plus any prior top-ups, runs out).
-  endConsultationById: (id: string) => Promise<void>;
-  extendConsultationById: (id: string, extraMinutes: number) => Promise<void>;
+  // Time-boxed consultations — either party can end early; wallet top-ups
+  // extend automatically now (see onWalletTopUp, backend), so there's no
+  // separate pay-to-extend action here any more.
+  endConsultationById: (id: string) => Promise<Consultation | undefined>;
+  // The user's own way out of a request the astrologer hasn't accepted yet.
+  cancelConsultationById: (id: string) => Promise<Consultation | undefined>;
   expiringSoon: { consultationId: string; remainingSeconds: number } | null;
 
   toasts: Toast[];
@@ -182,6 +183,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       setUserSync(prev => prev ? { ...prev, consultation } : prev);
       pushToast('Your consultation request was declined.', 'warning');
     });
+    // Distinct from chat:declined — this fires when the USER themselves
+    // cancels their own still-pending request, so "was declined" would be
+    // the wrong message. See cancelConsultationById below.
+    socket.on('chat:cancelled', (consultation) => {
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
+    });
     socket.on('chat:ended', (consultation) => {
       setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === consultation.id ? null : prev.activeConsultation } : prev);
       setUserSync(prev => prev ? { ...prev, consultation } : prev);
@@ -237,6 +244,28 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [currentUser?.email, currentUser?.role, notifyAstrologer, pushToast]);
 
+  // Keeps an online astrologer's lastActivityAt fresh while they just sit on
+  // the dashboard waiting for a request — previously the ONLY thing that
+  // reset it was a consultation lifecycle event (accept/end/decline/extend)
+  // or manually clicking "Stay Online" on the idle-warning banner, so simply
+  // being online and present (the single most common state) still hit
+  // runMaintenanceTick's awayTimeoutMinutes and got silently flipped to AWAY
+  // — which read to an astrologer as "I go offline on my own after a while"
+  // even though they never left. 60s is comfortably under the default
+  // 5-minute awayTimeoutMinutes (and the 70%-of-timeout idle-warning point);
+  // that admin-configurable value lives behind an ADMIN-only endpoint an
+  // astrologer account can't call, so this doesn't try to read it live. The
+  // banner/manual stayOnline still exist as a fallback for whenever this
+  // interval itself couldn't fire (tab frozen/backgrounded heavily, network blip).
+  const intent = astrologerSync?.intent;
+  useEffect(() => {
+    if (!currentUser || intent !== 'ONLINE') return;
+    const id = window.setInterval(() => {
+      realtimeApi.heartbeat(currentUser.email).catch(() => {});
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [currentUser, intent]);
+
   // Loops a beep until the astrologer actually accepts (or the request
   // otherwise leaves pendingAssignments) — a single chime was easy to miss
   // if they weren't looking at the screen right when it fired. Respects the
@@ -282,8 +311,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   const endActiveConsultation = useCallback(async () => {
-    if (!currentUser || !astrologerSync?.activeConsultation) return;
-    await realtimeApi.endConsultation(astrologerSync.activeConsultation.id, currentUser.email);
+    if (!currentUser) return;
+    const targetId = astrologerSync?.activeConsultation?.id;
+    if (!targetId) return;
+    const ended = await realtimeApi.endConsultation(targetId, currentUser.email);
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: null } : prev);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : prev);
+    setExpiringSoon(prev => prev?.consultationId === targetId ? null : prev);
+    return ended;
   }, [currentUser, astrologerSync]);
 
   // Generic id-based versions (unlike endActiveConsultation, which only
@@ -292,12 +327,18 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   // just take whatever id the caller already has in scope.
   const endConsultationById = useCallback(async (id: string) => {
     if (!currentUser) return;
-    await realtimeApi.endConsultation(id, currentUser.email);
+    const ended = await realtimeApi.endConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : { consultation: ended, queueEntry: null, position: null, eta: null });
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === id ? null : prev.activeConsultation } : prev);
+    setExpiringSoon(prev => prev?.consultationId === id ? null : prev);
+    return ended;
   }, [currentUser]);
 
-  const extendConsultationById = useCallback(async (id: string, extraMinutes: number) => {
+  const cancelConsultationById = useCallback(async (id: string) => {
     if (!currentUser) return;
-    await realtimeApi.extendConsultation(id, currentUser.email, extraMinutes);
+    const cancelled = await realtimeApi.cancelConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: cancelled } : prev);
+    return cancelled;
   }, [currentUser]);
 
   const markNotifRead = useCallback(async (id: string) => {
@@ -327,10 +368,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('astro_realtime_notif_prefs', JSON.stringify(next));
   }, []);
 
-  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number) => {
+  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => {
     if (!currentUser) throw new Error('Not logged in');
     const requestId = `req-${currentUser.email}-${astrologerId}-${Date.now()}`;
-    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes });
+    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes, kundliDetails });
     setQueueExpired(false);
     if (result.outcome === 'QUEUED') {
       setUserSync({ consultation: null, queueEntry: result.entry, position: result.position, eta: result.eta });
@@ -356,7 +397,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
-      endConsultationById, extendConsultationById, expiringSoon,
+      endConsultationById, cancelConsultationById, expiringSoon,
       toasts, dismissToast, liveChatMessages,
       sendCallSignal, onCallSignal,
     }}>

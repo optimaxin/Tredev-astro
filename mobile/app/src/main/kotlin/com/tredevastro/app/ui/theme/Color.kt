@@ -6,12 +6,17 @@ import androidx.compose.ui.graphics.Color
 // so both apps read as one brand. Keep these two files in sync by hand —
 // there's no shared token source between the web and native codebases.
 
+// Flat dark grey / dark navy-blue combination — no gradient underlay (the
+// earlier cosmic-cloud glow read as "cheap" regardless of how much its
+// opacity got tuned down, so it's gone; see CosmicBackground.kt). Background
+// sits on the navy side, surfaces step up through neutral dark greys, same
+// gold/terracotta accents as before for brand continuity.
 object CosmosPalette {
-    val bgPrimary = Color(0xFF060914)
-    val bgSecondary = Color(0xFF080C1C)
-    val surface = Color(0xFF0C1125)
-    val surfaceElevated = Color(0xFF11172C)
-    val surfaceHighlight = Color(0xFF151B31)
+    val bgPrimary = Color(0xFF0D1117)
+    val bgSecondary = Color(0xFF161B22)
+    val surface = Color(0xFF1C1F26)
+    val surfaceElevated = Color(0xFF22262E)
+    val surfaceHighlight = Color(0xFF2A2F38)
 
     val textPrimary = Color(0xFFF1E9DC)
     val textSecondary = Color(0xFFB9B3A8)
@@ -25,35 +30,29 @@ object CosmosPalette {
 
     val borderSubtle = Color(0x29C7A15A)
     val borderStrong = Color(0x47C7A15A)
-
-    val cloudSaffron = Color(0xD9C56A27)
-    val cloudIndigo = Color(0xE61C2B63)
-    val cloudMaroon = Color(0xBF781626)
 }
 
+// "Vedic Sanctuary" — exact tokens from
+// Extra/stitch_tredev_mobile_app_design/vedic_sanctuary_light/DESIGN.md.
 object ParchmentPalette {
-    val bgPrimary = Color(0xFFF5F0E7)
-    val bgSecondary = Color(0xFFECE4D6)
-    val surface = Color(0xFFFAF7F0)
+    val bgPrimary = Color(0xFFF5F0E7) // Base Canvas — Warm Ivory
+    val bgSecondary = Color(0xFFECE4D6) // Canvas Variant — Soft Parchment
+    val surface = Color(0xFFFAF7F0) // Surfaces — Antique Paper
     val surfaceElevated = Color(0xFFF2EBD9)
     val surfaceHighlight = Color(0xFFE8DEC8)
 
-    val textPrimary = Color(0xFF182333)
-    val textSecondary = Color(0xFF68717A)
-    val textMuted = Color(0xFF8C8A84)
+    val textPrimary = Color(0xFF182333) // Primary Navy
+    val textSecondary = Color(0xFF546071) // Warm Charcoal
+    val textMuted = Color(0xFF818D9D) // Subtle Muted Slate
 
-    val goldPrimary = Color(0xFFB58A3B)
+    val goldPrimary = Color(0xFFB58A3B) // Primary Accent — Antique Gold
     val goldSecondary = Color(0xFF8F6A22)
-    val goldSoft = Color(0xFFD0B06A)
+    val goldSoft = Color(0xFFC7A15A) // Tertiary Accent — Rich Amber Gold
 
-    val sacredAccent = Color(0xFFA85B2D)
+    val sacredAccent = Color(0xFFA85A32) // Secondary Accent — Terracotta Saffron
 
-    val borderSubtle = Color(0x2EB58A3B)
-    val borderStrong = Color(0x59B58A3B)
-
-    val cloudSaffron = Color(0x23F49650)
-    val cloudIndigo = Color(0x19EB7828)
-    val cloudMaroon = Color(0x14D76432)
+    val borderSubtle = Color(0x33B58A3B) // rgba(181,138,59,0.20)
+    val borderStrong = Color(0x59B58A3B) // rgba(181,138,59,0.35)
 }
 
 /** Color set an individual screen reads from, resolved for the active theme. */
@@ -72,9 +71,6 @@ data class AppColors(
     val sacredAccent: Color,
     val borderSubtle: Color,
     val borderStrong: Color,
-    val cloudSaffron: Color,
-    val cloudIndigo: Color,
-    val cloudMaroon: Color,
     val isDark: Boolean,
 )
 
@@ -93,9 +89,6 @@ fun cosmosColors() = AppColors(
     sacredAccent = CosmosPalette.sacredAccent,
     borderSubtle = CosmosPalette.borderSubtle,
     borderStrong = CosmosPalette.borderStrong,
-    cloudSaffron = CosmosPalette.cloudSaffron,
-    cloudIndigo = CosmosPalette.cloudIndigo,
-    cloudMaroon = CosmosPalette.cloudMaroon,
     isDark = true,
 )
 
@@ -114,8 +107,5 @@ fun parchmentColors() = AppColors(
     sacredAccent = ParchmentPalette.sacredAccent,
     borderSubtle = ParchmentPalette.borderSubtle,
     borderStrong = ParchmentPalette.borderStrong,
-    cloudSaffron = ParchmentPalette.cloudSaffron,
-    cloudIndigo = ParchmentPalette.cloudIndigo,
-    cloudMaroon = ParchmentPalette.cloudMaroon,
     isDark = false,
 )

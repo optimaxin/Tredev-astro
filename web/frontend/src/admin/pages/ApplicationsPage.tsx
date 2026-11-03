@@ -118,7 +118,10 @@ export default function ApplicationsPage() {
 
             {profileTab === 'profile' && (
               <>
-                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Email</span><span className={styles.drawerFieldValue}>{selected.userEmail}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Full Name</span><span className={styles.drawerFieldValue}>{selected.fullName || selected.userName}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Account Email</span><span className={styles.drawerFieldValue}>{selected.userEmail}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Contact Email</span><span className={styles.drawerFieldValue}>{selected.email || '—'}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Phone</span><span className={styles.drawerFieldValue}>{selected.phoneNumber || '—'}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_submitted')}</span><span className={styles.drawerFieldValue}>{formatDate(new Date(selected.submittedAt).toISOString())}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_status')}</span><span className={styles.drawerFieldValue}><StatusBadge status={selected.status} label={t(`admin_status_${selected.status.toLowerCase()}`)} /></span></div>
               </>
@@ -127,9 +130,28 @@ export default function ApplicationsPage() {
               <>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_expertise')}</span><span className={styles.drawerFieldValue}>{selected.expertise}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_experience')}</span><span className={styles.drawerFieldValue}>{selected.experience}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Languages</span><span className={styles.drawerFieldValue}>{selected.languages || '—'}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>About</span><span className={styles.drawerFieldValue} style={{ whiteSpace: 'pre-wrap' }}>{selected.bio || '—'}</span></div>
               </>
             )}
-            {profileTab === 'documents' && <EmptyState title={t('admin_apps_no_docs')} />}
+            {profileTab === 'documents' && (
+              selected.resumeData || selected.driveLink ? (
+                <>
+                  {selected.resumeData && (
+                    <div className={styles.drawerField}>
+                      <span className={styles.drawerFieldLabel}>Resume / Certificates</span>
+                      <span className={styles.drawerFieldValue}><a href={selected.resumeData} download={`${selected.fullName || selected.userName}-resume.pdf`}>Download PDF ↓</a></span>
+                    </div>
+                  )}
+                  {selected.driveLink && (
+                    <div className={styles.drawerField}>
+                      <span className={styles.drawerFieldLabel}>Google Drive Link</span>
+                      <span className={styles.drawerFieldValue}><a href={selected.driveLink} target="_blank" rel="noreferrer">{selected.driveLink}</a></span>
+                    </div>
+                  )}
+                </>
+              ) : <EmptyState title={t('admin_apps_no_docs')} />
+            )}
 
             {selected.status === 'PENDING' && (
               <div style={{ display: 'flex', gap: 10, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
-  acceptConsultation, cancelQueueEntry, declineConsultation, endConsultation, extendConsultation,
+  acceptConsultation, cancelConsultation, cancelQueueEntry, declineConsultation, endConsultation,
   getAdminConfig, getAstrologer, getAstrologerByEmail, getAstrologerSyncSnapshot,
   getRecommendations, getUserSyncSnapshot, listNotifications, listPublicAstrologers,
   markAllNotificationsRead, markNotificationRead, requestConsultation, setIntent,
@@ -10,7 +10,14 @@ import {
 import type { ConsultationType } from '../models/types.ts';
 import { countryFromRequest } from '../services/geoLocation.ts';
 import { listActiveBanners } from '../repositories/bannerRepository.ts';
+import {
+  countPoojaSessionRegistrations, findPoojaSession, isRegisteredForPoojaSession, listPoojaBooks, listPoojaVideos,
+  listUpcomingPoojaSessions, registerForPoojaSession,
+} from '../repositories/poojaRepository.ts';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
+import { findUserByEmail } from '../repositories/userRepository.ts';
+import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
+import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
 
 export const router = Router();
 
@@ -54,8 +61,43 @@ router.get('/astrologers/:id/recommendations', async (req, res) => {
   res.json(result);
 });
 
+// Pooja hub — recorded videos, upcoming group sessions and the aarti/book
+// library are all public reads, same trust level as the astrologer catalog.
+router.get('/pooja/videos', async (_req, res) => {
+  res.json(await listPoojaVideos());
+});
+
+// meetingUrl is withheld here — only revealed by the join endpoint below,
+// once the requester is actually registered. registeredCount is attached
+// so the frontend can show a "seats filling up" indicator — this list is
+// small and staff-curated, so an N+1 count per row is fine at this scale.
+router.get('/pooja/sessions', async (_req, res) => {
+  const sessions = await listUpcomingPoojaSessions(Date.now());
+  const withCounts = await Promise.all(sessions.map(async ({ meetingUrl: _meetingUrl, ...s }) => ({
+    ...s, registeredCount: await countPoojaSessionRegistrations(s.id),
+  })));
+  res.json(withCounts);
+});
+
+router.get('/pooja/books', async (_req, res) => {
+  res.json(await listPoojaBooks());
+});
+
 // Everything below needs a logged-in user.
-router.use(['/availability', '/heartbeat', '/astrologers/:id/sync', '/users', '/consultations', '/queue', '/notifications', '/admin'], requireAuth);
+router.use(['/availability', '/heartbeat', '/astrologers/:id/sync', '/users', '/consultations', '/queue', '/notifications', '/admin', '/pooja/sessions/:id/join'], requireAuth);
+
+// RSVP to a group pooja — idempotent, and returns the meeting link only once
+// registered (so it never leaks to someone who hasn't joined).
+router.post('/pooja/sessions/:id/join', async (req, res) => {
+  const session = await findPoojaSession(String(req.params.id));
+  if (!session) return res.status(404).json({ error: 'Unknown session' });
+  await registerForPoojaSession(session.id, req.user!.email, Date.now());
+  res.json({ ...session, registered: true });
+});
+
+router.get('/pooja/sessions/:id/registration', requireAuth, async (req, res) => {
+  res.json({ registered: await isRegisteredForPoojaSession(String(req.params.id), req.user!.email) });
+});
 
 router.post('/availability', async (req, res) => {
   const { intent } = req.body as { intent?: 'ONLINE' | 'OFFLINE' };
@@ -94,17 +136,51 @@ const requestSchema = z.object({
   category: z.string().trim().min(1).max(100),
   type: z.enum(['chat', 'voice', 'video']) satisfies z.ZodType<ConsultationType>,
   durationMinutes: z.number().int().positive().max(600).optional(),
+  kundliDetails: z.object({
+    name: z.string().trim().min(1).max(100),
+    date: z.string().min(1).max(20),
+    time: z.string().max(20).optional(),
+    placeName: z.string().max(200).optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    timezoneOffsetMinutes: z.number().optional(),
+  }).optional(),
 });
 
 router.post('/consultations/request', async (req, res) => {
   const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ') });
-  const { requestId, astrologerId, userName, category, type, durationMinutes } = parsed.data;
+  const { requestId, astrologerId, userName, category, type, durationMinutes, kundliDetails } = parsed.data;
   const userEmail = req.user!.email;
   const astro = getAstrologer(astrologerId);
   if (!astro) return res.status(404).json({ error: 'Unknown astrologer' });
+  // Wallet billing (see realtimeStore.ts's acceptConsultation) only computes
+  // a real duration once the astrologer accepts — this is just a cheap
+  // upfront gate so nobody queues (and wastes an astrologer's slot) with
+  // literally nothing to bill.
+  const requester = await findUserByEmail(userEmail);
+  if (!requester || requester.wallet_balance <= 0) {
+    return res.status(402).json({ error: 'Insufficient wallet balance. Please recharge your wallet to start a consultation.' });
+  }
+  // A second simultaneous request would let two different astrologers'
+  // acceptConsultation calls each size their own session off the SAME,
+  // still-undiminished wallet balance (see findNonTerminalForUser's own
+  // comment) — requestConsultation only locks the target astrologer's row,
+  // so this is the only place that actually stops it.
+  // ponytail: check-then-act, not locked — closes the common case (one
+  // request at a time) but two truly simultaneous requests from the same
+  // user could still both pass this check before either's row exists.
+  // Upgrade path: a per-user advisory lock (pg_advisory_xact_lock) around
+  // this check + requestConsultation if that narrow race ever matters in
+  // practice.
+  if (await findNonTerminalForUser(userEmail)) {
+    return res.status(409).json({ error: 'You already have an active or pending consultation.' });
+  }
+  if (await findQueuedEntryForUserEmail(userEmail)) {
+    return res.status(409).json({ error: 'You are already in a queue for another astrologer.' });
+  }
   const countryCode = countryFromRequest(req);
-  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode });
+  const result = await requestConsultation({ requestId, astrologerId, userEmail, userName, category, type, durationMinutes, countryCode, kundliDetails });
   res.json(result);
 });
 
@@ -132,9 +208,20 @@ router.post('/consultations/:id/end', async (req, res) => {
   }
 });
 
-router.post('/consultations/:id/extend', async (req, res) => {
+// No direct REST route for /extend — this used to exist here unguarded
+// (any logged-in participant could add arbitrary free minutes to any
+// consultation, fully bypassing wallet billing; a real, live exploit, not
+// hypothetical). The wallet-billing model's real equivalent is implicit:
+// recharging mid-call re-runs the same balance/pricePerMin math via
+// onWalletTopUp (realtimeStore.ts) and reschedules the session automatically
+// — no separate "add minutes" action should exist. extendConsultation()
+// itself is kept only for the legacy, payment-gated CONSULTATION_EXTEND
+// purpose in fulfillment.ts, which computes and charges a real amount
+// server-side before ever calling it.
+
+router.post('/consultations/:id/cancel', async (req, res) => {
   try {
-    res.json(await extendConsultation(req.params.id, req.user!.email, Number(req.body.extraMinutes)));
+    res.json(await cancelConsultation(req.params.id, req.user!.email));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }

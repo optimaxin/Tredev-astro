@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
@@ -52,6 +53,11 @@ import { parseCsv, toCsvRow } from '../services/csv.ts';
 import { findCallRecordingData, listCallRecordings } from '../repositories/callRecordingRepository.ts';
 import { deleteBanner } from '../repositories/bannerRepository.ts';
 import { BannerError, createBanner, editBanner, listBanners } from '../services/bannerService.ts';
+import {
+  deletePoojaBook, deletePoojaSession, deletePoojaVideo, insertPoojaBook, insertPoojaSession, insertPoojaVideo,
+  listAllPoojaSessions, listPoojaBooks, listPoojaVideos,
+} from '../repositories/poojaRepository.ts';
+import { deleteUnbookedSlot, insertSlot, listAllSlotsForAstrologer } from '../repositories/consultationSlotRepository.ts';
 
 export const adminRouter = Router();
 
@@ -216,17 +222,41 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  if (application.status !== 'PENDING') return fail(res, 409, 'ALREADY_DECIDED', 'This application was already decided');
   const applicant = await findUserById(application.user_id);
   if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account not found');
 
-  await decideApplication(application.id, parsed.data.decision);
+  // Atomic PENDING->decision transition is the real guard (decideApplication
+  // only flips rows still PENDING and reports whether it did) — closes the
+  // race a separate "is it still PENDING?" pre-check had against a
+  // double-click or two staff racing the same Approve.
+  const decided = await decideApplication(application.id, parsed.data.decision);
+  if (!decided) return fail(res, 409, 'ALREADY_DECIDED', 'This application was already decided');
   if (parsed.data.decision === 'APPROVED') {
     await updateUserRole(applicant.id, 'ASTROLOGIST');
-    const catalogRow = await insertAstrologerForUser(applicant.id, applicant.name, application.expertise);
+    const catalogRow = await insertAstrologerForUser(applicant.id, application.full_name || applicant.name, application.expertise);
+    // Carries what the applicant actually submitted (bio, languages,
+    // declared experience) into the real catalog row instead of leaving it
+    // at insertAstrologerForUser's bare defaults — best-effort only, so a
+    // malformed "experience" string (e.g. no leading number) just falls
+    // back to 0 rather than blocking the approval itself.
+    const experienceYears = parseInt(application.experience, 10) || 0;
+    const languages = (application.languages || '').split(',').map(l => l.trim()).filter(Boolean);
+    const updated = await updateAstrologerProfile(catalogRow.id, {
+      title: catalogRow.title,
+      bio: application.bio || catalogRow.bio,
+      avatar: catalogRow.avatar,
+      languages: languages.length > 0 ? languages : JSON.parse(catalogRow.languages),
+      categories: JSON.parse(catalogRow.categories),
+      expertise: JSON.parse(catalogRow.expertise),
+      consultationTypes: JSON.parse(catalogRow.consultation_types),
+      chatPrice: catalogRow.chat_price,
+      callPrice: catalogRow.call_price,
+      videoPrice: catalogRow.video_price,
+      experienceYears,
+    });
     // Without this, the new astrologer can't go online / accept anything
     // until the process restarts — see registerNewAstrologer's own comment.
-    await registerNewAstrologer(catalogRow);
+    await registerNewAstrologer(updated ?? catalogRow);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });
@@ -400,6 +430,41 @@ adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res)
   res.json({ success: true, data: toPublicAstrologerProfile(finalRow) });
 });
 
+// ── 1:1 scheduled slots (consultation_slots) ─────────────────────────────
+// Real, pay-up-front appointment times for a specific astrologer — see
+// consultationSlotRepository.ts's file comment for how this differs from
+// the live chat/voice queue.
+const createSlotSchema = z.object({
+  astrologerId: z.number().int().positive(),
+  scheduledAt: z.number().int().positive(),
+  durationMinutes: z.number().int().min(5).max(180),
+  type: z.enum(['chat', 'voice', 'video']),
+  price: z.number().int().positive(),
+});
+
+adminRouter.get('/astrologers/:id/slots', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  res.json({ success: true, data: await listAllSlotsForAstrologer(id) });
+});
+
+adminRouter.post('/astrologers/:id/slots', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = createSlotSchema.omit({ astrologerId: true }).safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const slot = await insertSlot({ id: randomUUID(), astrologerId: id, createdAt: Date.now(), ...parsed.data });
+  await audit(req, 'Added 1:1 slot', slot.id);
+  res.status(201).json({ success: true, data: slot });
+});
+
+adminRouter.delete('/astrologers/:astroId/slots/:id', requireSection('astrologers'), async (req, res) => {
+  const deleted = await deleteUnbookedSlot(String(req.params.id));
+  if (!deleted) return fail(res, 409, 'ALREADY_BOOKED', 'Slot not found or already booked — booked slots cannot be deleted');
+  await audit(req, 'Deleted 1:1 slot', String(req.params.id));
+  res.json({ success: true, data: { ok: true } });
+});
+
 // Same audit surface as /users/:id/activity, mirrored for the Astrologers
 // profile drawer — no revenue here either, just chat/last-action audit.
 adminRouter.get('/astrologers/:id/activity', requireSection('astrologers'), async (req, res) => {
@@ -538,6 +603,91 @@ adminRouter.delete('/banners/:id', requireSection('banners'), async (req, res) =
   const deleted = await deleteBanner(String(req.params.id));
   if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Banner not found');
   await audit(req, 'Deleted banner', String(req.params.id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+// ── Pooja hub (nav "Pooja") ──────────────────────────────────────────────
+// Recorded videos, scheduled group sessions, and the aarti/book library.
+// "Book a Pooja" (1:1) needs no admin surface here — it's just the
+// existing astrologer catalog filtered to category "Pooja" (edit an
+// astrologer's categories from the Astrologers admin page).
+
+const createPoojaVideoSchema = z.object({
+  title: z.string().trim().min(1).max(150),
+  category: z.string().trim().min(1).max(60),
+  videoUrl: z.string().url(),
+  thumbnailUrl: z.string().url().nullable().default(null),
+});
+
+adminRouter.get('/pooja/videos', requireSection('pooja'), async (_req, res) => {
+  res.json({ success: true, data: await listPoojaVideos() });
+});
+
+adminRouter.post('/pooja/videos', requireSection('pooja'), async (req, res) => {
+  const parsed = createPoojaVideoSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const video = await insertPoojaVideo({ id: randomUUID(), createdAt: Date.now(), ...parsed.data });
+  await audit(req, 'Added pooja video', video.id);
+  res.status(201).json({ success: true, data: video });
+});
+
+adminRouter.delete('/pooja/videos/:id', requireSection('pooja'), async (req, res) => {
+  if (!(await deletePoojaVideo(String(req.params.id)))) return fail(res, 404, 'NOT_FOUND', 'Video not found');
+  await audit(req, 'Deleted pooja video', String(req.params.id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+const createPoojaSessionSchema = z.object({
+  title: z.string().trim().min(1).max(150),
+  panditName: z.string().trim().min(1).max(100),
+  scheduledAt: z.number().int().positive(),
+  meetingUrl: z.string().url().nullable().default(null),
+  pricePaise: z.number().int().nonnegative().nullable().default(null),
+  capacity: z.number().int().positive().nullable().default(null),
+});
+
+adminRouter.get('/pooja/sessions', requireSection('pooja'), async (_req, res) => {
+  res.json({ success: true, data: await listAllPoojaSessions() });
+});
+
+adminRouter.post('/pooja/sessions', requireSection('pooja'), async (req, res) => {
+  const parsed = createPoojaSessionSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const session = await insertPoojaSession({ id: randomUUID(), createdAt: Date.now(), ...parsed.data });
+  await audit(req, 'Scheduled group pooja', session.id);
+  res.status(201).json({ success: true, data: session });
+});
+
+adminRouter.delete('/pooja/sessions/:id', requireSection('pooja'), async (req, res) => {
+  if (!(await deletePoojaSession(String(req.params.id)))) return fail(res, 404, 'NOT_FOUND', 'Session not found');
+  await audit(req, 'Deleted group pooja', String(req.params.id));
+  res.json({ success: true, data: { ok: true } });
+});
+
+const createPoojaBookSchema = z.object({
+  title: z.string().trim().min(1).max(150),
+  author: z.string().trim().max(100).nullable().default(null),
+  category: z.string().trim().min(1).max(60),
+  content: z.string().trim().max(50_000).nullable().default(null),
+  pdfUrl: z.string().url().nullable().default(null),
+  coverImageUrl: z.string().url().nullable().default(null),
+}).refine(d => !!d.content || !!d.pdfUrl, { message: 'Provide either content or a PDF link' });
+
+adminRouter.get('/pooja/books', requireSection('pooja'), async (_req, res) => {
+  res.json({ success: true, data: await listPoojaBooks() });
+});
+
+adminRouter.post('/pooja/books', requireSection('pooja'), async (req, res) => {
+  const parsed = createPoojaBookSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const book = await insertPoojaBook({ id: randomUUID(), createdAt: Date.now(), ...parsed.data });
+  await audit(req, 'Added pooja book', book.id);
+  res.status(201).json({ success: true, data: book });
+});
+
+adminRouter.delete('/pooja/books/:id', requireSection('pooja'), async (req, res) => {
+  if (!(await deletePoojaBook(String(req.params.id)))) return fail(res, 404, 'NOT_FOUND', 'Book not found');
+  await audit(req, 'Deleted pooja book', String(req.params.id));
   res.json({ success: true, data: { ok: true } });
 });
 

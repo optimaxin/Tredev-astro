@@ -1,5 +1,5 @@
 import { query, queryOne, type Executor } from '../core/db.ts';
-import type { ConsultationType, QueueEntry, QueueEntryStatus } from '../models/types.ts';
+import type { ConsultationType, ConsultationKundliDetails, QueueEntry, QueueEntryStatus } from '../models/types.ts';
 
 interface QueueEntryDbRow {
   id: string;
@@ -13,6 +13,7 @@ interface QueueEntryDbRow {
   joined_at: string; // BIGINT comes back as a string from node-postgres
   promoted_consultation_id: string | null;
   duration_minutes: number;
+  kundli_details: string | null;
 }
 
 function fromRow(row: QueueEntryDbRow): QueueEntry {
@@ -28,6 +29,7 @@ function fromRow(row: QueueEntryDbRow): QueueEntry {
     joinedAt: Number(row.joined_at),
     promotedConsultationId: row.promoted_consultation_id ?? undefined,
     durationMinutes: row.duration_minutes,
+    kundliDetails: row.kundli_details ? (JSON.parse(row.kundli_details) as ConsultationKundliDetails) : undefined,
   };
 }
 
@@ -36,9 +38,9 @@ function fromRow(row: QueueEntryDbRow): QueueEntry {
 // decide QUEUED, so the decision and the write stay atomic together.
 export async function insertQueueEntry(e: QueueEntry, executor?: Executor) {
   await query(
-    `INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id, duration_minutes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [e.id, e.astrologerId, e.userEmail.toLowerCase(), e.userName, e.category, e.type, e.status, e.requestId, e.joinedAt, e.promotedConsultationId ?? null, e.durationMinutes],
+    `INSERT INTO queue_entries (id, astrologer_id, user_email, user_name, category, type, status, request_id, joined_at, promoted_consultation_id, duration_minutes, kundli_details)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [e.id, e.astrologerId, e.userEmail.toLowerCase(), e.userName, e.category, e.type, e.status, e.requestId, e.joinedAt, e.promotedConsultationId ?? null, e.durationMinutes, e.kundliDetails ? JSON.stringify(e.kundliDetails) : null],
     executor
   );
 }

@@ -19,7 +19,7 @@ import {
   RashiChakraIcon, ConstellationIcon, AcharyaIcon, WealthIcon, VastuIcon, ClockIcon,
   SunIcon, MoonIcon, SunsetIcon, LotusIcon, CheckCircleIcon,
 } from '../../components/Icons/Icons';
-import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets } from './KundliCharts';
+import { NorthIndianChart, SouthIndianChart, cap, ordinal, toChartPlanets, toSimpleChartPlanets, toChandraChartPlanets, CHART_KEYS, CHART_LABELS, resolveChart } from './KundliCharts';
 import type { ChartPlanet } from './KundliCharts';
 import { generateBrandedPdf } from '../../utils/brandedPdf';
 import KundliPrintLayout from './KundliPrintLayout';
@@ -40,10 +40,6 @@ import styles from './KundliSection.module.css';
 // planets sharing a sign can have different real bhav numbers, so a single
 // wedge can't consistently represent "one bhav." The separate Bhav Chalit
 // tile is where wedges are actually positioned by real cuspal house.
-const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
-const CHART_LABELS: Record<string, string> = {
-  D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
-};
 const CHART_LABELS_HI: Record<string, string> = {
   D1: 'D1 — राशि (जन्म कुंडली)', BHAV_CHALIT: 'भाव चलित (वास्तविक केपी कस्प)', CHANDRA: 'चंद्र चार्ट', D9: 'D9 — नवांश (विवाह)',
 };
@@ -435,21 +431,10 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
   const displayName = pdfLanguage === 'hi' ? transliterateNameToHindi(birthProfile.name) : birthProfile.name;
 
   // Shared by the D1/D9 featured row, the "all charts" tile grid, and the
-  // zoom modal — one place that knows how to turn any chart key into
-  // {planets, ascendantRashi}, instead of duplicating that branch 3 times.
-  function resolveChart(key: string): { planets: ChartPlanet[]; ascendantRashi: string } {
-    if (!fullResult) return { planets: [], ascendantRashi: '' };
-    if (key === 'D1') return { planets: chartPlanets, ascendantRashi: kundliResult?.ascendant.rashi ?? '' };
-    if (key === 'CHANDRA') return { planets: toChandraChartPlanets(fullResult.chandraChart), ascendantRashi: fullResult.chandraChart.moonRashi };
-    if (key === 'BHAV_CHALIT') {
-      const planets = toSimpleChartPlanets(fullResult.bhavChalit);
-      return { planets, ascendantRashi: planets.find(p => p.id === 'asc')?.sign ?? '' };
-    }
-    if (key === 'D9') return { planets: toSimpleChartPlanets(fullResult.navamsaChart), ascendantRashi: fullResult.navamsaChart.ascendant.rashi };
-    const varga = fullResult.vargaCharts[key];
-    if (varga) return { planets: toSimpleChartPlanets(varga), ascendantRashi: varga.ascendant.rashi };
-    return { planets: [], ascendantRashi: '' };
-  }
+  // zoom modal — resolveChart (KundliCharts.tsx) is one place that knows how
+  // to turn any chart key into {planets, ascendantRashi}, reused by the
+  // astrologer's client-Kundli sidebar too.
+  const getChart = (key: string) => resolveChart(fullResult, key);
 
   const savedBirthDetails = toSavedBirthDetails(currentUser);
   const alreadySavedThisProfile = !!(currentUser?.birthDate && submittedDetails && currentUser.birthDate === submittedDetails.date);
@@ -1060,7 +1045,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
                   <h2 className={styles.overviewTitle} style={{ marginTop: 'var(--space-6)' }}>{tr('kundli_all_divisional_charts')}</h2>
                   <div className={styles.chartTileGrid}>
                     {CHART_KEYS.filter(k => k !== 'D1' && k !== 'D9').map(key => {
-                      const { planets, ascendantRashi } = resolveChart(key);
+                      const { planets, ascendantRashi } = getChart(key);
                       return (
                         <button key={key} type="button" className={styles.chartTile} onClick={() => setZoomedChart(key)}>
                           <div className={styles.chartTilePreview}>
@@ -1075,7 +1060,7 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
               )}
 
               {zoomedChart && (() => {
-                const { planets, ascendantRashi } = resolveChart(zoomedChart);
+                const { planets, ascendantRashi } = getChart(zoomedChart);
                 return (
                   <div className={styles.chartZoomOverlay} onClick={() => setZoomedChart(null)}>
                     <div className={styles.chartZoomPanel} onClick={e => e.stopPropagation()}>
