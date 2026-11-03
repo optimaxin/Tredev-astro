@@ -15,9 +15,26 @@ import BroadcastBanner from './components/BroadcastBanner/BroadcastBanner';
 import ActiveSessionBanner from './components/ActiveSessionBanner/ActiveSessionBanner';
 import GoogleTranslate from './components/GoogleTranslate/GoogleTranslate';
 import { applyGoogleTranslateLanguage } from './utils/googleTranslate';
+import KundliChatWidget from './sections/KundliSection/KundliChatWidget';
+
+// The Kundli page's own chat widget already knows the freshly-generated
+// chart's exact birth details; it renders itself there. Elsewhere on the
+// site the same widget is reused for the user's saved profile chart, so
+// these two never both mount at once and collide (see KundliChatWidget's
+// own launcher-FAB history note).
+const KUNDLI_PAGES = new Set(['free-kundli', 'kundli-result']);
 
 function AppContent() {
   const { theme, language, page, currentUser } = useAppContext();
+
+  const hasBirthDetails = !!(
+    currentUser?.birthDate &&
+    currentUser?.birthTime &&
+    currentUser?.birthLatitude != null &&
+    currentUser?.birthLongitude != null &&
+    currentUser?.birthTimezoneOffsetMinutes != null
+  );
+  const showSiteChat = hasBirthDetails && !KUNDLI_PAGES.has(page);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -74,6 +91,21 @@ function AppContent() {
       <PaymentResultModal />
       <ToastStack />
       <ActiveSessionBanner />
+      {showSiteChat && currentUser && (
+        <KundliChatWidget
+          chartKey={`${currentUser.birthDate}T${currentUser.birthTime}@${currentUser.birthLatitude!.toFixed(4)},${currentUser.birthLongitude!.toFixed(4)}`}
+          displayName={currentUser.name}
+          birth={{
+            date: currentUser.birthDate!,
+            time: currentUser.birthTime!,
+            timezoneOffsetMinutes: currentUser.birthTimezoneOffsetMinutes!,
+            latitude: currentUser.birthLatitude!,
+            longitude: currentUser.birthLongitude!,
+            name: currentUser.name,
+            placeLabel: currentUser.birthPlace || undefined,
+          }}
+        />
+      )}
     </div>
   );
 }
