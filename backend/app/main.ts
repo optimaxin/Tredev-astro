@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { runMigrations } from './core/db.ts';
 import { seedDemoAccounts } from './core/seedDemoAccounts.ts';
-import { seedAstrologerCatalog } from './core/seedAstrologerCatalog.ts';
 import { seedContent } from './core/seedContent.ts';
 import { router } from './api/routes.ts';
 import { authRouter } from './api/auth.routes.ts';
@@ -49,8 +48,9 @@ const corsOrigin: cors.CorsOptions['origin'] = CLIENT_ORIGINS.length
 // Order matters: tables must exist before anything seeds into them, and the
 // catalog must be seeded before the realtime store reads it.
 await runMigrations();
-await seedDemoAccounts();
-await seedAstrologerCatalog();
+// Dev/demo only (see seedDemoAccounts.ts) — a production database should
+// only ever have real accounts, created through the real signup/apply flow.
+if (config.nodeEnv !== 'production') await seedDemoAccounts();
 await seedContent();
 await seedRealtimeStore();
 await rescheduleActiveConsultationTimers();

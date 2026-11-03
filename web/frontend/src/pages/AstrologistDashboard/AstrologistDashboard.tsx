@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { ASTROLOGERS } from '../../data/mockData';
+import { astrologerService } from '../../services/astrologerService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import { DashboardNavProvider } from './sections/shared';
 import type { SectionKey } from './sections/shared';
@@ -104,7 +104,12 @@ export default function AstrologistDashboard() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [identityMenuOpen, setIdentityMenuOpen] = useState(false);
 
-  const profile = ASTROLOGERS.find(a => a.name === currentUser?.name) || ASTROLOGERS[0];
+  const [avatar, setAvatar] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    astrologerService.getMyProfile().then(p => { if (!cancelled) setAvatar(p.avatar); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const isSuspended = currentUser?.status === 'SUSPENDED';
   const liveStatus = astrologerSync?.status || 'OFFLINE';
   const isOnline = astrologerSync?.intent === 'ONLINE';
@@ -153,7 +158,7 @@ export default function AstrologistDashboard() {
 
           <div className={styles.identity}>
             <button className={styles.identityTrigger} onClick={() => setIdentityMenuOpen(v => !v)}>
-              <div className={styles.identityAvatar}>{profile.avatar ? <img src={profile.avatar} alt="" className={styles.identityAvatarImg} /> : '◐'}</div>
+              <div className={styles.identityAvatar}>{avatar ? <img src={avatar} alt="" className={styles.identityAvatarImg} /> : '◐'}</div>
               <div className={styles.identityInfo}>
                 <div className={styles.identityName}>{currentUser?.name}</div>
                 <div className={styles.identityTitle}>Vedic Astrology</div>
@@ -194,7 +199,7 @@ export default function AstrologistDashboard() {
                 ♃{unread > 0 && <span className={styles.headerNotifBadge}>{unread}</span>}
               </button>
               <button className={styles.headerAvatar} onClick={() => navigate('profile')}>
-                {profile.avatar ? <img src={profile.avatar} alt="" className={styles.identityAvatarImg} /> : '◐'}
+                {avatar ? <img src={avatar} alt="" className={styles.identityAvatarImg} /> : '◐'}
               </button>
             </div>
           </header>

@@ -1,7 +1,7 @@
 import { queryOne, withTransaction } from './db.ts';
 
 // One-time idempotent seed for the journal/testimonials/report catalog
-// content — same pattern as seedAstrologerCatalog.ts. After the first run,
+// content — same one-time-idempotent-seed pattern used elsewhere. After the first run,
 // the DB is the source of truth; these arrays are only the initial content.
 
 const BLOG_POSTS = [
