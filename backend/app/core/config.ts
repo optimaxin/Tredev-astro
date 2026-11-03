@@ -82,6 +82,18 @@ export const config = {
     keyId: process.env.CLOUDFLARE_TURN_KEY_ID,
     apiToken: process.env.CLOUDFLARE_TURN_API_TOKEN,
   },
+  premiumReport: {
+    // The Stage 6 Premium Report service (Tradeva Premium, kb_report/api.py).
+    // This URL is SERVER-SIDE ONLY and must never reach the frontend: that
+    // service has no authentication of its own, so anyone who can reach it
+    // can read any report by id. Keep it bound to localhost or a private
+    // network and let api/premiumReports.routes.ts be its only client.
+    baseUrl: (process.env.PREMIUM_REPORT_API_URL || 'http://127.0.0.1:8100').replace(/\/+$/, ''),
+    // Generation itself runs asynchronously upstream, so every call this
+    // backend makes is a short one (submit, poll, fetch). A long timeout
+    // here would only hold an Express connection open on a dead service.
+    timeoutMs: Number(process.env.PREMIUM_REPORT_TIMEOUT_MS) || 30_000,
+  },
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project
     // Settings → Service Accounts → Generate new private key), pasted as

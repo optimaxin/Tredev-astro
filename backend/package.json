@@ -8,7 +8,9 @@
     "start": "tsx --env-file-if-exists=.env app/main.ts",
     "test": "tsx --env-file-if-exists=.env tests/auth.test.ts",
     "test:e2e": "node tests/e2e-smoke.mjs",
-    "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs && tsx tests/panchangTransition.sanity.mjs"
+    "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs && tsx tests/panchangTransition.sanity.mjs",
+    "test:premium-reports": "tsx --env-file-if-exists=.env tests/premiumReports.test.ts",
+    "test:premium-reports:e2e": "node tests/premiumReports.e2e.mjs"
   },
   "dependencies": {
     "astronomia": "^4.2.0",

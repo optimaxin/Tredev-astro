@@ -19,6 +19,7 @@ import { calculatorsRouter } from './api/calculators.routes.ts';
 // docs/chromium-pdf-pause.md to re-enable.
 import { favoritesRouter } from './api/favorites.routes.ts';
 import { kundliHistoryRouter } from './api/kundliHistory.routes.ts';
+import { premiumReportsRouter } from './api/premiumReports.routes.ts';
 import { ordersRouter } from './api/orders.routes.ts';
 import { adminRouter } from './api/admin.routes.ts';
 import { campaignAnalyticsRouter } from './api/campaignAnalytics.routes.ts';
@@ -90,6 +91,7 @@ app.use('/api/calculators', calculatorsRouter);
 // app.use('/api/kundli-pdf', kundliPdfRouter); — paused, see docs/chromium-pdf-pause.md
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/kundli-history', kundliHistoryRouter);
+app.use('/api/premium-reports', premiumReportsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/turn', turnRouter);

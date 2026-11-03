@@ -50,7 +50,7 @@ function fail(res: import('express').Response, status: number, code: string, mes
 const birthSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
   time: z.string().regex(/^\d{2}:\d{2}$/, 'time must be HH:MM (24h)'),
-  timezoneOffsetMinutes: z.coerce.number().min(-720).max(840), // e.g. India = -330 (UTC+5:30, so offset FROM local TO UTC is -330)
+  timezoneOffsetMinutes: z.coerce.number().min(-720).max(840), // standard "UTC = local - offset" convention, so India (UTC+5:30) = +330 — see toUtcDate below, which subtracts this
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
 });
