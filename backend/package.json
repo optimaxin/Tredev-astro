@@ -27,6 +27,9 @@
     "tsx": "^4.23.12",
     "zod": "^3.24.1"
   },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "0.28.2"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
