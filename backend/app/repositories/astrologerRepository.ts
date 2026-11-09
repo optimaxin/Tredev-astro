@@ -36,16 +36,18 @@ export async function insertAstrologerForUser(userId: string, name: string, expe
     price_increase_old_video_price: null,
     price_increase_expires_at: null,
     boost_payout_override_percent: null,
+    commission_percent: 100,
+    intent: 'OFFLINE',
   };
   await query(
     `INSERT INTO astrologers
       (id, name, title, bio, avatar, languages, categories, expertise, consultation_types,
        chat_price, call_price, video_price, rating, review_count, experience_years, consultation_count,
-       max_concurrent, is_active, created_at, user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+       max_concurrent, is_active, created_at, user_id, commission_percent)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
     [row.id, row.name, row.title, row.bio, row.avatar, row.languages, row.categories, row.expertise, row.consultation_types,
       row.chat_price, row.call_price, row.video_price, row.rating, row.review_count, row.experience_years, row.consultation_count,
-      row.max_concurrent, row.is_active, row.created_at, row.user_id]
+      row.max_concurrent, row.is_active, row.created_at, row.user_id, row.commission_percent]
   );
   return row;
 }
@@ -126,6 +128,10 @@ export async function updateMaxConcurrent(id: number, maxConcurrent: number) {
   await query('UPDATE astrologers SET max_concurrent = $1 WHERE id = $2', [maxConcurrent, id]);
 }
 
+export async function setAstrologerIntent(id: number, intent: 'ONLINE' | 'OFFLINE') {
+  await query('UPDATE astrologers SET intent = $1 WHERE id = $2', [intent, id]);
+}
+
 export interface AstrologerProfilePatch {
   title: string;
   bio: string;
@@ -138,6 +144,10 @@ export interface AstrologerProfilePatch {
   callPrice: number;
   videoPrice: number;
   experienceYears: number;
+  // Staff-set revenue split (1-100) — what % of the per-minute price this
+  // astrologer actually earns. Optional on the patch so older callers that
+  // don't touch it leave the existing value alone (see the COALESCE below).
+  commissionPercent?: number;
 }
 
 const PRICE_INCREASE_WINDOW_MS = 30 * 24 * 60 * 60_000;
@@ -184,15 +194,27 @@ export async function updateAstrologerProfile(id: number, patch: AstrologerProfi
        title = $1, bio = $2, avatar = $3, languages = $4, categories = $5, expertise = $6,
        consultation_types = $7, chat_price = $8, call_price = $9, video_price = $10, experience_years = $11,
        price_increase_old_chat_price = $12, price_increase_old_call_price = $13, price_increase_old_video_price = $14,
-       price_increase_expires_at = $15
-     WHERE id = $16
+       price_increase_expires_at = $15, commission_percent = $16
+     WHERE id = $17
      RETURNING *`,
     [
       patch.title, patch.bio, patch.avatar, JSON.stringify(patch.languages), JSON.stringify(patch.categories), JSON.stringify(patch.expertise),
       JSON.stringify(patch.consultationTypes), patch.chatPrice, patch.callPrice, patch.videoPrice, patch.experienceYears,
-      oldChat, oldCall, oldVideo, expiresAt, id,
+      oldChat, oldCall, oldVideo, expiresAt, patch.commissionPercent ?? before.commission_percent, id,
     ]
   );
+  return rows[0];
+}
+
+// "Remove" from the staff panel — distinct from suspend (which blocks login
+// via users.status). This flips the SAME is_active flag listAstrologers'
+// public catalog query already filters on and deactivateAstrologerByUserId
+// already uses for role changes, so a removed astrologer disappears from
+// every bookable listing immediately, but every past consultation/review/
+// revenue row stays intact (nothing here ever deletes a row) — staff can
+// flip it back on to restore them.
+export async function setAstrologerActive(id: number, active: boolean): Promise<AstrologerCatalogRow | undefined> {
+  const rows = await query<AstrologerCatalogRow>('UPDATE astrologers SET is_active = $1 WHERE id = $2 RETURNING *', [active ? 1 : 0, id]);
   return rows[0];
 }
 

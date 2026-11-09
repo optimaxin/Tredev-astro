@@ -47,6 +47,7 @@ export interface ApiAstrologerProfile {
   reviewCount: number;
   experienceYears: number;
   consultationCount: number;
+  commissionPercent: number;
 }
 
 export interface ApiAstrologerRevenue {
@@ -78,6 +79,10 @@ export interface AstrologerProfilePatch {
   callPrice: number;
   videoPrice: number;
   experienceYears: number;
+  // What % of the per-minute price this astrologer actually earns — the rest
+  // is the platform's cut. Optional so an older caller that doesn't set it
+  // leaves the astrologer's existing commission untouched.
+  commissionPercent?: number;
 }
 
 export interface NewAstrologer extends AstrologerProfilePatch {
@@ -250,8 +255,14 @@ export interface ApiApplication {
 }
 
 // Live availability from the realtime server, not account status — see
-// backend/app/services/realtimeStore.ts.
-export interface ApiAstrologerStatus {
+// backend/app/services/realtimeStore.ts. A normal (bookable) row only ever
+// carries the fields declared directly below — the inherited profile fields
+// (name/title/bio/pricing/etc, same shape as ApiAstrologerProfile) are
+// `undefined` for those. A Removed astrologer has no live-status row at all,
+// so the backend appends one with no status/activeCount/etc but the full
+// profile instead (see the route's own comment) — that's the one case these
+// inherited fields are actually populated, which is why they're optional.
+export interface ApiAstrologerStatus extends Partial<Omit<ApiAstrologerProfile, 'id'>> {
   id: number;
   status: 'ONLINE_AVAILABLE' | 'ONLINE_BUSY' | 'AWAY' | 'OFFLINE';
   activeCount: number;
@@ -265,6 +276,12 @@ export interface ApiAstrologerStatus {
   // Payout Share card). effective* is override ?? platform default.
   boostPayoutOverridePercent: number | null;
   effectiveBoostPayoutSharePercent: number;
+  // What % of the per-minute price this astrologer actually earns.
+  commissionPercent: number;
+  // Whether this astrologer is live in the bookable catalog — false means
+  // staff has "Removed" them (see the Remove/Restore button); their past
+  // consultation/review history is untouched either way.
+  isActive: boolean;
 }
 
 export interface ApiPricingRegion {
@@ -512,6 +529,23 @@ export const adminService = {
   createAstrologer: (body: NewAstrologer) =>
     request<ApiAstrologerProfile>('/astrologers', { method: 'POST', body: JSON.stringify(body) }),
   getAstrologerRevenue: () => request<ApiAstrologerRevenue[]>('/astrologers/revenue'),
+  // "Remove" (active: false) / "Restore" (active: true) — a flag flip, not a
+  // delete; see backend's setAstrologerActive for why.
+  setAstrologerActive: (id: number, active: boolean) =>
+    request<{ id: number; isActive: boolean }>(`/astrologers/${id}/active`, { method: 'PATCH', body: JSON.stringify({ active }) }),
+
+  // Raw fetch (text/csv attachment, not the {success, data} envelope) — same
+  // pattern as downloadAstrologerRegionPriceCsv below.
+  downloadAstrologersCsv: async (): Promise<Blob> => {
+    const token = localStorage.getItem('auth_access_token');
+    const res = await fetch(`${API_URL}/api/admin/astrologers/csv-export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new AdminApiError('DOWNLOAD_FAILED', 'Could not download the astrologers CSV.');
+    return res.blob();
+  },
+  importAstrologersCsv: (csv: string) =>
+    request<{ updated: number; errors: string[] }>('/astrologers/csv-import', { method: 'POST', body: JSON.stringify({ csv }) }),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),
 

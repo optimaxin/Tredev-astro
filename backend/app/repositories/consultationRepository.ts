@@ -166,16 +166,18 @@ export async function countForUser(userEmail: string): Promise<number> {
 // `revenue` is the gross figure (what users paid, summed) — unchanged
 // methodology. `astrologerPayout` additionally applies each boost-attributed
 // session's own LOCKED payout_share_percent (see boostRepository.ts's
-// activateBoost) on top of that; a non-boosted session pays the astrologer
-// its full price_per_min, since there's no general platform-commission model
-// for ordinary sessions — only Boost carries an explicit revenue split.
+// activateBoost) on top of that; a non-boosted session instead applies the
+// astrologer's own staff-set commission_percent (the general platform-cut
+// model — defaults to 100 so nothing changes for an astrologer staff never
+// set a cut for).
 export async function countCompletedByAstrologerAndType(): Promise<{ astrologerId: number; type: string; count: number; revenue: number; astrologerPayout: number }[]> {
   const rows = await query<{ astrologer_id: number; type: string; n: string; revenue: string; astrologer_payout: string }>(
     `SELECT c.astrologer_id, c.type, COUNT(*) AS n,
        COALESCE(SUM(c.price_per_min), 0) AS revenue,
-       COALESCE(SUM(CASE WHEN b.payout_share_percent IS NOT NULL THEN c.price_per_min * b.payout_share_percent / 100.0 ELSE c.price_per_min END), 0) AS astrologer_payout
+       COALESCE(SUM(CASE WHEN b.payout_share_percent IS NOT NULL THEN c.price_per_min * b.payout_share_percent / 100.0 ELSE c.price_per_min * COALESCE(a.commission_percent, 100) / 100.0 END), 0) AS astrologer_payout
      FROM consultations c
      LEFT JOIN boosts b ON b.id = c.boost_id
+     LEFT JOIN astrologers a ON a.id = c.astrologer_id
      WHERE c.status = 'COMPLETED'
      GROUP BY c.astrologer_id, c.type`
   );

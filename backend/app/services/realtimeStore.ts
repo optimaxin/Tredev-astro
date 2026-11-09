@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { withTransaction, type Executor } from '../core/db.ts';
-import { findAstrologerByIdRaw, listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import { findAstrologerByIdRaw, listAllAstrologersRaw, setAstrologerIntent, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
 import { findUserById, findUserByEmail, debitWallet } from '../repositories/userRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
@@ -67,8 +67,8 @@ async function buildAstrologerRecord(row: AstrologerCatalogRow): Promise<Astrolo
     price: row.chat_price,
     avatar: row.avatar,
     email,
-    intent: 'OFFLINE',
-    status: 'OFFLINE',
+    intent: row.intent,
+    status: row.intent === 'ONLINE' ? 'ONLINE_AVAILABLE' : 'OFFLINE',
     maxConcurrent: row.max_concurrent,
     lastActivityAt: Date.now(),
     durationSamplesMs: [],
@@ -82,6 +82,9 @@ export async function seedRealtimeStore() {
   for (const row of await listAllAstrologersRaw()) {
     astrologers.set(row.id, await buildAstrologerRecord(row));
   }
+  // Re-derive status (ONLINE_BUSY vs ONLINE_AVAILABLE) from persisted
+  // intent + any consultations still active from before this restart.
+  for (const id of astrologers.keys()) await recomputeStatus(id);
 }
 
 // Registers a single newly-created catalog row into the live store —
@@ -163,6 +166,7 @@ export async function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLIN
   astro.intent = intent;
   astro.lastActivityAt = Date.now();
   if (intent === 'ONLINE') awayFlags.set(astrologerId, false);
+  await setAstrologerIntent(astrologerId, intent);
   await recomputeStatus(astrologerId);
   // Coming back online (or going offline while a stale queue exists from
   // before) should re-check whether anyone waiting can now be promoted.

@@ -96,6 +96,16 @@ export const config = {
     // here would only hold an Express connection open on a dead service.
     timeoutMs: Number(process.env.PREMIUM_REPORT_TIMEOUT_MS) || 30_000,
   },
+  zeptomail: {
+    // Transactional email (password reset, etc.) — optional like cashfree/aws
+    // above; emailService.ts no-ops with a console warning when unset so
+    // local dev doesn't need a real account. Token format from ZeptoMail's
+    // dashboard already includes the "Zoho-enczapikey " prefix — paste it
+    // whole. Set in backend/.env (local) and Render's dashboard (production).
+    apiKey: process.env.ZEPTOMAIL_API_KEY,
+    fromAddress: process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
+    fromName: process.env.ZEPTOMAIL_FROM_NAME || 'TredevAastro',
+  },
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project
     // Settings → Service Accounts → Generate new private key), pasted as

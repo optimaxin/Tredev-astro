@@ -9,6 +9,7 @@ import {
 } from '../repositories/userRepository.ts';
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
 import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
+import { sendEmail } from './emailService.ts';
 
 export class AuthError extends Error {
   status: number;
@@ -124,15 +125,21 @@ export async function getPublicUser(userId: string): Promise<PublicUser | undefi
   return row ? toPublicUser(row) : undefined;
 }
 
-// Returns the raw reset token only in non-production so the flow is testable
-// end-to-end without an email provider wired up yet. A real deployment must
-// plug EMAIL_PROVIDER_KEYS in and send this token by email instead of
-// returning it — never expose it over the API in production.
+// Returns the raw reset token only in non-production (devShortcuts) so the
+// flow is testable without a real inbox. In every environment it's also
+// emailed via ZeptoMail (see emailService.ts) — never expose it over the API
+// in production.
 export async function requestPasswordReset(email: string): Promise<{ devResetToken?: string }> {
   const row = await findUserByEmail(email);
   if (!row) return {}; // don't reveal whether the email exists
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
+  const resetLink = `${config.clientOrigins[0]}/reset-password?token=${raw}`;
+  await sendEmail(row.email, 'Reset your TredevAastro password', `
+    <p>We received a request to reset your password.</p>
+    <p><a href="${resetLink}">Click here to reset your password</a> (expires in 30 minutes).</p>
+    <p>If you didn't request this, you can ignore this email.</p>
+  `);
   return config.devShortcuts ? { devResetToken: raw } : {};
 }
 
