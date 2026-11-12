@@ -111,6 +111,9 @@ export interface UsageFilters {
   provider?: string;
   status?: string;
   conversationId?: string;
+  // 'user' (default): real chat traffic only. 'internal': evaluation,
+  // profiling, security-probe, benchmark and debug runs. 'all': both.
+  traffic?: 'user' | 'internal' | 'all';
 }
 
 /**
@@ -149,6 +152,11 @@ function buildWhere(
   if (filters.provider) { conditions.push(`${p}provider = $${i++}`); params.push(filters.provider); }
   if (filters.status) { conditions.push(`${p}status = $${i++}`); params.push(filters.status); }
   if (filters.conversationId) { conditions.push(`${p}conversation_id = $${i++}`); params.push(filters.conversationId); }
+  // Real user traffic only by default (migration 058). Fixed literals, not
+  // user input, so they are inlined rather than bound.
+  const traffic = filters.traffic ?? 'user';
+  if (traffic === 'user') conditions.push(`${p}traffic_source = 'user'`);
+  else if (traffic === 'internal') conditions.push(`${p}traffic_source <> 'user'`);
 
   return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
 }

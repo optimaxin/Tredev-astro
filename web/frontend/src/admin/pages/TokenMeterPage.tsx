@@ -79,6 +79,8 @@ export default function TokenMeterPage() {
 
   const [modelFilter, setModelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | 'success' | 'failed'>('');
+  // Real users by default; internal = evaluation, profiling, probes, benchmarks.
+  const [trafficFilter, setTrafficFilter] = useState<'user' | 'internal' | 'all'>('user');
   const [userSearch, setUserSearch] = useState('');
 
   const [overview, setOverview] = useState<AiUsageOverview | null>(null);
@@ -107,8 +109,9 @@ export default function TokenMeterPage() {
     }
     if (modelFilter) q.model = modelFilter;
     if (statusFilter) q.status = statusFilter;
+    q.traffic = trafficFilter;
     return q;
-  }, [range, modelFilter, statusFilter]);
+  }, [range, modelFilter, statusFilter, trafficFilter]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,6 +198,17 @@ export default function TokenMeterPage() {
           <option value="">All statuses</option>
           <option value="success">Success</option>
           <option value="failed">Failed</option>
+        </select>
+
+        <select
+          className={styles.select}
+          value={trafficFilter}
+          onChange={e => setTrafficFilter(e.target.value as 'user' | 'internal' | 'all')}
+          aria-label="Traffic"
+        >
+          <option value="user">Real users</option>
+          <option value="internal">Internal (evals, probes, profiling)</option>
+          <option value="all">All traffic</option>
         </select>
       </div>
 

@@ -312,6 +312,8 @@ export interface AiUsageQuery {
   provider?: string;
   status?: 'success' | 'failed';
   conversationId?: string;
+  // Defaults to real users server-side; 'internal' = evaluation/profiling/probe runs.
+  traffic?: 'user' | 'internal' | 'all';
 }
 
 export interface AiUsageOverview {
