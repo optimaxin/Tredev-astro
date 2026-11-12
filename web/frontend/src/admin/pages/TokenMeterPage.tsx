@@ -55,6 +55,16 @@ function inr(value: number): string {
   return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function ms(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`;
+}
+
+function pct(value: number | undefined): string {
+  if (value === undefined || value === null) return '—';
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function compactTokens(value: number | null): string {
   if (value === null || value === undefined) return '—';
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
@@ -283,6 +293,11 @@ Est. cost: ${inr(point.estimatedCostInr)}`}
                 { key: 'output', label: 'Output', render: (r: AiUsageModelRow) => compactTokens(r.outputTokens) },
                 { key: 'total', label: 'Total tokens', render: (r: AiUsageModelRow) => compactTokens(r.totalTokens) },
                 { key: 'cost', label: 'Est. cost', render: (r: AiUsageModelRow) => inr(r.estimatedCostInr) },
+                { key: 'latency', label: 'Avg / p95 latency', render: (r: AiUsageModelRow) => ms(r.avgLatencyMs) + ' / ' + ms(r.p95LatencyMs) },
+                { key: 'fallback', label: 'Fallback', render: (r: AiUsageModelRow) => pct(r.fallbackRate) },
+                { key: 'errors', label: 'Errors', render: (r: AiUsageModelRow) => pct(r.errorRate) },
+                { key: 'eval', label: 'Eval tokens', render: (r: AiUsageModelRow) => r.evaluationTokens ? compactTokens(r.evaluationTokens) : '—' },
+                { key: 'notokens', label: 'No usage reported', render: (r: AiUsageModelRow) => (r.callsWithoutTokens ?? 0).toLocaleString('en-IN') },
               ]}
               rows={models}
               keyField="model"

@@ -349,6 +349,14 @@ export interface AiUsageModelRow {
   outputTokens: number;
   totalTokens: number;
   estimatedCostInr: number;
+  // Optional so an older backend without these fields still renders.
+  avgLatencyMs?: number | null;
+  p95LatencyMs?: number | null;
+  errorRate?: number;
+  fallbackRate?: number;
+  callsWithoutTokens?: number;
+  evaluationRequests?: number;
+  evaluationTokens?: number;
 }
 
 export interface AiUsageUserRow {
