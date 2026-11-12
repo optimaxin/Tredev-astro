@@ -112,8 +112,9 @@ export interface UsageFilters {
   status?: string;
   conversationId?: string;
   // 'user' (default): real chat traffic only. 'internal': evaluation,
-  // profiling, security-probe, benchmark and debug runs. 'all': both.
-  traffic?: 'user' | 'internal' | 'all';
+  // profiling, security-probe, benchmark, test and debug runs. 'unknown':
+  // history that could not be verified either way (migration 061). 'all'.
+  traffic?: 'user' | 'internal' | 'unknown' | 'all';
 }
 
 /**
@@ -156,7 +157,10 @@ function buildWhere(
   // user input, so they are inlined rather than bound.
   const traffic = filters.traffic ?? 'user';
   if (traffic === 'user') conditions.push(`${p}traffic_source = 'user'`);
-  else if (traffic === 'internal') conditions.push(`${p}traffic_source <> 'user'`);
+  // 'unknown' (migration 061): historical rows that could not be verified as
+  // either; shown only on request, never folded into the other two views.
+  else if (traffic === 'internal') conditions.push(`${p}traffic_source NOT IN ('user', 'unknown')`);
+  else if (traffic === 'unknown') conditions.push(`${p}traffic_source = 'unknown'`);
 
   return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
 }

@@ -330,7 +330,7 @@ export interface AiUsageQuery {
   status?: 'success' | 'failed';
   conversationId?: string;
   // Defaults to real users server-side; 'internal' = evaluation/profiling/probe runs.
-  traffic?: 'user' | 'internal' | 'all';
+  traffic?: 'user' | 'internal' | 'unknown' | 'all';
 }
 
 export interface AiUsageOverview {

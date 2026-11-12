@@ -1245,7 +1245,7 @@ const usageFilterSchema = z.object({
   provider: z.string().max(100).optional(),
   status: z.enum(['success', 'failed']).optional(),
   conversationId: z.string().max(200).optional(),
-  traffic: z.enum(['user', 'internal', 'all']).optional(),
+  traffic: z.enum(['user', 'internal', 'unknown', 'all']).optional(),
 });
 
 /** Parses the shared filters, defaulting to the last 30 days. */
@@ -1353,7 +1353,7 @@ const evaluationFilterSchema = z.object({
   userId: z.string().max(200).optional(),
   model: z.string().max(200).optional(),
   feedbackType: z.enum(['helpful', 'not_helpful']).optional(),
-  traffic: z.enum(['user', 'internal', 'all']).optional(),
+  traffic: z.enum(['user', 'internal', 'unknown', 'all']).optional(),
   minReward: z.coerce.number().min(0).max(1).optional(),
   maxReward: z.coerce.number().min(0).max(1).optional(),
 });
