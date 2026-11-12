@@ -55,6 +55,16 @@ function inr(value: number): string {
   return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function ms(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`;
+}
+
+function pct(value: number | undefined): string {
+  if (value === undefined || value === null) return '—';
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function compactTokens(value: number | null): string {
   if (value === null || value === undefined) return '—';
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
@@ -69,6 +79,8 @@ export default function TokenMeterPage() {
 
   const [modelFilter, setModelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | 'success' | 'failed'>('');
+  // Real users by default; internal = evaluation, profiling, probes, benchmarks.
+  const [trafficFilter, setTrafficFilter] = useState<'user' | 'internal' | 'all'>('user');
   const [userSearch, setUserSearch] = useState('');
 
   const [overview, setOverview] = useState<AiUsageOverview | null>(null);
@@ -97,8 +109,9 @@ export default function TokenMeterPage() {
     }
     if (modelFilter) q.model = modelFilter;
     if (statusFilter) q.status = statusFilter;
+    q.traffic = trafficFilter;
     return q;
-  }, [range, modelFilter, statusFilter]);
+  }, [range, modelFilter, statusFilter, trafficFilter]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +198,17 @@ export default function TokenMeterPage() {
           <option value="">All statuses</option>
           <option value="success">Success</option>
           <option value="failed">Failed</option>
+        </select>
+
+        <select
+          className={styles.select}
+          value={trafficFilter}
+          onChange={e => setTrafficFilter(e.target.value as 'user' | 'internal' | 'all')}
+          aria-label="Traffic"
+        >
+          <option value="user">Real users</option>
+          <option value="internal">Internal (evals, probes, profiling)</option>
+          <option value="all">All traffic</option>
         </select>
       </div>
 
@@ -283,6 +307,11 @@ Est. cost: ${inr(point.estimatedCostInr)}`}
                 { key: 'output', label: 'Output', render: (r: AiUsageModelRow) => compactTokens(r.outputTokens) },
                 { key: 'total', label: 'Total tokens', render: (r: AiUsageModelRow) => compactTokens(r.totalTokens) },
                 { key: 'cost', label: 'Est. cost', render: (r: AiUsageModelRow) => inr(r.estimatedCostInr) },
+                { key: 'latency', label: 'Avg / p95 latency', render: (r: AiUsageModelRow) => ms(r.avgLatencyMs) + ' / ' + ms(r.p95LatencyMs) },
+                { key: 'fallback', label: 'Fallback', render: (r: AiUsageModelRow) => pct(r.fallbackRate) },
+                { key: 'errors', label: 'Errors', render: (r: AiUsageModelRow) => pct(r.errorRate) },
+                { key: 'eval', label: 'Eval tokens', render: (r: AiUsageModelRow) => r.evaluationTokens ? compactTokens(r.evaluationTokens) : '—' },
+                { key: 'notokens', label: 'No usage reported', render: (r: AiUsageModelRow) => (r.callsWithoutTokens ?? 0).toLocaleString('en-IN') },
               ]}
               rows={models}
               keyField="model"

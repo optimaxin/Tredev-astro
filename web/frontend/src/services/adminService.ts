@@ -329,6 +329,8 @@ export interface AiUsageQuery {
   provider?: string;
   status?: 'success' | 'failed';
   conversationId?: string;
+  // Defaults to real users server-side; 'internal' = evaluation/profiling/probe runs.
+  traffic?: 'user' | 'internal' | 'all';
 }
 
 export interface AiUsageOverview {
@@ -366,6 +368,14 @@ export interface AiUsageModelRow {
   outputTokens: number;
   totalTokens: number;
   estimatedCostInr: number;
+  // Optional so an older backend without these fields still renders.
+  avgLatencyMs?: number | null;
+  p95LatencyMs?: number | null;
+  errorRate?: number;
+  fallbackRate?: number;
+  callsWithoutTokens?: number;
+  evaluationRequests?: number;
+  evaluationTokens?: number;
 }
 
 export interface AiUsageUserRow {

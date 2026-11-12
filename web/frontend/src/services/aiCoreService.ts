@@ -58,6 +58,17 @@ export interface AiCoreChatResponse {
   // "try again" note, not a reading, so the UI must not dress it up as one.
   degraded: boolean;
   notices: string[];
+  // Issued to logged-out visitors on their first reply; echoed back
+  // automatically by this service.
+  session_token?: string | null;
+  // Knowledge-base documents this answer actually drew on (validated
+  // server-side against what was retrieved; never invented).
+  citations?: AiCoreCitation[];
+}
+
+export interface AiCoreCitation {
+  id: string;
+  title: string;
 }
 
 export interface AiCorePersona {
@@ -70,12 +81,39 @@ export interface AiCorePersona {
   topK: number | null;
 }
 
+// Identity for ai-core is decided server-side: a signed-in user's access
+// token (verified by the backend), or — for logged-out visitors — a signed
+// session token ai-core issued on the first reply. Neither is invented here.
+const SESSION_TOKEN_KEY = 'ai_core_session_token';
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  try {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (sessionToken) headers['X-Chat-Session-Token'] = sessionToken;
+  } catch {
+    // Storage blocked: the request goes out anonymous, which still works.
+  }
+  return headers;
+}
+
+function rememberSessionToken(token: string | null | undefined) {
+  if (!token) return;
+  try {
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
+  } catch {
+    // Storage blocked: the next turn simply starts a fresh anonymous session.
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${AI_CORE_URL}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) },
     });
   } catch {
     throw new AiCoreApiError('Could not reach the astrology assistant. Please try again.');
@@ -153,6 +191,7 @@ export const aiCoreService = {
     request<AiCoreChatResponse>('/chat', {
       method: 'POST',
       body: JSON.stringify({
+        // Kept for API compatibility; ai-core derives identity itself.
         user_id: params.userId || anonymousUserId(),
         session_id: params.sessionId,
         persona_id: params.personaId,
@@ -160,6 +199,9 @@ export const aiCoreService = {
         birth: params.birth,
         chat_bubbles: true,
       }),
+    }).then((res) => {
+      rememberSessionToken(res.session_token);
+      return res;
     }),
 
   personas: () => request<AiCorePersona[]>('/personas'),
