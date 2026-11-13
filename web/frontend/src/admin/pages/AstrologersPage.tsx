@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
+import { useRealtime } from '../../realtime/RealtimeContext';
 import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
@@ -8,7 +9,6 @@ import type { ApiAstrologerRevenue, ApiAstrologerActivity, ApiAstrologerStatus }
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
-import { accountStatus } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 // ApiAstrologerStatus carries the full public-profile fields too (see
@@ -163,6 +163,10 @@ const ZERO_REVENUE: ApiAstrologerRevenue = {
 
 export default function AstrologersPage() {
   const { t, accounts, suspendAccount, restoreAccount, currentUser, refreshAdminData } = useAppContext();
+  // So a second staff member's suspend/restore/delete from another tab/
+  // session shows up here too without a manual refresh — same event the
+  // public listing reacts to (see RealtimeContext's own comment).
+  const { catalogVersion } = useRealtime();
   // Revenue is an ADMIN-only view — Staff never sees it here regardless of
   // whether they've been granted the Astrologers section, mirrors the
   // backend's GET /astrologers/revenue being adminOnly now.
@@ -297,15 +301,26 @@ export default function AstrologersPage() {
     }
   };
 
-  // "Remove"/"Restore" — distinct from Suspend (which blocks login via the
-  // account's own status). Re-fetches live status afterward since a removed
-  // astrologer's row moves between the "bookable" and "removed" halves of
-  // that response (see admin.routes.ts's GET /astrologers/status).
+  // One Suspend/Activate toggle, not two separate controls — Suspend simply
+  // means "take this astrologer off the public site". For a real account,
+  // that's suspendAccount/restoreAccount (which the backend now also
+  // cascades into astrologers.is_active — see PATCH /users/:id/status's own
+  // comment). For an orphan pseudo-account (no real account to suspend —
+  // see isOrphanAccount above) it goes straight to setAstrologerActive.
+  // Re-fetches catalog + live status afterward either way, since both paths
+  // change whether this astrologer shows up in the "removed" half of GET
+  // /astrologers/status.
   const [activeBusyId, setActiveBusyId] = useState<number | null>(null);
-  const setAstrologerActive = async (id: number, active: boolean) => {
+  const handleSuspendToggle = async (a: AuthUser, id: number, suspend: boolean) => {
     setActiveBusyId(id);
     try {
-      await adminService.setAstrologerActive(id, active);
+      if (isOrphanAccount(a)) {
+        await adminService.setAstrologerActive(id, !suspend);
+      } else if (suspend) {
+        await suspendAccount(a.email);
+      } else {
+        await restoreAccount(a.email);
+      }
       const [catalogRes, statusRows] = await Promise.all([
         astrologerService.list({ limit: 50 }),
         adminService.getAstrologerStatuses(),
@@ -317,13 +332,35 @@ export default function AstrologersPage() {
     }
   };
 
+  const handleDeleteAstrologer = async (id: number, name: string) => {
+    if (!window.confirm(`Permanently delete ${name}? This also permanently deletes ALL their consultations, reviews, and booking history. This cannot be undone. Use Suspend instead if you just want to hide them.`)) return;
+    setActiveBusyId(id);
+    try {
+      await adminService.deleteAstrologer(id);
+      const [catalogRes, statusRows] = await Promise.all([
+        astrologerService.list({ limit: 50 }),
+        adminService.getAstrologerStatuses(),
+      ]);
+      setCatalog(catalogRes.data);
+      setLiveStatus(Object.fromEntries(statusRows.map(r => [r.id, r])));
+      if (selected && joinedProfile(selected, catalogRes.data, Object.fromEntries(statusRows.map(r => [r.id, r]))).id === id) setSelected(null);
+    } catch (err) {
+      // window.alert, not a page-top paragraph easy to miss while scrolled
+      // down a long roster — same reasoning as every other destructive
+      // admin-page delete's confirm (see BannersPage/PoojaPage's own).
+      window.alert(err instanceof AdminApiError ? err.message : `Could not delete ${name}.`);
+    } finally {
+      setActiveBusyId(null);
+    }
+  };
+
   useEffect(() => {
     astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data)).catch(() => {});
     if (isAdmin) adminService.getAstrologerRevenue().then(setRevenue).catch(() => {});
     adminService.getAstrologerStatuses()
       .then(rows => setLiveStatus(Object.fromEntries(rows.map(r => [r.id, r]))))
       .catch(() => {});
-  }, [isAdmin]);
+  }, [isAdmin, catalogVersion]);
 
   // Reset the Boost payout override draft whenever a different astrologer's
   // drawer opens, seeded from their current override (blank = using the
@@ -372,10 +409,30 @@ export default function AstrologersPage() {
 
   const astrologers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return accounts
+    const real = accounts
       .filter(a => a.role === 'ASTROLOGIST')
       .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
-  }, [accounts, search]);
+    // Dummy/orphan catalog rows with no linked user account (old seed data,
+    // or an account later deleted/role-changed) are otherwise completely
+    // invisible here — this page is account-driven and joinedProfile only
+    // matches a catalog/liveStatus row to an EXISTING account by name. GET
+    // /astrologers/status now fills in full profile fields (name included)
+    // for these (see its own comment), so synthesize a minimal pseudo-account
+    // per orphan name so staff can still see and manage (Remove/Restore/
+    // Delete) it the same way as any real astrologer.
+    const realNames = new Set(real.map(a => a.name));
+    const seen = new Set<string>();
+    const orphans: AuthUser[] = [];
+    for (const s of Object.values(liveStatus)) {
+      if (!s.name || realNames.has(s.name) || seen.has(s.name)) continue;
+      seen.add(s.name);
+      if (q && !s.name.toLowerCase().includes(q)) continue;
+      orphans.push({ id: `orphan-${s.id}`, name: s.name, email: `orphan-${s.id}@no-account.local`, role: 'ASTROLOGIST', status: 'ACTIVE' });
+    }
+    return [...real, ...orphans];
+  }, [accounts, search, liveStatus]);
+
+  const isOrphanAccount = (a: AuthUser) => a.id.startsWith('orphan-');
 
   // Whole-roster CSV — download every astrologer's editable fields, bulk-edit
   // in a spreadsheet, re-upload. Same download/re-upload convention as
@@ -511,7 +568,7 @@ export default function AstrologersPage() {
         <div className={styles.astroCardGrid}>
           {astrologers.map(a => {
             const p = joinedProfile(a, catalog, liveStatus);
-            const status = accountStatus(a.status);
+            const active = isActiveFor(p.id);
             return (
               <div key={a.email} className={styles.astroCard}>
                 <div className={styles.astroCardHeader}>
@@ -528,8 +585,7 @@ export default function AstrologersPage() {
                   {isAdmin && <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{revenueFor(p.id).totalRevenue.toLocaleString()}</span></div>}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
-                  {!isActiveFor(p.id) && <StatusBadge status="removed" label="Removed" />}
+                  <StatusBadge status={active ? 'active' : 'suspended'} label={active ? 'Active' : 'Suspended'} />
                   {liveStatusBadge(p.id)}
                   {boostBadge(p.id)}
                   {offerBadge(p.activeOfferPercent)}
@@ -537,12 +593,10 @@ export default function AstrologersPage() {
                 <div className={styles.astroCardActions}>
                   <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                   <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
-                  {status === 'ACTIVE'
-                    ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
-                    : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
-                  {isActiveFor(p.id)
-                    ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && setAstrologerActive(p.id, false)}>Remove</AdminButton>
-                    : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && setAstrologerActive(p.id, true)}>Restore</AdminButton>}
+                  {active
+                    ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
+                    : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
+                  <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
                 </div>
               </div>
             );
@@ -568,30 +622,22 @@ export default function AstrologersPage() {
             },
             {
               key: 'status', label: t('admin_astro_col_status'), render: a => {
-                const s = accountStatus(a.status);
-                const p = joinedProfile(a, catalog, liveStatus);
-                return (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />
-                    {!isActiveFor(p.id) && <StatusBadge status="removed" label="Removed" />}
-                  </div>
-                );
+                const active = isActiveFor(joinedProfile(a, catalog, liveStatus).id);
+                return <StatusBadge status={active ? 'active' : 'suspended'} label={active ? 'Active' : 'Suspended'} />;
               },
             },
             {
               key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: a => {
-                const s = accountStatus(a.status);
                 const p = joinedProfile(a, catalog, liveStatus);
+                const active = isActiveFor(p.id);
                 return (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                     <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
-                    {s === 'ACTIVE'
-                      ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
-                      : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
-                    {isActiveFor(p.id)
-                      ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && setAstrologerActive(p.id, false)}>Remove</AdminButton>
-                      : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && setAstrologerActive(p.id, true)}>Restore</AdminButton>}
+                    {active
+                      ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
+                      : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
+                    <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
                   </div>
                 );
               }

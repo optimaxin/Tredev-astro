@@ -88,6 +88,7 @@ export function attachSockets(io: Server) {
     io.to(PUBLIC_ROOM).emit('astrologer:status', state);
     resyncAstrologer(io, state.id).catch(console.error);
   });
+  bus.onTyped('astrologer:catalog_changed', ({ astrologerId }) => io.to(PUBLIC_ROOM).emit('astrologer:catalog_changed', { astrologerId }));
   bus.onTyped('astrologer:away', ({ astrologerId }) => { io.to(astroRoom(astrologerId)).emit('astrologer:away'); resyncAstrologer(io, astrologerId).catch(console.error); });
   bus.onTyped('astrologer:idle-warning', ({ astrologerId }) => io.to(astroRoom(astrologerId)).emit('astrologer:idle-warning'));
 

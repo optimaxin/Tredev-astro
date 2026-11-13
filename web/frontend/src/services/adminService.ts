@@ -544,6 +544,13 @@ export const adminService = {
   setAstrologerActive: (id: number, active: boolean) =>
     request<{ id: number; isActive: boolean }>(`/astrologers/${id}/active`, { method: 'PATCH', body: JSON.stringify({ active }) }),
 
+  // Permanent delete — distinct from setAstrologerActive above. Rejects
+  // (409, surfaced via AdminApiError.message) for any astrologer with real
+  // consultation/review/booking history — only ever succeeds for one that's
+  // never actually been used.
+  deleteAstrologer: (id: number) =>
+    request<{ id: number; deleted: boolean }>(`/astrologers/${id}`, { method: 'DELETE' }),
+
   // Raw fetch (text/csv attachment, not the {success, data} envelope) — same
   // pattern as downloadAstrologerRegionPriceCsv below.
   downloadAstrologersCsv: async (): Promise<Blob> => {
