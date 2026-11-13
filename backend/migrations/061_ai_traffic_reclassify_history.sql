@@ -8,7 +8,8 @@
 -- account. This migration:
 --   1. relabels rows whose session id carries an internal-script prefix,
 --   2. relabels the remaining pre-2026-11-13 'user' rows that belong to no
---      registered account as 'unknown' (not real, not internal: unverified),
+--      registered account as 'unknown' (not real, not internal: unverified).
+--      Signed anonymous visitors ('anon:<id>') are real users and are left alone.
 --   3. copies the corrected label onto ai_evaluations rows (058 never
 --      backfilled that table) and labels evaluations written by the test suite.
 --
@@ -61,6 +62,9 @@ WITH changed AS (
   SET traffic_source = 'unknown'
   WHERE u.traffic_source = 'user'
     AND u.created_at < '2026-11-13'
+    -- Signed anonymous visitors of the public Kundli page ('anon:<id>') are
+    -- real users by product decision (2026-11-13): they keep their label.
+    AND COALESCE(u.user_id, '') NOT LIKE 'anon:%'
     AND NOT EXISTS (SELECT 1 FROM users a WHERE a.id = u.user_id)
   RETURNING u.id::text AS row_id
 )
@@ -108,7 +112,8 @@ WITH changed AS (
       split_part(COALESCE(e.conversation_id, ''), '-', 1) IN
         ('pytest', 'eval', 'profile', 'sec', 'dbg', 'verify', 'connection', 'pipeline', 'bench', 'e2e',
          'trace', 'style', 'tokenmeter', 'local')
-      OR (e.created_at < '2026-11-13' AND NOT EXISTS (SELECT 1 FROM users a WHERE a.id = e.user_id))
+      OR (e.created_at < '2026-11-13' AND COALESCE(e.user_id, '') NOT LIKE 'anon:%'
+          AND NOT EXISTS (SELECT 1 FROM users a WHERE a.id = e.user_id))
     )
   RETURNING e.id::text AS row_id, e.traffic_source AS new_source
 )
