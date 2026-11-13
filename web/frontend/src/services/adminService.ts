@@ -105,7 +105,7 @@ export interface ApiUserRecord {
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners', 'pooja',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners', 'pooja', 'emails',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -240,9 +240,9 @@ export interface ApiStaffMember extends ApiUserRecord {
 
 export interface ApiApplication {
   id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
   expertise: string;
   experience: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -255,6 +255,28 @@ export interface ApiApplication {
   bio: string | null;
   resumeData: string | null;
   driveLink: string | null;
+}
+
+export interface ApiEmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ApiEmailLogEntry {
+  id: string;
+  to_email: string;
+  to_name: string | null;
+  subject: string;
+  template_id: string | null;
+  event_key: string | null;
+  status: 'SENT' | 'FAILED';
+  error: string | null;
+  sent_by: string | null;
+  sent_at: number;
 }
 
 // Live availability from the realtime server, not account status — see
@@ -615,6 +637,21 @@ export const adminService = {
   getBoostPayoutShare: () => request<{ percent: number }>('/settings/boost-payout'),
   updateBoostPayoutShare: (percent: number) =>
     request<{ percent: number }>('/settings/boost-payout', { method: 'PATCH', body: JSON.stringify({ percent }) }),
+
+  getNotifyEmails: () => request<{ adminEmail: string | null; headAstrologerEmail: string | null }>('/settings/notify-emails'),
+  updateNotifyEmails: (input: { adminEmail: string | null; headAstrologerEmail: string | null }) =>
+    request<{ adminEmail: string | null; headAstrologerEmail: string | null }>('/settings/notify-emails', { method: 'PATCH', body: JSON.stringify(input) }),
+
+  listEmailTemplates: () => request<ApiEmailTemplate[]>('/emails/templates'),
+  createEmailTemplate: (input: { name: string; subject: string; body: string }) =>
+    request<ApiEmailTemplate>('/emails/templates', { method: 'POST', body: JSON.stringify(input) }),
+  updateEmailTemplate: (id: string, input: { name: string; subject: string; body: string }) =>
+    request<ApiEmailTemplate>(`/emails/templates/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteEmailTemplate: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/emails/templates/${id}`, { method: 'DELETE' }),
+  composeEmail: (input: { toEmail: string; toName?: string; subject: string; body: string; templateId?: string }) =>
+    request<{ ok: boolean }>('/emails/compose', { method: 'POST', body: JSON.stringify(input) }),
+  listEmailLog: () => request<ApiEmailLogEntry[]>('/emails/log'),
 
   // `percent: null` clears the override, falling back to the platform default.
   updateAstrologerBoostPayout: (id: number, percent: number | null) =>

@@ -44,7 +44,10 @@ import {
 } from '../repositories/aiEvaluationRepository.ts';
 import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
-import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
+import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent, setNotifyEmails } from '../repositories/platformSettingsRepository.ts';
+import { createEmailTemplate, deleteEmailTemplate, findEmailTemplateById, listEmailTemplates, updateEmailTemplate } from '../repositories/emailTemplateRepository.ts';
+import { listEmailLog } from '../repositories/emailLogRepository.ts';
+import { notifyEvent, sendAndLog } from '../services/notificationService.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPricingRegions, updatePricingRegion } from '../repositories/pricingRegionRepository.ts';
@@ -298,6 +301,21 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
     if (createdAccount) await requestPasswordReset(applicant.email);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
+  // Best-effort: a missing/deleted template (or ZeptoMail being down) should
+  // never fail the decision itself — sendAndLog already turns a send
+  // failure into a FAILED log row instead of throwing.
+  const templateId = parsed.data.decision === 'APPROVED' ? 'tpl-application-approved' : 'tpl-application-rejected';
+  const template = await findEmailTemplateById(templateId);
+  if (template) {
+    await notifyEvent({
+      eventKey: `application.${parsed.data.decision.toLowerCase()}`,
+      template,
+      vars: { extra: '' },
+      user: { email: applicant.email, name: applicant.name },
+      alsoHeadAstrologer: parsed.data.decision === 'APPROVED',
+      alsoAdmin: true,
+    }).catch(() => {});
+  }
   res.json({ success: true, data: { ok: true } });
 });
 
@@ -973,6 +991,94 @@ adminRouter.patch('/settings/boost-payout', requireSection('settings'), async (r
   await setBoostPayoutSharePercent(parsed.data.percent);
   await audit(req, 'settings.boost_payout.update', `${parsed.data.percent}%`);
   res.json({ success: true, data: { percent: parsed.data.percent } });
+});
+
+adminRouter.get('/settings/notify-emails', requireSection('settings'), async (_req, res) => {
+  res.json({ success: true, data: await getNotifyEmails() });
+});
+
+const notifyEmailsSchema = z.object({
+  adminEmail: z.string().trim().email().nullable(),
+  headAstrologerEmail: z.string().trim().email().nullable(),
+});
+
+adminRouter.patch('/settings/notify-emails', requireSection('settings'), async (req, res) => {
+  const parsed = notifyEmailsSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  await setNotifyEmails(parsed.data);
+  await audit(req, 'settings.notify_emails.update', parsed.data.adminEmail || parsed.data.headAstrologerEmail || '—');
+  res.json({ success: true, data: parsed.data });
+});
+
+// ── Email: templates, compose, and the send log ─────────────────────────
+// "Hirring/compose" — staff can mail any user directly, reusing a saved
+// template (editable before send) or writing one from scratch, and manage
+// the saved templates themselves. Every send — from here or from
+// notificationService.ts's automatic event notifications — lands in
+// email_log, so this doubles as the audit trail the user asked for.
+
+adminRouter.get('/emails/templates', requireSection('emails'), async (_req, res) => {
+  res.json({ success: true, data: await listEmailTemplates() });
+});
+
+const templateSchema = z.object({
+  name: z.string().trim().min(2).max(150),
+  subject: z.string().trim().min(1).max(300),
+  body: z.string().trim().min(1).max(20_000),
+});
+
+adminRouter.post('/emails/templates', requireSection('emails'), async (req, res) => {
+  const parsed = templateSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await createEmailTemplate(parsed.data);
+  await audit(req, 'email.template.create', row.name);
+  res.status(201).json({ success: true, data: row });
+});
+
+adminRouter.put('/emails/templates/:id', requireSection('emails'), async (req, res) => {
+  const parsed = templateSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await updateEmailTemplate(req.params.id as string, parsed.data);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Template not found');
+  await audit(req, 'email.template.update', row.name);
+  res.json({ success: true, data: row });
+});
+
+adminRouter.delete('/emails/templates/:id', requireSection('emails'), async (req, res) => {
+  const existing = await findEmailTemplateById(req.params.id as string);
+  const deleted = await deleteEmailTemplate(req.params.id as string);
+  if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Template not found');
+  await audit(req, 'email.template.delete', existing?.name || req.params.id as string);
+  res.json({ success: true, data: { id: req.params.id, deleted: true } });
+});
+
+const composeSchema = z.object({
+  toEmail: z.string().trim().email(),
+  toName: z.string().trim().max(150).optional(),
+  subject: z.string().trim().min(1).max(300),
+  body: z.string().trim().min(1).max(20_000),
+  templateId: z.string().trim().optional(),
+  vars: z.record(z.string(), z.string()).optional(),
+});
+
+// Subject/body arrive already rendered from the compose screen (it lets
+// staff edit the filled-in template before sending) — `vars`/`templateId`
+// are only carried through for the log, not re-rendered here.
+adminRouter.post('/emails/compose', requireSection('emails'), async (req, res) => {
+  const parsed = composeSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const actor = await findUserById(req.user!.id);
+  await sendAndLog({
+    toEmail: parsed.data.toEmail, toName: parsed.data.toName,
+    subject: parsed.data.subject, body: parsed.data.body,
+    templateId: parsed.data.templateId, sentBy: actor?.name || req.user!.id,
+  });
+  await audit(req, 'email.compose.send', parsed.data.toEmail);
+  res.json({ success: true, data: { ok: true } });
+});
+
+adminRouter.get('/emails/log', requireSection('emails'), async (_req, res) => {
+  res.json({ success: true, data: await listEmailLog() });
 });
 
 // ── Pricing regions (region-wise consultation pricing) ──────────────────

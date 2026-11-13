@@ -12,10 +12,10 @@ import styles from './AuthPage.module.css';
 // Unified sign-in/sign-up: phone number (OTP), "Continue with Google", or
 // email/password login and registration. Both Phone and Google use Firebase,
 // while email auth runs through our direct API.
-type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login';
+type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login' | 'register-otp';
 
 export default function AuthPage() {
-  const { setPage, login, register, loginWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
+  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
   const [step, setStep] = useState<Step>('entry');
 
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -66,6 +66,15 @@ export default function AuthPage() {
   const [emailMode, setEmailMode] = useState<'signin' | 'register'>('signin');
   const [registerName, setRegisterName] = useState('');
   const [registerPhone, setRegisterPhone] = useState('');
+  // Set once the register-step OTP has been sent, so the verify step and its
+  // resend button know what number to confirm against without re-deriving it
+  // from registerPhone (which the user could still edit on the prior step).
+  const [pendingPhoneE164, setPendingPhoneE164] = useState('');
+  const [registerOtpCode, setRegisterOtpCode] = useState('');
+  const [registerOtpError, setRegisterOtpError] = useState('');
+  const [registerOtpLoading, setRegisterOtpLoading] = useState(false);
+  const [registerOtpSendLoading, setRegisterOtpSendLoading] = useState(false);
+  const [registerConfirmation, setRegisterConfirmation] = useState<ConfirmationResult | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -123,7 +132,7 @@ export default function AuthPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('auth/invalid-phone-number')) {
-        setPhoneError('Please enter a valid phone number with digits only.');
+        setPhoneError('Please enter a valid phone number — double-check the digit count for your country.');
       } else if (msg.includes('auth/too-many-requests') || msg.includes('quota')) {
         setPhoneError('SMS quota exceeded or too many requests. Please sign in with Google or Email.');
       } else if (msg.includes('reCAPTCHA') || msg.includes('captcha')) {
@@ -213,6 +222,9 @@ export default function AuthPage() {
     }
   };
 
+  // Phone is mandatory and must be OTP-verified before the account exists —
+  // so this only sends the code; the account itself is created in
+  // handleVerifyRegisterOtp, after the code is confirmed with Firebase.
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -224,20 +236,69 @@ export default function AuthPage() {
       setLoginError('Password must be at least 8 characters.');
       return;
     }
+    if (!registerPhone.trim()) {
+      setLoginError('Phone number is required — we use it to verify your account.');
+      return;
+    }
     setLoginLoading(true);
     try {
-      const phoneVal = registerPhone.trim() ? toE164(registerPhone, country.dialCode) : undefined;
-      const res = await register(
-        registerName.trim(),
-        loginEmail.trim(),
-        loginPassword,
-        phoneVal || '+910000000000'
-      );
-      redirectByRole(res.user.role);
+      const phoneVal = toE164(registerPhone, country.dialCode);
+      const result = await sendFirebasePhoneOtp(phoneVal, 'firebase-recaptcha-container');
+      setRegisterConfirmation(result);
+      setPendingPhoneE164(phoneVal);
+      setRegisterOtpCode('');
+      setRegisterOtpError('');
+      setStep('register-otp');
     } catch (err) {
-      setLoginError(err instanceof ApiRequestError ? err.message : (err instanceof Error ? err.message : 'Could not create account. That email or phone number may already be registered.'));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('auth/invalid-phone-number')) {
+        setLoginError('Please enter a valid phone number — double-check the digit count for your country.');
+      } else if (msg.includes('auth/too-many-requests') || msg.includes('quota')) {
+        setLoginError('SMS quota exceeded or too many requests. Please try again shortly.');
+      } else {
+        setLoginError(msg || 'Could not send a verification code to that phone number. Please try again.');
+      }
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleResendRegisterOtp = async () => {
+    setRegisterOtpError('');
+    setRegisterOtpSendLoading(true);
+    try {
+      const result = await sendFirebasePhoneOtp(pendingPhoneE164, 'firebase-recaptcha-container');
+      setRegisterConfirmation(result);
+      setRegisterOtpCode('');
+    } catch (err) {
+      setRegisterOtpError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.');
+    } finally {
+      setRegisterOtpSendLoading(false);
+    }
+  };
+
+  const handleVerifyRegisterOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterOtpError('');
+    setRegisterOtpLoading(true);
+    try {
+      if (!registerConfirmation) throw new Error('No active verification code — go back and resend it.');
+      const credential = await registerConfirmation.confirm(registerOtpCode.trim());
+      const idToken = await credential.user.getIdToken();
+      const res = await register(registerName.trim(), loginEmail.trim(), loginPassword, pendingPhoneE164);
+      // Account now exists — attach the Firebase-verified phone to it so it
+      // isn't just stored but marked phone_verified (see authService.ts's
+      // linkFirebasePhone). The OTP was already confirmed above; this just
+      // records that onto the newly created account.
+      await verifyPhoneWithFirebase(idToken);
+      redirectByRole(res.user.role);
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/code-expired') setRegisterOtpError('This code has expired — tap "Resend code" below for a new one.');
+      else if (code === 'auth/invalid-verification-code') setRegisterOtpError('That code is incorrect — double-check it and try again.');
+      else setRegisterOtpError(err instanceof ApiRequestError ? err.message : (err instanceof Error ? err.message : 'Could not verify your phone number. Please try again.'));
+    } finally {
+      setRegisterOtpLoading(false);
     }
   };
 
@@ -515,6 +576,67 @@ export default function AuthPage() {
               </motion.form>
             )}
 
+            {/* REGISTER-STEP PHONE VERIFICATION — account isn't created until
+                this code is confirmed (see handleVerifyRegisterOtp). */}
+            {step === 'register-otp' && (
+              <motion.form
+                key="register-otp-script"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleVerifyRegisterOtp}
+                className={styles.scriptForm}
+              >
+                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
+                  We sent a 6-digit code to {pendingPhoneE164}. Enter it below to create your account.
+                </p>
+                <div className={styles.inkField}>
+                  <label className={styles.inkLabel}>Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    className={styles.inkInput}
+                    placeholder="123456"
+                    value={registerOtpCode}
+                    onChange={e => setRegisterOtpCode(e.target.value.replace(/\D/g, ''))}
+                    required
+                    autoFocus
+                  />
+                </div>
+                {registerOtpError && (
+                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{registerOtpError}</p>
+                )}
+                <button
+                  type="submit"
+                  className={styles.waxSealBtn}
+                  disabled={registerOtpLoading || registerOtpCode.length !== 6}
+                  id="auth-register-otp-verify-btn"
+                >
+                  <span>{registerOtpLoading ? 'Verifying…' : 'Verify & Create Account'}</span>
+                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-2)' }}>
+                  <button
+                    type="button"
+                    onClick={handleResendRegisterOtp}
+                    disabled={registerOtpSendLoading}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                  >
+                    {registerOtpSendLoading ? 'Sending…' : "Didn't get it? Resend code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('email-login'); setEmailMode('register'); }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                  >
+                    Wrong number?
+                  </button>
+                </div>
+              </motion.form>
+            )}
+
             {/* NAME — only reached for a brand-new phone-only signup, since
                 Phone Auth's token carries no name claim (Google's does). */}
             {step === 'name' && (
@@ -673,15 +795,36 @@ export default function AuthPage() {
                 {emailMode === 'register' && (
                   <div className={styles.inkField}>
                     <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number (Optional)
+                      <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number
                     </label>
-                    <input
-                      type="tel"
-                      className={styles.inkInput}
-                      placeholder="Phone number"
-                      value={registerPhone}
-                      onChange={e => setRegisterPhone(e.target.value)}
-                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        className={styles.inkInput}
+                        style={{ flex: '0 0 auto', width: 100 }}
+                        value={country.iso2}
+                        onChange={e => {
+                          const match = findByIso2(e.target.value);
+                          if (match) setCountry(match);
+                        }}
+                        aria-label="Country code"
+                      >
+                        {COUNTRY_CODES.map(c => (
+                          <option key={c.iso2} value={c.iso2}>{flagEmoji(c.iso2)} +{c.dialCode}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        className={styles.inkInput}
+                        placeholder="Phone number"
+                        value={registerPhone}
+                        onChange={e => setRegisterPhone(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #8a8373)', marginTop: 4 }}>
+                      We'll text you a one-time code to verify this number before your account is created.
+                    </p>
                   </div>
                 )}
 
