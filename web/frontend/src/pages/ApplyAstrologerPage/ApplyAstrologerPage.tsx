@@ -26,8 +26,10 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 export default function ApplyAstrologerPage() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, currentUser } = useAppContext();
-  const [status, setStatus] = React.useState<'checking' | 'form' | 'submitted' | 'PENDING' | 'APPROVED' | 'REJECTED'>('checking');
+  const { isLoggedIn, currentUser } = useAppContext();
+  // Anonymous visitors skip straight to the form — there's no account to
+  // check an "already applied" status against.
+  const [status, setStatus] = React.useState<'checking' | 'form' | 'submitted' | 'PENDING' | 'APPROVED' | 'REJECTED'>(isLoggedIn ? 'checking' : 'form');
 
   const [fullName, setFullName] = React.useState('');
   const [phoneNumber, setPhoneNumber] = React.useState('');
@@ -42,11 +44,7 @@ export default function ApplyAstrologerPage() {
   const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isLoggedIn) {
-      setPendingAction('apply-astrologer');
-      setShowLoginModal(true);
-      return;
-    }
+    if (!isLoggedIn) return;
     setFullName(currentUser?.name || '');
     setEmail(currentUser?.email || '');
     setPhoneNumber(currentUser?.phoneNumber || '');
@@ -81,7 +79,7 @@ export default function ApplyAstrologerPage() {
     }
   };
 
-  if (!isLoggedIn || status === 'checking') {
+  if (status === 'checking') {
     return <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`} style={{ textAlign: 'center', padding: '140px 20px' }}>Loading…</div>;
   }
 

@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
-import { findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
+import { createUser, findUserByEmail, findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
 import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
 import { bus } from '../websocket/bus.ts';
@@ -12,7 +12,7 @@ import { countCompletedByAstrologerAndType, countForUser, countInProgress, findA
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { register, AuthError } from '../services/authService.ts';
+import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
@@ -240,7 +240,25 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  const applicant = await findUserById(application.user_id);
+
+  // Anonymous applications (user_id null) have no account yet — match one by
+  // the applied email if it already exists, otherwise create one on approval
+  // so there's something to attach the ASTROLOGIST role / catalog row to.
+  let applicant = application.user_id
+    ? await findUserById(application.user_id)
+    : (application.email ? await findUserByEmail(application.email) : undefined);
+  let createdAccount = false;
+  if (!applicant && parsed.data.decision === 'APPROVED') {
+    if (!application.email) return fail(res, 422, 'VALIDATION_ERROR', 'Application has no email to create an account from');
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    applicant = await createUser({
+      name: application.full_name || application.email,
+      email: application.email,
+      passwordHash,
+      phoneNumber: application.phone_number || undefined,
+    });
+    createdAccount = true;
+  }
   if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account not found');
 
   // Atomic PENDING->decision transition is the real guard (decideApplication
@@ -275,6 +293,9 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
     // Without this, the new astrologer can't go online / accept anything
     // until the process restarts — see registerNewAstrologer's own comment.
     await registerNewAstrologer(updated ?? catalogRow);
+    // Freshly created account has an unusable random password — send them a
+    // reset link (same flow as "forgot password") so they can actually log in.
+    if (createdAccount) await requestPasswordReset(applicant.email);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });
