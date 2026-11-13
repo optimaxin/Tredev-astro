@@ -28,24 +28,31 @@ CREATE TABLE IF NOT EXISTS ai_traffic_reclassification (
   PRIMARY KEY (table_name, row_id, migration)
 );
 
--- ── 1. internal-script session prefixes (any date) ───────────────────
+-- ── 1. internal-script session prefixes and script user ids (any date) ─
+-- The user-id list is 058's own; '-' is the "no user" sentinel (11 rows
+-- from a local timing probe on 2026-11-12 22:26-22:29 UTC carry it).
 WITH changed AS (
   UPDATE ai_usage u
-  SET traffic_source = CASE split_part(COALESCE(u.conversation_id, ''), '-', 1)
-      WHEN 'eval' THEN 'evaluation'
-      WHEN 'profile' THEN 'profiling'
-      WHEN 'sec' THEN 'security'
-      WHEN 'pytest' THEN 'test'
+  SET traffic_source = CASE
+      WHEN u.user_id IN ('sec-user-a', 'sec-user-b') THEN 'security'
+      WHEN split_part(COALESCE(u.conversation_id, ''), '-', 1) = 'eval' THEN 'evaluation'
+      WHEN split_part(COALESCE(u.conversation_id, ''), '-', 1) = 'profile' THEN 'profiling'
+      WHEN split_part(COALESCE(u.conversation_id, ''), '-', 1) = 'sec' THEN 'security'
+      WHEN split_part(COALESCE(u.conversation_id, ''), '-', 1) = 'pytest' THEN 'test'
       ELSE 'debug'
     END
   WHERE u.traffic_source = 'user'
-    AND split_part(COALESCE(u.conversation_id, ''), '-', 1) IN
+    AND (
+      split_part(COALESCE(u.conversation_id, ''), '-', 1) IN
         ('eval', 'profile', 'sec', 'pytest', 'dbg', 'verify', 'connection', 'pipeline', 'bench',
          'e2e', 'trace', 'style', 'tokenmeter', 'local')
+      OR u.user_id IN ('-', 'nvidia-verify', 'connection-test', 'pipeline-verify-user',
+                       'sec-user-a', 'sec-user-b')
+    )
   RETURNING u.id::text AS row_id, u.traffic_source AS new_source
 )
 INSERT INTO ai_traffic_reclassification (table_name, row_id, old_source, new_source, reason, migration)
-SELECT 'ai_usage', row_id, 'user', new_source, 'internal session-id prefix', '061' FROM changed
+SELECT 'ai_usage', row_id, 'user', new_source, 'internal session-id prefix or script user id', '061' FROM changed
 ON CONFLICT DO NOTHING;
 
 -- ── 2. historical rows tied to no registered account ─────────────────
