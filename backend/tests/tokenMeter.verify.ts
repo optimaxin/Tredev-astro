@@ -4,7 +4,7 @@
  *   DATABASE_URL=postgresql://...@127.0.0.1:<port>/<db> JWT_SECRET=x REFRESH_TOKEN_SECRET=x \
  *     npx tsx tests/tokenMeter.verify.ts
  *
- * The database must already have the migrations applied (through 061). This
+ * The database must already have the migrations applied (through 062). This
  * script inserts rows with known answers, runs the real repository functions
  * the admin Token Meter uses, and asserts every figure. It refuses to run
  * against anything but localhost because it writes rows.

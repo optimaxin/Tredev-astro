@@ -48,6 +48,9 @@ export interface ApiAstrologerProfile {
   experienceYears: number;
   consultationCount: number;
   commissionPercent: number;
+  // Percentage discount currently active for this astrologer (0 = none).
+  // The backend's astrologer model returns it; AstrologersPage reads it.
+  activeOfferPercent: number;
 }
 
 export interface ApiAstrologerRevenue {

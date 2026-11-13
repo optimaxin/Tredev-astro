@@ -15,7 +15,7 @@
 --
 -- Rows created from 2026-11-13 on are only touched by step 1 (prefix rules).
 -- Every change is recorded in ai_traffic_reclassification, so the migration is
--- reversible: backend/migrations/rollback/061_down.sql restores the old values.
+-- reversible: backend/migrations/rollback/062_down.sql restores the old values.
 -- Nothing is deleted.
 
 CREATE TABLE IF NOT EXISTS ai_traffic_reclassification (
@@ -53,7 +53,7 @@ WITH changed AS (
   RETURNING u.id::text AS row_id, u.traffic_source AS new_source
 )
 INSERT INTO ai_traffic_reclassification (table_name, row_id, old_source, new_source, reason, migration)
-SELECT 'ai_usage', row_id, 'user', new_source, 'internal session-id prefix or script user id', '061' FROM changed
+SELECT 'ai_usage', row_id, 'user', new_source, 'internal session-id prefix or script user id', '062' FROM changed
 ON CONFLICT DO NOTHING;
 
 -- ── 2. historical rows tied to no registered account ─────────────────
@@ -69,7 +69,7 @@ WITH changed AS (
   RETURNING u.id::text AS row_id
 )
 INSERT INTO ai_traffic_reclassification (table_name, row_id, old_source, new_source, reason, migration)
-SELECT 'ai_usage', row_id, 'user', 'unknown', 'pre-2026-11-13, no registered account', '061' FROM changed
+SELECT 'ai_usage', row_id, 'user', 'unknown', 'pre-2026-11-13, no registered account', '062' FROM changed
 ON CONFLICT DO NOTHING;
 
 -- ── 3. ai_evaluations follow the usage row of the same request ───────
@@ -89,7 +89,7 @@ WITH src AS (
   RETURNING e.id::text AS row_id, e.traffic_source AS new_source
 )
 INSERT INTO ai_traffic_reclassification (table_name, row_id, old_source, new_source, reason, migration)
-SELECT 'ai_evaluations', row_id, 'user', new_source, 'label of the matching ai_usage request', '061' FROM changed
+SELECT 'ai_evaluations', row_id, 'user', new_source, 'label of the matching ai_usage request', '062' FROM changed
 ON CONFLICT DO NOTHING;
 
 -- Evaluations with no usage row: same prefix rules, then the same
@@ -118,6 +118,6 @@ WITH changed AS (
   RETURNING e.id::text AS row_id, e.traffic_source AS new_source
 )
 INSERT INTO ai_traffic_reclassification (table_name, row_id, old_source, new_source, reason, migration)
-SELECT 'ai_evaluations', row_id, 'user', new_source, 'no usage row: prefix or no registered account', '061'
+SELECT 'ai_evaluations', row_id, 'user', new_source, 'no usage row: prefix or no registered account', '062'
 FROM changed
 ON CONFLICT DO NOTHING;

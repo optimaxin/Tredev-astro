@@ -1,6 +1,6 @@
 -- Reverses 058_ai_traffic_source_and_grounding.sql. NOT run automatically.
 -- DESTRUCTIVE: drops the traffic labels and the per-turn grounding columns
--- (their data is lost). Take a backup first and reverse 061 before this.
+-- (their data is lost). Take a backup first and reverse 062 before this.
 -- Only needed if the Token Meter must go back to the pre-058 release: that
 -- code ignores these columns, so leaving them in place is also safe.
 DROP INDEX IF EXISTS ai_usage_traffic_created_idx;
