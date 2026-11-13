@@ -1,17 +1,18 @@
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
-import { findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
+import { createUser, findUserByEmail, findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, findAstrologerById, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { bus } from '../websocket/bus.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { countCompletedByAstrologerAndType, countForUser, countInProgress, findAllForAstrologer, findAllForUser, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { register, AuthError } from '../services/authService.ts';
+import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
@@ -145,6 +146,23 @@ adminRouter.patch('/users/:id/status', requireSection('users'), async (req, res)
     return fail(res, 403, 'FORBIDDEN', 'Only an admin can change a Staff or Admin account');
   }
   await updateUserStatus(target.id, parsed.data.status);
+  // Suspending/reactivating an astrologer's account should also pull them
+  // out of / back into the public bookable catalog — otherwise a suspended
+  // astrologer (blocked from logging in) still shows up to users as if
+  // nothing happened, same gap PATCH /users/:id/role already closes for a
+  // role change (see deactivateAstrologerByUserId above).
+  if (target.role === 'ASTROLOGIST') {
+    const astrologer = await findAstrologerByUserId(target.id);
+    if (astrologer) {
+      await setAstrologerActive(astrologer.id, parsed.data.status === 'ACTIVE');
+      // Live-updates anyone currently browsing the public site (and the
+      // staff panel) without a refresh — see DELETE /astrologers/:id's own
+      // comment on why this matters. Fired either direction; the listener
+      // just re-fetches the authoritative list rather than trying to patch
+      // it by hand client-side.
+      bus.emitTyped('astrologer:catalog_changed', { astrologerId: astrologer.id });
+    }
+  }
   await audit(req, `user.status.${parsed.data.status.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
 });
@@ -222,7 +240,25 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  const applicant = await findUserById(application.user_id);
+
+  // Anonymous applications (user_id null) have no account yet — match one by
+  // the applied email if it already exists, otherwise create one on approval
+  // so there's something to attach the ASTROLOGIST role / catalog row to.
+  let applicant = application.user_id
+    ? await findUserById(application.user_id)
+    : (application.email ? await findUserByEmail(application.email) : undefined);
+  let createdAccount = false;
+  if (!applicant && parsed.data.decision === 'APPROVED') {
+    if (!application.email) return fail(res, 422, 'VALIDATION_ERROR', 'Application has no email to create an account from');
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    applicant = await createUser({
+      name: application.full_name || application.email,
+      email: application.email,
+      passwordHash,
+      phoneNumber: application.phone_number || undefined,
+    });
+    createdAccount = true;
+  }
   if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account not found');
 
   // Atomic PENDING->decision transition is the real guard (decideApplication
@@ -257,6 +293,9 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
     // Without this, the new astrologer can't go online / accept anything
     // until the process restarts — see registerNewAstrologer's own comment.
     await registerNewAstrologer(updated ?? catalogRow);
+    // Freshly created account has an unusable random password — send them a
+    // reset link (same flow as "forgot password") so they can actually log in.
+    if (createdAccount) await requestPasswordReset(applicant.email);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
   res.json({ success: true, data: { ok: true } });
@@ -298,13 +337,24 @@ adminRouter.get('/astrologers/status', requireSection('astrologers'), async (_re
   // this, only the astrologer's own /me/boost view.
   const data = await Promise.all(rows.map(async r => {
     const boostPayoutOverridePercent = overrideById.get(r.id) ?? null;
+    const raw = rawById.get(r.id);
+    // An "orphan" catalog row (no linked user account — seed data, or an
+    // account later deleted/role-changed) is_active = 1 still passes
+    // listPublicAstrologers()'s filter, so it's bookable and in `rows`
+    // already — but `r` itself only ever carries {id, status, activeCount,
+    // maxConcurrent, queueLength}, no name. With no account to match it to,
+    // the staff admin page (which iterates accounts, not catalog rows) can
+    // never display or manage it without this — same reasoning as the
+    // `removed` block below, just for the is_active = 1 case.
+    const isOrphan = raw && raw.user_id == null;
     return {
       ...r,
+      ...(isOrphan ? toPublicAstrologerProfile(raw) : {}),
       activeBoost: !!(await getActiveBoost(r.id)),
       boostPayoutOverridePercent,
       effectiveBoostPayoutSharePercent: boostPayoutOverridePercent ?? defaultPayoutShare,
-      commissionPercent: rawById.get(r.id)?.commission_percent ?? 100,
-      isActive: (rawById.get(r.id)?.is_active ?? 1) === 1,
+      commissionPercent: raw?.commission_percent ?? 100,
+      isActive: (raw?.is_active ?? 1) === 1,
     };
   }));
   // Removed astrologers are filtered out of listPublicAstrologers() entirely,
@@ -436,8 +486,36 @@ adminRouter.patch('/astrologers/:id/active', requireSection('astrologers'), asyn
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const row = await setAstrologerActive(id, parsed.data.active);
   if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  bus.emitTyped('astrologer:catalog_changed', { astrologerId: id });
   await audit(req, parsed.data.active ? 'astrologer.restore' : 'astrologer.remove', row.name);
   res.json({ success: true, data: { id: row.id, isActive: row.is_active === 1 } });
+});
+
+// Real, permanent delete — distinct from Remove above (is_active flip).
+// See deleteAstrologerCascade's own comment: this also wipes their
+// consultation/review/booking history, deliberately, since that's the whole
+// point of this button existing separately from Remove.
+adminRouter.delete('/astrologers/:id', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  // Unfiltered lookup — a removed (is_active = 0) astrologer must still be
+  // deletable, unlike findAstrologerById's public-facing is_active = 1 gate.
+  const existing = await findAstrologerByIdRaw(id);
+  if (!existing) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  const deleted = await deleteAstrologerCascade(id);
+  if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  // A linked real account loses the Astrologer role (reverts to plain USER)
+  // rather than being deleted itself — the person's login/history stays
+  // intact, they just stop showing up anywhere in the staff Astrologers
+  // page, which filters strictly by role === ASTROLOGIST.
+  if (existing.user_id) await updateUserRole(existing.user_id, 'USER');
+  // Tells every connected client — including anonymous public-site
+  // visitors, who are all joined to PUBLIC_ROOM (see sockets.ts) — to drop
+  // this astrologer from whatever roster they're looking at right now,
+  // without needing a page refresh.
+  bus.emitTyped('astrologer:catalog_changed', { astrologerId: id });
+  await audit(req, 'astrologer.delete', existing.name);
+  res.json({ success: true, data: { id, deleted: true } });
 });
 
 // Direct admin-onboarding, re-added per explicit request (see the removal

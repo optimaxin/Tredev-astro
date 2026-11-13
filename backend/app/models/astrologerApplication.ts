@@ -2,7 +2,7 @@ export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface AstrologerApplicationRow {
   id: string;
-  user_id: string;
+  user_id: string | null;
   expertise: string;
   experience: string;
   status: ApplicationStatus;
@@ -19,9 +19,9 @@ export interface AstrologerApplicationRow {
 
 export interface PublicAstrologerApplication {
   id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
   expertise: string;
   experience: string;
   status: ApplicationStatus;

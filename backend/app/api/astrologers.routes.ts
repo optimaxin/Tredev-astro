@@ -286,13 +286,16 @@ const applicationSchema = z.object({
   driveLink: z.string().trim().url().max(500).nullable().default(null),
 });
 
-astrologersCatalogRouter.post('/applications', requireAuth, async (req, res) => {
+// optionalAuth: anonymous visitors can submit this form too — a logged-in
+// applicant's duplicate-pending check still applies, but there's no account
+// to check an anonymous one against, so that's simply skipped for them.
+astrologersCatalogRouter.post('/applications', optionalAuth, async (req, res) => {
   const parsed = applicationSchema.safeParse(req.body);
   if (!parsed.success) return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
-  if (await findPendingApplicationForUser(req.user!.id)) {
+  if (req.user && await findPendingApplicationForUser(req.user.id)) {
     return res.status(409).json({ success: false, error: { code: 'ALREADY_PENDING', message: 'You already have a pending application' } });
   }
-  const row = await createApplication({ userId: req.user!.id, ...parsed.data });
+  const row = await createApplication({ userId: req.user?.id, ...parsed.data });
   res.status(201).json({ success: true, data: row });
 });
 

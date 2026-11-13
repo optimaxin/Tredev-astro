@@ -1,4 +1,4 @@
-import { query, queryOne } from '../core/db.ts';
+import { query, queryOne, withTransaction } from '../core/db.ts';
 import type { AstrologerCatalogRow } from '../models/astrologer.ts';
 
 // Used when approving an astrologer application — turns a real user account
@@ -236,6 +236,32 @@ export async function setActiveOfferPercent(id: number, percent: number): Promis
 // leave a now-orphaned catalog row still publicly listed.
 export async function deactivateAstrologerByUserId(userId: string): Promise<void> {
   await query('UPDATE astrologers SET is_active = 0 WHERE user_id = $1', [userId]);
+}
+
+// Real, permanent DELETE — distinct from setAstrologerActive's soft
+// Remove/Restore flag flip above. Most astrologer_id columns (consultations,
+// reviews, queue_entries, favorites, boosts, user_astrologer_loyalty,
+// astrologer_notifications) have no FK constraint at all, so this explicitly
+// cleans each one up first (in one transaction, so a mid-way failure never
+// leaves a half-deleted astrologer) rather than relying on cascades that
+// don't exist for most of these tables. boost_attributions isn't listed
+// separately — it has a real ON DELETE CASCADE from boosts(id), so deleting
+// boosts here takes care of it. Staff-facing confirm copy (AstrologersPage)
+// is explicit that this permanently destroys that history — Remove
+// (is_active=0) stays the non-destructive option for anything with real,
+// worth-keeping history.
+export async function deleteAstrologerCascade(id: number): Promise<boolean> {
+  return withTransaction(async client => {
+    const existing = await client.query('SELECT 1 FROM astrologers WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return false;
+    for (const table of ['consultations', 'reviews', 'queue_entries', 'favorites', 'boosts', 'user_astrologer_loyalty', 'astrologer_notifications']) {
+      await client.query(`DELETE FROM ${table} WHERE astrologer_id = $1`, [id]);
+    }
+    // astrologer_region_prices and consultation_slots both have ON DELETE
+    // CASCADE, so no manual cleanup needed for those.
+    await client.query('DELETE FROM astrologers WHERE id = $1', [id]);
+    return true;
+  });
 }
 
 export function findAstrologerById(id: number): Promise<AstrologerCatalogRow | undefined> {

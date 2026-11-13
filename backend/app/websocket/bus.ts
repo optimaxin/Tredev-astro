@@ -27,6 +27,14 @@ interface BusEvents {
   'queue:expired': [{ entry: QueueEntry; recommendations: unknown[] }];
   'notification:created': [AstrologerNotification];
   'astrologer:away': [{ astrologerId: number }];
+  // Fired whenever staff suspends/reactivates/removes/restores/deletes an
+  // astrologer (is_active flip, or a hard delete) — anyone browsing the
+  // public site or staff panel right now should re-fetch the roster rather
+  // than keep showing a stale list. Deliberately just the id, not the new
+  // state: the listener always re-fetches the authoritative list (which
+  // already correctly excludes is_active = 0 rows) instead of trying to
+  // patch a cached array by hand.
+  'astrologer:catalog_changed': [{ astrologerId: number }];
   'astrologer:idle-warning': [{ astrologerId: number }];
   'chat:message': [ChatMessage];
   'chat:expiring-soon': [{ consultationId: string; remainingSeconds: number }];

@@ -96,6 +96,21 @@ export const config = {
     // here would only hold an Express connection open on a dead service.
     timeoutMs: Number(process.env.PREMIUM_REPORT_TIMEOUT_MS) || 30_000,
   },
+  nvidia: {
+    // NVIDIA NIM (OpenAI-compatible) — rewrites the template-generated Kundli
+    // descriptions (kundliAnalysis.ts, dashaPredictions.ts, etc.) into natural
+    // conversational Hindi/English. Optional, like cashfree/aws above:
+    // kundliDescriptionRewriter.ts skips straight to the original template
+    // text (no error, no delay) when this isn't set, so the Kundli feature
+    // never depends on it being configured.
+    apiKey: process.env.NVIDIA_API_KEY,
+    baseUrl: (process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1').replace(/\/+$/, ''),
+    primaryModel: process.env.NVIDIA_PRIMARY_MODEL || 'mistralai/mistral-large-4-1t-a52b',
+    fallbackModel: process.env.NVIDIA_FALLBACK_MODEL || 'deepseek-ai/deepseek-v4.1-flash',
+    temperature: Number(process.env.LLM_TEMPERATURE) || 0.3,
+    timeoutMs: (Number(process.env.LLM_TIMEOUT) || 30) * 1000,
+    maxRetries: Number(process.env.LLM_MAX_RETRIES) || 2,
+  },
   zeptomail: {
     // Transactional email (password reset, etc.) — optional like cashfree/aws
     // above; emailService.ts no-ops with a console warning when unset so

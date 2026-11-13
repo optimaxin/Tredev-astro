@@ -2917,8 +2917,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [astrologerFilter, setAstrologerFilter] = useState('All');
 
   // Navigation & Cart States
+  // Every other "page" here is pure in-memory state with no real URL (see
+  // the pushState/replaceState calls below, which pass '' for every page
+  // except this one) — this app has no router. Giving every page a real URL
+  // would be a much bigger, riskier change to this shared mechanism, so this
+  // is deliberately narrow: just the one page staff specifically asked for
+  // a real, shareable/bookmarkable link for. wrangler.jsonc's
+  // `not_found_handling: "single-page-application"` already makes a fresh
+  // load of this path work (serves index.html instead of a 404).
+  const APPLY_ASTROLOGER_PATH = '/apply-astrologer';
   const [page, setPageState] = useState(() => {
-    return (window.history.state && window.history.state.page) || 'home';
+    if (window.history.state && window.history.state.page) return window.history.state.page;
+    if (window.location.pathname === APPLY_ASTROLOGER_PATH) return 'apply-astrologer';
+    return 'home';
   });
   const [selectedId, setSelectedIdState] = useState<number | string | null>(() => {
     return (window.history.state && window.history.state.selectedId) || null;
@@ -2973,7 +2984,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener('popstate', handlePopState);
 
     if (!window.history.state) {
-      window.history.replaceState({ page, selectedId, concern }, '', '');
+      window.history.replaceState({ page, selectedId, concern }, '', page === 'apply-astrologer' ? APPLY_ASTROLOGER_PATH : '/');
     }
 
     return () => {
@@ -2994,7 +3005,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    window.history.pushState({ page, selectedId, concern }, '', '');
+    window.history.pushState({ page, selectedId, concern }, '', page === 'apply-astrologer' ? APPLY_ASTROLOGER_PATH : '/');
   }, [page, selectedId, concern]);
 
   // Theme State — DEFAULT IS LIGHT
