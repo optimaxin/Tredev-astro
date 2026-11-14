@@ -19,9 +19,11 @@ export default function EmailsPage() {
   const [tab, setTab] = useState<Tab>('compose');
   const [templates, setTemplates] = useState<ApiEmailTemplate[]>([]);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  const [identities, setIdentities] = useState<{ key: string; name: string }[]>([]);
 
   useEffect(() => {
     adminService.listEmailTemplates().then(rows => { setTemplates(rows); setTemplatesLoaded(true); }).catch(() => setTemplatesLoaded(true));
+    adminService.listEmailIdentities().then(setIdentities).catch(() => {});
   }, []);
 
   const TABS: { key: Tab; label: string }[] = [
@@ -45,7 +47,7 @@ export default function EmailsPage() {
         ))}
       </div>
 
-      {tab === 'compose' && <ComposeTab templates={templates} />}
+      {tab === 'compose' && <ComposeTab templates={templates} identities={identities} />}
       {tab === 'templates' && <TemplatesTab templates={templates} loaded={templatesLoaded} onChange={setTemplates} />}
       {tab === 'log' && <LogTab />}
       {tab === 'settings' && <SettingsTab />}
@@ -53,8 +55,9 @@ export default function EmailsPage() {
   );
 }
 
-function ComposeTab({ templates }: { templates: ApiEmailTemplate[] }) {
+function ComposeTab({ templates, identities }: { templates: ApiEmailTemplate[]; identities: { key: string; name: string }[] }) {
   const [templateId, setTemplateId] = useState('');
+  const [fromIdentity, setFromIdentity] = useState('support');
   const [toEmail, setToEmail] = useState('');
   const [toName, setToName] = useState('');
   const [subject, setSubject] = useState('');
@@ -74,7 +77,7 @@ function ComposeTab({ templates }: { templates: ApiEmailTemplate[] }) {
     if (!toEmail.trim() || !subject.trim() || !body.trim()) { setError('Recipient email, subject, and body are required.'); return; }
     setSending(true);
     try {
-      await adminService.composeEmail({ toEmail: toEmail.trim(), toName: toName.trim() || undefined, subject, body, templateId: templateId || undefined });
+      await adminService.composeEmail({ toEmail: toEmail.trim(), toName: toName.trim() || undefined, subject, body, templateId: templateId || undefined, fromIdentity });
       setSent(true);
     } catch (err) {
       setError(err instanceof AdminApiError ? err.message : 'Could not send this email.');
@@ -85,6 +88,12 @@ function ComposeTab({ templates }: { templates: ApiEmailTemplate[] }) {
 
   return (
     <div style={{ maxWidth: 640 }}>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Send As</label>
+        <select style={inputStyle} value={fromIdentity} onChange={e => setFromIdentity(e.target.value)}>
+          {identities.map(i => <option key={i.key} value={i.key}>{i.name}</option>)}
+        </select>
+      </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Start from a template (optional)</label>
         <select style={inputStyle} value={templateId} onChange={e => applyTemplate(e.target.value)}>

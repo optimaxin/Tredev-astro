@@ -48,6 +48,8 @@ import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent
 import { createEmailTemplate, deleteEmailTemplate, findEmailTemplateById, listEmailTemplates, updateEmailTemplate } from '../repositories/emailTemplateRepository.ts';
 import { listEmailLog } from '../repositories/emailLogRepository.ts';
 import { notifyEvent, sendAndLog } from '../services/notificationService.ts';
+import { EMAIL_IDENTITY_KEYS } from '../services/emailService.ts';
+import { config } from '../core/config.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPricingRegions, updatePricingRegion } from '../repositories/pricingRegionRepository.ts';
@@ -314,6 +316,7 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
       user: { email: applicant.email, name: applicant.name },
       alsoHeadAstrologer: parsed.data.decision === 'APPROVED',
       alsoAdmin: true,
+      from: 'hiring',
     }).catch(() => {});
   }
   res.json({ success: true, data: { ok: true } });
@@ -1021,6 +1024,14 @@ adminRouter.get('/emails/templates', requireSection('emails'), async (_req, res)
   res.json({ success: true, data: await listEmailTemplates() });
 });
 
+// The "Send As" choices for Compose — each key maps to a configured address
+// in config.zeptomail.identities (see its own comment for the fallback
+// behaviour when a dedicated mailbox hasn't been set up yet).
+adminRouter.get('/emails/identities', requireSection('emails'), async (_req, res) => {
+  const data = EMAIL_IDENTITY_KEYS.map(key => ({ key, name: config.zeptomail.identities[key].name }));
+  res.json({ success: true, data });
+});
+
 const templateSchema = z.object({
   name: z.string().trim().min(2).max(150),
   subject: z.string().trim().min(1).max(300),
@@ -1059,6 +1070,7 @@ const composeSchema = z.object({
   body: z.string().trim().min(1).max(20_000),
   templateId: z.string().trim().optional(),
   vars: z.record(z.string(), z.string()).optional(),
+  fromIdentity: z.enum(EMAIL_IDENTITY_KEYS as [string, ...string[]]).optional(),
 });
 
 // Subject/body arrive already rendered from the compose screen (it lets
@@ -1072,6 +1084,7 @@ adminRouter.post('/emails/compose', requireSection('emails'), async (req, res) =
     toEmail: parsed.data.toEmail, toName: parsed.data.toName,
     subject: parsed.data.subject, body: parsed.data.body,
     templateId: parsed.data.templateId, sentBy: actor?.name || req.user!.id,
+    from: parsed.data.fromIdentity as import('../services/emailService.ts').EmailIdentityKey | undefined,
   });
   await audit(req, 'email.compose.send', parsed.data.toEmail);
   res.json({ success: true, data: { ok: true } });

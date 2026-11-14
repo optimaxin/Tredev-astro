@@ -135,7 +135,7 @@ export async function requestPasswordReset(email: string): Promise<{ devResetTok
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
   const resetLink = `${config.clientOrigins[0]}/reset-password?token=${raw}`;
-  await sendEmail(row.email, 'Reset your TredevAastro password', `
+  await sendEmail(row.email, 'Reset your TredevaAstro password', `
     <p>We received a request to reset your password.</p>
     <p><a href="${resetLink}">Click here to reset your password</a> (expires in 30 minutes).</p>
     <p>If you didn't request this, you can ignore this email.</p>

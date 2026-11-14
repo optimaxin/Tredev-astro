@@ -649,8 +649,9 @@ export const adminService = {
     request<ApiEmailTemplate>(`/emails/templates/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteEmailTemplate: (id: string) =>
     request<{ id: string; deleted: boolean }>(`/emails/templates/${id}`, { method: 'DELETE' }),
-  composeEmail: (input: { toEmail: string; toName?: string; subject: string; body: string; templateId?: string }) =>
+  composeEmail: (input: { toEmail: string; toName?: string; subject: string; body: string; templateId?: string; fromIdentity?: string }) =>
     request<{ ok: boolean }>('/emails/compose', { method: 'POST', body: JSON.stringify(input) }),
+  listEmailIdentities: () => request<{ key: string; name: string }[]>('/emails/identities'),
   listEmailLog: () => request<ApiEmailLogEntry[]>('/emails/log'),
 
   // `percent: null` clears the override, falling back to the platform default.

@@ -1,4 +1,5 @@
-import { plainTextToEmailHtml, renderTemplate, sendEmail } from './emailService.ts';
+import { config } from '../core/config.ts';
+import { plainTextToEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
 import { insertEmailLog } from '../repositories/emailLogRepository.ts';
 import { getNotifyEmails } from '../repositories/platformSettingsRepository.ts';
 import type { EmailTemplateRow } from '../repositories/emailTemplateRepository.ts';
@@ -7,12 +8,15 @@ import type { EmailTemplateRow } from '../repositories/emailTemplateRepository.t
 // path both the staff "compose" screen and notifyEvent below go through, so
 // every email this app sends through a template shows up in the same log.
 // `body` is plain text (what staff actually typed/edited) — this is the one
-// place it gets turned into the HTML ZeptoMail actually sends.
+// place it gets turned into the HTML ZeptoMail actually sends. `from`
+// defaults to 'support' (general TredevaAstro address) when not given.
 export async function sendAndLog(input: {
   toEmail: string; toName?: string | null; subject: string; body: string;
   templateId?: string | null; eventKey?: string | null; sentBy?: string | null;
+  from?: EmailIdentityKey;
 }): Promise<void> {
-  const ok = await sendEmail(input.toEmail, input.subject, plainTextToEmailHtml(input.body)).catch(() => false);
+  const identity = config.zeptomail.identities[input.from ?? 'support'];
+  const ok = await sendEmail(input.toEmail, input.subject, plainTextToEmailHtml(input.body), identity).catch(() => false);
   await insertEmailLog({
     toEmail: input.toEmail, toName: input.toName, subject: input.subject,
     templateId: input.templateId, eventKey: input.eventKey, sentBy: input.sentBy,
@@ -34,6 +38,7 @@ export async function notifyEvent(params: {
   user: { email: string; name: string };
   alsoHeadAstrologer?: boolean;
   alsoAdmin?: boolean;
+  from?: EmailIdentityKey;
 }): Promise<void> {
   const { eventKey, template, vars, user } = params;
   const recipients: { email: string; name: string }[] = [{ email: user.email, name: user.name }];
@@ -48,7 +53,7 @@ export async function notifyEvent(params: {
       toEmail: r.email, toName: r.name,
       subject: renderTemplate(template.subject, mergedVars),
       body: renderTemplate(template.body, mergedVars),
-      templateId: template.id, eventKey,
+      templateId: template.id, eventKey, from: params.from,
     });
   }
 }

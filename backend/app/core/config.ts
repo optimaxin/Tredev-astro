@@ -119,7 +119,29 @@ export const config = {
     // whole. Set in backend/.env (local) and Render's dashboard (production).
     apiKey: process.env.ZEPTOMAIL_API_KEY,
     fromAddress: process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
-    fromName: process.env.ZEPTOMAIL_FROM_NAME || 'TredevAastro',
+    fromName: process.env.ZEPTOMAIL_FROM_NAME || 'TredevaAstro',
+    // Per-purpose "send as" identities (notificationService.ts, and the
+    // Compose screen's "Send As" picker) — e.g. a hiring decision mails from
+    // "TredevaAstro Hiring Team", not the generic noreply address. Each one
+    // falls back to the single address/name above when its own env var isn't
+    // set, so this works out of the box with zero extra config; set the
+    // *_ADDRESS vars once real mailboxes/verified senders for them exist in
+    // ZeptoMail (each sending address must be verified there before it can
+    // actually send, same as the default one already is).
+    identities: {
+      support: {
+        address: process.env.ZEPTOMAIL_SUPPORT_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
+        name: process.env.ZEPTOMAIL_SUPPORT_NAME || 'TredevaAstro Support',
+      },
+      hiring: {
+        address: process.env.ZEPTOMAIL_HIRING_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
+        name: process.env.ZEPTOMAIL_HIRING_NAME || 'TredevaAstro Hiring Team',
+      },
+      notifications: {
+        address: process.env.ZEPTOMAIL_NOTIFICATIONS_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
+        name: process.env.ZEPTOMAIL_NOTIFICATIONS_NAME || 'TredevaAstro Notifications',
+      },
+    },
   },
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project
