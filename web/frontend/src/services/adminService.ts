@@ -107,8 +107,11 @@ export interface ApiUserRecord {
 }
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
+// — was missing 'applications' (hence no "Hiring" toggle here), 'tokens',
+// and 'evaluation' entirely; a STAFF account could never be granted those
+// sections even though the backend has always supported it.
 export const ADMIN_SECTIONS = [
-  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners', 'pooja', 'emails',
+  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
