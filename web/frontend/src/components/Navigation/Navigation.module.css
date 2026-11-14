@@ -143,6 +143,7 @@
   align-items: center;
   gap: 8px;
   height: 100%;
+  min-width: 0;
 }
 
 /* CTAs */
@@ -462,6 +463,10 @@
   position: relative;
   display: flex;
   align-items: center;
+  /* Lets this shrink instead of forcing the pill wider than the navbar —
+     a flex item's default min-width is "auto" (its content's natural
+     width), which overrides max-width/overflow on anything inside it. */
+  min-width: 0;
 }
 
 .profileSelectorBtn {
@@ -477,6 +482,10 @@
   align-items: center;
   gap: 6px;
   transition: all var(--transition-base);
+  /* A long name truncates (see .profileNameText) instead of pushing this
+     pill past the navbar's rounded edge. */
+  max-width: 160px;
+  min-width: 0;
 }
 
 .profileSelectorBtn:hover {
@@ -505,6 +514,10 @@
 
 .profileNameText {
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .profileArrow {

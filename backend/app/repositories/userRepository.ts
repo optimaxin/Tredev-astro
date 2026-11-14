@@ -64,6 +64,9 @@ export async function createUser(params: {
     phone_verified: false,
     wallet_balance: 0,
     firebase_uid: params.firebaseUid ?? null,
+    // Not part of the INSERT below — matches the column's own DEFAULT 300
+    // (migration 067) so the in-memory row returned here reflects reality.
+    free_ai_chat_seconds: 300,
   };
   await query(
     `INSERT INTO users (id, name, email, password_hash, role, status, created_at, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone_offset_minutes, phone_number, phone_verified, firebase_uid)
@@ -213,4 +216,30 @@ export async function debitWallet(userId: string, amount: number): Promise<{ deb
     [amount, userId]
   );
   return { debited: Number(row?.debited ?? 0), balance: Number(row?.balance ?? 0) };
+}
+
+// ── "Ask TredevaAstro" free AI chat session (see calculators.routes.ts's
+// POST /ai-chat/start) — a real, server-tracked balance instead of just a
+// client-side countdown a page refresh used to reset for free.
+
+// Atomically reads the current grant and zeroes it in the same statement
+// (same FOR-UPDATE-CTE shape as debitWallet above) — the frontend uses the
+// returned value as that session's actual countdown length.
+export async function consumeFreeAiChatSeconds(userId: string): Promise<number> {
+  const row = await queryOne<{ granted: number }>(
+    `WITH old AS (SELECT free_ai_chat_seconds FROM users WHERE id = $1 FOR UPDATE)
+     UPDATE users SET free_ai_chat_seconds = 0 WHERE id = $1
+     RETURNING (SELECT free_ai_chat_seconds FROM old) AS granted`,
+    [userId]
+  );
+  return Number(row?.granted ?? 0);
+}
+
+// Staff/Admin override (admin.routes.ts's PATCH /users/:id/free-ai-chat) —
+// grants (or revokes) free AI chat time for a specific account, e.g. to
+// resolve a dispute. Unlike consumeFreeAiChatSeconds this doesn't zero
+// anything; it just sets the balance to whatever staff chose.
+export async function setFreeAiChatSeconds(userId: string, seconds: number): Promise<boolean> {
+  const rows = await query('UPDATE users SET free_ai_chat_seconds = $1 WHERE id = $2 RETURNING id', [seconds, userId]);
+  return rows.length > 0;
 }

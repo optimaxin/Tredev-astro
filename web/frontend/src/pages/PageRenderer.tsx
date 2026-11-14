@@ -401,6 +401,21 @@ function PageContent() {
     case 'safety':
       return <LegalPage docId="safety" />;
 
+    case 'our-approach':
+      return <LegalPage docId="our-approach" />;
+
+    case 'careers':
+      return <LegalPage docId="careers" />;
+
+    case 'press':
+      return <LegalPage docId="press" />;
+
+    case 'help-centre':
+      return <LegalPage docId="help-centre" />;
+
+    case 'contact-us':
+      return <LegalPage docId="contact-us" />;
+
     case 'raghav-booking':
       return <RaghavBookingPage />;
 

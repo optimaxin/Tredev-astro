@@ -101,6 +101,9 @@ export interface ApiUserRecord {
   role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED';
   created_at: string;
+  birth_date: string | null;
+  phone_number: string | null;
+  free_ai_chat_seconds: number;
 }
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
@@ -559,6 +562,8 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   updateUserRole: (id: string, role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') =>
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  setFreeAiChatSeconds: (id: string, seconds: number) =>
+    request<{ seconds: number }>(`/users/${id}/free-ai-chat`, { method: 'PATCH', body: JSON.stringify({ seconds }) }),
   updateAstrologerProfile: (id: number, patch: AstrologerProfilePatch) =>
     request<ApiAstrologerProfile>(`/astrologers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createAstrologer: (body: NewAstrologer) =>

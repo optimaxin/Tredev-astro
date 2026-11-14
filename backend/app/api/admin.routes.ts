@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
-import { createUser, findUserByEmail, findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
+import { createUser, findUserByEmail, findUserById, listAllUsers, setFreeAiChatSeconds, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
 import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
 import { bus } from '../websocket/bus.ts';
@@ -196,6 +196,23 @@ adminRouter.patch('/users/:id/role', requireSection('users'), async (req, res) =
   if (target.role === 'ASTROLOGIST' && parsed.data.role !== 'ASTROLOGIST') await deactivateAstrologerByUserId(target.id);
   await audit(req, `user.role.${parsed.data.role.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
+});
+
+const freeAiChatSchema = z.object({ seconds: z.number().int().min(0).max(24 * 60 * 60) });
+
+// Dispute resolution for the "Ask TredevaAstro" free AI chat session — the
+// Users page already finds the account by email/phone (client-side search
+// over the already-loaded list), this just sets its real balance (see
+// userRepository.ts's setFreeAiChatSeconds). 0 revokes it; any other value
+// (typically another 300 for "one more 5-minute session") re-grants it.
+adminRouter.patch('/users/:id/free-ai-chat', requireSection('users'), async (req, res) => {
+  const parsed = freeAiChatSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const target = await findUserById(req.params.id as string);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  await setFreeAiChatSeconds(target.id, parsed.data.seconds);
+  await audit(req, 'user.free_ai_chat.set', `${target.email}: ${parsed.data.seconds}s`);
+  res.json({ success: true, data: { seconds: parsed.data.seconds } });
 });
 
 // One combined summary instead of 3 separate count endpoints — the Users

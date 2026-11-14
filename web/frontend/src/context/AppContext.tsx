@@ -71,6 +71,7 @@ export interface AuthUser {
   birthTimezoneOffsetMinutes?: number | null;
   phoneNumber?: string | null;
   phoneVerified?: boolean;
+  freeAiChatSeconds?: number;
 }
 
 export interface AuditLogEntry {
@@ -3072,6 +3073,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     birthDate: u.birth_date, birthTime: u.birth_time, birthPlace: u.birth_place,
     birthLatitude: u.birth_latitude, birthLongitude: u.birth_longitude, birthTimezoneOffsetMinutes: u.birth_timezone_offset_minutes,
     phoneNumber: u.phone_number, phoneVerified: u.phone_verified,
+    freeAiChatSeconds: u.free_ai_chat_seconds,
   });
 
   // Restore session on load: an access token is short-lived (15 min), so a
@@ -3113,7 +3115,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshAdminData = async () => {
     try {
       const users = await adminService.listUsers();
-      setAccounts(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status })));
+      setAccounts(users.map(u => ({
+        id: u.id, name: u.name, email: u.email, role: u.role, status: u.status,
+        birthDate: u.birth_date, phoneNumber: u.phone_number, freeAiChatSeconds: u.free_ai_chat_seconds,
+      })));
     } catch (e) {
       console.error('Failed to load admin data', e);
     }

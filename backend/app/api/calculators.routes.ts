@@ -21,6 +21,8 @@ import { getLalKitabHouses } from '../services/astrology/lalKitab.ts';
 import { geocodePlace, suggestPlaces, resolvePlaceId, type GeocodeResult } from '../services/geocoding.ts';
 import { computeKundliFullCached, ttlCache } from '../services/astrology/kundliFullBuilder.ts';
 import { rewriteKundliFull, warmDescriptionCache } from '../services/llm/kundliDescriptionRewriter.ts';
+import { requireAuth } from '../middleware/auth.ts';
+import { consumeFreeAiChatSeconds } from '../repositories/userRepository.ts';
 
 export const calculatorsRouter = Router();
 
@@ -387,6 +389,16 @@ calculatorsRouter.post('/ai-ask', aiLimiter, (req, res) => {
     const mahadasha = getCurrentMahadasha(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, new Date());
     return { answer: answerAstrologyQuestion(body.question, kundli, mahadasha) };
   });
+});
+
+// Real, server-tracked balance instead of the frontend's old plain 5-minute
+// countdown (which a page refresh reset for free) — consumes whatever the
+// account currently has (set at signup, or by staff for a dispute — see
+// userRepository.ts's consumeFreeAiChatSeconds/setFreeAiChatSeconds) and
+// hands that back as this session's actual countdown length.
+calculatorsRouter.post('/ai-chat/start', requireAuth, async (req, res) => {
+  const grantedSeconds = await consumeFreeAiChatSeconds(req.user!.id);
+  res.json({ success: true, data: { grantedSeconds } });
 });
 
 // ── Place → coordinates ────────────────────────────────────────────────

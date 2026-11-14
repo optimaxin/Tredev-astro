@@ -22,6 +22,7 @@ export interface UserRow extends BirthDetails {
   phone_verified: boolean;
   wallet_balance: number;
   firebase_uid: string | null;
+  free_ai_chat_seconds: number;
 }
 
 // Safe-to-expose shape — never send password_hash to a client.
@@ -34,6 +35,7 @@ export interface PublicUser extends BirthDetails {
   phone_number: string | null;
   phone_verified: boolean;
   wallet_balance: number;
+  free_ai_chat_seconds: number;
 }
 
 export function toPublicUser(row: UserRow): PublicUser {
@@ -44,5 +46,6 @@ export function toPublicUser(row: UserRow): PublicUser {
     birth_timezone_offset_minutes: row.birth_timezone_offset_minutes,
     phone_number: row.phone_number, phone_verified: row.phone_verified,
     wallet_balance: row.wallet_balance,
+    free_ai_chat_seconds: row.free_ai_chat_seconds,
   };
 }

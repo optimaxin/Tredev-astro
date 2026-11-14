@@ -18,10 +18,10 @@ interface Message {
 
 type AIPhase = 'intro' | 'active' | 'expired';
 
-function TimerDisplay({ secondsLeft }: { secondsLeft: number }) {
+function TimerDisplay({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const progress = secondsLeft / FREE_SECONDS;
+  const progress = totalSeconds > 0 ? secondsLeft / totalSeconds : 0;
   const isWarning = secondsLeft <= 60;
   const isCritical = secondsLeft <= 10;
 
@@ -68,6 +68,7 @@ export default function AIAstrology() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(FREE_SECONDS);
+  const [sessionTotalSeconds, setSessionTotalSeconds] = useState(FREE_SECONDS);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const timerRef = useRef<number | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -106,13 +107,34 @@ export default function AIAstrology() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
     if (!isLoggedIn) {
       setPendingAction('ai-chat');
       setShowLoginModal(true);
       return;
     }
-    setPhase('active');
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) { setShowLoginModal(true); return; }
+    try {
+      // Real, server-tracked balance (see calculatorService.ts) instead of
+      // just always granting the fixed 5 minutes — a used-up or staff-
+      // adjusted account gets whatever it's actually entitled to.
+      const { grantedSeconds } = await calculatorService.startFreeAiChatSession(accessToken);
+      if (grantedSeconds <= 0) {
+        setPhase('expired');
+        setShowExpiredModal(true);
+        return;
+      }
+      setSessionTotalSeconds(grantedSeconds);
+      setSecondsLeft(grantedSeconds);
+      setPhase('active');
+    } catch {
+      // Network hiccup — fall back to the old fixed default rather than
+      // blocking the feature entirely.
+      setSessionTotalSeconds(FREE_SECONDS);
+      setSecondsLeft(FREE_SECONDS);
+      setPhase('active');
+    }
   };
 
   const sendMessage = useCallback(async (text: string) => {
@@ -265,7 +287,7 @@ export default function AIAstrology() {
                 >
                   {/* Timer header */}
                   <div className={styles.chatHeader}>
-                    <TimerDisplay secondsLeft={secondsLeft} />
+                    <TimerDisplay secondsLeft={secondsLeft} totalSeconds={sessionTotalSeconds} />
                   </div>
 
                   {/* Messages */}
