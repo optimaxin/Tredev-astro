@@ -78,6 +78,10 @@ export async function login(email: string, password: string): Promise<{ user: Pu
   }
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
+  void notifyEventByTemplateId({
+    templateId: 'tpl-welcome-back', eventKey: 'user.login',
+    vars: {}, user: { email: row.email, name: row.name },
+  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -216,6 +220,15 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
 
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
+  // Phone-only accounts still carry the synthetic @firebase.local
+  // placeholder (see above) if they've never since added a real email —
+  // nothing deliverable to send there.
+  if (!isNewUser && !row.email.endsWith('@firebase.local')) {
+    void notifyEventByTemplateId({
+      templateId: 'tpl-welcome-back', eventKey: 'user.login',
+      vars: {}, user: { email: row.email, name: row.name },
+    });
+  }
   return { user: toPublicUser(row), isNewUser, ...tokens };
 }
 
