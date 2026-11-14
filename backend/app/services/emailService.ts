@@ -7,6 +7,32 @@ export function renderTemplate(text: string, vars: Record<string, string>): stri
   return text.replace(/\{\{(\w+)\}\}/g, (_, key: string) => vars[key] ?? '');
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Staff write and edit templates as plain text — the same thing they'd type
+// into any ordinary email client, no HTML knowledge needed. This turns that
+// plain text into a clean, professional-looking HTML email: a blank line
+// starts a new paragraph, a single line break stays a line break within one.
+// escapeHtml first so a stray '<' or '&' the staff typed can't break the
+// layout (or, for a templated send, so a variable's value can't inject markup).
+export function plainTextToEmailHtml(text: string): string {
+  const paragraphs = escapeHtml(text.trim())
+    .split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 16px;">${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+  return `
+    <div style="font-family:Georgia,'Times New Roman',serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#2b2420;">
+      <div style="font-size:1.1rem;font-weight:700;color:#8c6d32;margin-bottom:24px;letter-spacing:0.02em;">TredevAastro</div>
+      <div style="font-size:0.95rem;line-height:1.6;">${paragraphs}</div>
+      <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e0d8;font-size:0.78rem;color:#8a8373;">
+        This email was sent by TredevAastro. If you weren't expecting it, you can safely ignore it.
+      </div>
+    </div>
+  `;
+}
+
 // Thin wrapper around ZeptoMail's send API — no SDK needed, it's one POST.
 // https://www.zoho.com/zeptomail/help/api/email-sending.html
 // Returns whether it actually sent (rather than throwing) so callers that

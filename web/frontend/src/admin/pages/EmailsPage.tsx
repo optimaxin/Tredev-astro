@@ -107,10 +107,10 @@ function ComposeTab({ templates }: { templates: ApiEmailTemplate[] }) {
         <input style={inputStyle} value={subject} onChange={e => setSubject(e.target.value)} />
       </div>
       <div style={fieldStyle}>
-        <label style={labelStyle}>Body (HTML)</label>
-        <textarea style={{ ...inputStyle, minHeight: 220, resize: 'vertical' }} value={body} onChange={e => setBody(e.target.value)} />
+        <label style={labelStyle}>Message</label>
+        <textarea style={{ ...inputStyle, minHeight: 220, resize: 'vertical' }} value={body} onChange={e => setBody(e.target.value)} placeholder="Write it exactly like you'd type a normal email — leave a blank line between paragraphs." />
         <p style={{ fontSize: '0.72rem', color: 'var(--adm-charcoal-soft)', marginTop: 4 }}>
-          Use {'{{name}}'} and any other {'{{placeholder}}'} the template defines — they're filled in before sending.
+          Just plain writing — no HTML needed, it's formatted into a proper email automatically. If the template has a {'{{name}}'} or similar placeholder, it's already filled in above.
         </p>
       </div>
       {error && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.85rem' }}>{error}</p>}
@@ -175,8 +175,11 @@ function TemplatesTab({ templates, loaded, onChange }: { templates: ApiEmailTemp
           <input style={inputStyle} value={subject} onChange={e => setSubject(e.target.value)} />
         </div>
         <div style={fieldStyle}>
-          <label style={labelStyle}>Body (HTML)</label>
-          <textarea style={{ ...inputStyle, minHeight: 220, resize: 'vertical' }} value={body} onChange={e => setBody(e.target.value)} />
+          <label style={labelStyle}>Message</label>
+          <textarea style={{ ...inputStyle, minHeight: 220, resize: 'vertical' }} value={body} onChange={e => setBody(e.target.value)} placeholder="Write it like a normal email — leave a blank line between paragraphs." />
+          <p style={{ fontSize: '0.72rem', color: 'var(--adm-charcoal-soft)', marginTop: 4 }}>
+            Plain writing only, no HTML — it's formatted automatically when sent. Use {'{{name}}'} or any other {'{{placeholder}}'} you need; whoever sends this fills those in (or they default to the recipient's name).
+          </p>
         </div>
         {error && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.85rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10 }}>

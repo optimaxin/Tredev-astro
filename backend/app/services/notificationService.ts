@@ -1,4 +1,4 @@
-import { renderTemplate, sendEmail } from './emailService.ts';
+import { plainTextToEmailHtml, renderTemplate, sendEmail } from './emailService.ts';
 import { insertEmailLog } from '../repositories/emailLogRepository.ts';
 import { getNotifyEmails } from '../repositories/platformSettingsRepository.ts';
 import type { EmailTemplateRow } from '../repositories/emailTemplateRepository.ts';
@@ -6,11 +6,13 @@ import type { EmailTemplateRow } from '../repositories/emailTemplateRepository.t
 // Sends one rendered email and logs the outcome (SENT/FAILED) — the one
 // path both the staff "compose" screen and notifyEvent below go through, so
 // every email this app sends through a template shows up in the same log.
+// `body` is plain text (what staff actually typed/edited) — this is the one
+// place it gets turned into the HTML ZeptoMail actually sends.
 export async function sendAndLog(input: {
   toEmail: string; toName?: string | null; subject: string; body: string;
   templateId?: string | null; eventKey?: string | null; sentBy?: string | null;
 }): Promise<void> {
-  const ok = await sendEmail(input.toEmail, input.subject, input.body).catch(() => false);
+  const ok = await sendEmail(input.toEmail, input.subject, plainTextToEmailHtml(input.body)).catch(() => false);
   await insertEmailLog({
     toEmail: input.toEmail, toName: input.toName, subject: input.subject,
     templateId: input.templateId, eventKey: input.eventKey, sentBy: input.sentBy,
