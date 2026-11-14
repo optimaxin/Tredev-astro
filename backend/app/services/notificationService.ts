@@ -2,6 +2,7 @@ import { config } from '../core/config.ts';
 import { plainTextToEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
 import { insertEmailLog } from '../repositories/emailLogRepository.ts';
 import { getNotifyEmails } from '../repositories/platformSettingsRepository.ts';
+import { findEmailTemplateById } from '../repositories/emailTemplateRepository.ts';
 import type { EmailTemplateRow } from '../repositories/emailTemplateRepository.ts';
 
 // Sends one rendered email and logs the outcome (SENT/FAILED) — the one
@@ -55,5 +56,30 @@ export async function notifyEvent(params: {
       body: renderTemplate(template.body, mergedVars),
       templateId: template.id, eventKey, from: params.from,
     });
+  }
+}
+
+// Same as notifyEvent, but looks the template up by id first — the shape
+// every automatic trigger (welcome email, free-chat grant, consultation
+// thank-you) actually wants, so each call site doesn't need its own
+// emailTemplateRepository import. Best-effort: a missing/deleted template,
+// or any other failure, is swallowed (logged to console) rather than
+// thrown — an email notification must never break the real action (signup,
+// a staff update, ending a consultation) it's attached to.
+export async function notifyEventByTemplateId(params: {
+  templateId: string;
+  eventKey: string;
+  vars: Record<string, string>;
+  user: { email: string; name: string };
+  alsoHeadAstrologer?: boolean;
+  alsoAdmin?: boolean;
+  from?: EmailIdentityKey;
+}): Promise<void> {
+  try {
+    const template = await findEmailTemplateById(params.templateId);
+    if (!template) { console.warn(`[notificationService] template ${params.templateId} not found — skipping`); return; }
+    await notifyEvent({ ...params, template });
+  } catch (e) {
+    console.error(`[notificationService] notifyEventByTemplateId(${params.templateId}) failed`, e);
   }
 }

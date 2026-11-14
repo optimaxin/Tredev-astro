@@ -473,7 +473,7 @@
   background: transparent;
   border: 1px solid rgba(231, 165, 26, 0.35);
   border-radius: 999px;
-  padding: 4px 12px 4px 6px;
+  padding: 4px 10px 4px 4px;
   cursor: pointer;
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -482,10 +482,6 @@
   align-items: center;
   gap: 6px;
   transition: all var(--transition-base);
-  /* A long name truncates (see .profileNameText) instead of pushing this
-     pill past the navbar's rounded edge. */
-  max-width: 160px;
-  min-width: 0;
 }
 
 .profileSelectorBtn:hover {
@@ -510,14 +506,6 @@
 :global([data-theme='dark']) .avatarCircle {
   color: var(--nav-ink);
   background: var(--nav-gold);
-}
-
-.profileNameText {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
 }
 
 .profileArrow {

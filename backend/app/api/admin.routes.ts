@@ -47,7 +47,7 @@ import { getActiveBoost } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent, setNotifyEmails } from '../repositories/platformSettingsRepository.ts';
 import { createEmailTemplate, deleteEmailTemplate, findEmailTemplateById, listEmailTemplates, updateEmailTemplate } from '../repositories/emailTemplateRepository.ts';
 import { listEmailLog } from '../repositories/emailLogRepository.ts';
-import { notifyEvent, sendAndLog } from '../services/notificationService.ts';
+import { notifyEvent, notifyEventByTemplateId, sendAndLog } from '../services/notificationService.ts';
 import { EMAIL_IDENTITY_KEYS } from '../services/emailService.ts';
 import { config } from '../core/config.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
@@ -212,6 +212,15 @@ adminRouter.patch('/users/:id/free-ai-chat', requireSection('users'), async (req
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
   await setFreeAiChatSeconds(target.id, parsed.data.seconds);
   await audit(req, 'user.free_ai_chat.set', `${target.email}: ${parsed.data.seconds}s`);
+  // Only the "good news" case emails the customer — staff setting this to 0
+  // (revoking it) has nothing positive to announce.
+  if (parsed.data.seconds > 0) {
+    await notifyEventByTemplateId({
+      templateId: 'tpl-free-ai-chat-granted', eventKey: 'user.free_ai_chat.granted',
+      vars: { minutes: String(Math.round(parsed.data.seconds / 60)) },
+      user: { email: target.email, name: target.name },
+    }).catch(() => {});
+  }
   res.json({ success: true, data: { seconds: parsed.data.seconds } });
 });
 

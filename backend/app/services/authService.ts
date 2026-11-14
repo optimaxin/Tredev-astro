@@ -10,6 +10,7 @@ import {
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
 import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
 import { sendEmail } from './emailService.ts';
+import { notifyEventByTemplateId } from './notificationService.ts';
 
 export class AuthError extends Error {
   status: number;
@@ -60,6 +61,11 @@ export async function register(params: {
   // Phone number is stored but not verified here — that only happens if/when
   // this account signs in via Firebase Phone Auth (see loginWithFirebase),
   // which replaced the old custom OTP-over-SMS verification step.
+  // Best-effort, never blocks registration itself (see notifyEventByTemplateId).
+  void notifyEventByTemplateId({
+    templateId: 'tpl-welcome', eventKey: 'user.welcome',
+    vars: {}, user: { email: row.email, name: row.name },
+  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -196,6 +202,14 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
       firebaseUid: uid,
     });
     if (phoneNumber) await markPhoneVerified(row.id);
+    // Phone-only signups get a synthetic @firebase.local placeholder (see
+    // above) — nothing to send there, so only email real addresses.
+    if (email) {
+      void notifyEventByTemplateId({
+        templateId: 'tpl-welcome', eventKey: 'user.welcome',
+        vars: {}, user: { email: row.email, name: row.name },
+      });
+    }
   } else if (!row.firebase_uid) {
     await linkFirebaseUid(row.id, uid);
   }

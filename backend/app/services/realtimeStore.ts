@@ -9,6 +9,7 @@ import * as processedRequestRepo from '../repositories/processedRequestRepositor
 import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
 import * as boostRepo from '../repositories/boostRepository.ts';
 import { computePriceWithOverride } from './pricingEngine.ts';
+import { notifyEventByTemplateId } from './notificationService.ts';
 import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { bus } from '../websocket/bus.ts';
@@ -614,6 +615,16 @@ export async function endConsultation(consultationId: string, requesterEmail: st
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
   await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
+  // Thank-you + feedback-request email — only for a session that actually
+  // ran (startedAt set), not one ended before it ever started. Best-effort,
+  // never blocks the consultation itself (see notifyEventByTemplateId).
+  if (c.startedAt) {
+    void notifyEventByTemplateId({
+      templateId: 'tpl-consultation-thanks', eventKey: 'consultation.completed',
+      vars: { astrologerName: astrologers.get(c.astrologerId)?.name ?? 'your astrologer', consultationType: c.type },
+      user: { email: c.userEmail, name: c.userName },
+    });
+  }
   await processQueue(c.astrologerId);
   return c;
 }

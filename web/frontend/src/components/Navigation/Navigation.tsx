@@ -279,7 +279,6 @@ export default function Navigation() {
                 <div className={styles.avatarCircle}>
                   {(currentUser?.name || 'Yajamana').substring(0, 1).toUpperCase()}
                 </div>
-                <span className={styles.profileNameText}>{(currentUser?.name || 'Yajamana').split(' ')[0]}</span>
                 <span className={styles.profileArrow}>▼</span>
               </button>
               {profileDropdownOpen && (
