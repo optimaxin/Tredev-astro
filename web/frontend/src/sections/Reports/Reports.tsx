@@ -82,14 +82,13 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
           onClick={() => { setPage('premium-report'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         >
           <span className={styles.premiumBannerBody}>
-            <span className={styles.premiumBannerEyebrow}>New · Premium</span>
-            <span className={styles.premiumBannerTitle}>Your full birth-chart reading</span>
+            <span className={styles.premiumBannerEyebrow}>{t('premium_banner_eyebrow')}</span>
+            <span className={styles.premiumBannerTitle}>{t('premium_banner_title')}</span>
             <span className={styles.premiumBannerText}>
-              A complete, personalised report — your Lagna, Moon, every planet, your Dashas and the
-              life areas they shape — written section by section from classical sources.
+              {t('premium_banner_text')}
             </span>
           </span>
-          <span className={styles.premiumBannerCta}>Create My Report →</span>
+          <span className={styles.premiumBannerCta}>{t('premium_banner_cta')} →</span>
         </button>
 
         {/* Report Cards */}

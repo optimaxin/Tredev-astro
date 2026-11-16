@@ -140,18 +140,16 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
-  // Deliberately NOT synced to the site-wide language picker. This card
-  // renders real Devanagari Panchang terms of its own, and translation for
-  // the rest of the page is left entirely to the visitor's own browser,
-  // which treats the page as English — handing it this card's actual Hindi
-  // would get that Hindi re-translated into nonsense. Left in English, the
-  // card is translated along with the rest of the page like any other
-  // content. The dedicated English/हिंदी button below still switches just
-  // this card to its authentic Devanagari labels, and `translate="no"` on the
-  // card (see the render below) is what keeps a browser translate feature
-  // off it when it does.
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme, language: siteLanguage } = useAppContext();
+  // Starts in sync with the site-wide language picker (Hindi selected there
+  // -> this card opens in Hindi too), but stays a separate bit of local
+  // state so the dedicated English/हिंदी button below can still flip just
+  // this card on its own. `translate="no"` on the card (see the render
+  // below) still matters regardless — a visitor's own browser translate
+  // feature would otherwise re-translate this card's real Hindi as if it
+  // were garbled English.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>(siteLanguage === 'hi' ? 'hi' : 'en');
+  useEffect(() => { setPanchangLang(siteLanguage === 'hi' ? 'hi' : 'en'); }, [siteLanguage]);
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');
@@ -489,7 +487,7 @@ export default function Panchang() {
                   exit={{ opacity: 0 }}
                   onClick={handleChangeLocation}
                 >
-                  Change Location
+                  {isHindi ? 'स्थान बदलें' : 'Change Location'}
                 </motion.button>
               )}
             </AnimatePresence>
