@@ -63,7 +63,7 @@ function VideosTab() {
             { key: 'title', label: 'Title', render: v => v.title },
             { key: 'category', label: 'Category', render: v => v.category },
             { key: 'url', label: 'Video URL', render: v => <a href={v.videoUrl} target="_blank" rel="noreferrer">{v.videoUrl}</a> },
-            { key: 'created', label: 'Added', render: v => formatDateTime(new Date(v.createdAt).toISOString()) },
+            { key: 'created', label: 'Added', render: v => formatDateTime(v.createdAt) },
             { key: 'action', label: 'Action', hideOnCard: true, render: v => <AdminButton variant="danger" onClick={() => handleDelete(v)}>Delete</AdminButton> },
           ]}
           rows={rows}
@@ -156,7 +156,7 @@ function SessionsTab() {
           columns={[
             { key: 'title', label: 'Title', render: s => s.title },
             { key: 'pandit', label: 'Pandit', render: s => s.panditName },
-            { key: 'when', label: 'Scheduled', render: s => formatDateTime(new Date(s.scheduledAt).toISOString()) },
+            { key: 'when', label: 'Scheduled', render: s => formatDateTime(s.scheduledAt) },
             { key: 'price', label: 'Price', render: s => (s.pricePaise ? `₹${(s.pricePaise / 100).toFixed(0)}` : 'Free') },
             { key: 'action', label: 'Action', hideOnCard: true, render: s => <AdminButton variant="danger" onClick={() => handleDelete(s)}>Delete</AdminButton> },
           ]}

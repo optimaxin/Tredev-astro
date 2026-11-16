@@ -88,7 +88,7 @@ export default function ApplicationsPage() {
           },
           { key: 'expertise', label: t('admin_apps_col_expertise'), render: (a: ApiApplication) => a.expertise },
           { key: 'experience', label: t('admin_apps_col_experience'), render: (a: ApiApplication) => a.experience },
-          { key: 'submitted', label: t('admin_apps_col_submitted'), render: (a: ApiApplication) => formatDate(new Date(a.submittedAt).toISOString()) },
+          { key: 'submitted', label: t('admin_apps_col_submitted'), render: (a: ApiApplication) => formatDate(a.submittedAt) },
           { key: 'status', label: t('admin_apps_col_status'), render: (a: ApiApplication) => <StatusBadge status={a.status} label={t(`admin_status_${a.status.toLowerCase()}`)} /> },
           {
             key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: (a: ApiApplication) => (
@@ -122,7 +122,7 @@ export default function ApplicationsPage() {
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Account Email</span><span className={styles.drawerFieldValue}>{selected.userEmail}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Contact Email</span><span className={styles.drawerFieldValue}>{selected.email || '—'}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Phone</span><span className={styles.drawerFieldValue}>{selected.phoneNumber || '—'}</span></div>
-                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_submitted')}</span><span className={styles.drawerFieldValue}>{formatDate(new Date(selected.submittedAt).toISOString())}</span></div>
+                <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_submitted')}</span><span className={styles.drawerFieldValue}>{formatDate(selected.submittedAt)}</span></div>
                 <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_apps_col_status')}</span><span className={styles.drawerFieldValue}><StatusBadge status={selected.status} label={t(`admin_status_${selected.status.toLowerCase()}`)} /></span></div>
               </>
             )}

@@ -250,7 +250,7 @@ function LogTab() {
         { key: 'subject', label: 'Subject', render: (r: ApiEmailLogEntry) => r.subject },
         { key: 'event', label: 'Trigger', render: (r: ApiEmailLogEntry) => r.event_key || (r.sent_by ? `Staff (${r.sent_by})` : '—') },
         { key: 'status', label: 'Status', render: (r: ApiEmailLogEntry) => <StatusBadge status={r.status.toLowerCase()} label={r.status} /> },
-        { key: 'sentAt', label: 'Sent', render: (r: ApiEmailLogEntry) => formatDate(new Date(r.sent_at).toISOString()) },
+        { key: 'sentAt', label: 'Sent', render: (r: ApiEmailLogEntry) => formatDate(r.sent_at) },
       ]}
       rows={loading ? [] : rows}
       keyField="id"

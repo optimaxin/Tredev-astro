@@ -106,8 +106,8 @@ export default function BannersPage() {
               ),
             },
             { key: 'link', label: 'Link', render: b => b.linkUrl || '—' },
-            { key: 'created', label: 'Uploaded', render: b => formatDateTime(new Date(b.createdAt).toISOString()) },
-            { key: 'expires', label: 'Expires', render: b => (b.expiresAt ? formatDateTime(new Date(b.expiresAt).toISOString()) : 'Never') },
+            { key: 'created', label: 'Uploaded', render: b => formatDateTime(b.createdAt) },
+            { key: 'expires', label: 'Expires', render: b => (b.expiresAt ? formatDateTime(b.expiresAt) : 'Never') },
             {
               key: 'action', label: 'Action', hideOnCard: true, render: b => (
                 <AdminButton variant="danger" onClick={() => handleDelete(b)}>Delete</AdminButton>
