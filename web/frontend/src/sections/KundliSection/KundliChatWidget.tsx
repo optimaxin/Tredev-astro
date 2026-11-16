@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { aiCoreService, AiCoreApiError } from '../../services/aiCoreService';
 import { NEGATIVE_REASONS } from '../../services/aiCoreService';
-import type { AiCoreBirthDetails, FeedbackType } from '../../services/aiCoreService';
+import type { AiCoreBirthDetails, AiCoreStreamStage, FeedbackType } from '../../services/aiCoreService';
+import { useAppContext } from '../../context/AppContext';
 import styles from './KundliChatWidget.module.css';
 
 interface Props {
@@ -32,18 +33,36 @@ interface Bubble {
   // A degraded reply is the service saying it could not reach the model. It
   // is styled as a notice, never as a reading.
   degraded?: boolean;
-  // The turn this bubble belongs to. Feedback is per REPLY, not per bubble,
-  // so every bubble of one reply shares this and only the last one renders
-  // the thumbs.
+  // The turn this bubble belongs to. A reply is 1-4 bubbles (the model's own
+  // topic segments); feedback is per REPLY, so only the last bubble of a turn
+  // shows the thumbs.
   requestId?: string;
+  turnId?: string;
+  segmentId?: string;
   isLastOfReply?: boolean;
+  // True while the reply is still arriving; the thumbs appear once it is done.
+  streaming?: boolean;
 }
 
-// Assistant replies arrive as several short messages at once. They are
-// revealed one at a time, with the typing dots in between, so it reads like a
-// person texting — presentation only, the content is already complete. The
-// pause scales with the next bubble's length, between 1 and 2 seconds.
-const typingDelayMs = (text: string) => Math.min(2000, Math.max(1000, 700 + text.length * 11));
+// The opening message, in the visitor's site language. Replaces the old fixed
+// English "Namaste <name>! Your kundli is ready." + "Ask me anything…" pair.
+const GREETINGS = {
+  en: "Your Kundli is ready! Tell me what you'd like to know about your chart. I can help explain your career, marriage, relationships, finances, planetary placements and current Dasha.",
+  hinglish: 'Aapki Kundli taiyaar hai! Bataiye, aap apni Kundli ke baare mein kya jaanna chahenge? Main aapko career, marriage, relationships, finances aur current Dasha ke baare mein samjha sakta hoon.',
+  hi: 'आपकी कुंडली तैयार है! बताइए, आप अपनी कुंडली के बारे में क्या जानना चाहेंगे? मैं आपको करियर, विवाह, रिश्तों, आर्थिक स्थिति और वर्तमान दशा के बारे में समझा सकता हूँ।',
+} as const;
+
+const greetingFor = (siteLanguage: string): string =>
+  siteLanguage === 'hi' ? GREETINGS.hi : GREETINGS.en;
+
+// Shown inside the (empty) reply bubble while the server works.
+const STAGE_LABEL: Record<AiCoreStreamStage, string> = {
+  reading_chart: 'Reading your chart…',
+  understanding: 'Understanding your question…',
+  consulting_knowledge: 'Checking the classical texts…',
+  writing: 'Writing your answer…',
+  checking: 'Checking it against your chart…',
+};
 
 const SUGGESTIONS = [
   'What does my chart say about my career?',
@@ -54,10 +73,12 @@ const SUGGESTIONS = [
 let bubbleSeq = 0;
 const nextId = () => `b${++bubbleSeq}`;
 
-export default function KundliChatWidget({ birth, chartKey, displayName, autoOpen = true }: Props) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function KundliChatWidget({ birth, chartKey, displayName: _displayName, autoOpen = true }: Props) {
+  const { language: siteLanguage } = useAppContext();
   const [open, setOpen] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [queue, setQueue] = useState<Bubble[]>([]);
+  const [stage, setStage] = useState<AiCoreStreamStage | null>(null);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState('');
@@ -79,22 +100,38 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
     if (autoOpenedFor.current === chartKey) return;
     autoOpenedFor.current = chartKey;
     setBubbles([]);
-    setQueue([]);
     setError('');
-    const greeting = displayName
-      ? `Namaste ${displayName.split(' ')[0]}! Your kundli is ready.`
-      : 'Namaste! Your kundli is ready.';
+    const greeting = greetingFor(siteLanguage);
     // A short delay lets the chart finish rendering first, so the panel
     // sliding in does not compete with the page settling.
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       if (autoOpen) setOpen(true);
-      setBubbles([
-        { id: nextId(), role: 'assistant', text: greeting },
-        { id: nextId(), role: 'assistant', text: 'Ask me anything about it — I read only your chart, in plain language.' },
-      ]);
+      setBubbles([{ id: nextId(), role: 'assistant', text: greeting }]);
+      // Restore this chart's earlier conversation (after a reload) with the
+      // SAME bubbles it was shown in — the server re-segments the stored
+      // reply with the same function the live path uses.
+      aiCoreService.history(`kundli-${chartKey}`).then(turns => {
+        if (cancelled || !turns.length) return;
+        const restored: Bubble[] = [];
+        for (const turn of turns) {
+          if (turn.role === 'user' && turn.text) {
+            restored.push({ id: nextId(), role: 'user', text: turn.text });
+          } else if (turn.role === 'assistant') {
+            const parts = turn.messages || [];
+            parts.forEach((text, index) => restored.push({
+              id: nextId(), role: 'assistant', text, isLastOfReply: index === parts.length - 1,
+            }));
+          }
+        }
+        setBubbles(prev => [...prev, ...restored]);
+      }).catch(() => { /* no history is fine */ });
     }, 900);
-    return () => window.clearTimeout(timer);
-  }, [chartKey, displayName, autoOpen]);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+    // The greeting is chosen once per chart; a later language switch does not
+    // rewrite a conversation that has already started.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartKey, autoOpen]);
 
   // When this isn't the self-opening Kundli-page widget, nudge the visitor
   // every so often with a small teaser bubble instead of popping the whole
@@ -113,19 +150,9 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
     return () => { window.clearTimeout(firstTimer); window.clearInterval(interval); window.clearTimeout(hideTimer); };
   }, [autoOpen, open]);
 
-  // Drain queued assistant bubbles one at a time.
-  useEffect(() => {
-    if (queue.length === 0) return;
-    const timer = window.setTimeout(() => {
-      setBubbles(prev => [...prev, queue[0]]);
-      setQueue(prev => prev.slice(1));
-    }, typingDelayMs(queue[0].text));
-    return () => window.clearTimeout(timer);
-  }, [queue]);
-
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [bubbles, thinking]);
+  }, [bubbles, thinking, stage]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -138,32 +165,70 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
 
       setDraft('');
       setError('');
-      setBubbles(prev => [...prev, { id: nextId(), role: 'user', text }]);
+      setStage(null);
+      // ONE assistant bubble per reply, created now and filled in place as
+      // the stream arrives — never a new bubble per chunk or sentence.
+      // One placeholder bubble (typing dots) until the first segment arrives.
+      // Each semantic segment then gets its OWN bubble, filled in place —
+      // never one bubble per chunk or sentence, never one oversized bubble.
+      const turnId = nextId();
+      setBubbles(prev => [
+        ...prev,
+        { id: nextId(), role: 'user', text },
+        { id: `${turnId}-pending`, role: 'assistant', text: '', turnId, streaming: true },
+      ]);
       setThinking(true);
 
       aiCoreService
-        .ask({ question: text, birth, sessionId })
+        .askStream({ question: text, birth, sessionId }, {
+          onStatus: s => setStage(s),
+          onSegmentStart: (segmentId) =>
+            setBubbles(prev => {
+              const pending = prev.findIndex(b => b.id === `${turnId}-pending`);
+              const bubble: Bubble = { id: `${turnId}-${segmentId}`, role: 'assistant', text: '', turnId,
+                                       segmentId, streaming: true };
+              if (pending >= 0) return prev.map((b, i) => (i === pending ? bubble : b));
+              return [...prev, bubble];
+            }),
+          onDelta: (segmentId, chunk) =>
+            setBubbles(prev => prev.map(b => (b.turnId === turnId && b.segmentId === segmentId
+              ? { ...b, text: b.text + chunk } : b))),
+          onSegmentEnd: (segmentId, _index, full) =>
+            setBubbles(prev => prev.map(b => (b.turnId === turnId && b.segmentId === segmentId
+              ? { ...b, text: full } : b))),
+        })
         .then(res => {
-          // `messages` is the server's own split; `answer` is the fallback if
-          // a future response ever arrives without it.
-          const parts = res.messages.length > 0 ? res.messages : [res.answer].filter(Boolean);
-          const incoming: Bubble[] = parts.map((part, index) => ({
-            id: nextId(),
+          // `done.messages` is authoritative: the turn's bubbles are rebuilt
+          // from it, in order, so they always match what the server saved.
+          const parts = res.messages?.length ? res.messages : [res.answer].filter(Boolean);
+          const finalBubbles: Bubble[] = parts.map((part, index) => ({
+            id: `${turnId}-final-${index}`,
             role: 'assistant',
             text: part,
+            turnId,
             degraded: res.degraded,
             requestId: res.request_id,
             isLastOfReply: index === parts.length - 1,
+            streaming: false,
           }));
-          // First bubble immediately so the reply feels responsive; the rest
-          // stagger in behind it.
-          setBubbles(prev => (incoming.length ? [...prev, incoming[0]] : prev));
-          setQueue(incoming.slice(1));
+          setBubbles(prev => {
+            const first = prev.findIndex(b => b.turnId === turnId);
+            const rest = prev.filter(b => b.turnId !== turnId);
+            const at = first >= 0 ? first : rest.length;
+            return [...rest.slice(0, at), ...finalBubbles, ...rest.slice(at)];
+          });
         })
         .catch(err => {
+          // Drop empty bubbles of this turn; the error line below explains.
+          setBubbles(prev => prev
+            .filter(b => !(b.turnId === turnId && !b.text))
+            .map(b => (b.turnId === turnId ? { ...b, streaming: false } : b)));
           setError(err instanceof AiCoreApiError ? err.message : 'Something went wrong. Please try again.');
         })
-        .finally(() => setThinking(false));
+        .finally(() => {
+          setThinking(false);
+          setStage(null);
+        });
     },
     [birth, sessionId, thinking],
   );
@@ -182,7 +247,7 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
     [sessionId],
   );
 
-  const showSuggestions = !thinking && queue.length === 0 && !bubbles.some(b => b.role === 'user');
+  const showSuggestions = !thinking && !bubbles.some(b => b.role === 'user');
 
   return (
     <>
@@ -235,6 +300,16 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
           <div className={styles.messages} ref={listRef}>
             {bubbles.map(b => (
               <div key={b.id} className={styles.bubbleGroup}>
+              {b.role === 'assistant' && b.streaming && !b.text ? (
+                // The reply's own bubble, before its first text arrives.
+                <div className={`${styles.bubble} ${styles.bubbleAssistant} ${styles.typing}`}
+                     aria-live="polite" aria-label={stage ? STAGE_LABEL[stage] : 'Thinking'}>
+                  <span />
+                  <span />
+                  <span />
+                  {stage && <em className={styles.stageLabel}>{STAGE_LABEL[stage]}</em>}
+                </div>
+              ) : (
               <div
                 className={[
                   styles.bubble,
@@ -242,14 +317,14 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
                   b.degraded ? styles.bubbleNotice : '',
                 ].join(' ')}
               >
+                {/* Paragraphs of ONE reply render inside ONE bubble. */}
                 {b.text}
               </div>
+              )}
 
-              {/* Thumbs sit under the LAST bubble of a reply, not every one —
-                  the user is rating the answer, not each sentence of it.
-                  Hidden on a degraded reply: there is nothing to rate when
-                  the model could not be reached. */}
-              {b.role === 'assistant' && b.isLastOfReply && b.requestId && !b.degraded && (
+              {/* Thumbs under the finished reply. Hidden on a degraded reply:
+                  there is nothing to rate when the model could not be reached. */}
+              {b.role === 'assistant' && !b.streaming && b.isLastOfReply && b.requestId && !b.degraded && (
                 <div className={styles.feedbackRow}>
                   <button
                     className={`${styles.feedbackButton} ${feedback[b.requestId] === 'helpful' ? styles.feedbackActive : ''}`}
@@ -299,14 +374,6 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
               )}
               </div>
             ))}
-
-            {(thinking || queue.length > 0) && (
-              <div className={`${styles.bubble} ${styles.bubbleAssistant} ${styles.typing}`}>
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
 
             {error && <p className={styles.error}>{error}</p>}
 

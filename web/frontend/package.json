@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "test:markdown": "tsx src/utils/reportMarkdown.test.ts",
-    "test:charts": "tsx src/sections/PremiumReport/charts/chartModel.test.ts"
+    "test:charts": "tsx src/sections/PremiumReport/charts/chartModel.test.ts",
+    "test:sse": "tsx src/services/sse.test.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
