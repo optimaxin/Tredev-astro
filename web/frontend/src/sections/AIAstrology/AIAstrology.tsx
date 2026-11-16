@@ -2,9 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_SUGGESTIONS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
-import { resolveBirthDetailsInput } from '../../utils/birthChart';
-import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
-import type { BirthDetailsInput } from '../../services/calculatorService';
+import { calculatorService } from '../../services/calculatorService';
+import { CalculatorApiError } from '../../services/calculatorService';
+import type { BirthDetailsInput, KundliResult } from '../../services/calculatorService';
+import BirthDetailsForm from '../../components/BirthDetailsForm/BirthDetailsForm';
+import type { BirthDetailsSubmitValue } from '../../components/BirthDetailsForm/BirthDetailsForm';
+import { NorthIndianChart, toChartPlanets } from '../KundliSection/KundliCharts';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './AIAstrology.module.css';
 
@@ -16,7 +19,7 @@ interface Message {
   text: string;
 }
 
-type AIPhase = 'intro' | 'active' | 'expired';
+type AIPhase = 'intro' | 'form' | 'active';
 
 function TimerDisplay({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
   const minutes = Math.floor(secondsLeft / 60);
@@ -57,19 +60,15 @@ function TimerDisplay({ secondsLeft, totalSeconds }: { secondsLeft: number; tota
 }
 
 export default function AIAstrology() {
-  const { birthProfile, currentUser, isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t } = useAppContext();
   const [phase, setPhase] = useState<AIPhase>('intro');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      text: `Namaste. I am your Vedic Margdarshan guide, reading from ${birthProfile.name}'s actual birth chart. What would you like to explore?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(FREE_SECONDS);
   const [sessionTotalSeconds, setSessionTotalSeconds] = useState(FREE_SECONDS);
-  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [kundliResult, setKundliResult] = useState<KundliResult | null>(null);
   const timerRef = useRef<number | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const birthInputRef = useRef<BirthDetailsInput | null>(null);
@@ -85,69 +84,85 @@ export default function AIAstrology() {
   // Auto-resume after login
   useEffect(() => {
     if (isLoggedIn && pendingAction === 'ai-chat') {
-      setPhase('active');
+      setPhase('form');
       setPendingAction(null);
     }
-  }, [isLoggedIn, pendingAction]);
+  }, [isLoggedIn, pendingAction, setPendingAction]);
 
-  // Timer countdown
+  // Timer countdown — only runs once the birth-details form is submitted and
+  // the real, server-tracked free session has actually started.
   useEffect(() => {
-    if (phase !== 'active') return;
+    if (phase !== 'active' || locked) return;
     timerRef.current = window.setInterval(() => {
       setSecondsLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          setPhase('expired');
-          setShowExpiredModal(true);
+          setLocked(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase]);
+  }, [phase, locked]);
 
-  const handleStartSession = async () => {
+  const handleStartSession = () => {
     if (!isLoggedIn) {
       setPendingAction('ai-chat');
       setShowLoginModal(true);
       return;
     }
+    setPhase('form');
+  };
+
+  // Same birth-details form used across the Kundli calculators — asks for
+  // name/gender/DOB/TOB/place with real date/time pickers and a location
+  // autocomplete, instead of a one-question-at-a-time chat interrogation.
+  const handleBirthDetailsSubmit = async (value: BirthDetailsSubmitValue) => {
+    const birthInput: BirthDetailsInput = {
+      date: value.date,
+      time: value.time,
+      timezoneOffsetMinutes: value.timezoneOffsetMinutes,
+      latitude: value.latitude,
+      longitude: value.longitude,
+    };
+    const kundli = await calculatorService.kundli(birthInput);
+    birthInputRef.current = birthInput;
+    setKundliResult(kundli);
+
     const accessToken = localStorage.getItem('auth_access_token');
-    if (!accessToken) { setShowLoginModal(true); return; }
-    try {
-      // Real, server-tracked balance (see calculatorService.ts) instead of
-      // just always granting the fixed 5 minutes — a used-up or staff-
-      // adjusted account gets whatever it's actually entitled to.
-      const { grantedSeconds } = await calculatorService.startFreeAiChatSession(accessToken);
-      if (grantedSeconds <= 0) {
-        setPhase('expired');
-        setShowExpiredModal(true);
-        return;
-      }
-      setSessionTotalSeconds(grantedSeconds);
-      setSecondsLeft(grantedSeconds);
-      setPhase('active');
-    } catch {
-      // Network hiccup — fall back to the old fixed default rather than
-      // blocking the feature entirely.
-      setSessionTotalSeconds(FREE_SECONDS);
-      setSecondsLeft(FREE_SECONDS);
-      setPhase('active');
+    let granted = FREE_SECONDS;
+    if (accessToken) {
+      try {
+        granted = (await calculatorService.startFreeAiChatSession(accessToken)).grantedSeconds;
+      } catch { /* network hiccup — keep the default free allowance */ }
     }
+
+    const name = value.name || 'there';
+    const moon = kundli.planets.find(p => p.id === 'moon');
+    if (granted <= 0) {
+      setLocked(true);
+      setMessages([{ role: 'assistant', text: `Thanks, ${name}. Your chart is ready on the left, but your free chat has already been used.` }]);
+    } else {
+      setLocked(false);
+      setSessionTotalSeconds(granted);
+      setSecondsLeft(granted);
+      setMessages([{
+        role: 'assistant',
+        text: `Namaste, ${name}. I've built your birth chart — Lagna in ${kundli.ascendant.rashi}${moon ? `, Moon in ${moon.rashi}` : ''}. Ask me anything about your chart, relationships, career, or timing.`,
+      }]);
+    }
+    setPhase('active');
   };
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || loading || phase !== 'active') return;
+    if (!text.trim() || loading || locked || !birthInputRef.current) return;
     const userMsg: Message = { role: 'user', text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
-      if (!birthInputRef.current) {
-        birthInputRef.current = await resolveBirthDetailsInput(birthProfile, currentUser);
-      }
       const { answer } = await calculatorService.aiAsk(birthInputRef.current, text);
       setMessages(prev => [...prev, { role: 'assistant', text: answer }]);
     } catch (err) {
@@ -156,12 +171,15 @@ export default function AIAstrology() {
     } finally {
       setLoading(false);
     }
-  }, [loading, phase, birthProfile, currentUser]);
+  }, [loading, locked]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(input);
   };
+
+  const moon = kundliResult?.planets.find(p => p.id === 'moon');
+  const sun = kundliResult?.planets.find(p => p.id === 'sun');
 
   return (
     <section className={styles.section} id="ai" aria-label="Ask TredevaAstro AI">
@@ -176,7 +194,6 @@ export default function AIAstrology() {
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
           >
-            <span className="section-eyebrow">{t('nav_astrology')} AI</span>
             <h2 className={styles.title}>{t('section_ai_title')}</h2>
             <p className={styles.subtitle}>
               {t('section_ai_desc')}
@@ -184,20 +201,38 @@ export default function AIAstrology() {
 
             <div className={styles.chartContext}>
               <div className={styles.chartContextLabel}>Your Kundli Context</div>
-              {[
-                { label: 'Surya (Sun)', value: 'Vrischika · 4th Bhava', symbol: '☉' },
-                { label: 'Chandra (Moon)', value: 'Vrishabha · 10th Bhava', symbol: '☽' },
-                { label: 'Lagna', value: 'Simha Lagna', symbol: '↑' },
-                { label: 'Mahadasha', value: 'Venus–Mercury', symbol: '◎' },
-              ].map(item => (
-                <div key={item.label} className={styles.chartItem}>
-                  <span className={styles.chartSymbol}>{item.symbol}</span>
-                  <div>
-                    <span className={styles.chartLabel}>{item.label}</span>
-                    <span className={styles.chartValue}>{item.value}</span>
+              {kundliResult ? (
+                <>
+                  <div className={styles.chartPreview}>
+                    <NorthIndianChart
+                      planets={toChartPlanets(kundliResult)}
+                      ascendantRashi={kundliResult.ascendant.rashi}
+                      onPlanetHover={() => {}}
+                      onPlanetLeave={() => {}}
+                      onHouseHover={() => {}}
+                      onHouseLeave={() => {}}
+                    />
                   </div>
-                </div>
-              ))}
+                  {[
+                    { label: 'Lagna', value: kundliResult.ascendant.rashi, symbol: '↑' },
+                    { label: 'Chandra (Moon)', value: moon ? `${moon.rashi} · ${moon.house}${moon.house === 1 ? 'st' : moon.house === 2 ? 'nd' : moon.house === 3 ? 'rd' : 'th'} Bhava` : '—', symbol: '☽' },
+                    { label: 'Surya (Sun)', value: sun ? `${sun.rashi} · ${sun.house}${sun.house === 1 ? 'st' : sun.house === 2 ? 'nd' : sun.house === 3 ? 'rd' : 'th'} Bhava` : '—', symbol: '☉' },
+                    { label: 'Nakshatra', value: `${kundliResult.moonNakshatra.name} · Pada ${kundliResult.moonNakshatra.pada}`, symbol: '✦' },
+                  ].map(item => (
+                    <div key={item.label} className={styles.chartItem}>
+                      <span className={styles.chartSymbol}>{item.symbol}</span>
+                      <div>
+                        <span className={styles.chartLabel}>{item.label}</span>
+                        <span className={styles.chartValue}>{item.value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className={styles.chartContextEmpty}>
+                  Fill in your birth details to start your free chat — your D1 chart will appear here.
+                </p>
+              )}
             </div>
 
             <div className={styles.freeBadge}>
@@ -276,6 +311,31 @@ export default function AIAstrology() {
                 </motion.div>
               )}
 
+              {/* FORM PHASE — same birth-details form the Kundli calculators use */}
+              {phase === 'form' && (
+                <motion.div
+                  key="form"
+                  className={styles.formPanel}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <h3 className={styles.introTitle}>Tell us your birth details</h3>
+                  <p className={styles.introDesc}>
+                    This builds your real D1 chart — your free chat's answers are grounded in it, not a generic reading.
+                  </p>
+                  <BirthDetailsForm
+                    idPrefix="ai-chat"
+                    submitLabel="Start My Free Chat"
+                    showNameField
+                    showGenderField
+                    allowUnknownTime
+                    onSubmit={handleBirthDetailsSubmit}
+                  />
+                </motion.div>
+              )}
+
               {/* ACTIVE PHASE */}
               {phase === 'active' && (
                 <motion.div
@@ -330,107 +390,57 @@ export default function AIAstrology() {
                   </div>
 
                   {/* Suggestions */}
-                  <div className={styles.suggestions}>
-                    {AI_SUGGESTIONS.slice(0, 3).map(s => (
-                      <button
-                        key={s}
-                        className={styles.suggestion}
-                        onClick={() => sendMessage(s)}
-                        disabled={loading}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+                  {!locked && (
+                    <div className={styles.suggestions}>
+                      {AI_SUGGESTIONS.slice(0, 3).map(s => (
+                        <button
+                          key={s}
+                          className={styles.suggestion}
+                          onClick={() => sendMessage(s)}
+                          disabled={loading}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Locked banner — free session ended, chat history stays visible */}
+                  {locked && (
+                    <div className={styles.lockedBanner}>
+                      <p className={styles.expiredDesc}>Your free chat is over.</p>
+                      <button className={styles.expiredCta}>Continue Chat — ₹49/session</button>
+                    </div>
+                  )}
 
                   {/* Input */}
-                  <form className={styles.inputRow} onSubmit={handleSubmit}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      placeholder="Ask about your chart..."
-                      value={input}
-                      onChange={e => setInput(e.target.value)}
-                      disabled={loading}
-                      id="ai-input"
-                    />
-                    <button
-                      type="submit"
-                      className={styles.sendBtn}
-                      disabled={loading || !input.trim()}
-                      id="ai-send-btn"
-                    >
-                      <SendIcon />
-                    </button>
-                  </form>
-                </motion.div>
-              )}
-
-              {/* EXPIRED PHASE — chat locked */}
-              {phase === 'expired' && (
-                <motion.div
-                  key="expired"
-                  className={styles.expiredPanel}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <div className={styles.expiredIcon}>⏱</div>
-                  <h3 className={styles.expiredTitle}>Your free session has ended.</h3>
-                  <p className={styles.expiredDesc}>
-                    Continue your Jyotish journey with unlimited AI guidance.
-                  </p>
-                  <div className={styles.expiredActions}>
-                    <button className={styles.expiredCta}>
-                      Continue Chat — ₹49/session
-                    </button>
-                    <button className={styles.expiredPlans}>
-                      View All Plans →
-                    </button>
-                  </div>
+                  {!locked && (
+                    <form className={styles.inputRow} onSubmit={handleSubmit}>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        placeholder="Ask about your chart..."
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        disabled={loading}
+                        id="ai-input"
+                      />
+                      <button
+                        type="submit"
+                        className={styles.sendBtn}
+                        disabled={loading || !input.trim()}
+                        id="ai-send-btn"
+                      >
+                        <SendIcon />
+                      </button>
+                    </form>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
         </div>
       </div>
-
-      {/* Expired modal overlay */}
-      <AnimatePresence>
-        {showExpiredModal && phase === 'expired' && (
-          <>
-            <motion.div
-              className={styles.modalBackdrop}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowExpiredModal(false)}
-            />
-            <motion.div
-              className={styles.expiredModal}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              <div className={styles.expiredModalIcon}>⏱</div>
-              <h3 className={styles.expiredModalTitle}>Your free session has ended.</h3>
-              <p className={styles.expiredModalDesc}>
-                Continue with unlimited Vedic AI guidance.
-              </p>
-              <button className={styles.expiredModalCta}>
-                Continue Chat
-              </button>
-              <button
-                className={styles.expiredModalClose}
-                onClick={() => setShowExpiredModal(false)}
-              >
-                View Plans
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
