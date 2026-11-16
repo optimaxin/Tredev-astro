@@ -23,7 +23,7 @@ import KundliChatWidget from './sections/KundliSection/KundliChatWidget';
 const KUNDLI_PAGES = new Set(['free-kundli', 'kundli-result']);
 
 function AppContent() {
-  const { theme, page, currentUser } = useAppContext();
+  const { theme, language, page, currentUser } = useAppContext();
 
   const hasBirthDetails = !!(
     currentUser?.birthDate &&
@@ -38,14 +38,14 @@ function AppContent() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Always 'en' — every string on this page is actually written in English
-  // (see AppContext.tsx's t()); this is what lets a visitor's own browser
-  // correctly detect the page's real language and offer its own native
-  // translate feature, rather than us driving any translation ourselves.
-  // The language dropdown (Navigation.tsx) only sets a UI preference now.
+  // Reflects the selected language again — t() (AppContext.tsx) now really
+  // translates the ~680 strings its dictionary covers. Any hardcoded text
+  // past that has no key at all and stays English regardless, so this is an
+  // approximation for a mixed-language page, not a strict guarantee — same
+  // trade-off any partially-translated site has.
   useEffect(() => {
-    document.documentElement.lang = 'en';
-  }, []);
+    document.documentElement.lang = language;
+  }, [language]);
 
   // The Admin Console and Astrologer Workspace are separate internal tools
   // with their own layout — they never show the public site's navbar/footer

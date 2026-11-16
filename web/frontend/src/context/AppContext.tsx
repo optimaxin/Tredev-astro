@@ -3403,13 +3403,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persistAstrologerNotifications(allAstrologerNotifications.map(n => n.recipientEmail === astrologerEmail ? { ...n, read: true } : n));
   };
 
-  // Language selector state — now just a UI preference (e.g. the language
-  // dropdown's own highlighted/active item). There is no in-app translation
-  // engine any more: every string this app renders is actually written in
-  // English (see t() below), and a visitor who wants the page in another
-  // language uses their own browser's native "Translate this page" feature,
-  // which only works correctly if the page's real language (English) is what
-  // the browser detects — see App.tsx's `document.documentElement.lang`.
+  // Language selector state — drives real translation again (see t() below)
+  // for the ~680 keyed strings this dictionary covers. Coverage past that is
+  // partial by design: hi/mr are close to complete, bn/ta/te cover a smaller
+  // subset (see TRANSLATIONS), and any hardcoded page text with no key at
+  // all stays English regardless of this setting — there's no page-wide
+  // machine translation layer any more (the previous embedded Google
+  // Translate widget was removed for being inconsistent device-to-device).
   const [language, setLanguageState] = useState<'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te'>(() => {
     const saved = localStorage.getItem('language');
     return (saved as any) || 'en';
@@ -3420,16 +3420,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', l);
   };
 
-  // Always English — see the comment on `language` above. The non-English
-  // TRANSLATIONS entries are kept rather than deleted: they're hand-written
-  // and worth restoring if this site ever moves to its own dictionary-driven
-  // translation instead of relying on the visitor's browser.
+  // Falls back to English per-key (not just when the whole language is
+  // missing) since bn/ta/te only cover a subset of keys — a selected
+  // language with a gap should show that one string in English, not the
+  // bare untranslated key.
   const t = (key: string): string => {
-    return TRANSLATIONS['en']?.[key] || key;
+    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key;
   };
 
   const tOr = (key: string, fallbackKey: string): string => {
-    return TRANSLATIONS['en']?.[key] || t(fallbackKey);
+    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || t(fallbackKey);
   };
 
   const setBirthProfile = (p: BirthProfile) => {
