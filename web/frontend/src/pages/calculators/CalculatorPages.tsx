@@ -667,9 +667,10 @@ export function KundliMatchingPage() {
 // shown alongside the raw computed values (not just a verdict), so the
 // numbers can be independently cross-checked against any other Kundli tool.
 // `noTranslate` is for a calculator rendering its own Devanagari through a
-// language toggle of its own: the site-wide picker is Google Translate, which
-// treats the page as English, so real Hindi left exposed to it comes back out
-// as nonsense. Marking the page keeps Google off it entirely.
+// language toggle of its own — translation is otherwise left entirely to the
+// visitor's own browser, which treats the page as English, so real Hindi
+// left exposed to it comes back out as nonsense. Marking the page keeps any
+// browser translate feature off it entirely.
 function CalculatorPageShell({ eyebrow, title, description, children, noTranslate }: { eyebrow: string; title: string; description: string; children: React.ReactNode; noTranslate?: boolean }) {
   return (
     <div className={`${styles.pageWrapper} ${styles.ivoryPage}`} translate={noTranslate ? 'no' : undefined}>

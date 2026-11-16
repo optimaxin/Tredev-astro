@@ -2937,10 +2937,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (window.history.state && window.history.state.selectedId) || null;
   });
   const [paymentResult, setPaymentResult] = useState<PaymentResultInfo | null>(null);
-  // Was plain in-memory state — any reload (including the one Google
-  // Translate's own revert-to-English path does; see utils/googleTranslate.ts)
-  // silently wiped whatever someone was building, with no explanation. Every
-  // other cross-reload state here already persists this same way.
+  // Was plain in-memory state — any reload silently wiped whatever someone
+  // was building, with no explanation. Every other cross-reload state here
+  // already persists this same way.
   const [cart, setCart] = useState<CartItem[]>(() => loadLS('cart', [] as CartItem[]));
 
   const setPage = (p: string) => {
@@ -3404,7 +3403,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persistAstrologerNotifications(allAstrologerNotifications.map(n => n.recipientEmail === astrologerEmail ? { ...n, read: true } : n));
   };
 
-  // Language selector state
+  // Language selector state — now just a UI preference (e.g. the language
+  // dropdown's own highlighted/active item). There is no in-app translation
+  // engine any more: every string this app renders is actually written in
+  // English (see t() below), and a visitor who wants the page in another
+  // language uses their own browser's native "Translate this page" feature,
+  // which only works correctly if the page's real language (English) is what
+  // the browser detects — see App.tsx's `document.documentElement.lang`.
   const [language, setLanguageState] = useState<'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te'>(() => {
     const saved = localStorage.getItem('language');
     return (saved as any) || 'en';
@@ -3415,20 +3420,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', l);
   };
 
-  // Always English, in every language — Google Translate is what actually
-  // translates this site now (utils/googleTranslate.ts), and it translates
-  // the whole rendered page rather than a list of keys. Returning a
-  // non-English string here would hand Google text that is already in the
-  // target language while it is configured to treat the page as English, and
-  // it would re-translate it into nonsense. Keeping every string English also
-  // means the ~680 keyed strings and the much larger body of hardcoded page
-  // text get translated the same way, instead of only the keyed subset
-  // changing and the rest of the page staying English.
-  //
-  // The non-English TRANSLATIONS entries are kept rather than deleted: they
-  // are hand-written and worth restoring if this site ever moves back to
-  // dictionary-driven translation (which would require marking every one of
-  // these strings translate="no" so Google skips them).
+  // Always English — see the comment on `language` above. The non-English
+  // TRANSLATIONS entries are kept rather than deleted: they're hand-written
+  // and worth restoring if this site ever moves to its own dictionary-driven
+  // translation instead of relying on the visitor's browser.
   const t = (key: string): string => {
     return TRANSLATIONS['en']?.[key] || key;
   };

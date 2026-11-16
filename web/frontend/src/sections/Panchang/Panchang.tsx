@@ -142,14 +142,15 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 export default function Panchang() {
   const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
   // Deliberately NOT synced to the site-wide language picker. This card
-  // renders real Devanagari Panchang terms of its own, and the site-wide
-  // picker is Google Translate (utils/googleTranslate.ts), which translates
-  // the rendered page assuming it is English — handing it this card's actual
-  // Hindi would get that Hindi re-translated into nonsense. Left in English,
-  // the card is translated along with the rest of the page like any other
+  // renders real Devanagari Panchang terms of its own, and translation for
+  // the rest of the page is left entirely to the visitor's own browser,
+  // which treats the page as English — handing it this card's actual Hindi
+  // would get that Hindi re-translated into nonsense. Left in English, the
+  // card is translated along with the rest of the page like any other
   // content. The dedicated English/हिंदी button below still switches just
   // this card to its authentic Devanagari labels, and `translate="no"` on the
-  // card (see the render below) is what keeps Google off it when it does.
+  // card (see the render below) is what keeps a browser translate feature
+  // off it when it does.
   const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string

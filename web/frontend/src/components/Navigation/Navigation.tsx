@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAppContext, TRANSLATIONS } from '../../context/AppContext';
+import { useAppContext } from '../../context/AppContext';
 import { CartIcon, ProfileIcon, SunIcon, MoonIcon, WalletIcon } from '../Icons/Icons';
 import NotificationBell from './NotificationBell';
 import ConsultDropdown from './ConsultDropdown';
@@ -18,15 +18,6 @@ const NAV_LINKS = [
   { translationKey: 'nav_panchang', page: 'panchang' },
   { translationKey: 'nav_store', page: 'store' },
 ];
-
-// Google Translate (the whole-page auto-translation described in
-// AppContext.tsx) mistranslates a few short English nav words out of
-// context (e.g. "Store" -> "to collect" instead of "shop"). For just these
-// keys, render the already-written TRANSLATIONS[language] entry directly
-// and mark it notranslate so Google leaves our correct text alone, instead
-// of re-translating every nav label (which would require reworking the
-// whole page's translation approach).
-const GOOGLE_MISTRANSLATES = new Set(['nav_store']);
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -62,14 +53,6 @@ export default function Navigation() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [consultDropdownOpen, setConsultDropdownOpen] = useState(false);
   const [showRecharge, setShowRecharge] = useState(false);
-
-  const navLabel = (key: string): { text: string; notranslate: boolean } => {
-    if (GOOGLE_MISTRANSLATES.has(key) && language !== 'en') {
-      const override = TRANSLATIONS[language]?.[key];
-      if (override) return { text: override, notranslate: true };
-    }
-    return { text: t(key), notranslate: false };
-  };
 
   const navRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -173,16 +156,14 @@ export default function Navigation() {
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
           {NAV_LINKS.map(link => {
-            const label = navLabel(link.translationKey);
             const isLinkActive = page === link.page;
             return (
               <button
                 key={link.page + link.translationKey}
                 className={`${styles.link} ${isLinkActive ? styles.active : ''}`}
                 onClick={() => handleNavClick(link.page)}
-                translate={label.notranslate ? 'no' : undefined}
               >
-                {label.text}
+                {t(link.translationKey)}
                 {isLinkActive && <span className={styles.activeIndicator} />}
               </button>
             );
@@ -267,9 +248,10 @@ export default function Navigation() {
               <span className={styles.langText} translate="no">{currentLangLabel}</span>
             </button>
             {langDropdownOpen && (
-              /* Each language is named in its own script — Google Translate
-                 would otherwise translate those names into the language
-                 currently selected, leaving the picker unreadable. */
+              /* Each language is named in its own script — a browser
+                 translate feature would otherwise translate those names
+                 into whatever is currently selected, leaving the picker
+                 itself unreadable. */
               <div className={styles.langDropdown} translate="no">
                 {LANGUAGES.map(lang => (
                   <button
@@ -353,15 +335,13 @@ export default function Navigation() {
       <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ''}`} aria-hidden={!menuOpen}>
         <div className={styles.mobileLinks}>
           {NAV_LINKS.map(link => {
-            const label = navLabel(link.translationKey);
             return (
               <button
                 key={link.page + link.translationKey}
                 className={styles.mobileLink}
                 onClick={() => handleNavClick(link.page)}
-                translate={label.notranslate ? 'no' : undefined}
               >
-                {label.text}
+                {t(link.translationKey)}
               </button>
             );
           })}

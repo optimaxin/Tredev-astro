@@ -697,10 +697,10 @@
 }
 
 /* Same tight-pill-nav typographic adjustment as hi/mr, now also covering
-   bn/ta/te — those only became reachable text once Google Translate
-   (utils/googleTranslate.ts) started actually translating into them, so
-   this exact nowrap/fixed-height nav bar had never really been exercised
-   with real content in those scripts before. */
+   bn/ta/te. Currently dormant: `<html lang>` is hardcoded to 'en' (see
+   App.tsx) so translation can only come from the visitor's own browser now,
+   which this app has no hook into — kept in case this site moves to its own
+   dictionary-driven translation and sets `lang` again. */
 :global(html[lang='hi']) .link,
 :global(html[lang='mr']) .link,
 :global(html[lang='bn']) .link,
