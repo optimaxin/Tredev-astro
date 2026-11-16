@@ -19,6 +19,8 @@ import { canActivateOffer } from '../services/pricingEngine.ts';
 import { activateBoost, boostDisplayId, getActiveBoost, listBoostHistory } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
 import { listMySlots, listUpcomingSlots } from '../repositories/consultationSlotRepository.ts';
+import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
+import { notifyEventByTemplateId } from '../services/notificationService.ts';
 
 // Discovery/catalog API (spec §9-10). Separate from the existing
 // GET /api/astrologers in routes.ts, which returns bare live-availability
@@ -284,6 +286,11 @@ const applicationSchema = z.object({
   bio: z.string().trim().min(10).max(3000),
   resumeData: z.string().max(MAX_RESUME_DATA_CHARS).nullable().default(null),
   driveLink: z.string().trim().url().max(500).nullable().default(null),
+  // The frontend runs Firebase Phone Auth (OTP) on this number before
+  // submitting at all (see firebaseClient.ts) and hands us the resulting ID
+  // token here — verified the same way loginWithFirebase/linkFirebasePhone
+  // verify theirs, so a fake/typo'd number can't reach a real application.
+  phoneIdToken: z.string().min(10),
 });
 
 // optionalAuth: anonymous visitors can submit this form too — a logged-in
@@ -295,7 +302,24 @@ astrologersCatalogRouter.post('/applications', optionalAuth, async (req, res) =>
   if (req.user && await findPendingApplicationForUser(req.user.id)) {
     return res.status(409).json({ success: false, error: { code: 'ALREADY_PENDING', message: 'You already have a pending application' } });
   }
-  const row = await createApplication({ userId: req.user?.id, ...parsed.data });
+
+  const auth = await getFirebaseAuth();
+  let decoded;
+  try {
+    decoded = await auth.verifyIdToken(parsed.data.phoneIdToken);
+  } catch {
+    return res.status(401).json({ success: false, error: { code: 'INVALID_OTP_TOKEN', message: 'Phone verification is invalid or expired — please verify your number again.' } });
+  }
+  if (decoded.phone_number !== parsed.data.phoneNumber) {
+    return res.status(400).json({ success: false, error: { code: 'PHONE_MISMATCH', message: 'The verified phone number does not match the number on this form.' } });
+  }
+
+  const { phoneIdToken, ...input } = parsed.data;
+  const row = await createApplication({ userId: req.user?.id, ...input });
+  void notifyEventByTemplateId({
+    templateId: 'tpl-application-submitted', eventKey: 'application.submitted',
+    vars: { name: row.full_name || 'there' }, user: { email: row.email!, name: row.full_name || 'there' }, from: 'hiring',
+  });
   res.status(201).json({ success: true, data: row });
 });
 

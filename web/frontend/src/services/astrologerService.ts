@@ -104,6 +104,7 @@ export interface NewAstrologerApplication {
   bio: string;
   resumeData: string | null;
   driveLink: string | null;
+  phoneIdToken: string;
 }
 
 export interface ConsultationSlot {

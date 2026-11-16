@@ -24,6 +24,7 @@ export default function ApplicationsPage() {
   const [profileTab, setProfileTab] = useState('profile');
   const [confirm, setConfirm] = useState<{ app: ApiApplication; decision: 'APPROVED' | 'REJECTED' } | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -52,6 +53,67 @@ export default function ApplicationsPage() {
     }
   };
 
+  // One-off hiring-team worksheet — not synced back anywhere, just a
+  // checklist they fill in by hand as a candidate moves through the
+  // pipeline, re-exported whenever they want a fresh snapshot.
+  const exportForHiring = async () => {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Hiring Pipeline');
+
+      sheet.columns = [
+        { header: 'Name', key: 'name', width: 24 },
+        { header: 'Email', key: 'email', width: 28 },
+        { header: 'Phone', key: 'phone', width: 16 },
+        { header: 'Expertise', key: 'expertise', width: 20 },
+        { header: 'Experience', key: 'experience', width: 14 },
+        { header: 'Applied On', key: 'applied', width: 14 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Resume', key: 'resume', width: 28 },
+        { header: 'Step 1: Resume Reviewed', key: 'step1', width: 22 },
+        { header: 'Step 2: Interview Scheduled', key: 'step2', width: 24 },
+        { header: 'Step 3: Interview Done', key: 'step3', width: 20 },
+        { header: 'Step 4: Offer Sent', key: 'step4', width: 18 },
+      ];
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8D9A0' } };
+
+      for (const a of apps) {
+        const hasResume = Boolean(a.driveLink || a.resumeData);
+        const row = sheet.addRow({
+          name: a.fullName || a.userName || '—',
+          email: a.email || a.userEmail || '—',
+          phone: a.phoneNumber || '—',
+          expertise: a.expertise,
+          experience: a.experience,
+          applied: formatDate(a.submittedAt),
+          status: a.status,
+          resume: hasResume ? (a.driveLink ? 'Open Resume Link' : 'Uploaded (on file)') : 'Not Uploaded',
+        });
+        const resumeCell = row.getCell('resume');
+        if (a.driveLink) resumeCell.value = { text: 'Open Resume Link', hyperlink: a.driveLink };
+        resumeCell.fill = {
+          type: 'pattern', pattern: 'solid',
+          fgColor: { argb: hasResume ? 'FFC6EFCE' : 'FFFFC7CE' },
+        };
+        resumeCell.font = { color: { argb: hasResume ? 'FF006100' : 'FF9C0006' } };
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `hiring-pipeline-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const TABS = [
     { key: 'profile', labelKey: 'admin_apps_drawer_profile' },
     { key: 'professional', labelKey: 'admin_apps_drawer_professional' },
@@ -75,6 +137,9 @@ export default function ApplicationsPage() {
           active={filter}
           onChange={k => setFilter(k as typeof filter)}
         />
+        <AdminButton onClick={exportForHiring} disabled={exporting || apps.length === 0}>
+          {exporting ? 'Exporting…' : 'Export for Hiring (Excel)'}
+        </AdminButton>
       </div>
 
       {error && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.85rem', marginBottom: 16 }}>{error}</p>}
