@@ -18,9 +18,9 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import styles from './Reports.module.css';
 
 const BUNDLES = [
-  { title: 'Report Only', price: 499, desc: 'Full written report delivered in 48 hours', features: ['In-depth analysis', 'PDF format', '40+ pages'] },
-  { title: 'Report + Expert Q&A', price: 799, desc: 'Report plus 2 written questions to an astrologer', features: ['Full report', '2 expert questions', '48hr response'], popular: true },
-  { title: 'Report + Consultation', price: 1499, desc: 'Full report plus a 20-minute live consultation', features: ['Full report', '20-min video call', 'Recorded session'] },
+  { id: 1, price: 499 },
+  { id: 2, price: 799, popular: true },
+  { id: 3, price: 1499 },
 ];
 
 export default function Reports({ featured = false }: { featured?: boolean }) {
@@ -60,7 +60,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('reports'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              {t('cta_explore')} Reports →
+              {t('cta_explore_reports')} →
             </button>
           ) : (
             <div className={styles.sphereWrap} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -115,7 +115,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
                 cursor: 'pointer',
               } as React.CSSProperties}
             >
-              {report.popular && <div className={styles.popularBadge}>Most Popular</div>}
+              {report.popular && <div className={styles.popularBadge}>{t('badge_most_popular')}</div>}
 
               <div className={styles.reportIcon} style={{ color: report.color, display: 'inline-flex', alignItems: 'center' }}>
                 {report.id === 1 && <CareerIcon size={42} />}
@@ -135,9 +135,9 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               <p className={styles.reportDesc}>{t('report_' + report.id + '_desc') || report.description}</p>
 
               <div className={styles.reportStats}>
-                <span>{report.pages} pages</span>
+                <span>{report.pages} {t('lbl_pages')}</span>
                 <span>·</span>
-                <span>{report.sections} sections</span>
+                <span>{report.sections} {t('lbl_sections')}</span>
               </div>
 
               <div className={styles.reportBottom}>
@@ -172,24 +172,24 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
             transition={{ duration: 0.7 }}
           >
             <div className={styles.bundlesHeader}>
-              <h3 className={styles.bundlesTitle}>Choose Your Experience</h3>
-              <p className={styles.bundlesSubtitle}>Every report can be enhanced with expert access</p>
+              <h3 className={styles.bundlesTitle}>{t('bundles_title')}</h3>
+              <p className={styles.bundlesSubtitle}>{t('bundles_subtitle')}</p>
             </div>
 
             <div className={styles.bundlesGrid}>
               {BUNDLES.map((bundle, i) => (
                 <div
-                  key={bundle.title}
+                  key={bundle.id}
                   className={`${styles.bundle} ${bundle.popular ? styles.bundlePopular : ''}`}
                 >
-                  {bundle.popular && <div className={styles.bundlePopularLabel}>Recommended</div>}
-                  <h4 className={styles.bundleName}>{bundle.title}</h4>
+                  {bundle.popular && <div className={styles.bundlePopularLabel}>{t('label_recommended')}</div>}
+                  <h4 className={styles.bundleName}>{t(`bundle_${bundle.id}_title`)}</h4>
                   <p className={styles.bundlePrice}>₹{bundle.price}</p>
-                  <p className={styles.bundleDesc}>{bundle.desc}</p>
+                  <p className={styles.bundleDesc}>{t(`bundle_${bundle.id}_desc`)}</p>
                   <ul className={styles.bundleFeatures}>
-                    {bundle.features.map(f => (
-                      <li key={f}>
-                        <span className={styles.checkIcon}>✓</span> {f}
+                    {[1, 2, 3].map(n => (
+                      <li key={n}>
+                        <span className={styles.checkIcon}>✓</span> {t(`bundle_${bundle.id}_feature${n}`)}
                       </li>
                     ))}
                   </ul>
@@ -208,7 +208,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
                       handleReportClick(REPORTS[0].id);
                     }}
                   >
-                    Choose This
+                    {t('btn_choose_this')}
                   </button>
                 </div>
               ))}

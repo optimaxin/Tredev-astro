@@ -4,7 +4,7 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import { PLANET_META } from '../../data/planetMeta';
 import { HOUSE_MEANINGS } from '../../data/mockData';
-import { HINDI_RASHI, HINDI_PLANET } from '../../utils/panchangHindi';
+import { HINDI_RASHI, HINDI_PLANET, HINDI_PLANET_QUALITY, HOUSE_MEANINGS_HI } from '../../utils/panchangHindi';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { DailyHoroscopeResult } from '../../services/calculatorService';
 import styles from './Horoscope.module.css';
@@ -60,9 +60,13 @@ export default function Horoscope() {
   );
   // HOUSE_MEANINGS entries read "5th House — Creativity, children, ..." —
   // the two halves give both the ordinal house name and a one-word theme
-  // without needing a separate ordinal() helper here.
+  // without needing a separate ordinal() helper here. HOUSE_MEANINGS_HI
+  // mirrors it one-for-one for the Hindi half of the sentence below.
   const [focusHouseName, focusHouseTheme] = focusPlanet
     ? (HOUSE_MEANINGS[focusPlanet.house] ?? '').split('—').map(part => part.trim())
+    : [];
+  const [focusHouseNameHi, focusHouseThemeHi] = focusPlanet
+    ? (HOUSE_MEANINGS_HI[focusPlanet.house] ?? '').split('—').map(part => part.trim())
     : [];
 
   const explore = () => { setPage('horoscope'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -78,7 +82,7 @@ export default function Horoscope() {
             <p className="section-desc-sans">{t('section_horoscope_desc')}</p>
           </div>
           <button className="section-explore-link" onClick={explore}>
-            {t('cta_explore')} Horoscopes →
+            {t('cta_explore_horoscopes')} →
           </button>
         </div>
 
@@ -120,10 +124,12 @@ export default function Horoscope() {
                     {isHindi ? HINDI_RASHI[current.eng] || current.name : current.name} ({current.eng}):
                   </strong>{' '}
                   {isHindi ? HINDI_PLANET[focusPlanet.id] || PLANET_META[focusPlanet.id]?.name : PLANET_META[focusPlanet.id]?.name}
-                  {isHindi ? ' आपके ' : ' is transiting your '}{focusHouseName}
-                  {focusHouseTheme ? ` (${focusHouseTheme.split(',')[0]})` : ''}
+                  {isHindi ? ' आपके ' : ' is transiting your '}{isHindi ? (focusHouseNameHi || focusHouseName) : focusHouseName}
+                  {isHindi
+                    ? (focusHouseThemeHi ? ` (${focusHouseThemeHi.split(',')[0]})` : '')
+                    : (focusHouseTheme ? ` (${focusHouseTheme.split(',')[0]})` : '')}
                   {isHindi ? ' में, राशि: ' : ' in '}{isHindi ? HINDI_RASHI[focusPlanet.rashi] || focusPlanet.rashi : focusPlanet.rashi}
-                  {focusPlanet.retrograde ? (isHindi ? ' — वक्री' : ' — Retrograde') : ''} — {PLANET_META[focusPlanet.id]?.quality}.
+                  {focusPlanet.retrograde ? (isHindi ? ' — वक्री' : ' — Retrograde') : ''} — {isHindi ? (HINDI_PLANET_QUALITY[focusPlanet.id] || PLANET_META[focusPlanet.id]?.quality) : PLANET_META[focusPlanet.id]?.quality}.
                 </span>
               </p>
             )}

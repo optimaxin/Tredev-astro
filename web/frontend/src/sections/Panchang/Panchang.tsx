@@ -427,13 +427,13 @@ export default function Panchang() {
               />
             </div>
 
-            <p className={styles.date}>{data ? `${data.vara}, ${new Date(data.date + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}` : 'Loading...'}</p>
+            <p className={styles.date}>{data ? `${hindiOr(language, HINDI_WEEKDAY, data.vara)}, ${new Date(data.date + 'T00:00:00Z').toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}` : (isHindi ? 'लोड हो रहा है...' : 'Loading...')}</p>
 
             {/* Date picker — check any day's Panchang, not just today */}
             <div className={styles.locationWrap} style={{ marginTop: '4px' }}>
-              <AncientDatePicker className={styles.cityInput} value={selectedDate} onChange={handleDateChange} placeholder="Select Date" />
+              <AncientDatePicker className={styles.cityInput} value={selectedDate} onChange={handleDateChange} placeholder={isHindi ? 'तिथि चुनें' : 'Select Date'} />
               {selectedDate !== todayDateString() && (
-                <button className={styles.cancelBtn} onClick={() => handleDateChange(todayDateString())} title="Back to today">Today</button>
+                <button className={styles.cancelBtn} onClick={() => handleDateChange(todayDateString())} title={isHindi ? 'आज पर वापस जाएँ' : 'Back to today'}>{isHindi ? 'आज' : 'Today'}</button>
               )}
             </div>
 
@@ -456,7 +456,7 @@ export default function Panchang() {
                   <input
                     type="text"
                     className={styles.cityInput}
-                    placeholder="Enter city name..."
+                    placeholder={isHindi ? 'शहर का नाम दर्ज करें...' : 'Enter city name...'}
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && inputValue && applyLocation()}
@@ -467,7 +467,7 @@ export default function Panchang() {
                     onClick={applyLocation}
                     disabled={!inputValue}
                   >
-                    Apply
+                    {isHindi ? 'लागू करें' : 'Apply'}
                   </button>
                   <button
                     className={styles.cancelBtn}
@@ -476,7 +476,7 @@ export default function Panchang() {
                     ✕
                   </button>
                   <div className={styles.cityHints}>
-                    Any city works now — e.g. Mumbai, Bangalore, Chennai, Kolkata, Varanasi
+                    {isHindi ? 'कोई भी शहर अब काम करता है — जैसे मुंबई, बैंगलोर, चेन्नई, कोलकाता, वाराणसी' : 'Any city works now — e.g. Mumbai, Bangalore, Chennai, Kolkata, Varanasi'}
                   </div>
                 </motion.div>
               ) : (

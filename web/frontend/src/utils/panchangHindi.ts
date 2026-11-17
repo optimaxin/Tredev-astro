@@ -59,6 +59,44 @@ export const HINDI_PLANET: Record<string, string> = {
   rahu: 'राहु', ketu: 'केतु', asc: 'लग्न',
 };
 
+// Planet id -> Hindi one-line significance, mirroring data/planetMeta.ts's
+// English `quality` field one-for-one (same wording/order, just translated)
+// — used wherever that field is shown in Hindi (e.g. Horoscope's daily
+// transit line) instead of silently falling back to English for it alone.
+export const HINDI_PLANET_QUALITY: Record<string, string> = {
+  sun: 'पहचान · जीवन-शक्ति · आत्म-अभिव्यक्ति',
+  moon: 'मन · भावनाएँ · आंतरिक संसार',
+  mercury: 'संचार · बुद्धि · अनुकूलनशीलता',
+  venus: 'प्रेम · सौंदर्य · सुख · कला',
+  mars: 'ऊर्जा · प्रेरणा · साहस · कर्म',
+  jupiter: 'ज्ञान · विस्तार · समृद्धि · कृपा',
+  saturn: 'अनुशासन · कर्म · संरचना · समय',
+  uranus: 'अचानक परिवर्तन · मौलिकता · विद्रोह',
+  neptune: 'कल्पना · भ्रम · आदर्शवाद',
+  pluto: 'गहन रूपांतरण · छिपी शक्ति · पुनर्जनन',
+  rahu: 'इच्छा · महत्वाकांक्षा · भविष्य का कर्म',
+  ketu: 'मुक्ति · पूर्व कर्म · आध्यात्मिकता',
+  asc: 'स्वयं · भौतिक शरीर · प्रथम प्रभाव · जीवन-शक्ति',
+};
+
+// House number -> Hindi "<ordinal> भाव — <themes>", mirroring
+// data/mockData.ts's HOUSE_MEANINGS one-for-one so callers that already
+// `.split('—')` that English string can do the same here.
+export const HOUSE_MEANINGS_HI: Record<number, string> = {
+  1: 'पहला भाव — स्वयं, शरीर, व्यक्तित्व, प्रारंभिक जीवन',
+  2: 'दूसरा भाव — धन, परिवार, वाणी, मूल्य',
+  3: 'तीसरा भाव — साहस, भाई-बहन, संचार, छोटी यात्राएँ',
+  4: 'चौथा भाव — घर, माता, सुख-सुविधाएँ, आंतरिक शांति',
+  5: 'पाँचवाँ भाव — रचनात्मकता, संतान, बुद्धि, प्रेम',
+  6: 'छठा भाव — स्वास्थ्य, ऋण, सेवा, बाधाएँ',
+  7: 'सातवाँ भाव — साझेदारी, विवाह, व्यापार, सार्वजनिक व्यवहार',
+  8: 'आठवाँ भाव — आयु, रूपांतरण, रहस्य, विरासत',
+  9: 'नौवाँ भाव — धर्म, भाग्य, उच्च शिक्षा, आध्यात्मिक ज्ञान',
+  10: 'दसवाँ भाव — करियर, प्रतिष्ठा, अधिकार, जीवन-उद्देश्य',
+  11: 'ग्यारहवाँ भाव — लाभ, मित्रता, आकांक्षाएँ, आय',
+  12: 'बारहवाँ भाव — मोक्ष, हानि, विदेश, आध्यात्मिक मुक्ति',
+};
+
 // Small helper for "show the Hindi name when the site is in Hindi,
 // otherwise the English one" — the same fallback-to-English-if-untranslated
 // pattern already used by AppContext's own t()/tOr(), applied to these

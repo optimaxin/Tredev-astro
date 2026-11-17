@@ -52,7 +52,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.7 }}
           >
-            ✦ JYOTISH · DHARMA · GRAHAS · NAKSHATRAS
+            ✦ {t('hero_eyebrow')}
           </motion.span>
 
           {/* Main Headline */}
@@ -167,7 +167,7 @@ export default function Hero() {
           <div className={styles.scrollMouse}>
             <div className={styles.scrollDot} />
           </div>
-          <span className={styles.scrollText}>Scroll to explore</span>
+          <span className={styles.scrollText}>{t('hero_scroll_hint')}</span>
           <span className={styles.scrollChevron}>⌄</span>
         </motion.div>
       </div>

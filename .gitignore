@@ -86,4 +86,3 @@ __MACOSX/
 # reference while features are ported out of it, but it is neither the source
 # of truth nor a build artifact, so it does not belong in the repo.
 ai-core-recovered/
-panchang-share-image-code.zip

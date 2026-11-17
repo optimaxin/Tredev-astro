@@ -90,13 +90,13 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
               className="section-explore-link"
               onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore All Acharyas →
+              {t('cta_explore_acharyas')} →
             </button>
           )}
         </motion.div>
 
         {loadError ? (
-          <p className={styles.demoNote}>Could not load astrologers right now. Please try again shortly.</p>
+          <p className={styles.demoNote}>{t('astrologers_load_error')}</p>
         ) : featured ? (
           /* Featured mode: show 3 Acharyas in grid */
           <div className={styles.grid}>

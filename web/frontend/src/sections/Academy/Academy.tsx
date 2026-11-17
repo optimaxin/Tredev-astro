@@ -1,17 +1,21 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { COURSES } from '../../data/mockData';
+import { EXTERNAL_COURSES, ACADEMY_BASE_URL, courseUrl } from '../../data/externalAcademyCourses';
 import { useAppContext } from '../../context/AppContext';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Academy.module.css';
 
-export default function Academy({ featured = false }: { featured?: boolean }) {
-  const { setPage, setSelectedId, t } = useAppContext();
+const ROADMAP_STEPS = ['Shastri Basics', 'Kundli Analysis', 'Grahas & Rashis', 'Bhavas & Lords', 'Vimshottari Dasha', 'Gochara Transits', 'Phaladeepika'];
 
-  const handleCourseClick = (id: number) => {
-    setSelectedId(id);
-    setPage('course-detail');
-  };
+// A curated subset of the real catalog from TredevaAstro's sister learning
+// platform (Tredeva Learn) — not every course, just a hand-picked few.
+// Every card links straight to that course's real page there; there's no
+// enrollment/checkout here, by design. "Explore Gurukul" goes to the full
+// site for everything else. Same approach as sections/Store/Store.tsx.
+export default function Academy({ featured = false }: { featured?: boolean }) {
+  const { t, language } = useAppContext();
+  const isHindi = language === 'hi';
+  const courses = featured ? EXTERNAL_COURSES.slice(0, 3) : EXTERNAL_COURSES;
 
   return (
     <section className={styles.section} id="academy">
@@ -26,88 +30,23 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
             </p>
           </div>
           {featured && (
-            <button
-              className="section-explore-link"
-              onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            >
-              {t('cta_explore')} Courses →
-            </button>
+            <a className="section-explore-link" href={ACADEMY_BASE_URL} target="_blank" rel="noopener noreferrer">
+              {t('cta_explore_courses')} →
+            </a>
           )}
         </div>
 
         {/* Courses Grid */}
         <div className={`${styles.coursesGrid} ${featured ? styles.coursesGridFeatured : ''}`}>
-
-          {(featured ? COURSES.slice(0, 3) : COURSES).map((course, i) => (
+          {courses.map((course, i) => (
             <motion.div
               key={course.id}
-              className={styles.courseCard}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.55 }}
-              onClick={() => handleCourseClick(course.id)}
-              style={{ cursor: 'pointer' }}
             >
-              {/* Course Visual */}
-              <div className={styles.courseTop} style={{ '--course-color': course.color } as React.CSSProperties}>
-                <div className={styles.courseIcon} style={{ color: course.color }}>
-                  {course.icon}
-                </div>
-                <div className={styles.courseBadges}>
-                  {course.certificate && (
-                    <span className={styles.certBadge}>✦ Certificate</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Course Info */}
-              <div className={styles.courseBody}>
-                <div className={styles.courseCategory}>
-                  {t('cat_' + course.category.toLowerCase().replace(' ', '_')) || course.category}
-                </div>
-                <h3 className={styles.courseName}>{t('course_' + course.id + '_title') || course.title}</h3>
-                <p className={styles.courseSubtitle}>{t('course_' + course.id + '_sub') || course.subtitle}</p>
-
-                {/* Topics */}
-                <div className={styles.topics}>
-                  {course.topics.slice(0, 3).map(t => (
-                    <span key={t} className={styles.topic}>{t}</span>
-                  ))}
-                </div>
-
-                {/* Stats */}
-                <div className={styles.courseStats}>
-                  <span className={styles.stars}>★ {course.rating}</span>
-                  <span className={styles.statDot} />
-                  <span>{course.lessons} lessons</span>
-                  <span className={styles.statDot} />
-                  <span>{course.weeks} weeks</span>
-                </div>
-
-                <div className={styles.courseLevel}>
-                  <span>{course.level}</span>
-                </div>
-
-                <div className={styles.courseBottom}>
-                  <div>
-                    <div className={styles.coursePrice}>₹{course.price.toLocaleString()}</div>
-                    {course.originalPrice && (
-                      <div className={styles.courseOriginal}>₹{course.originalPrice.toLocaleString()}</div>
-                    )}
-                  </div>
-                  <button
-                    className="btn btn-gold"
-                    id={`course-enroll-${course.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCourseClick(course.id);
-                    }}
-                  >
-                    {t('btn_enroll') || 'Enroll Now'}
-                  </button>
-                </div>
-              </div>
+              <CourseCard course={course} isHindi={isHindi} />
             </motion.div>
           ))}
         </div>
@@ -115,13 +54,13 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
         {/* Learning Roadmap — shown only on full Academy page */}
         {!featured && (
           <div className={styles.roadmap}>
-            <h3 className={styles.roadmapTitle}>Gurukul Learning Path</h3>
+            <h3 className={styles.roadmapTitle}>{t('roadmap_title')}</h3>
             <div className={styles.roadmapSteps}>
-              {['Shastri Basics', 'Kundli Analysis', 'Grahas & Rashis', 'Bhavas & Lords', 'Vimshottari Dasha', 'Gochara Transits', 'Phaladeepika'].map((step, i) => (
+              {ROADMAP_STEPS.map((step, i) => (
                 <div key={step} className={styles.step}>
                   <div className={styles.stepNum}>{i + 1}</div>
-                  <span className={styles.stepLabel}>{step}</span>
-                  {i < 6 && <div className={styles.stepLine} />}
+                  <span className={styles.stepLabel}>{t(`roadmap_step${i + 1}`)}</span>
+                  {i < ROADMAP_STEPS.length - 1 && <div className={styles.stepLine} />}
                 </div>
               ))}
             </div>
@@ -131,15 +70,56 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
         {/* Explore All — shown in featured mode */}
         {featured && (
           <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
-            <button
-              className="btn btn-outline-light"
-              onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            >
-              Explore Gurukul →
-            </button>
+            <a className="btn btn-outline-light" href={ACADEMY_BASE_URL} target="_blank" rel="noopener noreferrer">
+              {t('cta_explore_gurukul')} →
+            </a>
           </div>
         )}
       </div>
     </section>
+  );
+}
+
+function CourseCard({ course: c, isHindi }: { course: typeof EXTERNAL_COURSES[0]; isHindi: boolean }) {
+  const { t } = useAppContext();
+  const url = courseUrl(c.id);
+  // Several Learn-platform entries just duplicate the English string into
+  // title_hi/subtitle_hi rather than actually translating it — showing
+  // that verbatim would look like a broken translation, so only use the
+  // Hindi field when it's genuinely different from the English one.
+  const title = isHindi && c.titleHi !== c.title ? c.titleHi : c.title;
+  const subtitle = isHindi && c.subtitleHi !== c.subtitle ? c.subtitleHi : c.subtitle;
+
+  return (
+    <a
+      className={styles.courseCard}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: 'none' }}
+    >
+      <div className={styles.courseTop} style={{ padding: 0, aspectRatio: '16 / 9' }}>
+        <img src={c.image} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+      </div>
+
+      <div className={styles.courseBody}>
+        <div className={styles.courseCategory}>{t('cat_astrology')}</div>
+        <h3 className={styles.courseName}>{title}</h3>
+        {subtitle && <p className={styles.courseSubtitle}>{subtitle}</p>}
+
+        {c.duration && (
+          <div className={styles.courseLevel}>
+            <span>{c.duration}</span>
+          </div>
+        )}
+
+        <div className={styles.courseBottom}>
+          <div className={styles.coursePrice}>
+            {c.price > 0 ? `₹${c.price.toLocaleString()}` : t('lbl_free')}
+          </div>
+          <span className="btn btn-gold btn-sm">{t('btn_view_course')}</span>
+        </div>
+      </div>
+    </a>
   );
 }

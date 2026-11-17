@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kundali-chat · playground</title>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #181b24; --panel2: #1f2331; --border: #2a2f3e;
+    --text: #e6e8ef; --muted: #9aa0b4; --accent: #c99a3f; --accent2: #7c6cff;
+    --user: #23324a; --assistant: #22262f;
+    --ok: #4caf82; --pending: #d9a441; --failed: #e0645a; --flag: #b5502a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+    background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  header .accent { color: var(--accent); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; }
+  .dot.up { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.down { background: var(--failed); }
+  .health { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  .side {
+    width: 360px; flex: 0 0 360px; border-right: 1px solid var(--border); background: var(--panel);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+  }
+  label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); display: block; margin-bottom: 4px; }
+  input {
+    width: 100%; padding: 9px 10px; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 13px;
+  }
+  input:focus { outline: none; border-color: var(--accent2); }
+  button {
+    padding: 11px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; background: var(--accent2); color: #fff; transition: filter .15s;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.12); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .hint { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+  .sess-info { font-size: 11.5px; color: var(--muted); word-break: break-all; }
+  .sess-info code { color: var(--accent); font-family: ui-monospace, monospace; }
+  .cost-title { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .cost-row { font-size: 12.5px; color: var(--text); display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+  .cost-row .amt { font-family: ui-monospace, monospace; color: var(--accent2); white-space: nowrap; }
+  .cost-total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; font-weight: 600; }
+  .cost-note { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .chat-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .transcript { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .empty { margin: auto; color: var(--muted); font-size: 14px; text-align: center; max-width: 400px; line-height: 1.6; }
+  .msg { max-width: 74%; display: flex; flex-direction: column; gap: 5px; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .bubble { padding: 11px 15px; border-radius: 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user .bubble { background: var(--user); border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--assistant); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+  .meta { font-size: 10.5px; color: var(--muted); display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .badge { padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .badge.complete { background: rgba(76,175,130,.16); color: var(--ok); }
+  .badge.pending { background: rgba(217,164,65,.16); color: var(--pending); }
+  .badge.failed { background: rgba(224,100,90,.16); color: var(--failed); }
+  .badge.flag { background: rgba(181,80,42,.2); color: #e8895f; }
+  .badge.hook { background: rgba(124,108,255,.16); color: #a99cff; }
+  .typing { display: inline-flex; gap: 3px; }
+  .typing span { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,60%,100% { opacity: .25; } 30% { opacity: 1; } }
+  .composer { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); background: var(--panel); }
+  .composer input { flex: 1; font-size: 14px; padding: 12px 14px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--failed); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; max-width: 80%; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <header>
+    <span class="accent">✦</span>
+    <h1>kundali-chat <span class="accent">playground</span></h1>
+    <div class="health"><span id="dot" class="dot"></span><span id="healthTxt">checking…</span></div>
+  </header>
+  <main>
+    <aside class="side">
+      <div class="hint">Upload a kundali JSON/text file — the chat answers <b>only</b> from that data. In production this is what the engine API pushes into Redis.</div>
+      <div><label for="file">Kundali file (.json / .txt)</label><input id="file" type="file" accept=".txt,.json,text/plain,application/json" /></div>
+      <button id="uploadBtn">Load kundali &amp; start chat</button>
+      <div class="divider"></div>
+      <div id="sessInfo" class="sess-info hint">No session yet. Upload a kundali file to begin.</div>
+
+      <div id="costPanel" style="display:none">
+        <div class="divider"></div>
+        <div class="cost-title">💰 Cost viewer (playground)</div>
+        <div id="costLast" class="cost-row"></div>
+        <div id="costTotal" class="cost-row cost-total"></div>
+        <div class="cost-note" id="costNote"></div>
+      </div>
+    </aside>
+
+    <div class="chat-wrap">
+      <div id="transcript" class="transcript">
+        <div class="empty">✦<br>Upload a kundali file on the left to start chatting with the Vedic astrologer, grounded in that data.</div>
+      </div>
+      <div class="composer">
+        <input id="msg" placeholder="Upload a kundali first…" disabled />
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+    </div>
+  </main>
+  <div id="toast" class="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const SPLIT = "|||";
+let sessionId = null, polling = false;
+
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 4500); }
+
+function errDetail(e, fallback) {
+  const d = e && e.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) return d.map(x => (x.loc ? x.loc.slice(-1)[0] + ": " : "") + (x.msg || "")).join("; ");
+  return fallback;
+}
+
+async function checkHealth() {
+  try { const r = await fetch("/health"); if (!r.ok) throw 0; $("#dot").className = "dot up"; $("#healthTxt").textContent = "healthy"; }
+  catch { $("#dot").className = "dot down"; $("#healthTxt").textContent = "unreachable"; }
+}
+
+function renderMessages(messages) {
+  const t = $("#transcript"); t.innerHTML = "";
+  if (!messages.length) { t.innerHTML = '<div class="empty">Kundali loaded — say hello!</div>'; return; }
+  for (const m of messages) {
+    const parts = (m.role === "assistant" && m.status !== "pending")
+      ? m.content.split(SPLIT).map(s => s.trim()).filter(Boolean) : [m.content];
+    if (!parts.length) parts.push("");
+    parts.forEach((part, idx) => {
+      const wrap = document.createElement("div"); wrap.className = "msg " + m.role;
+      const bubble = document.createElement("div"); bubble.className = "bubble";
+      if (m.status === "pending") bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+      else bubble.textContent = part;
+      wrap.appendChild(bubble);
+      // No tags/badges/timestamp under messages. While thinking, the pending
+      // bubble shows a typing indicator; once done, just the message itself.
+      t.appendChild(wrap);
+    });
+  }
+  t.scrollTop = t.scrollHeight;
+}
+
+// --- Cost viewer (playground only) ---
+// google/gemini-2.5-flash pricing on OpenRouter: $0.30 / 1M input tokens,
+// $2.50 / 1M output tokens. USD→INR is a rough rate for display only.
+const PRICE_IN_USD = 0.30 / 1e6;
+const PRICE_OUT_USD = 2.50 / 1e6;
+const USD_TO_INR = 88;
+const fmtUsd = v => "$" + (v < 0.01 ? v.toFixed(6) : v.toFixed(4));
+const fmtInr = v => "₹" + (v < 1 ? v.toFixed(4) : v.toFixed(2));
+
+function updateCost(messages) {
+  const priced = messages.filter(m => m.role === "assistant" && m.status === "complete"
+    && (m.prompt_tokens != null || m.completion_tokens != null));
+  if (!priced.length) { $("#costPanel").style.display = "none"; return; }
+  const cost = m => (m.prompt_tokens || 0) * PRICE_IN_USD + (m.completion_tokens || 0) * PRICE_OUT_USD;
+  const last = priced[priced.length - 1];
+  const lastUsd = cost(last);
+  const totalUsd = priced.reduce((s, m) => s + cost(m), 0);
+  $("#costPanel").style.display = "block";
+  $("#costLast").innerHTML = `<span>Last reply</span><span class="amt">${fmtInr(lastUsd * USD_TO_INR)} · ${fmtUsd(lastUsd)}</span>`;
+  $("#costTotal").innerHTML = `<span>Session total (${priced.length})</span><span class="amt">${fmtInr(totalUsd * USD_TO_INR)} · ${fmtUsd(totalUsd)}</span>`;
+  $("#costNote").textContent = `Last: ${last.prompt_tokens || 0} in / ${last.completion_tokens || 0} out tokens · gemini-2.5-flash @ $0.30/$2.50 per 1M · ₹@${USD_TO_INR}/$`;
+}
+
+async function loadMessages() {
+  const r = await fetch(`/sessions/${sessionId}/messages?limit=200`);
+  if (!r.ok) return [];
+  const data = await r.json(); renderMessages(data.messages); updateCost(data.messages); return data.messages;
+}
+
+async function uploadKundali() {
+  const f = $("#file").files[0];
+  if (!f) { toast("choose a .json/.txt file first"); return; }
+  const btn = $("#uploadBtn"); btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    const content = await f.text();
+    if (!content.trim()) throw new Error("file is empty");
+    const body = { content };  // name comes from the file itself
+    const r = await fetch("/sessions/from-text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.status !== 201) { throw new Error(errDetail(await r.json().catch(() => ({})), "HTTP " + r.status)); }
+    const data = await r.json();
+    sessionId = data.session_id;
+    $("#sessInfo").innerHTML = `Session: <code>${sessionId}</code><br>Answering only from the uploaded kundali.`;
+    $("#msg").disabled = false; $("#sendBtn").disabled = false; $("#msg").placeholder = "Ask about your kundali…"; $("#msg").focus();
+    // The greeting is generated asynchronously — poll until it lands (shows a typing bubble meanwhile).
+    for (let i = 0; i < 45; i++) {
+      const msgs = await loadMessages();
+      const greeting = msgs.find(m => m.role === "assistant");
+      if (greeting && greeting.status !== "pending") break;
+      await new Promise(res => setTimeout(res, 300));
+    }
+  } catch (e) { toast("upload failed: " + e.message); }
+  finally { btn.disabled = false; btn.textContent = "Load kundali & start chat"; }
+}
+
+async function sendMessage() {
+  const box = $("#msg"); const content = box.value.trim();
+  if (!content || !sessionId || polling) return;
+  box.value = ""; $("#sendBtn").disabled = true; box.disabled = true;
+  try {
+    const r = await fetch(`/sessions/${sessionId}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }) });
+    if (r.status !== 202) { throw new Error(errDetail(await r.json().catch(() => ({})), "HTTP " + r.status)); }
+    const { message_id } = await r.json();
+    polling = true; await loadMessages();
+    for (let i = 0; i < 45; i++) {
+      const msgs = await loadMessages();
+      const target = msgs.find(m => m.id === message_id);
+      if (target && target.status !== "pending") break;
+      await new Promise(res => setTimeout(res, 300));
+    }
+  } catch (e) { toast("send failed: " + e.message); }
+  finally { polling = false; $("#sendBtn").disabled = false; box.disabled = false; box.focus(); }
+}
+
+$("#uploadBtn").addEventListener("click", uploadKundali);
+$("#sendBtn").addEventListener("click", sendMessage);
+$("#msg").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+checkHealth(); setInterval(checkHealth, 10000);
+</script>
+</body>
+</html>
