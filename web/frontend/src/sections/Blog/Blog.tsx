@@ -14,6 +14,18 @@ const TAG_COLORS: Record<string, string> = {
   'Daily Astrology': 'cyan',
 };
 
+// Blog post tags are free-text admin content (see contentService.listBlogPosts),
+// but these five recur often enough that translating them is worth a small
+// lookup — anything outside this known set just shows as written, same as
+// the post title/excerpt.
+const TAG_KEYS: Record<string, string> = {
+  Nakshatra: 'blog_tag_nakshatra',
+  Saturn: 'blog_tag_saturn',
+  Marriage: 'blog_tag_marriage',
+  Career: 'blog_tag_career',
+  'Daily Astrology': 'blog_tag_daily_astrology',
+};
+
 export default function Blog() {
   const { setPage, setSelectedId, t } = useAppContext();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -65,7 +77,7 @@ export default function Blog() {
             <div className={styles.featuredContent}>
               <div className={styles.postMeta}>
                 <span className={`${styles.tag} ${styles[`tag_${TAG_COLORS[featured.tag] || 'gold'}`]}`}>
-                  {featured.tag}
+                  {TAG_KEYS[featured.tag] ? t(TAG_KEYS[featured.tag]) : featured.tag}
                 </span>
                 <span className={styles.readTime}>{featured.readTime}</span>
                 <span className={styles.postDate}>{featured.date}</span>
@@ -93,7 +105,7 @@ export default function Blog() {
               >
                 <div className={styles.smallMeta}>
                   <span className={`${styles.tag} ${styles[`tag_${TAG_COLORS[post.tag] || 'gold'}`]}`}>
-                    {post.tag}
+                    {TAG_KEYS[post.tag] ? t(TAG_KEYS[post.tag]) : post.tag}
                   </span>
                   <span className={styles.readTime}>{post.readTime}</span>
                 </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AI_SUGGESTIONS } from '../../data/mockData';
 import { useAppContext } from '../../context/AppContext';
 import { calculatorService } from '../../services/calculatorService';
 import { CalculatorApiError } from '../../services/calculatorService';
@@ -200,7 +199,7 @@ export default function AIAstrology() {
             </p>
 
             <div className={styles.chartContext}>
-              <div className={styles.chartContextLabel}>Your Kundli Context</div>
+              <div className={styles.chartContextLabel}>{t('kundli_context_label')}</div>
               {kundliResult ? (
                 <>
                   <div className={styles.chartPreview}>
@@ -230,19 +229,19 @@ export default function AIAstrology() {
                 </>
               ) : (
                 <p className={styles.chartContextEmpty}>
-                  Fill in your birth details to start your free chat — your D1 chart will appear here.
+                  {t('kundli_context_empty')}
                 </p>
               )}
             </div>
 
             <div className={styles.freeBadge}>
               <span className={styles.freeBadgeIcon}>✦</span>
-              First free chat
+              {t('badge_first_free_chat')}
             </div>
 
             <div className={styles.disclaimer}>
               <span className={styles.disclaimerIcon}>ℹ</span>
-              <p>Based on traditional Vedic principles. Not professional advice.</p>
+              <p>{t('ai_disclaimer')}</p>
             </div>
           </motion.div>
 
@@ -283,11 +282,11 @@ export default function AIAstrology() {
                     {t('ai_intro_desc')}
                   </p>
                   <div className={styles.introExamples}>
-                    <span className={styles.introExamplesLabel}>Example questions:</span>
+                    <span className={styles.introExamplesLabel}>{t('lbl_example_questions')}</span>
                     {[
-                      'What does my Mahadasha mean?',
-                      'When is a good time for marriage?',
-                      'What does Rahu in my 7th house indicate?',
+                      t('ai_example_q1'),
+                      t('ai_example_q2'),
+                      t('ai_example_q3'),
                     ].map(q => (
                       <button
                         key={q}
@@ -321,13 +320,13 @@ export default function AIAstrology() {
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 className={styles.introTitle}>Tell us your birth details</h3>
+                  <h3 className={styles.introTitle}>{t('ai_form_title')}</h3>
                   <p className={styles.introDesc}>
-                    This builds your real D1 chart — your free chat's answers are grounded in it, not a generic reading.
+                    {t('ai_form_desc')}
                   </p>
                   <BirthDetailsForm
                     idPrefix="ai-chat"
-                    submitLabel="Start My Free Chat"
+                    submitLabel={t('ai_form_submit')}
                     showNameField
                     showGenderField
                     allowUnknownTime
@@ -392,7 +391,7 @@ export default function AIAstrology() {
                   {/* Suggestions */}
                   {!locked && (
                     <div className={styles.suggestions}>
-                      {AI_SUGGESTIONS.slice(0, 3).map(s => (
+                      {[t('ai_suggestion1'), t('ai_suggestion2'), t('ai_suggestion3')].map(s => (
                         <button
                           key={s}
                           className={styles.suggestion}
@@ -408,8 +407,8 @@ export default function AIAstrology() {
                   {/* Locked banner — free session ended, chat history stays visible */}
                   {locked && (
                     <div className={styles.lockedBanner}>
-                      <p className={styles.expiredDesc}>Your free chat is over.</p>
-                      <button className={styles.expiredCta}>Continue Chat — ₹49/session</button>
+                      <p className={styles.expiredDesc}>{t('ai_session_over')}</p>
+                      <button className={styles.expiredCta}>{t('ai_continue_chat')}</button>
                     </div>
                   )}
 
@@ -419,7 +418,7 @@ export default function AIAstrology() {
                       <input
                         type="text"
                         className={styles.input}
-                        placeholder="Ask about your chart..."
+                        placeholder={t('ai_input_placeholder')}
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         disabled={loading}
