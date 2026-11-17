@@ -1,0 +1,281 @@
+.section {
+  background: var(--color-surface);
+  padding: var(--space-24) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background stars */
+.bgStars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  background: rgba(245, 241, 232, 0.6);
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+  position: relative;
+  z-index: 2;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-12);
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 300;
+  color: var(--color-text-light);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-4);
+  line-height: 1;
+}
+
+.subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 300;
+  color: var(--color-text-muted);
+}
+
+/* Placement Banner */
+.profileBanner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+  background: rgba(22, 26, 46, 0.8);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-8);
+  backdrop-filter: blur(12px);
+}
+
+.placement {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-right: 1px solid rgba(200, 169, 107, 0.1);
+}
+
+.placement:last-child { border-right: none; }
+
+.placementSymbol {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+
+.placementInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.placementLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.placementValue {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  color: var(--color-text-light);
+  line-height: 1.2;
+}
+
+.placementHouse {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Daily Cards */
+.dailyGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-10);
+}
+
+.dailyCard {
+  background: rgba(22, 26, 46, 0.6);
+  border: 1px solid rgba(200, 169, 107, 0.1);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: all 0.3s ease;
+}
+
+.dailyCard:hover {
+  border-color: rgba(200, 169, 107, 0.25);
+  background: rgba(22, 26, 46, 0.9);
+  transform: translateY(-2px);
+}
+
+.dailyIcon {
+  font-size: 1.4rem;
+}
+
+.dailyMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dailyLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dailyValue {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--color-gold);
+  line-height: 1.2;
+}
+
+.dailyDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: rgba(160, 156, 148, 0.7);
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+/* Ecosystem Banner */
+.ecosystem {
+  background: linear-gradient(135deg, rgba(200, 169, 107, 0.06) 0%, rgba(115, 217, 212, 0.04) 100%);
+  border: 1px solid rgba(200, 169, 107, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ecosystemLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.ecosystemBadge {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(200, 169, 107, 0.1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(200, 169, 107, 0.2);
+}
+
+.ecosystemArrow {
+  color: var(--color-gold);
+  font-size: var(--text-lg);
+}
+
+.ecosystemText {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ecosystemItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ecosystemItem {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: rgba(245, 241, 232, 0.55);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200, 169, 107, 0.1);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .profileBanner { grid-template-columns: repeat(2, 1fr); }
+  .placement:nth-child(2) { border-right: none; }
+  .dailyGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .profileBanner { grid-template-columns: 1fr; }
+  .placement { border-right: none; border-bottom: 1px solid rgba(200, 169, 107, 0.1); }
+  .placement:last-child { border-bottom: none; }
+  .dailyGrid { grid-template-columns: 1fr; }
+  .container { padding: 0 var(--space-5); }
+}
+
+:global([data-theme='light']) .profileBanner,
+:global([data-theme='light']) .dailyCard {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+:global([data-theme='light']) .dailyCard:hover {
+  background: var(--surface-elevated);
+}
+
+:global([data-theme='light']) .title,
+:global([data-theme='light']) .placementValue,
+:global([data-theme='light']) .dailyValue {
+  color: var(--text-primary) !important;
+}
+
+:global([data-theme='light']) .subtitle,
+:global([data-theme='light']) .placementLabel,
+:global([data-theme='light']) .placementHouse,
+:global([data-theme='light']) .dailyLabel,
+:global([data-theme='light']) .dailyDesc,
+:global([data-theme='light']) .ecosystemText {
+  color: var(--text-secondary) !important;
+}
+
+:global([data-theme='light']) .ecosystemItem {
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-color: var(--border-subtle);
+}
+

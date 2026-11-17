@@ -1,0 +1,43 @@
+{
+  "name": "tredevastro-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env app/main.ts",
+    "start": "tsx --env-file-if-exists=.env app/main.ts",
+    "test": "tsx --env-file-if-exists=.env tests/auth.test.ts",
+    "test:e2e": "node tests/e2e-smoke.mjs",
+    "test:astrology": "tsx tests/ephemeris.sanity.mjs && tsx tests/ascendant.sanity.mjs && tsx tests/gunmilan.sanity.mjs && tsx tests/panchangTransition.sanity.mjs",
+    "test:premium-reports": "tsx --env-file-if-exists=.env tests/premiumReports.test.ts",
+    "test:premium-reports:e2e": "node tests/premiumReports.e2e.mjs"
+  },
+  "dependencies": {
+    "astronomia": "^4.2.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase-admin": "^14.3.0",
+    "geoip-lite": "^2.0.3",
+    "helmet": "8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.0",
+    "socket.io": "^4.8.3",
+    "sweph": "^2.10.3-8",
+    "tsx": "^4.23.12",
+    "zod": "^3.24.1"
+  },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "0.28.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/geoip-lite": "^1.4.4",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
+    "typescript": "~6.0.2"
+  }
+}

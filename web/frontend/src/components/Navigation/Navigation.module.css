@@ -1,0 +1,769 @@
+.nav {
+  /* Named once here instead of repeating the raw hex on every CTA/icon/
+     badge below — this brighter gold is deliberately distinct from the
+     sitewide --gold-primary token (needs more pop against a fixed,
+     always-on-top translucent header), so it gets its own named token
+     rather than being folded into --gold-primary. */
+  --nav-gold: #E7A51A;
+  --nav-gold-hover: #F5B72A;
+  --nav-ink: #120704;
+
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 94%;
+  max-width: 1320px;
+  height: 68px;
+  border-radius: 999px;
+  z-index: 1000;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-sizing: border-box;
+
+  /* Floating translucent glass pill — lower alpha + more blur reads as a
+     frosted pane over the page, not a solid tinted bar. */
+  background: rgba(245, 240, 232, 0.45);
+  backdrop-filter: blur(36px) saturate(160%);
+  -webkit-backdrop-filter: blur(36px) saturate(160%);
+  border: 1px solid rgba(231, 165, 26, 0.25);
+  box-shadow: 0 10px 35px rgba(24, 16, 12, 0.12);
+  padding: 0 20px;
+}
+
+.nav.scrolled {
+  background: rgba(245, 240, 232, 0.7);
+  top: 12px;
+  box-shadow: 0 14px 42px rgba(24, 16, 12, 0.18);
+}
+
+:global([data-theme='dark']) .nav {
+  /* Higher alpha than the light theme's pill — dark theme's bright cream
+     section titles stayed legible (ghosting through) at the old 0.4 alpha
+     while scrolling underneath; a light background doesn't have that
+     problem since light-on-light already hides itself. */
+  background: rgba(8, 12, 28, 0.82);
+  border-color: rgba(199, 161, 90, 0.25);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
+}
+
+:global([data-theme='dark']) .nav.scrolled {
+  background: rgba(8, 12, 28, 0.92);
+  top: 12px;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  gap: var(--space-4);
+  position: relative;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.logoStar {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.logoText {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+
+/* Links */
+.links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+
+.link {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--nav-link-size);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  opacity: 0.85;
+  transition: all var(--transition-base);
+  padding: 6px 2px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  white-space: nowrap;
+}
+
+.link:hover {
+  opacity: 1;
+  color: var(--nav-gold);
+}
+
+.active {
+  opacity: 1 !important;
+  color: var(--nav-gold) !important;
+  font-weight: 600;
+}
+
+.activeIndicator {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background-color: var(--nav-gold);
+  border-radius: var(--radius-full);
+}
+
+
+/* Actions Wrapper */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+}
+
+/* CTAs */
+.ctaBtn {
+  background: var(--nav-gold);
+  color: var(--nav-ink);
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--nav-cta-size);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+:global([data-theme='light']) .ctaBtn {
+  color: var(--nav-ink);
+}
+
+.ctaBtn:hover {
+  background: var(--nav-gold-hover);
+  transform: translateY(-1px);
+}
+
+/* .active is shared with the plain text nav links, where it turns the text
+   gold on a transparent background — applied unmodified to this button (a
+   filled gold pill) it made the text gold-on-gold, i.e. invisible. Keep the
+   button's own dark text regardless of active state. */
+.ctaBtn.active {
+  color: var(--nav-ink) !important;
+}
+
+.ctaBtnSecondary {
+  background: transparent;
+  border: 1.5px solid var(--nav-gold);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--nav-cta-size);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.ctaBtnSecondary:hover {
+  background: rgba(231, 165, 26, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Cart & icons */
+.cartBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  opacity: 0.85;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.cartBtn:hover {
+  opacity: 1;
+  background: rgba(231, 165, 26, 0.08);
+  color: var(--nav-gold);
+}
+
+.cartBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--nav-gold);
+  color: var(--nav-ink);
+  font-size: 9px;
+  font-weight: bold;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(245, 240, 232, 0.92);
+}
+
+/* Notification bell */
+.notifWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notifDropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: rgba(250, 247, 240, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(181, 138, 59, 0.22);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  z-index: 100;
+}
+
+:global([data-theme='dark']) .notifDropdown {
+  background: rgba(8, 12, 28, 0.96);
+  border-color: rgba(199, 161, 90, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.notifEmpty {
+  padding: 16px 12px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.notifItem {
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.notifItem:not(:last-child) {
+  margin-bottom: 2px;
+}
+
+.notifItemRead {
+  opacity: 0.55;
+}
+
+.notifItemText {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.notifItemFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.notifItemTime {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.notifItemDismiss {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gold-primary);
+  padding: 2px 4px;
+}
+
+.notifItemDismiss:hover {
+  color: var(--nav-gold);
+}
+
+/* Theme toggle */
+.themeBtn {
+  background: transparent;
+  border: 1px solid rgba(231, 165, 26, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.themeBtn:hover {
+  border-color: var(--nav-gold);
+  background: rgba(231, 165, 26, 0.06);
+  color: var(--nav-gold);
+}
+
+/* Language selector */
+.langWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.langBtn {
+  background: transparent;
+  border: 1px solid rgba(231, 165, 26, 0.35);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--nav-badge-size);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--transition-base);
+}
+
+.langBtn:hover {
+  border-color: var(--nav-gold);
+  background: rgba(231, 165, 26, 0.06);
+}
+
+.langGlobe {
+  font-size: 11px;
+}
+
+.langText {
+  font-weight: 500;
+}
+
+.langDropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 140px;
+  background: rgba(250, 247, 240, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(181, 138, 59, 0.22);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(24, 35, 51, 0.15);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1010;
+}
+
+:global([data-theme='dark']) .langDropdown {
+  background: rgba(8, 12, 28, 0.96);
+  border-color: rgba(199, 161, 90, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.langDropdownItem {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.langDropdownDivider {
+  height: 1px;
+  margin: 4px 4px;
+  background: var(--border-subtle);
+}
+
+.langDropdownItem:hover {
+  background: rgba(181, 138, 59, 0.08);
+  color: var(--gold-primary);
+}
+
+.langDropdownItemActive {
+  background: rgba(181, 138, 59, 0.12) !important;
+  color: var(--gold-primary) !important;
+  font-weight: 600;
+}
+
+/* User Account Dropdown states */
+.loginBtn {
+  background: transparent;
+  border: 1px solid rgba(231, 165, 26, 0.35);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--nav-badge-size);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-base);
+}
+
+.loginBtn:hover {
+  border-color: var(--nav-gold);
+  background: rgba(231, 165, 26, 0.06);
+}
+
+.profileDropdownWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Lets this shrink instead of forcing the pill wider than the navbar —
+     a flex item's default min-width is "auto" (its content's natural
+     width), which overrides max-width/overflow on anything inside it. */
+  min-width: 0;
+}
+
+.profileSelectorBtn {
+  background: transparent;
+  border: 1px solid rgba(231, 165, 26, 0.35);
+  border-radius: 999px;
+  padding: 4px 10px 4px 4px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--nav-badge-size);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-base);
+}
+
+.profileSelectorBtn:hover {
+  border-color: var(--nav-gold);
+  background: rgba(231, 165, 26, 0.06);
+}
+
+.avatarCircle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--nav-gold);
+  color: var(--nav-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 10px;
+}
+
+:global([data-theme='light']) .avatarCircle,
+:global([data-theme='dark']) .avatarCircle {
+  color: var(--nav-ink);
+  background: var(--nav-gold);
+}
+
+.profileArrow {
+  font-size: 7px;
+  opacity: 0.6;
+}
+
+.profileDropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 150px;
+  background: rgba(245, 240, 232, 0.98);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(231, 165, 26, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(24, 16, 12, 0.15);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1010;
+}
+
+:global([data-theme='dark']) .profileDropdown {
+  background: rgba(8, 12, 28, 0.98);
+  border-color: rgba(199, 161, 90, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.profileDropdown button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  width: 100%;
+}
+
+.profileDropdown button:hover {
+  background: rgba(231, 165, 26, 0.08);
+  color: var(--nav-gold);
+}
+
+/* Mobile hamburger */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  width: 30px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hamburger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--text-primary);
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Mobile Menu */
+.mobileMenu {
+  display: none;
+  position: fixed;
+  top: 90px;
+  left: 5%;
+  right: 5%;
+  /* Bottom edge stays a fixed gap off the viewport bottom regardless of
+     screen height, with everything past that scrollable — without this,
+     the menu had no height limit at all, so on a shorter phone screen the
+     bottom items (theme toggle, sign out) rendered below the visible
+     viewport with no way to scroll down to them.
+     `100vh` on mobile is the LARGEST viewport (address bar hidden) — with
+     the address bar actually showing, that overstates the real visible
+     height, so the box's computed content fit inside its own (too-tall)
+     max-height with nothing to scroll, even though the bottom was hidden
+     behind the browser chrome. `100dvh` tracks the real, current viewport
+     instead; kept as a fallback-first declaration since unsupported
+     browsers just ignore the second, later `dvh` line and keep the `vh` one. */
+  max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(250, 247, 240, 0.98);
+  border: 1px solid rgba(181, 138, 59, 0.22);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(24, 35, 51, 0.18);
+  padding: var(--space-6);
+  z-index: 999;
+  transform: translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+:global([data-theme='dark']) .mobileMenu {
+  background: rgba(8, 12, 28, 0.98);
+  border-color: rgba(199, 161, 90, 0.18);
+}
+
+.mobileMenuOpen {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobileLinks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mobileLink {
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.mobileCta {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--gold-primary);
+}
+
+.mobileDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-2) 0;
+}
+
+.mobileLangList {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.mobileLangBtn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.mobileLangBtnActive {
+  background: var(--gold-primary);
+  color: #080C1C !important;
+  border-color: var(--gold-primary);
+}
+
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Devanagari nav: bigger link text needs a touch more room and less tracking
+   so labels never wrap or collide — never achieved by shrinking the font. */
+:global(html[lang='hi']) .nav,
+:global(html[lang='mr']) .nav {
+  max-width: 1400px;
+}
+
+:global(html[lang='hi']) .links,
+:global(html[lang='mr']) .links {
+  gap: 7px;
+}
+
+/* Same tight-pill-nav typographic adjustment as hi/mr, now also covering
+   bn/ta/te. Currently dormant: `<html lang>` is hardcoded to 'en' (see
+   App.tsx) so translation can only come from the visitor's own browser now,
+   which this app has no hook into — kept in case this site moves to its own
+   dictionary-driven translation and sets `lang` again. */
+:global(html[lang='hi']) .link,
+:global(html[lang='mr']) .link,
+:global(html[lang='bn']) .link,
+:global(html[lang='ta']) .link,
+:global(html[lang='te']) .link,
+:global(html[lang='hi']) .ctaBtn,
+:global(html[lang='mr']) .ctaBtn,
+:global(html[lang='bn']) .ctaBtn,
+:global(html[lang='ta']) .ctaBtn,
+:global(html[lang='te']) .ctaBtn,
+:global(html[lang='hi']) .ctaBtnSecondary,
+:global(html[lang='mr']) .ctaBtnSecondary,
+:global(html[lang='bn']) .ctaBtnSecondary,
+:global(html[lang='ta']) .ctaBtnSecondary,
+:global(html[lang='te']) .ctaBtnSecondary {
+  letter-spacing: 0.01em;
+}
+
+:global(html[lang='hi']) .ctaBtn,
+:global(html[lang='mr']) .ctaBtn,
+:global(html[lang='hi']) .ctaBtnSecondary,
+:global(html[lang='mr']) .ctaBtnSecondary {
+  padding-left: 11px;
+  padding-right: 11px;
+}
+
+/* bn/ta/te run visibly longer than hi/mr for the same nav labels (Bengali/
+   Tamil/Telugu glyphs are wider on average) — the padding trim alone that's
+   enough for hi/mr isn't, so these three also get a slightly smaller size. */
+:global(html[lang='bn']) .ctaBtn,
+:global(html[lang='ta']) .ctaBtn,
+:global(html[lang='te']) .ctaBtn,
+:global(html[lang='bn']) .ctaBtnSecondary,
+:global(html[lang='ta']) .ctaBtnSecondary,
+:global(html[lang='te']) .ctaBtnSecondary {
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: calc(var(--nav-cta-size) * 0.9);
+}
+
+@media (max-width: 1024px) {
+  .links {
+    display: none;
+  }
+  .actions {
+    display: none;
+  }
+  .hamburger {
+    display: flex;
+  }
+  .mobileMenu {
+    display: block;
+  }
+  .hamburger.open span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .hamburger.open span:nth-child(2) {
+    opacity: 0;
+  }
+  .hamburger.open span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+}
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .mobileLangBtn, html[lang='mr'] .mobileLangBtn { font-size: var(--text-xs); }

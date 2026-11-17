@@ -1,0 +1,123 @@
+/* Reusable, layout-agnostic celestial atmosphere. Absolutely fills its
+   positioned parent, sits behind content (z-index: 0) and never intercepts
+   pointer events. Intensity controls opacity/scale only — never animation
+   speed, so the effect always reads as ambient rather than distracting. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transform: translate3d(var(--parallax-x, 0), var(--parallax-y, 0), 0);
+  transition: transform 0.6s ease-out;
+  /* Fade the whole layer to transparent well before it reaches the section's
+     own edge (where overflow:hidden would otherwise clip it). A circle cut by
+     a hard overflow boundary reads as an obvious rectangular crop; fading its
+     opacity out first means nothing solid is left to clip, so no seam is ever
+     visible — the art blends into the page background instead of ending in a
+     line. This is why intensity/size can safely grow without reintroducing
+     the clipped-card look. */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 14%,
+    black 86%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 14%,
+    black 86%,
+    transparent 100%
+  );
+}
+
+.glow {
+  position: absolute;
+  top: 8%;
+  right: -6%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(199, 161, 90, 0.10) 0%, rgba(199, 161, 90, 0) 70%);
+}
+
+:global([data-theme='light']) .glow {
+  background: radial-gradient(circle, rgba(181, 138, 59, 0.08) 0%, rgba(181, 138, 59, 0) 70%);
+}
+
+.primaryOrnament {
+  position: absolute;
+  top: 50%;
+  right: -3%;
+  width: 520px;
+  height: 520px;
+  transform: translateY(-50%);
+  opacity: 0.1;
+  color: var(--gold-primary);
+}
+
+.secondaryOrnament {
+  position: absolute;
+  bottom: -10%;
+  left: -4%;
+  width: 340px;
+  height: 340px;
+  opacity: 0.06;
+  color: var(--gold-primary);
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--star-gold);
+  animation: celestialTwinkle 6s ease-in-out infinite;
+}
+
+@keyframes celestialTwinkle {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 0.8; }
+}
+
+/* Intensity levels — how much of the system shows, never how fast it moves */
+.high .glow { width: 65%; height: 65%; }
+.high .primaryOrnament { opacity: 0.16; width: 560px; height: 560px; }
+
+.medium .primaryOrnament { opacity: 0.1; }
+
+.low .primaryOrnament { opacity: 0.06; width: 380px; height: 380px; }
+.low .secondaryOrnament { opacity: 0.04; }
+.low .stars { opacity: 0.6; }
+
+.subtle .glow { opacity: 0.6; }
+.subtle .primaryOrnament { opacity: 0.04; width: 320px; height: 320px; }
+.subtle .secondaryOrnament { display: none; }
+.subtle .stars { opacity: 0.35; }
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop {
+    transform: none !important;
+    transition: none;
+  }
+  .star {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 768px) {
+  .primaryOrnament {
+    width: 300px;
+    height: 300px;
+    right: -15%;
+  }
+  .secondaryOrnament {
+    display: none;
+  }
+}

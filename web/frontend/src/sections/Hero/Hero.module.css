@@ -1,0 +1,472 @@
+.hero {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+
+  /* Premium Cinematic Dark Warm-Brown Background */
+  background: 
+    /* Warm golden/orange halo behind the sage (right side, approx. 70% X, 50% Y) */
+    radial-gradient(circle at 75% 50%, rgba(245, 183, 42, 0.18) 0%, rgba(90, 38, 13, 0.25) 35%, rgba(36, 16, 6, 0.05) 65%, transparent 100%),
+    /* Soft bottom ambient glow to light up the glass waves */
+    radial-gradient(ellipse at 50% 90%, rgba(231, 165, 26, 0.08) 0%, rgba(58, 23, 8, 0.25) 50%, transparent 100%),
+    /* Left-side subtle glow to ensure readable zone */
+    radial-gradient(circle at 20% 50%, rgba(36, 16, 6, 0.35) 0%, transparent 75%),
+    /* Vignette darkening the corners */
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(18, 7, 4, 0.8) 100%),
+    /* Base rich dark-brown color */
+    #120704;
+}
+
+.bgVideo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(circle at 20% 50%, rgba(18, 7, 4, 0.45) 0%, rgba(18, 7, 4, 0.2) 60%, rgba(18, 7, 4, 0.7) 100%);
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  /* Video is framed with the sage toward the right third — on a narrow
+     portrait crop, centered object-position crops him off past the edge.
+     Shift the visible window right so he lands centered in frame. */
+  .bgVideo {
+    object-position: 78% center;
+  }
+
+  /* The mobile poster is a full-frame subject sitting dead-center behind
+     the headline (not a side-positioned video scene), so the text column
+     sits directly over his face — needs a uniformly darker scrim than
+     desktop's side vignette, with no bright dip, to keep text legible. */
+  .overlay {
+    background: linear-gradient(180deg, rgba(18, 7, 4, 0.82) 0%, rgba(18, 7, 4, 0.74) 45%, rgba(18, 7, 4, 0.88) 100%);
+  }
+}
+
+/* Background Cosmic Particles and Star dust */
+.starDust {
+  /* Oversized by one full pattern period (450px = LCM of the 90/150px
+     tiles) and drifted with transform — animating background-position
+     repainted the whole hero every frame; a transform is GPU-composited. */
+  position: absolute;
+  top: -450px;
+  left: -450px;
+  width: calc(100% + 450px);
+  height: calc(100% + 450px);
+  will-change: transform;
+  background-image: 
+    radial-gradient(rgba(245, 183, 42, 0.25) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.18) 1.5px, transparent 1.5px);
+  background-size: 90px 90px, 150px 150px;
+  background-position: 0 0, 45px 45px;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 1;
+  animation: slowStarFloat 400s linear infinite;
+}
+
+@keyframes slowStarFloat {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(450px, 450px, 0); }
+}
+
+/* Background Radial Glow Elements */
+.bgGlowCenter {
+  position: absolute;
+  width: 50vw;
+  height: 50vw;
+  top: 10%;
+  left: 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(90, 38, 13, 0.25) 0%, rgba(18, 7, 4, 0) 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bgGlowRight {
+  position: absolute;
+  width: 55vw;
+  height: 55vw;
+  top: 5%;
+  right: -5%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 183, 42, 0.12) 0%, rgba(58, 23, 8, 0.2) 50%, rgba(18, 7, 4, 0) 70%);
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Main Content Layout */
+.content {
+  position: relative;
+  z-index: 10;
+  width: 90%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 130px 0 110px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Left Column: Hero Text & CTAs */
+.leftColumn {
+  width: 48%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  z-index: 10;
+  text-align: left;
+}
+
+/* Eyebrow Category */
+.eyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #F5B72A;
+  margin-bottom: 22px;
+}
+
+/* Main Headline */
+.headline {
+  font-family: var(--font-serif);
+  font-size: clamp(3.2rem, 5.5vw, 5.25rem);
+  font-weight: 300;
+  line-height: 0.95;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.goldItalic {
+  font-style: italic;
+  font-family: var(--font-serif);
+  color: #E7A51A;
+  font-weight: 300;
+}
+
+/* Hindi Tagline */
+.tagline {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  color: #E7A51A;
+  margin-bottom: 24px;
+  letter-spacing: 0.03em;
+  opacity: 0.95;
+}
+
+/* Subheadline Description */
+.subhead {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 300;
+  line-height: 1.6;
+  color: #D8D1C8;
+  max-width: 500px;
+  margin-bottom: 36px;
+  opacity: 0.9;
+}
+
+/* Action CTAs */
+.ctas {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  width: 100%;
+}
+
+.btnPrimary {
+  min-width: 240px;
+  width: auto;
+  padding: 0 28px;
+  height: 58px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #F5B72A 0%, #E7A51A 100%);
+  color: #120704 !important;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(231, 165, 26, 0.22);
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(231, 165, 26, 0.35);
+  background: linear-gradient(135deg, #FFC542 0%, #F5B72A 100%);
+}
+
+.btnSecondary {
+  min-width: 240px;
+  width: auto;
+  padding: 0 28px;
+  height: 58px;
+  border-radius: 999px;
+  background: rgba(36, 16, 6, 0.4);
+  color: #FFFFFF !important;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: 1.5px solid rgba(245, 240, 232, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btnSecondary:hover {
+  background: rgba(245, 240, 232, 0.08);
+  border-color: rgba(245, 240, 232, 0.8);
+  transform: translateY(-2px);
+}
+
+/* Trust Indicators */
+.trustLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: #D8D1C8;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+  margin-top: 12px;
+}
+
+.trustItem {
+  white-space: nowrap;
+}
+
+.greenDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #16D978;
+  box-shadow: 0 0 8px #16D978;
+  display: inline-block;
+}
+
+.trustSep {
+  color: rgba(231, 165, 26, 0.4);
+  margin: 0 2px;
+}
+
+/* Translucent Curved Glass Wave Section at Hero Bottom */
+.bottomWaveContainer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  z-index: 10;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.waveSvg {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Scroll Indicator Overlay - sits on top of waves and must be interactive */
+.scrollIndicator {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.scrollLine {
+  width: 1.5px;
+  height: 42px;
+  background: linear-gradient(to bottom, #E7A51A, transparent);
+  transform-origin: top;
+  animation: scrollPulseLine 2.5s ease-in-out infinite;
+}
+
+/* scaleY instead of height (32px -> 50px on a 42px line) — animating
+   height forced a full-page layout on every frame, even while idle. */
+@keyframes scrollPulseLine {
+  0%, 100% { transform: scaleY(0.76); opacity: 0.4; }
+  50% { transform: scaleY(1.19); opacity: 1; }
+}
+
+.scrollMouse {
+  width: 18px;
+  height: 28px;
+  border: 1.5px solid rgba(245, 240, 232, 0.5);
+  border-radius: 10px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.scrollDot {
+  width: 3px;
+  height: 6px;
+  background-color: #E7A51A;
+  border-radius: 999px;
+  position: absolute;
+  top: 6px;
+  animation: scrollPulseDot 1.8s ease-in-out infinite;
+}
+
+@keyframes scrollPulseDot {
+  0% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(4px); opacity: 0.3; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.scrollText {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #D8D1C8;
+  opacity: 0.85;
+}
+
+.scrollChevron {
+  font-size: 10px;
+  color: #E7A51A;
+  animation: bounceChevron 2s infinite;
+  margin-top: -2px;
+}
+
+@keyframes bounceChevron {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+/* ── RESPONSIVE ADAPTATIONS ── */
+
+@media (max-width: 1200px) {
+  .content {
+    width: 92%;
+    padding-top: 120px;
+    padding-bottom: 120px;
+  }
+  .leftColumn {
+    width: 48%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .hero {
+    min-height: auto;
+  }
+  .content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-top: 140px;
+    padding-bottom: 140px;
+    gap: 48px;
+  }
+  .leftColumn {
+    width: 100%;
+    align-items: center;
+    text-align: center;
+  }
+  .subhead {
+    max-width: 580px;
+  }
+  .ctas {
+    justify-content: center;
+  }
+  .trustLine {
+    justify-content: center;
+  }
+  .bottomWaveContainer {
+    height: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding-top: 120px;
+    padding-bottom: 120px;
+    gap: 32px;
+  }
+  .headline {
+    font-size: 2.8rem;
+  }
+  .tagline {
+    font-size: 1.25rem;
+  }
+  .ctas {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .btnPrimary, .btnSecondary {
+    width: 100%;
+    max-width: 280px;
+    height: 50px;
+    font-size: var(--text-sm);
+  }
+  .bottomWaveContainer {
+    height: 160px;
+  }
+  .scrollIndicator {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .headline {
+    font-size: 2.3rem;
+  }
+}
+
+/* Devanagari legibility now falls out of --text-xs itself (redefined larger
+   under html[lang='hi'/'mr'] in globals.css) since .eyebrow/.scrollText use
+   the token directly — no per-component override needed here anymore. */

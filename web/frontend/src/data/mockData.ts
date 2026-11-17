@@ -1,0 +1,301 @@
+// TredevAstro — Complete Mock Data
+// All data is clearly labelled as demo/placeholder content
+
+// Daily Astrology listed first (the most reached-for, lowest-commitment
+// tools) — Lagna/Ascendant removed (redundant with Free Kundli, which
+// already computes and shows the Ascendant); Numerology Match lives under
+// Numerology now, not Compatibility, since it's a numerology technique
+// applied to two people rather than a chart-compatibility technique.
+// Distinct, saturated jewel-tone colors — NOT the site's --color-cyan/gold/
+// terracotta tokens, which all alias down to shades of the same muted brown
+// (--sacred-accent #A85B2D, --subtle-maroon #4A2020, --gold-primary
+// #B58A3B) and, on top of that, were reused across two categories each
+// (cyan for both daily+compatibility, gold for both birth+numerology) — so
+// every category rendered as visually the same dull tan regardless of
+// which token it referenced. Each category now gets its own real hue.
+// All 5 categories share the same sun-amber accent (matching "Daily
+// Astrology") instead of each having its own color — a deliberate,
+// requested unification, not an oversight.
+const FREE_TOOLS_ACCENT = '#E0873C'; // sun amber
+
+export const FREE_TOOLS_CATEGORIES = [
+  {
+    id: 'daily',
+    label: 'Daily Astrology',
+    description: 'Explore daily predictions and panchang details.',
+    icon: '☀',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Daily Horoscope', 'Weekly Horoscope', 'Monthly Horoscope', 'Weekly Love Horoscope', 'Half-Yearly Horoscope', 'Yearly Horoscope', 'Today\'s Panchang', 'Muhurat Finder', 'Choghadiya', 'Abhijit Muhurat'],
+  },
+  {
+    id: 'birth',
+    label: 'Birth',
+    description: 'Essential tools based on your birth details.',
+    icon: '☽',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Free Kundli', 'Moon Sign Calculator', 'Nakshatra Finder', 'Lucky Color & Date', 'Baby Name Calculator', 'Lal Kitab'],
+  },
+  {
+    id: 'compatibility',
+    label: 'Compatibility',
+    description: 'Check compatibility and relationships.',
+    icon: '♾',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Kundli Matching', 'Love Compatibility', 'FLAMES'],
+  },
+  {
+    id: 'doshas',
+    label: 'Doshas',
+    description: 'Identify doshas in your kundli.',
+    icon: '◎',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Kaal Sarp Dosha', 'Pitra Dosha', 'Sade Sati', 'Rahu Ketu Transit'],
+  },
+  {
+    id: 'numerology',
+    label: 'Numerology',
+    description: 'Discover the power of numbers.',
+    icon: '∞',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['My Numerology', 'Life Path Number', 'Name Numerology', 'Numerology Match', 'Numerology Horoscope', 'Chinese Zodiac'],
+  },
+  {
+    id: 'vastu',
+    label: 'Vastu',
+    description: 'Check the Vastu of your home or office.',
+    icon: '◈',
+    color: FREE_TOOLS_ACCENT,
+    tools: ['Vastu Calculator'],
+  },
+];
+
+export const PANCHANG = {
+  date: 'Tuesday, 12 August 2026',
+  location: 'New Delhi, India',
+  tithi: 'Ashtami (Krishna Paksha)',
+  nakshatra: 'Krittika',
+  yoga: 'Shiva',
+  karana: 'Garaja',
+  sunrise: '5:51 AM',
+  sunset: '7:09 PM',
+  rahuKaal: '3:00 PM – 4:31 PM',
+  abhijit: '11:52 AM – 12:44 PM',
+  moonSign: 'Taurus',
+};
+
+export const PRODUCTS = [
+  {
+    id: 1,
+    name: 'Natural Colombian Emerald',
+    category: 'Gemstones',
+    association: 'Traditionally associated with Mercury (Budh)',
+    benefit: 'Clarity of thought, communication and intellectual growth',
+    price: 2499,
+    originalPrice: 3200,
+    rating: 4.8,
+    reviews: 342,
+    recommended: true,
+    planet: 'Mercury',
+    image: '/images/product-emerald.jpg',
+  },
+  {
+    id: 2,
+    name: 'Five-Mukhi Rudraksha',
+    category: 'Rudraksha',
+    association: 'Traditionally associated with Lord Shiva',
+    benefit: 'Spiritual protection and peace of mind',
+    price: 899,
+    originalPrice: null,
+    rating: 4.9,
+    reviews: 812,
+    recommended: false,
+    planet: 'Jupiter',
+    image: '/images/product-rudraksha.jpg',
+  },
+  {
+    id: 3,
+    name: 'Rose Quartz Cluster',
+    category: 'Crystals',
+    association: 'Traditional stone for Venus energy',
+    benefit: 'Harmony in relationships',
+    price: 649,
+    originalPrice: 850,
+    rating: 4.7,
+    reviews: 256,
+    recommended: false,
+    planet: 'Venus',
+    image: '/images/product-crystal.jpg',
+  },
+  {
+    id: 4,
+    name: 'Shri Yantra (Brass)',
+    category: 'Yantras',
+    association: 'Sacred geometric representation of the cosmos',
+    benefit: 'Prosperity and spiritual growth',
+    price: 1299,
+    originalPrice: null,
+    rating: 4.8,
+    reviews: 445,
+    recommended: false,
+    planet: 'Sun',
+    image: '/images/product-yantra.jpg',
+  },
+  {
+    id: 5,
+    name: 'Tiger Eye Bracelet',
+    category: 'Bracelets',
+    association: 'Traditionally associated with Sun and Mars energy',
+    benefit: 'Confidence and personal power',
+    price: 549,
+    originalPrice: 699,
+    rating: 4.6,
+    reviews: 189,
+    recommended: true,
+    planet: 'Sun',
+    image: '/images/product-bracelet.jpg',
+  },
+  {
+    id: 6,
+    name: 'Navgraha Puja Kit',
+    category: 'Puja Essentials',
+    association: 'Complete kit for all nine planetary deities',
+    benefit: 'Planetary harmony and balance',
+    price: 1899,
+    originalPrice: 2500,
+    rating: 4.9,
+    reviews: 631,
+    recommended: false,
+    planet: 'All',
+    image: '/images/product-puja.jpg',
+  },
+];
+
+export const COURSES = [
+  {
+    id: 1,
+    title: 'Vedic Astrology — Complete Course',
+    subtitle: 'From natal chart to predictive astrology',
+    category: 'Astrology',
+    lessons: 32,
+    weeks: 8,
+    level: 'Beginner to Advanced',
+    certificate: true,
+    students: 4200,
+    rating: 4.9,
+    price: 4999,
+    originalPrice: 7999,
+    icon: '☽',
+    color: 'var(--color-gold)',
+    topics: ['Birth Chart Analysis', 'Planetary Dashas', 'Transit Forecasting', 'Navamsha & Divisional Charts'],
+  },
+  {
+    id: 2,
+    title: 'Numerology Mastery',
+    subtitle: 'Decode the language of numbers',
+    category: 'Numerology',
+    lessons: 18,
+    weeks: 4,
+    level: 'Beginner',
+    certificate: true,
+    students: 2800,
+    rating: 4.8,
+    price: 2999,
+    originalPrice: 4999,
+    icon: '∞',
+    color: 'var(--color-cyan)',
+    topics: ['Life Path Numbers', 'Name Numerology', 'Compatibility', 'Yearly Cycles'],
+  },
+  {
+    id: 3,
+    title: 'Tarot for Beginners',
+    subtitle: 'Read the cards, read your path',
+    category: 'Tarot',
+    lessons: 24,
+    weeks: 6,
+    level: 'Beginner',
+    certificate: false,
+    students: 5600,
+    rating: 4.7,
+    price: 1999,
+    originalPrice: 3499,
+    icon: '✦',
+    color: 'var(--color-terracotta)',
+    topics: ['Major Arcana', 'Minor Arcana', 'Spreads & Layouts', 'Intuitive Reading'],
+  },
+  {
+    id: 4,
+    title: 'Vastu Shastra Fundamentals',
+    subtitle: 'Create harmony in your space',
+    category: 'Vastu',
+    lessons: 16,
+    weeks: 4,
+    level: 'Beginner to Intermediate',
+    certificate: true,
+    students: 1900,
+    rating: 4.8,
+    price: 3499,
+    originalPrice: null,
+    icon: '◈',
+    color: 'var(--color-gold)',
+    topics: ['Five Elements', 'Directional Energies', 'Home & Office Vastu', 'Remedies'],
+  },
+];
+
+export const CONCERN_CONTENT: Record<string, { free: string[]; paid: string[] }> = {
+  'Love & Relationships': {
+    free: ['Love Compatibility Calculator', 'Venus Sign Reading', 'Daily Love Horoscope'],
+    paid: ['Love & Relationships Report (₹499)', 'Chat with Love Specialist', '30-min Relationship Reading'],
+  },
+  'Marriage': {
+    free: ['Kundli Matching (Guna Milan)', 'Marriage Timing Indicator'],
+    paid: ['Marriage Report (₹699)', 'Kundli Matching Deep Analysis', 'Marriage Astrologer Consultation'],
+  },
+  'Career & Business': {
+    free: ['Career Insight (10th House)', 'Current Career Transit', 'Business Numerology'],
+    paid: ['Career Intelligence Report (₹499)', 'Career Astrologer Consultation', 'Business Timing Analysis'],
+  },
+  'Money & Finance': {
+    free: ['Wealth Yoga Indicator', 'Financial Transit Alert', 'Dhan Yoga Check'],
+    paid: ['Fortune & Wealth Report (₹699)', 'Finance Specialist Chat', 'Investment Timing Reading'],
+  },
+  'Family': {
+    free: ['Family Harmony Report Preview', 'Saturn in Family Houses', '4th House Reading'],
+    paid: ['Family Astrology Report (₹599)', 'Family Counselling Session', 'Domestic Harmony Reading'],
+  },
+  'Personal Growth': {
+    free: ['Life Path Number', 'Dharma House Analysis', 'Jupiter Transit Reading'],
+    paid: ['Soul Purpose Report (₹999)', 'Personal Growth Consultation', 'Life Direction Reading'],
+  },
+  'Spirituality': {
+    free: ['Nakshatra Spiritual Profile', 'Ketu Placement Reading', 'Past Life Indicator'],
+    paid: ['Soul Purpose Report (₹999)', 'Spiritual Astrologer Chat', 'Karma & Dharma Reading'],
+  },
+  'Vastu': {
+    free: ['Home Vastu Basics', 'Direction & Energy Check', 'Vastu Tips by Sign'],
+    paid: ['Vastu Consultation (₹899)', 'Vastu Expert Video Call', 'Office Vastu Analysis'],
+  },
+};
+
+export const HOUSE_MEANINGS: Record<number, string> = {
+  1: '1st House — Self, body, personality, early life',
+  2: '2nd House — Wealth, family, speech, values',
+  3: '3rd House — Courage, siblings, communication, short journeys',
+  4: '4th House — Home, mother, comforts, inner peace',
+  5: '5th House — Creativity, children, intelligence, romance',
+  6: '6th House — Health, debts, service, obstacles',
+  7: '7th House — Partnerships, marriage, business, public dealings',
+  8: '8th House — Longevity, transformation, secrets, inheritance',
+  9: '9th House — Dharma, fortune, higher learning, spiritual wisdom',
+  10: '10th House — Career, status, authority, life purpose',
+  11: '11th House — Gains, friendships, aspirations, income',
+  12: '12th House — Liberation, losses, foreign lands, spiritual moksha',
+};
+
+export const AI_SUGGESTIONS = [
+  'Will I change my career this year?',
+  'When is a good time for marriage?',
+  'What does my current transit mean?',
+  'What are my core strengths?',
+  'How is my Mahadasha affecting me?',
+  'What does my Moon in Taurus reveal?',
+];

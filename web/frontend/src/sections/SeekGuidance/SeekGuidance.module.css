@@ -1,0 +1,215 @@
+.section {
+  padding: var(--space-20) 0;
+  position: relative;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-5);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+}
+
+.cardBgPattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: all var(--transition-base);
+  color: var(--gold-primary);
+}
+
+.card:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.card:hover .cardBgPattern {
+  transform: scale(1.1);
+  opacity: 0.12;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  z-index: 10;
+}
+
+.icon {
+  width: 56px;
+  height: 56px;
+  color: var(--gold-primary);
+  flex-shrink: 0;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.card:hover .icon {
+  transform: scale(1.12);
+}
+
+.sanskritLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cardDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: var(--space-4) 0;
+  z-index: 10;
+}
+
+.cardCta {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  align-self: flex-start;
+  transition: color var(--transition-base);
+}
+
+.card:hover .cardCta {
+  color: var(--gold-soft);
+}
+
+/* Mixed sizes */
+.medium {
+  grid-column: span 3;
+}
+
+.small {
+  grid-column: span 2;
+}
+
+.large {
+  grid-column: span 6;
+  min-height: 180px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.large .cardHeader {
+  /* Was flex: 1 — grew this box (icon + short title) wider than its content
+     needed, leaving a dead gap before the description started. The
+     description is the only part with genuinely variable length, so it
+     should be the one absorbing the row's extra width, not this one. */
+  flex: 0 0 auto;
+}
+
+.large .cardDesc {
+  flex: 1;
+  margin: 0;
+}
+
+.large .cardCta {
+  flex: 0 0 auto;
+  text-align: right;
+  align-self: center;
+}
+
+@media (max-width: 1024px) {
+  .medium, .small {
+    grid-column: span 3;
+  }
+  .large {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  .large .cardDesc {
+    margin: var(--space-4) 0;
+  }
+  .large .cardCta {
+    align-self: flex-start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .medium, .small, .large {
+    grid-column: span 6;
+  }
+  /* Mobile cards: natural content height, not the desktop min-height/
+     space-between combo — that was stretching a 2-line card description
+     across ~350px of vertical space with the CTA shoved to the bottom. */
+  .section {
+    padding: var(--space-16) 0;
+  }
+  .cardsGrid {
+    gap: var(--space-4);
+  }
+  .card {
+    min-height: 0;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+  }
+  .large {
+    min-height: 0;
+  }
+  .icon {
+    width: 44px;
+    height: 44px;
+  }
+  .cardDesc {
+    margin: 0;
+  }
+}
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .sanskritLabel, html[lang='mr'] .sanskritLabel { font-size: var(--text-xs); }
+html[lang='hi'] .cardCta, html[lang='mr'] .cardCta { font-size: var(--text-sm); }
+
+/* Card icon motion — plain CSS (was framer-motion infinite loops, which
+   rewrote inline SVG styles from JS every frame and forced a page layout
+   60 times a second, even while the section sat off-screen). */
+.spinCw, .spinCcw, .breathe { transform-box: fill-box; transform-origin: center; }
+.spinCw { animation: seekSpin 15s linear infinite; }
+.spinCcw { animation: seekSpin 15s linear infinite reverse; }
+.breathe { animation: seekBreathe 4s ease-in-out infinite; }
+.glowPulse { animation: seekGlow 5s ease-in-out infinite; }
+@keyframes seekSpin { to { transform: rotate(360deg); } }
+@keyframes seekBreathe { 50% { transform: scale(1.08); } }
+@keyframes seekGlow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .spinCw, .spinCcw, .breathe, .glowPulse { animation: none; }
+}

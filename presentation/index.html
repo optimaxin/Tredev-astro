@@ -1,0 +1,3787 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TredevaAstro — From Prototype to Platform | Sparsh Bansal</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,600&family=Yatra+One&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS & RESET
+       Vedic Technology: Deep cosmic indigo, sacred temple gold, terracotta saffron
+       ========================================================================== */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --bg-deep: #05070d;
+      --bg-primary: #070a14;
+      --bg-secondary: #0b101f;
+      --surface: #0e1529;
+      --surface-elevated: #141c36;
+      --surface-card: rgba(16, 24, 48, 0.65);
+      --surface-card-hover: rgba(22, 33, 66, 0.85);
+
+      --gold-primary: #cba358;
+      --gold-light: #e8c882;
+      --gold-bright: #ffd988;
+      --gold-deep: #9d7532;
+      --gold-glow: rgba(203, 163, 88, 0.22);
+      --gold-border: rgba(203, 163, 88, 0.35);
+
+      --saffron-sacred: #bd5d2a;
+      --saffron-light: #e07d43;
+      --saffron-glow: rgba(189, 93, 42, 0.25);
+
+      --parchment: #f2ebd9;
+      --text-primary: #f5efe3;
+      --text-secondary: #aba396;
+      --text-muted: #6f6b64;
+
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.2);
+      --crimson: #ef4444;
+      --crimson-glow: rgba(239, 68, 68, 0.2);
+      --cyan: #38bdf8;
+      --indigo: #818cf8;
+
+      --font-display: 'Cinzel', serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-vedic: 'Yatra One', cursive;
+
+      --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      user-select: none;
+    }
+
+    /* Ambient Celestial Canvas */
+    #celestialCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.6;
+    }
+
+    /* Subtle Cosmic Lighting Vignette */
+    .cosmic-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(circle at 50% 40%, transparent 40%, rgba(5, 7, 13, 0.85) 100%),
+        radial-gradient(circle at 10% 20%, rgba(189, 93, 42, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 90% 80%, rgba(203, 163, 88, 0.07) 0%, transparent 45%);
+    }
+
+    /* ==========================================================================
+       2. DECK SHELL & HUD CONTROLS
+       ========================================================================== */
+    .deck-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top HUD */
+    .deck-hud-top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 100;
+      background: linear-gradient(180deg, rgba(5, 7, 13, 0.8) 0%, transparent 100%);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(203, 163, 88, 0.08);
+    }
+
+    .hud-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-emblem {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--gold-border);
+      border-radius: 6px;
+      background: linear-gradient(135deg, rgba(203, 163, 88, 0.2), rgba(189, 93, 42, 0.1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-light);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 0 15px var(--gold-glow);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    .brand-title span {
+      color: var(--gold-primary);
+    }
+
+    .hud-center {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .phase-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      padding: 4px 14px;
+      background: rgba(203, 163, 88, 0.08);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      border-radius: 999px;
+      color: var(--gold-light);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Timer Pill */
+    .timer-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 21, 41, 0.6);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .timer-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulse 2s infinite;
+    }
+
+    .hud-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(14, 21, 41, 0.6);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+    }
+
+    .hud-btn:hover {
+      border-color: var(--gold-border);
+      color: var(--gold-light);
+      background: rgba(20, 30, 56, 0.8);
+    }
+
+    /* Top Timeline Progress Strip */
+    .top-progress-track {
+      position: fixed;
+      top: 55px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 101;
+    }
+
+    .top-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--saffron-sacred), var(--gold-primary), var(--gold-bright));
+      box-shadow: 0 0 10px var(--gold-glow);
+      transition: width 0.4s var(--ease-cinematic);
+    }
+
+    /* Bottom HUD Controls */
+    .deck-hud-bottom {
+      position: fixed;
+      bottom: 24px;
+      left: 32px;
+      right: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .hud-info-left {
+      pointer-events: all;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .slide-index-counter {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(14, 21, 41, 0.7);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .slide-index-counter .current-num {
+      color: var(--gold-bright);
+      font-weight: 700;
+    }
+
+    .hud-controls-right {
+      pointer-events: all;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 21, 41, 0.75);
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-arrow-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s var(--ease-cinematic);
+    }
+
+    .nav-arrow-btn:hover {
+      background: rgba(203, 163, 88, 0.15);
+      border-color: var(--gold-border);
+      color: var(--gold-light);
+      transform: translateY(-1px);
+    }
+
+    .nav-arrow-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Key hints pill */
+    .key-hints {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .kbd-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       3. SLIDE STAGE & TRANSITIONS
+       ========================================================================== */
+    .slide-stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 8vw 60px 8vw;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transform: scale(0.96) translateY(20px);
+      filter: blur(6px);
+      transition: opacity 0.55s var(--ease-cinematic),
+        transform 0.55s var(--ease-cinematic),
+        filter 0.55s var(--ease-cinematic),
+        visibility 0.55s;
+      z-index: 5;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+      visibility: visible;
+      transform: scale(1) translateY(0);
+      filter: blur(0px);
+      z-index: 10;
+    }
+
+    .slide.exiting-prev {
+      opacity: 0;
+      transform: scale(1.03) translateY(-25px);
+      filter: blur(6px);
+    }
+
+    .slide.exiting-next {
+      opacity: 0;
+      transform: scale(0.95) translateY(25px);
+      filter: blur(6px);
+    }
+
+    .slide-wrapper {
+      width: 100%;
+      max-width: 1240px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-height: 740px;
+      justify-content: center;
+    }
+
+    /* Common Slide Typography */
+    .slide-header {
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--gold-light);
+    }
+
+    .eyebrow::before {
+      content: '✦';
+      color: var(--saffron-sacred);
+      font-size: 10px;
+    }
+
+    .slide-title-hero {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.8vw, 52px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 15%, var(--text-primary) 65%, var(--gold-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-subtitle-desc {
+      font-size: clamp(14px, 1.2vw, 17px);
+      color: var(--text-secondary);
+      max-width: 720px;
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    /* Accent Pill */
+    .tech-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(203, 163, 88, 0.08);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--gold-light);
+      letter-spacing: 0.5px;
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: var(--surface-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s var(--ease-cinematic);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(203, 163, 88, 0.3);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 25px rgba(203, 163, 88, 0.08);
+    }
+
+    /* ==========================================================================
+       SLIDE 1: CINEMATIC OPENING
+       ========================================================================== */
+    .s1-hero-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .s1-celestial-gate {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s1-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed rgba(203, 163, 88, 0.3);
+      animation: rotateSlow 40s linear infinite;
+    }
+
+    .s1-ring-1 {
+      width: 100%;
+      height: 100%;
+      border-style: solid;
+      border-color: rgba(203, 163, 88, 0.15);
+    }
+
+    .s1-ring-2 {
+      width: 75%;
+      height: 75%;
+      border-color: rgba(189, 93, 42, 0.3);
+      animation-direction: reverse;
+      animation-duration: 25s;
+    }
+
+    .s1-ring-3 {
+      width: 50%;
+      height: 50%;
+      border-color: rgba(203, 163, 88, 0.4);
+    }
+
+    .s1-center-glyph {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(203, 163, 88, 0.25) 0%, rgba(14, 21, 41, 0.9) 70%);
+      border: 1px solid var(--gold-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--gold-bright);
+      box-shadow: 0 0 30px var(--gold-glow);
+    }
+
+    .s1-title-huge {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 6.2vw, 84px);
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #ffffff 20%, var(--gold-light) 75%, var(--gold-deep) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+      text-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .s1-tagline {
+      font-family: var(--font-serif);
+      font-size: clamp(18px, 1.8vw, 24px);
+      color: var(--text-secondary);
+      font-style: italic;
+      margin-bottom: 36px;
+      letter-spacing: 0.5px;
+    }
+
+    .s1-transformation-strip {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(14, 21, 41, 0.6);
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      backdrop-filter: blur(12px);
+      margin-bottom: 36px;
+    }
+
+    .s1-stage-node {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .s1-stage-node.highlight {
+      color: var(--gold-bright);
+      font-weight: 600;
+      text-shadow: 0 0 10px var(--gold-glow);
+    }
+
+    .s1-arrow {
+      color: var(--saffron-light);
+      font-size: 14px;
+    }
+
+    .s1-meta-box {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .s1-meta-item {
+      text-align: left;
+    }
+
+    .s1-meta-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .s1-meta-val {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       SLIDE 2: WHAT TREDEVA ASTRO BECAME (System Map)
+       ========================================================================== */
+    .s2-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    .s2-system-constellation {
+      position: relative;
+      height: 400px;
+      width: 100%;
+      border-radius: 20px;
+      background: radial-gradient(circle at center, rgba(14, 21, 41, 0.9) 0%, rgba(7, 10, 20, 0.95) 100%);
+      border: 1px solid rgba(203, 163, 88, 0.15);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s2-orbit-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .s2-core-node {
+      position: relative;
+      z-index: 10;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #1a264a 0%, #0c1224 85%);
+      border: 2px solid var(--gold-primary);
+      box-shadow: 0 0 50px rgba(203, 163, 88, 0.3), inset 0 0 20px rgba(203, 163, 88, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .s2-core-node:hover {
+      transform: scale(1.06);
+    }
+
+    .s2-core-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--gold-bright);
+    }
+
+    .s2-core-sub {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Satellite Nodes */
+    .satellite-node {
+      position: absolute;
+      z-index: 9;
+      padding: 7px 15px;
+      border-radius: 20px;
+      background: rgba(14, 21, 41, 0.85);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s var(--ease-cinematic);
+      cursor: pointer;
+    }
+
+    .satellite-node .node-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold-light);
+      box-shadow: 0 0 8px var(--gold-light);
+    }
+
+    .satellite-node:hover {
+      border-color: var(--gold-bright);
+      background: rgba(22, 33, 66, 0.95);
+      transform: scale(1.1);
+      box-shadow: 0 10px 25px rgba(203, 163, 88, 0.25);
+    }
+
+    /* Metrics Strip */
+    .s2-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .metric-card {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--gold-primary);
+    }
+
+    .metric-number {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--gold-bright);
+      line-height: 1;
+    }
+
+    .metric-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       SLIDE 3: BEFORE VS AFTER (The Transformation)
+       ========================================================================== */
+    .s3-grid {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr;
+      gap: 20px;
+      align-items: stretch;
+      height: 480px;
+    }
+
+    .s3-card {
+      border-radius: 20px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .s3-before {
+      background: rgba(14, 18, 28, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+    }
+
+    .s3-after {
+      background: linear-gradient(135deg, rgba(20, 29, 56, 0.7) 0%, rgba(14, 21, 41, 0.9) 100%);
+      border: 1px solid rgba(203, 163, 88, 0.35);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(203, 163, 88, 0.1);
+    }
+
+    .s3-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+
+    .badge-before {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .badge-after {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+    }
+
+    .s3-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .s3-item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .s3-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .s3-after .s3-item {
+      background: rgba(203, 163, 88, 0.05);
+      border-color: rgba(203, 163, 88, 0.15);
+      font-weight: 500;
+    }
+
+    .s3-item-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .icon-cross {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    .icon-check {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .s3-divider {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .s3-divider-line {
+      width: 2px;
+      height: 100%;
+      background: linear-gradient(180deg, transparent, var(--gold-border), transparent);
+    }
+
+    .s3-divider-arrow {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface-elevated);
+      border: 1px solid var(--gold-border);
+      color: var(--gold-bright);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--gold-glow);
+    }
+
+    /* ==========================================================================
+       SLIDE 4: PHASE 1 — FOUNDATION (Visual Layers Assembling)
+       ========================================================================== */
+    .s4-container {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .s4-layers-stack {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .layer-card {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s var(--ease-cinematic);
+      cursor: pointer;
+    }
+
+    .layer-card:hover,
+    .layer-card.active-layer {
+      border-color: var(--gold-border);
+      background: rgba(22, 33, 66, 0.8);
+      transform: translateX(8px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .layer-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .layer-step-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-light);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(203, 163, 88, 0.12);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .layer-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+
+    .layer-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .layer-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+
+    /* Interactive Mockup Preview */
+    .s4-preview-device {
+      background: #060914;
+      border-radius: 18px;
+      border: 2px solid rgba(203, 163, 88, 0.3);
+      padding: 18px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(203, 163, 88, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .s4-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(203, 163, 88, 0.15);
+      padding-bottom: 12px;
+    }
+
+    .preview-kundli-chart {
+      width: 100%;
+      height: 220px;
+      background: rgba(14, 21, 41, 0.6);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 10px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .chart-geometry {
+      position: absolute;
+      inset: 15px;
+      border: 1px solid rgba(203, 163, 88, 0.4);
+    }
+
+    .chart-diamond {
+      position: absolute;
+      inset: 15px;
+      border: 1px solid rgba(203, 163, 88, 0.3);
+      transform: rotate(45deg);
+    }
+
+    .chart-diagonal-1 {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      background: linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(203, 163, 88, 0.3), transparent calc(50% + 0.5px));
+    }
+
+    .chart-diagonal-2 {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), rgba(203, 163, 88, 0.3), transparent calc(50% + 0.5px));
+    }
+
+    .chart-ascendant-badge {
+      position: absolute;
+      top: 30px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(189, 93, 42, 0.4);
+      border: 1px solid var(--saffron-light);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: #ffedd5;
+    }
+
+    .s4-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .s4-chip {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 12px;
+      background: rgba(203, 163, 88, 0.08);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 6px;
+      color: var(--gold-light);
+    }
+
+    /* ==========================================================================
+       SLIDE 5: PHASE 2 — MOCK TO REAL (Architecture Shift)
+       ========================================================================== */
+    .s5-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .s5-arch-comparison {
+      display: grid;
+      grid-template-columns: 1fr 60px 1.4fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .arch-flow-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .arch-node {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .arch-node.dead {
+      border-color: rgba(239, 68, 68, 0.25);
+      background: rgba(239, 68, 68, 0.04);
+    }
+
+    .arch-node.alive {
+      border-color: rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.06);
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+    }
+
+    .arch-node-title {
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .arch-node-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .s5-real-modules-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .module-tile {
+      background: rgba(14, 21, 41, 0.7);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .module-tile:hover {
+      border-color: var(--gold-bright);
+      transform: translateY(-3px);
+      background: rgba(20, 30, 56, 0.9);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .module-icon {
+      font-size: 18px;
+      color: var(--gold-light);
+    }
+
+    .module-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Highlight Banner */
+    .callout-banner {
+      background: linear-gradient(90deg, rgba(189, 93, 42, 0.15) 0%, rgba(203, 163, 88, 0.1) 100%);
+      border-left: 4px solid var(--gold-primary);
+      padding: 14px 20px;
+      border-radius: 0 12px 12px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ==========================================================================
+       SLIDE 6: HERO TECHNICAL SLIDE — KUNDLI ENGINE PIPELINE
+       ========================================================================== */
+    .s6-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Horizontal Pipeline */
+    .pipeline-wrapper {
+      background: var(--surface-card);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 16px;
+      padding: 24px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .pipe-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      min-width: 105px;
+      z-index: 2;
+    }
+
+    .pipe-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface-elevated);
+      border: 2px solid rgba(203, 163, 88, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--gold-light);
+      margin-bottom: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    .pipe-step:hover .pipe-circle {
+      border-color: var(--gold-bright);
+      box-shadow: 0 0 20px var(--gold-glow);
+      transform: scale(1.1);
+    }
+
+    .pipe-step.ephemeris .pipe-circle {
+      border-color: var(--saffron-light);
+      background: radial-gradient(circle, rgba(189, 93, 42, 0.3), var(--surface-elevated));
+      color: #ffedd5;
+    }
+
+    .pipe-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .pipe-sub {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .pipe-connector {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(203, 163, 88, 0.3), rgba(189, 93, 42, 0.4));
+      position: relative;
+      margin: 0 6px 30px 6px;
+    }
+
+    .pipe-connector::after {
+      content: '▶';
+      position: absolute;
+      right: -4px;
+      top: -6px;
+      font-size: 8px;
+      color: var(--gold-primary);
+    }
+
+    /* Computation Chips Grid */
+    .s6-chips-section {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 20px;
+    }
+
+    .chips-matrix {
+      background: rgba(14, 21, 41, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .chips-matrix-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold-light);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chips-flex {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .calc-tag {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(20, 28, 54, 0.7);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .calc-tag span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold-primary);
+    }
+
+    /* Debugged Callout Box */
+    .debug-badge-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(14, 21, 41, 0.8) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .debug-pill-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.15);
+      padding: 3px 8px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+
+    .debug-statement {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .debug-detail {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       SLIDE 7: PRODUCT EXPANSION — ORBIT OF TOOLS & PANCHANG
+       ========================================================================== */
+    .s7-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      height: 480px;
+    }
+
+    .s7-orbit-container {
+      background: var(--surface-card);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tools-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-content: flex-start;
+      margin-top: 14px;
+    }
+
+    .tool-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(14, 21, 41, 0.8);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+
+    .tool-badge:hover {
+      border-color: var(--gold-bright);
+      background: rgba(22, 33, 66, 0.9);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .tool-badge .tool-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--saffron-light);
+    }
+
+    /* Panchang Side Panel */
+    .s7-panchang-panel {
+      background: linear-gradient(135deg, rgba(20, 29, 56, 0.75) 0%, rgba(14, 21, 41, 0.85) 100%);
+      border: 1px solid rgba(203, 163, 88, 0.3);
+      border-radius: 20px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panchang-feature-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(203, 163, 88, 0.05);
+      border: 1px solid rgba(203, 163, 88, 0.12);
+    }
+
+    .panchang-feature-icon {
+      font-size: 16px;
+      color: var(--gold-light);
+    }
+
+    .panchang-feature-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       SLIDE 8: PRODUCTIZATION (3 Vertical Pillars)
+       ========================================================================== */
+    .s8-pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      height: 480px;
+    }
+
+    .pillar-card {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s var(--ease-cinematic);
+    }
+
+    .pillar-card:hover {
+      border-color: var(--gold-border);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+    }
+
+    .pillar-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .pillar-card.reports::before {
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+    }
+
+    .pillar-card.comm::before {
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .pillar-card.commerce::before {
+      background: linear-gradient(90deg, #cba358, #e07d43);
+    }
+
+    .pillar-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+
+    .reports .pillar-icon-box {
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .comm .pillar-icon-box {
+      background: rgba(16, 185, 129, 0.12);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .commerce .pillar-icon-box {
+      background: rgba(203, 163, 88, 0.15);
+      color: var(--gold-light);
+      border: 1px solid var(--gold-border);
+    }
+
+    .pillar-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .pillar-tagline {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .pillar-feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .pillar-bullet {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .bullet-arrow {
+      color: var(--gold-light);
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    /* ==========================================================================
+       SLIDE 9: OPERATIONAL LAYER (Multi-Actor Ecosystem)
+       ========================================================================== */
+    .s9-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .s9-actors-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .actor-col {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .actor-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 12px;
+    }
+
+    .actor-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(203, 163, 88, 0.12);
+      border: 1px solid var(--gold-border);
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .actor-role {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .actor-flow-step {
+      background: rgba(14, 21, 41, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-num-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold-primary);
+    }
+
+    .s9-integrations-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(14, 21, 41, 0.7);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 14px;
+      padding: 16px 24px;
+    }
+
+    .integ-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .integ-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .integ-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .integ-chip {
+      padding: 6px 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       SLIDE 10: PROBLEMS I SOLVED (Interactive Debugging Board)
+       ========================================================================== */
+    .s10-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .debug-card {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr 30px 1.2fr;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.25s ease;
+    }
+
+    .debug-card:hover {
+      border-color: rgba(203, 163, 88, 0.35);
+      background: rgba(20, 30, 56, 0.85);
+      transform: translateX(4px);
+    }
+
+    .debug-issue {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .issue-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: #f87171;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .issue-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .debug-flow-arrow {
+      color: var(--gold-light);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .debug-resolution {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .res-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: #34d399;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .res-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ==========================================================================
+       SLIDE 11: INFRASTRUCTURE & MOBILE (Beyond the Browser)
+       ========================================================================== */
+    .s11-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      height: 480px;
+    }
+
+    .s11-arch-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .arch-tier-box {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .arch-tier-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tier-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tier-chip {
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: rgba(203, 163, 88, 0.08);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .tier-chip.mobile {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    /* Monorepo Refactoring Visual */
+    .s11-monorepo-card {
+      background: rgba(14, 21, 41, 0.7);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .monorepo-flow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 16px 0;
+      background: rgba(7, 10, 20, 0.6);
+      padding: 14px 20px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .dir-badge {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+
+    .dir-badge.old {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      text-decoration: line-through;
+    }
+
+    .dir-badge.new {
+      background: rgba(16, 185, 129, 0.15);
+      color: #86efac;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       SLIDE 12: THE 45-DAY TRANSFORMATION (Timeline Evolution)
+       ========================================================================== */
+    .s12-container {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      height: 100%;
+      justify-content: center;
+    }
+
+    .s12-hero-metrics {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      background: var(--surface-card);
+      border: 1px solid rgba(203, 163, 88, 0.3);
+      border-radius: 16px;
+      padding: 20px 32px;
+    }
+
+    .s12-big-stat {
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--gold-bright);
+      line-height: 1;
+    }
+
+    .s12-stat-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Horizontal Transformation Steps */
+    .s12-flow-horizontal {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      padding: 20px 0;
+    }
+
+    .s12-flow-horizontal::before {
+      content: '';
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      top: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.4), var(--gold-primary), rgba(16, 185, 129, 0.6));
+      z-index: 1;
+    }
+
+    .s12-step-node {
+      position: relative;
+      z-index: 2;
+      background: var(--surface-elevated);
+      border: 1px solid var(--gold-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    .s12-step-node:hover {
+      transform: translateY(-4px);
+      border-color: var(--gold-bright);
+      box-shadow: 0 8px 25px var(--gold-glow);
+    }
+
+    /* 4 Evolutionary Milestones */
+    .s12-milestones-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .milestone-card {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+
+    .milestone-card.current-m {
+      border-color: var(--gold-border);
+      background: linear-gradient(135deg, rgba(20, 29, 56, 0.8) 0%, rgba(14, 21, 41, 0.9) 100%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .milestone-phase {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold-light);
+    }
+
+    .milestone-name {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .milestone-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* ==========================================================================
+       SLIDE 13: MY CONTRIBUTION (5-Part Capability Map)
+       ========================================================================== */
+    .s13-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      height: 460px;
+    }
+
+    .contrib-col {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s var(--ease-cinematic);
+    }
+
+    .contrib-col:hover {
+      border-color: var(--gold-border);
+      transform: translateY(-4px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    }
+
+    .contrib-col::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gold-primary);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .contrib-header {
+      margin-bottom: 18px;
+    }
+
+    .contrib-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gold-light);
+      margin-bottom: 4px;
+    }
+
+    .contrib-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .contrib-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .contrib-item {
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      line-height: 1.4;
+    }
+
+    .s13-summary-strip {
+      background: rgba(14, 21, 41, 0.7);
+      border: 1px solid rgba(203, 163, 88, 0.2);
+      border-radius: 12px;
+      padding: 12px 24px;
+      margin-top: 18px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       SLIDE 14: FINAL CLOSING SLIDE (From Screens to Systems)
+       ========================================================================== */
+    .s14-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .s14-quote-box {
+      max-width: 860px;
+      margin-bottom: 36px;
+      position: relative;
+    }
+
+    .s14-huge-quote {
+      font-family: var(--font-serif);
+      font-size: clamp(26px, 2.8vw, 40px);
+      font-style: italic;
+      color: var(--text-primary);
+      line-height: 1.35;
+      text-shadow: 0 5px 30px rgba(0, 0, 0, 0.8);
+    }
+
+    .s14-constellation-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      max-width: 780px;
+      margin-bottom: 40px;
+    }
+
+    .s14-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(203, 163, 88, 0.08);
+      border: 1px solid rgba(203, 163, 88, 0.25);
+      color: var(--gold-light);
+    }
+
+    .s14-footer-credits {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 24px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .s14-report-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .s14-name {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold-bright);
+    }
+
+    .s14-role {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       OVERVIEW MODAL (Press 'O' or Grid icon)
+       ========================================================================== */
+    .overview-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 13, 0.95);
+      backdrop-filter: blur(20px);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      padding: 40px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .overview-modal.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .overview-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--gold-light);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      overflow-y: auto;
+      flex: 1;
+      padding-right: 8px;
+    }
+
+    .overview-thumb {
+      background: var(--surface-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .overview-thumb:hover,
+    .overview-thumb.active {
+      border-color: var(--gold-border);
+      background: rgba(22, 33, 66, 0.9);
+      transform: translateY(-2px);
+    }
+
+    .thumb-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--gold-light);
+    }
+
+    .thumb-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Keyframe Animations */
+    @keyframes rotateSlow {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Ambient Stars & Geometry Background -->
+  <canvas id="celestialCanvas"></canvas>
+  <div class="cosmic-vignette"></div>
+
+  <!-- Top Progress Bar -->
+  <div class="top-progress-track">
+    <div class="top-progress-fill" id="topProgressFill"></div>
+  </div>
+
+  <!-- Top Navigation HUD -->
+  <header class="deck-hud-top">
+    <div class="hud-brand">
+      <div class="brand-emblem">✦</div>
+      <div class="brand-title">Tredeva<span>Astro</span></div>
+    </div>
+
+    <div class="hud-center">
+      <div class="phase-badge" id="currentPhaseBadge">Prologue</div>
+    </div>
+
+    <div class="hud-right">
+      <div class="timer-pill" title="Elapsed Time / Target 15m">
+        <div class="timer-dot"></div>
+        <span id="deckTimer">00:00</span>
+      </div>
+      <button class="hud-btn" id="btnOverview" title="Slide Overview (O)">⊞</button>
+      <button class="hud-btn" id="btnFullscreen" title="Toggle Fullscreen (F)">⛶</button>
+    </div>
+  </header>
+
+  <!-- Main Slide Deck Stage -->
+  <main class="slide-stage" id="slideStage">
+
+    <!-- ====================================================================
+         SLIDE 1: OPENING — CINEMATIC TRANSFORMATION
+         ==================================================================== -->
+    <section class="slide active" data-phase="Prologue" data-time="45s">
+      <div class="slide-wrapper">
+        <div class="s1-hero-container">
+          <!-- Orbital Celestial Glyph -->
+          <div class="s1-celestial-gate">
+            <div class="s1-ring s1-ring-1"></div>
+            <div class="s1-ring s1-ring-2"></div>
+            <div class="s1-ring s1-ring-3"></div>
+            <div class="s1-center-glyph">ॐ</div>
+          </div>
+
+          <h1 class="s1-title-huge">From Prototype<br>To Platform</h1>
+          <p class="s1-tagline">TredevaAstro | Engineering Progress Report</p>
+
+          <div class="s1-transformation-strip">
+            <span class="s1-stage-node">Ancient Knowledge</span>
+            <span class="s1-arrow">→</span>
+            <span class="s1-stage-node">Digital Systems</span>
+            <span class="s1-arrow">→</span>
+            <span class="s1-stage-node highlight">TredevaAstro</span>
+          </div>
+
+          <div class="s1-meta-box">
+            <div class="s1-meta-item">
+              <div class="s1-meta-label">Author</div>
+              <div class="s1-meta-val">Sparsh Bansal</div>
+            </div>
+            <div class="s1-meta-item">
+              <div class="s1-meta-label">Role</div>
+              <div class="s1-meta-val">SDE Intern</div>
+            </div>
+            <div class="s1-meta-item">
+              <div class="s1-meta-label">Timeline</div>
+              <div class="s1-meta-val">Full-Cycle Internship</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 2: WHAT TREDEVA ASTRO BECAME (System Map)
+         ==================================================================== -->
+    <section class="slide" data-phase="Overview" data-time="60s">
+      <div class="slide-wrapper s2-layout">
+        <div class="slide-header">
+          <div class="eyebrow">Architecture Footprint</div>
+          <h2 class="slide-title-hero">One Platform. Multiple Systems.</h2>
+          <p class="slide-subtitle-desc">A unified digital astrology ecosystem connecting deep computational algorithms,
+            real-time communications, multi-tier administration, and mobile clients.</p>
+        </div>
+
+        <!-- Dynamic Constellation Orbit System -->
+        <div class="s2-system-constellation" id="systemConstellation">
+          <canvas class="s2-orbit-canvas" id="orbitCanvas"></canvas>
+
+          <!-- Central TredevaAstro Core -->
+          <div class="s2-core-node">
+            <div class="s2-core-title">TredevaAstro</div>
+            <div class="s2-core-sub">Core Ecosystem</div>
+          </div>
+
+          <!-- 11 Satellite Nodes -->
+          <div class="satellite-node" style="top: 14%; left: 24%;">
+            <div class="node-dot"></div>Kundli Engine
+          </div>
+          <div class="satellite-node" style="top: 12%; right: 28%;">
+            <div class="node-dot"></div>20+ Astrology Tools
+          </div>
+          <div class="satellite-node" style="top: 36%; right: 10%;">
+            <div class="node-dot"></div>Panchang Engine
+          </div>
+          <div class="satellite-node" style="top: 66%; right: 12%;">
+            <div class="node-dot"></div>Commercial Reports
+          </div>
+          <div class="satellite-node" style="bottom: 12%; right: 24%;">
+            <div class="node-dot"></div>WebRTC Voice
+          </div>
+          <div class="satellite-node" style="bottom: 10%; left: 32%;">
+            <div class="node-dot"></div>Real-time Chat
+          </div>
+          <div class="satellite-node" style="bottom: 24%; left: 14%;">
+            <div class="node-dot"></div>Payments & Wallet
+          </div>
+          <div class="satellite-node" style="top: 60%; left: 8%;">
+            <div class="node-dot"></div>Store & Orders
+          </div>
+          <div class="satellite-node" style="top: 30%; left: 10%;">
+            <div class="node-dot"></div>Admin & Staff
+          </div>
+          <div class="satellite-node" style="top: 8%; left: 52%;">
+            <div class="node-dot"></div>Astrologer Portal
+          </div>
+          <div class="satellite-node" style="bottom: 8%; left: 56%;">
+            <div class="node-dot"></div>Android Client
+          </div>
+        </div>
+
+        <!-- Verified Metrics Cards -->
+        <div class="s2-metrics-grid">
+          <div class="metric-card">
+            <div class="metric-number">185</div>
+            <div class="metric-label">Git Commits</div>
+            <div class="metric-sub">Rigorous version history</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">20+</div>
+            <div class="metric-label">Astrology Tools</div>
+            <div class="metric-sub">Calculators & Utilities</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">1</div>
+            <div class="metric-label">Kundli Engine</div>
+            <div class="metric-sub">Swiss Ephemeris precision</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">Web+App</div>
+            <div class="metric-label">Platforms</div>
+            <div class="metric-sub">Full ecosystem sync</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 3: BEFORE VS AFTER (The Transformation)
+         ==================================================================== -->
+    <section class="slide" data-phase="Transformation" data-time="75s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Evolutionary Contrast</div>
+          <h2 class="slide-title-hero">Where It Started → Where It Is</h2>
+          <p class="slide-subtitle-desc">The project evolved from an isolated visual mockup into an enterprise-grade
+            functional product ecosystem.</p>
+        </div>
+
+        <div class="s3-grid">
+          <!-- BEFORE CARD -->
+          <div class="s3-card s3-before">
+            <div class="s3-header-badge badge-before">Starting Point</div>
+            <h3 class="s3-title">UI Prototype</h3>
+            <div class="s3-item-list">
+              <div class="s3-item">
+                <div class="s3-item-icon icon-cross">✕</div>
+                <div>Static & mock functionality across screens</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-cross">✕</div>
+                <div>Basic mock authentication only</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-cross">✕</div>
+                <div>Limited backend infrastructure</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-cross">✕</div>
+                <div>No complete astrology calculation engine</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-cross">✕</div>
+                <div>Zero payment or commerce capabilities</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ANIMATED DIVIDER -->
+          <div class="s3-divider">
+            <div class="s3-divider-line"></div>
+            <div class="s3-divider-arrow">→</div>
+          </div>
+
+          <!-- AFTER CARD -->
+          <div class="s3-card s3-after">
+            <div class="s3-header-badge badge-after">Current Product</div>
+            <h3 class="s3-title">Full-Stack Ecosystem</h3>
+            <div class="s3-item-list">
+              <div class="s3-item">
+                <div class="s3-item-icon icon-check">✓</div>
+                <div>Swiss Ephemeris-based calculations engine</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-check">✓</div>
+                <div>Production Firebase Google & Phone OTP Auth</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-check">✓</div>
+                <div>20+ Vedic astrology calculation tools & Panchang</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-check">✓</div>
+                <div>Commercial multi-section PDF reports & Hindi support</div>
+              </div>
+              <div class="s3-item">
+                <div class="s3-item-icon icon-check">✓</div>
+                <div>WebRTC voice, real-time chat, payments, Android app</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 4: PHASE 1 — FOUNDATION (Visual Layers Assembling)
+         ==================================================================== -->
+    <section class="slide" data-phase="Phase 1" data-time="60s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Phase 1: Design System & UX</div>
+          <h2 class="slide-title-hero">First, I built the visual foundation.</h2>
+          <p class="slide-subtitle-desc">Translating classical Vedic aesthetics into a refined, high-performance web
+            interface system.</p>
+        </div>
+
+        <div class="s4-container">
+          <!-- Layer Assembly Flow -->
+          <div class="s4-layers-stack">
+            <div class="layer-card active-layer">
+              <div class="layer-left">
+                <div class="layer-step-num">01</div>
+                <div>
+                  <div class="layer-name">Vedic Manuscript Aesthetic</div>
+                  <div class="layer-desc">Saffron gradients, celestial elements, and parchment-style Kundli</div>
+                </div>
+              </div>
+              <span class="layer-tag">Visual Theme</span>
+            </div>
+
+            <div class="layer-card">
+              <div class="layer-left">
+                <div class="layer-step-num">02</div>
+                <div>
+                  <div class="layer-name">Typography & Geometry</div>
+                  <div class="layer-desc">Yatra One display font + Cormorant/Inter pairing & cosmic motifs</div>
+                </div>
+              </div>
+              <span class="layer-tag">Design System</span>
+            </div>
+
+            <div class="layer-card">
+              <div class="layer-left">
+                <div class="layer-step-num">03</div>
+                <div>
+                  <div class="layer-name">Gated Login & Astrologer UX</div>
+                  <div class="layer-desc">Homepage structure, monk widget, hero video, and responsive UI</div>
+                </div>
+              </div>
+              <span class="layer-tag">User Journey</span>
+            </div>
+
+            <div class="layer-card">
+              <div class="layer-left">
+                <div class="layer-step-num">04</div>
+                <div>
+                  <div class="layer-name">Dark / Light Dual Modes</div>
+                  <div class="layer-desc">Cosmic navy (#060914) default with warm parchment toggleable mode</div>
+                </div>
+              </div>
+              <span class="layer-tag">Production UI</span>
+            </div>
+          </div>
+
+          <!-- Stylized Interface Preview -->
+          <div class="s4-preview-device">
+            <div class="s4-preview-header">
+              <span style="font-family: var(--font-display); font-size: 12px; color: var(--gold-light);">✦ TredevaAstro
+                Chart Preview</span>
+              <span class="tech-pill">Vedic Kundli UI</span>
+            </div>
+
+            <div class="preview-kundli-chart">
+              <div class="chart-geometry"></div>
+              <div class="chart-diamond"></div>
+              <div class="chart-diagonal-1"></div>
+              <div class="chart-diagonal-2"></div>
+              <div class="chart-ascendant-badge">Lagna / ASC 18°</div>
+            </div>
+
+            <div class="s4-chips-row">
+              <span class="s4-chip">Yatra One Heading</span>
+              <span class="s4-chip">Parchment Kundli</span>
+              <span class="s4-chip">Astrologer Flow</span>
+              <span class="s4-chip">Responsive Grid</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 5: PHASE 2 — FROM UI TO REAL PRODUCT
+         ==================================================================== -->
+    <section class="slide" data-phase="Phase 2" data-time="75s">
+      <div class="slide-wrapper s5-container">
+        <div class="slide-header">
+          <div class="eyebrow">Phase 2: Platform Integration</div>
+          <h2 class="slide-title-hero">The turning point: Mock → Real</h2>
+          <p class="slide-subtitle-desc">Bridging the gap between static user interfaces and a distributed, resilient
+            backend architecture.</p>
+        </div>
+
+        <div class="s5-arch-comparison">
+          <!-- LEFT: Static / Mock Flow -->
+          <div class="arch-flow-col">
+            <div class="arch-node dead">
+              <div class="arch-node-title"><span>💻</span> Frontend UI</div>
+              <span class="arch-node-status" style="color: #f87171;">Static View</span>
+            </div>
+            <div style="text-align:center; color: #f87171; font-size: 14px;">↓</div>
+            <div class="arch-node dead">
+              <div class="arch-node-title"><span>📦</span> Hardcoded Mocks</div>
+              <span class="arch-node-status" style="color: #f87171;">No Backend</span>
+            </div>
+            <div style="text-align:center; color: #f87171; font-size: 14px;">↓</div>
+            <div class="arch-node dead">
+              <div class="arch-node-title"><span>🔒</span> Non-Persistent UX</div>
+              <span class="arch-node-status" style="color: #f87171;">Mock Auth</span>
+            </div>
+          </div>
+
+          <!-- ARROW -->
+          <div style="text-align:center; font-size: 24px; color: var(--gold-bright);">➔</div>
+
+          <!-- RIGHT: Live Microservices Architecture -->
+          <div class="arch-flow-col">
+            <div class="arch-node alive">
+              <div class="arch-node-title"><span>⚡</span> React Web + Android Client</div>
+              <span class="arch-node-status" style="color: #34d399;">Multi-Client</span>
+            </div>
+            <div style="text-align:center; color: #34d399; font-size: 14px;">↓</div>
+            <div class="arch-node alive">
+              <div class="arch-node-title"><span>🛡️</span> API Gateway & Auth Guard</div>
+              <span class="arch-node-status" style="color: #34d399;">JWT / Firebase</span>
+            </div>
+            <div style="text-align:center; color: #34d399; font-size: 14px;">↓</div>
+            <div class="arch-node alive">
+              <div class="arch-node-title"><span>⚙️</span> Backend Services + Calculation Engine</div>
+              <span class="arch-node-status" style="color: #34d399;">Ephemeris + DB</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7 Modules that Became Real -->
+        <div>
+          <div
+            style="font-size: 11px; font-family: var(--font-mono); color: var(--gold-light); margin-bottom: 8px; text-transform: uppercase;">
+            ✦ Production Modules Activated
+          </div>
+          <div class="s5-real-modules-grid">
+            <div class="module-tile">
+              <div class="module-icon">🔑</div>
+              <div class="module-name">Authentication</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">🪐</div>
+              <div class="module-name">Astrology APIs</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">📄</div>
+              <div class="module-name">PDF Reports</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">☀️</div>
+              <div class="module-name">Panchang</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">💬</div>
+              <div class="module-name">Real-time Chat</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">⭐</div>
+              <div class="module-name">Favorites</div>
+            </div>
+            <div class="module-tile">
+              <div class="module-icon">📰</div>
+              <div class="module-name">Blog Engine</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout-banner">
+          <span><strong>Core Milestone:</strong> The project stopped being a visual prototype and became a functional
+            application.</span>
+          <span class="tech-pill">Live Infrastructure</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 6: HERO TECHNICAL SLIDE — KUNDLI ENGINE
+         ==================================================================== -->
+    <section class="slide" data-phase="Core Engineering" data-time="90s">
+      <div class="slide-wrapper s6-container">
+        <div class="slide-header">
+          <div class="eyebrow">Hero Technical Architecture</div>
+          <h2 class="slide-title-hero">The Core: Building the Kundli Engine</h2>
+          <p class="slide-subtitle-desc">High-precision mathematical pipeline transforming astronomical birth ephemeris
+            into comprehensive Vedic horoscope structures.</p>
+        </div>
+
+        <!-- 7-Stage Calculation Pipeline -->
+        <div class="pipeline-wrapper">
+          <div class="pipe-step">
+            <div class="pipe-circle">📅</div>
+            <div class="pipe-title">Birth Details</div>
+            <div class="pipe-sub">Date & Time</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step">
+            <div class="pipe-circle">📍</div>
+            <div class="pipe-title">Geocoding</div>
+            <div class="pipe-sub">Lat/Long + TZ</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step ephemeris">
+            <div class="pipe-circle">🔭</div>
+            <div class="pipe-title">Swiss Ephemeris</div>
+            <div class="pipe-sub">Planetary Data</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step">
+            <div class="pipe-circle">📐</div>
+            <div class="pipe-title">House Systems</div>
+            <div class="pipe-sub">Placidus Houses</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step">
+            <div class="pipe-circle">⚛️</div>
+            <div class="pipe-title">Astro Math</div>
+            <div class="pipe-sub">Dashas & Bala</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step">
+            <div class="pipe-circle">📜</div>
+            <div class="pipe-title">Kundli Charts</div>
+            <div class="pipe-sub">North / South</div>
+          </div>
+          <div class="pipe-connector"></div>
+
+          <div class="pipe-step">
+            <div class="pipe-circle">📊</div>
+            <div class="pipe-title">PDF Report</div>
+            <div class="pipe-sub">Multi-Section</div>
+          </div>
+        </div>
+
+        <!-- Computational Modules & Debugged Callout -->
+        <div class="s6-chips-section">
+          <div class="chips-matrix">
+            <div class="chips-matrix-title"><span>✦</span> Computation Subsystems Implemented</div>
+            <div class="chips-flex">
+              <div class="calc-tag"><span></span>Dasha Systems</div>
+              <div class="calc-tag"><span></span>Yogini Dasha</div>
+              <div class="calc-tag"><span></span>Shodasavarga (D1-D60)</div>
+              <div class="calc-tag"><span></span>Ashtakavarga</div>
+              <div class="calc-tag"><span></span>KP Sub-Lord System</div>
+              <div class="calc-tag"><span></span>Shadbala & Bhavbala</div>
+              <div class="calc-tag"><span></span>Doshas & Yogas</div>
+              <div class="calc-tag"><span></span>North & South Indian Charts</div>
+            </div>
+          </div>
+
+          <!-- Highlight: Debugging Victory -->
+          <div class="debug-badge-card">
+            <div class="debug-pill-label">Critical Bug Solved</div>
+            <div class="debug-statement">Corrected a major ascendant calculation issue</div>
+            <div class="debug-detail">Identified and fixed angular normalization errors that caused inaccurate Lagna
+              degree calculations in specific geographic longitudes.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 7: PRODUCT EXPANSION — ASTROLOGY TOOLKIT
+         ==================================================================== -->
+    <section class="slide" data-phase="Expansion" data-time="75s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Product Scaling</div>
+          <h2 class="slide-title-hero">From One Engine to an Astrology Toolkit</h2>
+          <p class="slide-subtitle-desc">Expanding the core computational engine into 20+ specialized astrology
+            utilities, calculators, and daily guidance feeds.</p>
+        </div>
+
+        <div class="s7-grid">
+          <!-- Tools Orbit Grid -->
+          <div class="s7-orbit-container">
+            <div class="eyebrow" style="color: var(--gold-light);">Calculators & Utilities Cloud</div>
+            <div class="tools-cloud">
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Numerology
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Nakshatra Finder
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Sade Sati Calculator
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Kundli Matching
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>FLAMES
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Lucky Color & Date
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Baby Name Finder
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Lal Kitab Insights
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Chinese Zodiac
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Horoscope (Weekly/Yearly)
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Vastu Consultation
+              </div>
+              <div class="tool-badge">
+                <div class="tool-dot"></div>Pitra Dosha Analysis
+              </div>
+            </div>
+          </div>
+
+          <!-- Panchang Dedicated Panel -->
+          <div class="s7-panchang-panel">
+            <div class="eyebrow" style="color: var(--saffron-light);">Dedicated Subsystem</div>
+            <h3 style="font-family: var(--font-display); font-size: 22px; color: var(--gold-bright);">Panchang Engine
+            </h3>
+
+            <div class="panchang-feature-row">
+              <span class="panchang-feature-icon">⏳</span>
+              <span class="panchang-feature-text">Yamaganda & Gulika Kaal computation</span>
+            </div>
+            <div class="panchang-feature-row">
+              <span class="panchang-feature-icon">⚖️</span>
+              <span class="panchang-feature-text">Gun Milan compatibility algorithm</span>
+            </div>
+            <div class="panchang-feature-row">
+              <span class="panchang-feature-icon">🌐</span>
+              <span class="panchang-feature-text">Automated timezone & daylight offset handling</span>
+            </div>
+            <div class="panchang-feature-row">
+              <span class="panchang-feature-icon">📍</span>
+              <span class="panchang-feature-text">Birth-place geocoding & coordinate caching</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 8: PRODUCTIZATION (Reports, Calls & Store)
+         ==================================================================== -->
+    <section class="slide" data-phase="Commercialization" data-time="80s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Commercial Readiness</div>
+          <h2 class="slide-title-hero">Now it could actually be used as a product.</h2>
+          <p class="slide-subtitle-desc">Transforming informational outputs into monetization pipelines: monetized
+            commercial reports, live consultations, and e-commerce.</p>
+        </div>
+
+        <div class="s8-pillars-grid">
+          <!-- Pillar 1: Reports -->
+          <div class="pillar-card reports">
+            <div class="pillar-icon-box">📄</div>
+            <h3 class="pillar-title">Reports Pipeline</h3>
+            <p class="pillar-tagline">Automated Commercial PDF Engine</p>
+            <div class="pillar-feature-list">
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Multi-section commercial Kundli PDF
+                generation</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Full Hindi language localized report
+                rendering</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Headless browser rendering optimization
+              </div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Login-gated purchase & persistent download
+                history</div>
+            </div>
+          </div>
+
+          <!-- Pillar 2: Communication -->
+          <div class="pillar-card comm">
+            <div class="pillar-icon-box">📞</div>
+            <h3 class="pillar-title">Communication</h3>
+            <p class="pillar-tagline">Real-Time Astrologer Consultation</p>
+            <div class="pillar-feature-list">
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> WebRTC peer-to-peer encrypted voice calling
+              </div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Cloud TURN/STUN infrastructure for NAT
+                traversal</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Socket-based bidirectional real-time text
+                chat</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Race-condition handling for instant message
+                delivery</div>
+            </div>
+          </div>
+
+          <!-- Pillar 3: Commerce -->
+          <div class="pillar-card commerce">
+            <div class="pillar-icon-box">🛒</div>
+            <h3 class="pillar-title">Store & Orders</h3>
+            <p class="pillar-tagline">Vedic Artifacts & Consultation Sales</p>
+            <div class="pillar-feature-list">
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Full e-commerce backend with order status
+                management</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Per-minute and flat consultation rate
+                engine</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> Regional geo-IP pricing adaptation</div>
+              <div class="pillar-bullet"><span class="bullet-arrow">✦</span> CSV bulk pricing import for catalogue
+                administration</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 9: OPERATIONAL LAYER (Payments, Auth & Admin)
+         ==================================================================== -->
+    <section class="slide" data-phase="Operations" data-time="75s">
+      <div class="slide-wrapper s9-container">
+        <div class="slide-header">
+          <div class="eyebrow">Multi-Tenant Platform</div>
+          <h2 class="slide-title-hero">Building the operational layer</h2>
+          <p class="slide-subtitle-desc">Separating end-consumer touchpoints from astrologer workflows, staff
+            operations, and executive administration.</p>
+        </div>
+
+        <div class="s9-actors-grid">
+          <!-- User -->
+          <div class="actor-col">
+            <div class="actor-header">
+              <div class="actor-avatar">👤</div>
+              <div class="actor-role">User</div>
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Google / Phone Auth
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Free Kundli Generation
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Wallet & Payments
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Consultation Sessions
+            </div>
+          </div>
+
+          <!-- Astrologer -->
+          <div class="actor-col">
+            <div class="actor-header">
+              <div class="actor-avatar">🧘</div>
+              <div class="actor-role">Astrologer</div>
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Dedicated Workspace
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Real-time Chat & Voice
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Availability Toggles
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Earnings & Call Logs
+            </div>
+          </div>
+
+          <!-- Staff -->
+          <div class="actor-col">
+            <div class="actor-header">
+              <div class="actor-avatar">🛡️</div>
+              <div class="actor-role">Staff</div>
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Granular Permissions
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Astrologer Onboarding
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Catalogue Management
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Order Tracking
+            </div>
+          </div>
+
+          <!-- Admin -->
+          <div class="actor-col">
+            <div class="actor-header">
+              <div class="actor-avatar">👑</div>
+              <div class="actor-role">Admin</div>
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Executive Dashboard
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Role-Based Access
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Financial Reconciliation
+            </div>
+            <div class="actor-flow-step">
+              <div class="step-num-dot"></div>Campaign Analytics
+            </div>
+          </div>
+        </div>
+
+        <!-- Integrated Payment & Auth Systems -->
+        <div class="s9-integrations-bar">
+          <div class="integ-group">
+            <span class="integ-label">Payment Gateways</span>
+            <div class="integ-chips-row">
+              <span class="integ-chip">Cashfree</span>
+              <span class="integ-chip">Razorpay</span>
+              <span class="integ-chip">Internal Wallet</span>
+            </div>
+          </div>
+          <div class="integ-group">
+            <span class="integ-label">Authentication Layer</span>
+            <div class="integ-chips-row">
+              <span class="integ-chip">Firebase Google Auth</span>
+              <span class="integ-chip">Phone Number + OTP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 10: PROBLEMS I SOLVED (Engineering Debugging Board)
+         ==================================================================== -->
+    <section class="slide" data-phase="Engineering Problem Solving" data-time="90s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Engineering Rigor</div>
+          <h2 class="slide-title-hero">Features are easy to list. Problems are harder.</h2>
+          <p class="slide-subtitle-desc">Critical issues diagnosed, engineered, and resolved during stabilization and
+            production readiness.</p>
+        </div>
+
+        <div class="s10-grid">
+          <!-- Problem 1 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Incorrect Kundli calculations</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Corrected angular normalization & computation flow</span>
+            </div>
+          </div>
+
+          <!-- Problem 2 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Cross-network calls failing</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Deployed TURN / STUN relay infrastructure</span>
+            </div>
+          </div>
+
+          <!-- Problem 3 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">PDF deployment memory crashes</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Memory profiling + lightweight Chromium flags</span>
+            </div>
+          </div>
+
+          <!-- Problem 4 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Mock authentication tokens</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Real Firebase JWT verification middleware</span>
+            </div>
+          </div>
+
+          <!-- Problem 5 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Chat message race conditions</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Real-time socket synchronization & sequence locks</span>
+            </div>
+          </div>
+
+          <!-- Problem 6 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Global vs regional pricing mismatches</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">IP-based location detection & currency logic</span>
+            </div>
+          </div>
+
+          <!-- Problem 7 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Heavy compute server load spikes</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Reworked expensive functions & cached planetary cycles</span>
+            </div>
+          </div>
+
+          <!-- Problem 8 -->
+          <div class="debug-card">
+            <div class="debug-issue">
+              <span class="issue-label">Issue</span>
+              <span class="issue-text">Cloud deployment instability</span>
+            </div>
+            <div class="debug-flow-arrow">➔</div>
+            <div class="debug-resolution">
+              <span class="res-label">Solution</span>
+              <span class="res-text">Standardized environment configs across Cloudflare & Render</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 11: INFRASTRUCTURE & MOBILE (Beyond the Browser)
+         ==================================================================== -->
+    <section class="slide" data-phase="Infrastructure" data-time="75s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Multi-Platform Architecture</div>
+          <h2 class="slide-title-hero">The platform expanded beyond the browser.</h2>
+          <p class="slide-subtitle-desc">Structuring the codebase for cross-platform scale and automated cloud
+            deployment.</p>
+        </div>
+
+        <div class="s11-grid">
+          <!-- Architecture Stack Diagram -->
+          <div class="s11-arch-stack">
+            <div class="arch-tier-box">
+              <div class="arch-tier-title"><span>🌐</span> Web Experience Tier</div>
+              <div class="tier-chips">
+                <span class="tier-chip">Customer Frontend</span>
+                <span class="tier-chip">Astrologer Console</span>
+                <span class="tier-chip">Staff & Admin Panel</span>
+              </div>
+            </div>
+
+            <div class="arch-tier-box">
+              <div class="arch-tier-title"><span>☁️</span> Cloud & Services Tier</div>
+              <div class="tier-chips">
+                <span class="tier-chip">Cloudflare Edge</span>
+                <span class="tier-chip">Render Backend</span>
+                <span class="tier-chip">Firebase Services</span>
+                <span class="tier-chip">AWS Location</span>
+                <span class="tier-chip">TURN Relays</span>
+              </div>
+            </div>
+
+            <div class="arch-tier-box">
+              <div class="arch-tier-title"><span>📱</span> Native Mobile Tier</div>
+              <div class="tier-chips">
+                <span class="tier-chip mobile">Android Native Application</span>
+                <span class="tier-chip mobile">Mobile Astrologer View</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monorepo & Deployment Details -->
+          <div class="s11-monorepo-card">
+            <div>
+              <div class="eyebrow" style="color: var(--gold-light);">Refactoring Landmark</div>
+              <h3
+                style="font-family: var(--font-display); font-size: 18px; margin-top: 4px; color: var(--text-primary);">
+                Monorepo Restructuring</h3>
+
+              <div class="monorepo-flow">
+                <span class="dir-badge old">frontend/</span>
+                <span style="color: var(--gold-light);">➔</span>
+                <span class="dir-badge new">web/frontend/</span>
+              </div>
+              <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Cleanly separated web
+                frontend, Node.js backend services, and Android project trees to support parallel independent deployment
+                pipelines.</p>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px;">
+              <div class="eyebrow" style="color: var(--saffron-light);">DevOps Scope</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.6;">
+                Playwright/Chromium containerization • Memory tuning for rendering • Cloudflare DNS routing • Live SSL
+                WebRTC TURN credentials.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 12: THE 45-DAY TRANSFORMATION (Timeline Evolution)
+         ==================================================================== -->
+    <section class="slide" data-phase="Impact & Scale" data-time="60s">
+      <div class="slide-wrapper s12-container">
+        <div class="slide-header">
+          <div class="eyebrow">Transformation Scale</div>
+          <h2 class="slide-title-hero">42 Days of Git History. 185 Commits. One Major Transformation.</h2>
+          <p class="slide-subtitle-desc">A relentless, disciplined progression transforming code commits into tangible
+            platform capabilities.</p>
+        </div>
+
+        <!-- Metric Highlight -->
+        <div class="s12-hero-metrics">
+          <div>
+            <div class="s12-big-stat">185</div>
+            <div
+              style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--gold-light); margin-top: 4px;">
+              Git Commits</div>
+          </div>
+          <div style="height: 40px; width: 1px; background: rgba(255, 255, 255, 0.1);"></div>
+          <div class="s12-stat-text">
+            From initial UI skeleton setup through mathematical Kundli engine calibration, real-time consultation
+            wiring, payment gateway integrations, and cross-platform Android expansion.
+          </div>
+        </div>
+
+        <!-- Horizontal Transformation Path -->
+        <div class="s12-flow-horizontal">
+          <div class="s12-step-node">UI Foundation</div>
+          <div class="s12-step-node">Backend Architecture</div>
+          <div class="s12-step-node">Kundli Engine</div>
+          <div class="s12-step-node">Astrology Tools</div>
+          <div class="s12-step-node">Reports Pipeline</div>
+          <div class="s12-step-node">WebRTC & Chat</div>
+          <div class="s12-step-node">Payments & Store</div>
+          <div class="s12-step-node">Admin Operations</div>
+          <div class="s12-step-node">Android Ecosystem</div>
+        </div>
+
+        <!-- 4 Milestone Stages -->
+        <div class="s12-milestones-grid">
+          <div class="milestone-card">
+            <div class="milestone-phase">Stage 01</div>
+            <div class="milestone-name">Prototype</div>
+            <div class="milestone-desc">Static interfaces, mock flows, basic visuals</div>
+          </div>
+          <div class="milestone-card">
+            <div class="milestone-phase">Stage 02</div>
+            <div class="milestone-name">Functional Product</div>
+            <div class="milestone-desc">Real auth, Swiss Ephemeris calculations, live tools</div>
+          </div>
+          <div class="milestone-card">
+            <div class="milestone-phase">Stage 03</div>
+            <div class="milestone-name">Commercial Platform</div>
+            <div class="milestone-desc">PDF reports, WebRTC calls, store, payments, admin</div>
+          </div>
+          <div class="milestone-card current-m">
+            <div class="milestone-phase" style="color: var(--emerald);">Stage 04</div>
+            <div class="milestone-name">Multi-Platform Ecosystem</div>
+            <div class="milestone-desc">Web + Android clients with stabilized cloud infrastructure</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 13: MY CONTRIBUTION (5-Part Capability Map)
+         ==================================================================== -->
+    <section class="slide" data-phase="Personal Contribution" data-time="60s">
+      <div class="slide-wrapper">
+        <div class="slide-header">
+          <div class="eyebrow">Scope & Ownership</div>
+          <h2 class="slide-title-hero">What I Worked Across</h2>
+          <p class="slide-subtitle-desc">Delivering impact across the entire stack — balancing user experience, core
+            mathematics, distributed systems, and product requirements.</p>
+        </div>
+
+        <div class="s13-grid">
+          <!-- Col 1 -->
+          <div class="contrib-col">
+            <div class="contrib-header">
+              <div class="contrib-name">Frontend</div>
+              <div class="contrib-tag">User Experience</div>
+            </div>
+            <div class="contrib-list">
+              <div class="contrib-item">UI/UX Implementation</div>
+              <div class="contrib-item">Responsive Interfaces</div>
+              <div class="contrib-item">Astrologer Dashboards</div>
+              <div class="contrib-item">Kundli Visualizer</div>
+              <div class="contrib-item">Panchang UI System</div>
+            </div>
+          </div>
+
+          <!-- Col 2 -->
+          <div class="contrib-col">
+            <div class="contrib-header">
+              <div class="contrib-name">Backend</div>
+              <div class="contrib-tag">APIs & Services</div>
+            </div>
+            <div class="contrib-list">
+              <div class="contrib-item">REST API Services</div>
+              <div class="contrib-item">Firebase Auth Layer</div>
+              <div class="contrib-item">Report Generator</div>
+              <div class="contrib-item">Orders Management</div>
+              <div class="contrib-item">Role Permissions</div>
+            </div>
+          </div>
+
+          <!-- Col 3 -->
+          <div class="contrib-col">
+            <div class="contrib-header">
+              <div class="contrib-name">Core Systems</div>
+              <div class="contrib-tag">Math & Real-Time</div>
+            </div>
+            <div class="contrib-list">
+              <div class="contrib-item">Kundli Computation</div>
+              <div class="contrib-item">WebRTC Calling</div>
+              <div class="contrib-item">Socket Chat Sync</div>
+              <div class="contrib-item">Payment Gateways</div>
+            </div>
+          </div>
+
+          <!-- Col 4 -->
+          <div class="contrib-col">
+            <div class="contrib-header">
+              <div class="contrib-name">Infrastructure</div>
+              <div class="contrib-tag">DevOps & Cloud</div>
+            </div>
+            <div class="contrib-list">
+              <div class="contrib-item">Cloudflare Routing</div>
+              <div class="contrib-item">Render Deployment</div>
+              <div class="contrib-item">PDF Memory Profiling</div>
+              <div class="contrib-item">Monorepo Structuring</div>
+            </div>
+          </div>
+
+          <!-- Col 5 -->
+          <div class="contrib-col">
+            <div class="contrib-header">
+              <div class="contrib-name">Product</div>
+              <div class="contrib-tag">Feature Growth</div>
+            </div>
+            <div class="contrib-list">
+              <div class="contrib-item">20+ Astrology Tools</div>
+              <div class="contrib-item">Campaign Features</div>
+              <div class="contrib-item">Content Quality</div>
+              <div class="contrib-item">Mobile Expansion</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="s13-summary-strip">
+          Frontend &nbsp;➔&nbsp; Backend &nbsp;➔&nbsp; Core Systems &nbsp;➔&nbsp; Infrastructure &nbsp;➔&nbsp; Product
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SLIDE 14: FINAL CLOSING SLIDE (From Screens to Systems)
+         ==================================================================== -->
+    <section class="slide" data-phase="Epilogue" data-time="45s">
+      <div class="slide-wrapper">
+        <div class="s14-container">
+          <div class="eyebrow" style="margin-bottom: 20px;">Closing Perspective</div>
+          <h2 class="slide-title-hero" style="font-size: 52px; margin-bottom: 24px;">From Screens to Systems.</h2>
+
+          <div class="s14-quote-box">
+            <p class="s14-huge-quote">
+              "What started as a UI-driven prototype evolved into a functional, commercially-oriented, multi-platform
+              astrology ecosystem."
+            </p>
+          </div>
+
+          <!-- Connecting all nodes -->
+          <div class="s14-constellation-pills">
+            <span class="s14-pill">Users</span>
+            <span class="s14-pill">Astrologers</span>
+            <span class="s14-pill">Kundli Engine</span>
+            <span class="s14-pill">20+ Tools</span>
+            <span class="s14-pill">Commercial Reports</span>
+            <span class="s14-pill">WebRTC Voice</span>
+            <span class="s14-pill">Real-time Chat</span>
+            <span class="s14-pill">Payments</span>
+            <span class="s14-pill">Store</span>
+            <span class="s14-pill">Admin</span>
+            <span class="s14-pill">Android</span>
+          </div>
+
+          <div class="s14-footer-credits">
+            <div class="s14-report-title">Internship Progress Report</div>
+            <div class="s14-name">Sparsh Bansal</div>
+            <div class="s14-role">SDE Intern • TredevaAstro</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation HUD -->
+  <footer class="deck-hud-bottom">
+    <div class="hud-info-left">
+      <div class="slide-index-counter">
+        <span class="current-num" id="currentSlideDisplay">01</span> / <span id="totalSlidesDisplay">14</span>
+      </div>
+      <div class="key-hints">
+        <span class="kbd-chip">←</span>
+        <span class="kbd-chip">→</span>
+        <span>navigate</span>
+        <span style="margin: 0 4px;">•</span>
+        <span class="kbd-chip">F</span>
+        <span>fullscreen</span>
+        <span style="margin: 0 4px;">•</span>
+        <span class="kbd-chip">O</span>
+        <span>overview</span>
+      </div>
+    </div>
+
+    <div class="hud-controls-right">
+      <button class="nav-arrow-btn" id="btnPrev" title="Previous Slide (←)">‹</button>
+      <button class="nav-arrow-btn" id="btnNext" title="Next Slide (→ / Space)">›</button>
+    </div>
+  </footer>
+
+  <!-- Slide Overview Modal -->
+  <div class="overview-modal" id="overviewModal">
+    <div class="overview-header">
+      <div class="overview-title">✦ Deck Overview (14 Slides)</div>
+      <button class="hud-btn" id="btnCloseOverview">✕</button>
+    </div>
+    <div class="overview-grid" id="overviewGrid">
+      <!-- Generated via JavaScript -->
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       DECK JAVASCRIPT: CONTROLLER, TIMERS & PARTICLES
+       ========================================================================== -->
+  <script>
+    (function () {
+      // Slides Registry
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const totalSlides = slides.length;
+      let currentIndex = 0;
+
+      // HUD Elements
+      const currentSlideDisplay = document.getElementById('currentSlideDisplay');
+      const totalSlidesDisplay = document.getElementById('totalSlidesDisplay');
+      const topProgressFill = document.getElementById('topProgressFill');
+      const currentPhaseBadge = document.getElementById('currentPhaseBadge');
+      const btnPrev = document.getElementById('btnPrev');
+      const btnNext = document.getElementById('btnNext');
+      const btnOverview = document.getElementById('btnOverview');
+      const btnFullscreen = document.getElementById('btnFullscreen');
+      const overviewModal = document.getElementById('overviewModal');
+      const overviewGrid = document.getElementById('overviewGrid');
+      const btnCloseOverview = document.getElementById('btnCloseOverview');
+      const deckTimer = document.getElementById('deckTimer');
+
+      totalSlidesDisplay.textContent = String(totalSlides).padStart(2, '0');
+
+      // Populate Overview Grid
+      slides.forEach((slide, idx) => {
+        const titleEl = slide.querySelector('.slide-title-hero') || slide.querySelector('.s1-title-huge');
+        const titleText = titleEl ? titleEl.innerText.replace(/\n/g, ' ') : `Slide ${idx + 1}`;
+        const phase = slide.dataset.phase || `Slide ${idx + 1}`;
+
+        const thumb = document.createElement('div');
+        thumb.className = `overview-thumb ${idx === 0 ? 'active' : ''}`;
+        thumb.innerHTML = `
+          <div class="thumb-num">SLIDE ${String(idx + 1).padStart(2, '0')} • ${phase}</div>
+          <div class="thumb-title">${titleText}</div>
+        `;
+        thumb.addEventListener('click', () => {
+          goToSlide(idx);
+          closeOverview();
+        });
+        overviewGrid.appendChild(thumb);
+      });
+
+      // Navigation Function
+      function goToSlide(targetIndex, direction = 0) {
+        if (targetIndex < 0 || targetIndex >= totalSlides || targetIndex === currentIndex) return;
+
+        const currentSlide = slides[currentIndex];
+        const nextSlide = slides[targetIndex];
+
+        // Set exit class
+        currentSlide.classList.remove('active');
+        if (direction >= 0) {
+          currentSlide.classList.add('exiting-prev');
+          setTimeout(() => currentSlide.classList.remove('exiting-prev'), 600);
+        } else {
+          currentSlide.classList.add('exiting-next');
+          setTimeout(() => currentSlide.classList.remove('exiting-next'), 600);
+        }
+
+        // Activate new slide
+        nextSlide.classList.remove('exiting-prev', 'exiting-next');
+        nextSlide.classList.add('active');
+
+        currentIndex = targetIndex;
+        updateHUD();
+      }
+
+      function nextSlide() {
+        if (currentIndex < totalSlides - 1) {
+          goToSlide(currentIndex + 1, 1);
+        }
+      }
+
+      function prevSlide() {
+        if (currentIndex > 0) {
+          goToSlide(currentIndex - 1, -1);
+        }
+      }
+
+      function updateHUD() {
+        const slide = slides[currentIndex];
+        const phase = slide.dataset.phase || 'Progress Report';
+
+        currentSlideDisplay.textContent = String(currentIndex + 1).padStart(2, '0');
+        currentPhaseBadge.textContent = phase;
+
+        const progressPercent = ((currentIndex + 1) / totalSlides) * 100;
+        topProgressFill.style.width = `${progressPercent}%`;
+
+        // Update Overview Thumbs
+        const thumbs = overviewGrid.querySelectorAll('.overview-thumb');
+        thumbs.forEach((t, i) => {
+          t.classList.toggle('active', i === currentIndex);
+        });
+      }
+
+      // Timer
+      let elapsedSeconds = 0;
+      setInterval(() => {
+        elapsedSeconds++;
+        const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+        const secs = String(elapsedSeconds % 60).padStart(2, '0');
+        deckTimer.textContent = `${mins}:${secs}`;
+      }, 1000);
+
+      // Keyboard Controls
+      document.addEventListener('keydown', (e) => {
+        if (overviewModal.classList.contains('open')) {
+          if (e.key === 'Escape' || e.key === 'o' || e.key === 'O') closeOverview();
+          return;
+        }
+
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+          e.preventDefault();
+          nextSlide();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          prevSlide();
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          goToSlide(0, -1);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          goToSlide(totalSlides - 1, 1);
+        } else if (e.key === 'f' || e.key === 'F') {
+          toggleFullscreen();
+        } else if (e.key === 'o' || e.key === 'O') {
+          toggleOverview();
+        }
+      });
+
+      // Button Listeners
+      btnNext.addEventListener('click', nextSlide);
+      btnPrev.addEventListener('click', prevSlide);
+      btnOverview.addEventListener('click', toggleOverview);
+      btnCloseOverview.addEventListener('click', closeOverview);
+      btnFullscreen.addEventListener('click', toggleFullscreen);
+
+      function toggleOverview() {
+        overviewModal.classList.toggle('open');
+      }
+
+      function closeOverview() {
+        overviewModal.classList.remove('open');
+      }
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => { });
+        } else {
+          document.exitFullscreen().catch(() => { });
+        }
+      }
+
+      // Initialize HUD
+      updateHUD();
+
+      // ========================================================================
+      // AMBIENT CELESTIAL BACKGROUND CANVAS (Twinkling stars & orbital lines)
+      // ========================================================================
+      const canvas = document.getElementById('celestialCanvas');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      let width, height;
+
+      function resizeCanvas() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        initStars();
+      }
+
+      function initStars() {
+        stars = [];
+        const count = Math.floor((width * height) / 10000);
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 1.5 + 0.5,
+            opacity: Math.random() * 0.7 + 0.2,
+            twinkleSpeed: Math.random() * 0.02 + 0.005,
+            color: Math.random() > 0.8 ? '#cba358' : '#e0e7ff'
+          });
+        }
+      }
+
+      function drawStars() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw Stars
+        stars.forEach(star => {
+          star.opacity += Math.sin(Date.now() * star.twinkleSpeed) * 0.01;
+          const safeOpacity = Math.max(0.1, Math.min(0.9, star.opacity));
+
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = safeOpacity;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Subtle Constellation Connection Lines
+        ctx.strokeStyle = 'rgba(203, 163, 88, 0.04)';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < stars.length; i += 8) {
+          const s1 = stars[i];
+          const s2 = stars[(i + 1) % stars.length];
+          const dist = Math.hypot(s1.x - s2.x, s1.y - s2.y);
+          if (dist < 180) {
+            ctx.beginPath();
+            ctx.moveTo(s1.x, s1.y);
+            ctx.lineTo(s2.x, s2.y);
+            ctx.stroke();
+          }
+        }
+
+        requestAnimationFrame(drawStars);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      drawStars();
+
+      // ========================================================================
+      // SLIDE 2 CONSTELLATION ORBIT CANVAS
+      // ========================================================================
+      const orbitCanvas = document.getElementById('orbitCanvas');
+      if (orbitCanvas) {
+        const oCtx = orbitCanvas.getContext('2d');
+        function drawOrbits() {
+          const w = orbitCanvas.width = orbitCanvas.offsetWidth;
+          const h = orbitCanvas.height = orbitCanvas.offsetHeight;
+          const cx = w / 2;
+          const cy = h / 2;
+
+          oCtx.clearRect(0, 0, w, h);
+
+          // Rings
+          const radii = [90, 140, 190];
+          radii.forEach((r, idx) => {
+            oCtx.strokeStyle = `rgba(203, 163, 88, ${0.12 - idx * 0.03})`;
+            oCtx.lineWidth = 1;
+            oCtx.setLineDash([4, 6]);
+            oCtx.beginPath();
+            oCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            oCtx.stroke();
+          });
+          oCtx.setLineDash([]);
+
+          // Glowing connecting lines to satellites
+          const satNodes = document.querySelectorAll('.satellite-node');
+          const time = Date.now() * 0.001;
+
+          satNodes.forEach(node => {
+            const rect = node.getBoundingClientRect();
+            const parentRect = orbitCanvas.getBoundingClientRect();
+            const nx = rect.left - parentRect.left + rect.width / 2;
+            const ny = rect.top - parentRect.top + rect.height / 2;
+
+            oCtx.strokeStyle = 'rgba(203, 163, 88, 0.18)';
+            oCtx.lineWidth = 1;
+            oCtx.beginPath();
+            oCtx.moveTo(cx, cy);
+            oCtx.lineTo(nx, ny);
+            oCtx.stroke();
+
+            // Energy Pulse traveling along line
+            const progress = (time * 0.6 + (nx + ny) * 0.005) % 1;
+            const px = cx + (nx - cx) * progress;
+            const py = cy + (ny - cy) * progress;
+
+            oCtx.fillStyle = '#ffd988';
+            oCtx.shadowColor = '#cba358';
+            oCtx.shadowBlur = 8;
+            oCtx.beginPath();
+            oCtx.arc(px, py, 2.5, 0, Math.PI * 2);
+            oCtx.fill();
+            oCtx.shadowBlur = 0;
+          });
+
+          requestAnimationFrame(drawOrbits);
+        }
+        drawOrbits();
+      }
+
+    })();
+  </script>
+</body>
+
+</html>

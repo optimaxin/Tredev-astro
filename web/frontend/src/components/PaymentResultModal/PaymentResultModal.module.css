@@ -1,0 +1,73 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.card {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-lg, 8px);
+  padding: 40px 32px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+}
+
+.iconSuccess {
+  background: rgba(80, 200, 120, 0.1);
+  border: 1.5px solid #50C878;
+  color: #50C878;
+}
+
+.iconFail {
+  background: rgba(192, 57, 43, 0.1);
+  border: 1.5px solid #c0392b;
+  color: #c0392b;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--color-text-dark);
+  margin: 8px 0 0;
+}
+
+.divider {
+  color: var(--color-gold);
+  font-size: 1rem;
+  margin: 4px 0 16px;
+  letter-spacing: 0.15em;
+}
+
+.message {
+  font-size: 0.85rem;
+  color: var(--color-text-dark-2);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}

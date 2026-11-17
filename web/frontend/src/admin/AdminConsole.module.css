@@ -1,0 +1,87 @@
+.adminRoot {
+  /* Premium ivory + gold + charcoal — deliberately independent of the public
+     site's dark/light toggle, so the console reads as one fixed internal tool. */
+  --adm-ivory: #FAF6EC;
+  --adm-ivory-soft: #F1E9D6;
+  --adm-surface: #FFFFFF;
+  --adm-charcoal: #221E1A;
+  --adm-charcoal-soft: #5B5349;
+  --adm-muted: #8C8375;
+  --adm-gold: #B58A3B;
+  --adm-gold-dark: #8F6A22;
+  --adm-gold-soft: #D0B06A;
+  --adm-gold-bg: rgba(181, 138, 59, 0.1);
+  --adm-border: rgba(181, 138, 59, 0.22);
+  --adm-border-soft: rgba(34, 30, 26, 0.09);
+  --adm-success: #3F8F5B;
+  --adm-success-bg: rgba(63, 143, 91, 0.12);
+  --adm-danger: #B23A3A;
+  --adm-danger-bg: rgba(178, 58, 58, 0.1);
+  --adm-info: #3D6FB0;
+  --adm-info-bg: rgba(61, 111, 176, 0.1);
+  --adm-radius-sm: 6px;
+  --adm-radius-md: 10px;
+  --adm-radius-lg: 16px;
+  --adm-shadow: 0 1px 2px rgba(34, 30, 26, 0.06), 0 6px 20px rgba(34, 30, 26, 0.05);
+  --adm-font: 'DM Sans', system-ui, sans-serif;
+  --adm-sidebar-w: 280px;
+  --adm-header-h: 64px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  overflow: hidden;
+  background: var(--adm-ivory);
+  color: var(--adm-charcoal);
+  font-family: var(--adm-font);
+}
+
+.shell {
+  display: flex;
+  height: 100%;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px 48px;
+}
+
+@media (max-width: 1023px) {
+  .content { padding: 20px 16px 40px; }
+}
+
+.contentInner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .sidebarBackdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(34, 30, 26, 0.35);
+    z-index: 600;
+  }
+}
+
+.loadingPad {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--adm-muted);
+  font-size: 0.85rem;
+}

@@ -1,0 +1,84 @@
+.callWindow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface, #fff);
+  height: 340px;
+  padding: 24px;
+}
+
+.avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--gold-primary, #b58a3b);
+  margin-bottom: 8px;
+}
+
+.avatarLive {
+  box-shadow: 0 0 0 4px color-mix(in srgb, #2ecc71 30%, transparent);
+}
+
+.name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.status {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  min-height: 18px;
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.iconBtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+  background: var(--surface-elevated, rgba(0, 0, 0, 0.03));
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.iconBtn:hover {
+  background: var(--surface-elevated, rgba(0, 0, 0, 0.06));
+}
+
+.iconBtnActive {
+  background: rgba(214, 69, 69, 0.12);
+  border-color: rgba(214, 69, 69, 0.35);
+}
+
+.hangupBtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #d64545;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transform: rotate(135deg);
+  transition: background 0.15s ease;
+}
+
+.hangupBtn:hover {
+  background: #c23a3a;
+}

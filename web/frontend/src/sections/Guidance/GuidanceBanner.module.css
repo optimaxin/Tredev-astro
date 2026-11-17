@@ -1,0 +1,376 @@
+/* =============================================
+   CINEMATIC GUIDANCE BANNER
+   ============================================= */
+
+.section {
+  position: relative;
+  height: 580px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-subtle);
+  /* Dark theme: deep navy base */
+  background: linear-gradient(90deg, #080C1C 0%, #0D1020 45%, #10100E 100%);
+  display: flex;
+}
+
+/* Light theme: warm ivory → saffron haze → dark charcoal */
+:global([data-theme='light']) .section {
+  background: linear-gradient(90deg,
+      #FAF5EC 0%,
+      #F5EDDF 18%,
+      #E8D4B0 32%,
+      #C4975A 42%,
+      #7A5530 50%,
+      #2E1E0F 60%,
+      #100C08 72%);
+}
+
+.splitGrid {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* =============================================
+   LEFT EDITORIAL SIDE
+   ============================================= */
+.leftSide {
+  width: 43%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 5% 0 8%;
+  box-sizing: border-box;
+  z-index: 3;
+  position: relative;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+/*
+  Ornament pushed to top-left corner:
+  only ~30% of the circle is visible inside the section.
+  It must NOT sit behind the headline — purely corner decoration.
+*/
+.leftOrnament {
+  position: absolute;
+  left: -130px;
+  top: -160px;
+  width: 520px;
+  height: 520px;
+  pointer-events: none;
+  z-index: 1;
+  color: #9B7A2F;
+  opacity: 0.05;
+  transition: opacity 0.4s ease;
+}
+
+:global([data-theme='light']) .leftOrnament {
+  color: #8B6A25;
+  opacity: 0.07;
+}
+
+.contentArea {
+  position: relative;
+  z-index: 4;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  /* Sentence case instead of full uppercase — "JYOTISH GUIDANCE" is long
+     enough as a run of caps to slow reading; heavy letter-spacing (right
+     for all-caps) is dialed back too, since it reads as loose in mixed
+     case. */
+  letter-spacing: 0.06em;
+  color: var(--gold-primary);
+  text-transform: capitalize;
+  margin-bottom: 14px;
+  display: block;
+}
+
+:global([data-theme='light']) .eyebrow {
+  color: #7A4B25;
+}
+
+.headline {
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  font-weight: 300;
+  color: #EDE4D6;
+  line-height: 1.22;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.01em;
+}
+
+:global([data-theme='light']) .headline {
+  color: #1A2333;
+}
+
+.goldText {
+  font-family: var(--font-serif);
+  color: var(--gold-primary);
+  font-style: italic;
+}
+
+:global([data-theme='light']) .goldText {
+  color: #C8941A;
+}
+
+.description {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: rgba(230, 220, 200, 0.65);
+  line-height: 1.72;
+  margin: 0 0 32px 0;
+}
+
+:global([data-theme='light']) .description {
+  color: #3D4A5C;
+}
+
+.actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Gold primary CTA */
+.btnGoldBanner {
+  background: #D4A920;
+  color: #1A1500;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 26px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 12px rgba(212, 169, 32, 0.25);
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+.btnGoldBanner:hover {
+  background: #BF9A1A;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px rgba(212, 169, 32, 0.35);
+}
+
+.btnGoldBanner:active {
+  transform: translateY(0);
+}
+
+/* White secondary CTA */
+.btnWhiteBanner {
+  background: #FFFFFF;
+  color: #1A2333;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 26px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+.btnWhiteBanner:hover {
+  background: #F5EFE4;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.1);
+}
+
+.btnWhiteBanner:active {
+  transform: translateY(0);
+}
+
+/* =============================================
+   RIGHT CINEMATIC SIDE
+   ============================================= */
+.rightSide {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.canvasContainer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  /*
+    Gradient mask: left edge of video dissolves warmly into the section background.
+    No gray strip — the transition uses opacity stops only, letting the
+    section background colour show through naturally.
+  */
+  mask-image: linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0) 4%,
+      rgba(0, 0, 0, 0.08) 12%,
+      rgba(0, 0, 0, 0.35) 22%,
+      rgba(0, 0, 0, 0.72) 34%,
+      rgba(0, 0, 0, 1) 48%);
+  -webkit-mask-image: linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0) 4%,
+      rgba(0, 0, 0, 0.08) 12%,
+      rgba(0, 0, 0, 0.35) 22%,
+      rgba(0, 0, 0, 0.72) 34%,
+      rgba(0, 0, 0, 1) 48%);
+}
+
+.backdropVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /*
+    Crop upward to frame clouds + golden beam.
+    Hides boat / water horizon at the bottom of the video.
+    "center 20%" shows the upper portion of the frame.
+  */
+  object-position: center 20%;
+  display: block;
+  /* No pointer interaction — purely atmospheric */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 1100px) {
+  .leftSide {
+    padding: 0 4% 0 6%;
+  }
+
+  .leftOrnament {
+    left: -100px;
+    top: -140px;
+    width: 440px;
+    height: 440px;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    height: auto;
+    flex-direction: column;
+    background: var(--bg-primary);
+  }
+
+  :global([data-theme='light']) .section {
+    background: #FAF5EC;
+  }
+
+  .splitGrid {
+    flex-direction: column;
+  }
+
+  .leftSide {
+    width: 100%;
+    height: auto;
+    padding: 52px 28px 40px;
+  }
+
+  .contentArea {
+    max-width: 100%;
+  }
+
+  .leftOrnament {
+    width: 300px;
+    height: 300px;
+    left: -80px;
+    top: -80px;
+    opacity: 0.04;
+  }
+
+  .rightSide {
+    width: 100%;
+    height: 280px;
+    flex: none;
+  }
+
+  .canvasContainer {
+    mask-image: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.4) 20%,
+        rgba(0, 0, 0, 1) 45%);
+    -webkit-mask-image: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.4) 20%,
+        rgba(0, 0, 0, 1) 45%);
+  }
+
+  .backdropVideo {
+    object-position: center 15%;
+  }
+
+  .bannerAcharyaWrap {
+    display: none;
+  }
+}
+
+/* ── Astrologist Portrait inside GuidanceBanner ── */
+.bannerAcharyaWrap {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 42%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  /* Gradient mask: figure fades into the cinematic atmosphere on the left, fades at the top */
+  mask-image: linear-gradient(to top,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.9) 55%,
+      rgba(0, 0, 0, 0.4) 80%,
+      rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.3) 20%,
+      rgba(0, 0, 0, 1) 50%);
+  -webkit-mask-image: linear-gradient(to top,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.9) 55%,
+      rgba(0, 0, 0, 0.4) 80%,
+      rgba(0, 0, 0, 0) 100%),
+    linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.3) 20%,
+      rgba(0, 0, 0, 1) 50%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+.bannerAcharyaImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom right;
+  mix-blend-mode: screen;
+  opacity: 0.75;
+  filter: drop-shadow(-12px 0 40px rgba(200, 150, 50, 0.2));
+}
+
+/* Devanagari legibility — see src/styles/globals.css typography system */
+html[lang='hi'] .eyebrow, html[lang='mr'] .eyebrow { font-size: var(--text-xs); }
+html[lang='hi'] .description, html[lang='mr'] .description { font-size: var(--text-base); }
+html[lang='hi'] .btnGoldBanner, html[lang='mr'] .btnGoldBanner { font-size: var(--text-sm); }
+html[lang='hi'] .btnWhiteBanner, html[lang='mr'] .btnWhiteBanner { font-size: var(--text-sm); }

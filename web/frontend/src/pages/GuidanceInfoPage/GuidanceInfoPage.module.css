@@ -1,0 +1,29 @@
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.ctaBlock {
+  max-width: 780px;
+  margin: 48px auto 0;
+  text-align: center;
+  padding-top: 32px;
+  border-top: 1px solid rgba(184, 138, 59, 0.15);
+}
+
+.ctaNote {
+  color: var(--color-text-light);
+  opacity: 0.75;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.ctaButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}

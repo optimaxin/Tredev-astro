@@ -1,0 +1,415 @@
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { useAppContext } from '../context/AppContext';
+import { getAccessToken, realtimeApi, SERVER_URL } from './api';
+import { playExpiryWarningBeep, playNotificationChime, startPendingRequestAlarm, stopPendingRequestAlarm } from './sound';
+import type {
+  AstrologerNotification, AstrologerSyncSnapshot, Consultation, ConsultationKundliDetails, ConsultationType, PublicAstrologerState,
+  RecommendedAstrologer, RequestResult, UserSyncSnapshot,
+} from './types';
+import type { ChatMessage } from '../services/chatService';
+
+interface NotifPrefs {
+  onboarded: boolean;
+  sound: boolean;
+  browser: boolean;
+}
+
+function loadNotifPrefs(): NotifPrefs {
+  try {
+    const raw = localStorage.getItem('astro_realtime_notif_prefs');
+    return raw ? JSON.parse(raw) : { onboarded: false, sound: false, browser: false };
+  } catch {
+    return { onboarded: false, sound: false, browser: false };
+  }
+}
+
+export interface Toast {
+  id: string;
+  message: string;
+  tone: 'info' | 'success' | 'warning';
+}
+
+interface RealtimeContextValue {
+  connected: boolean;
+  publicStates: Record<number, PublicAstrologerState>;
+  // Bumps whenever staff suspends/restores/removes/deletes an astrologer
+  // (see admin.routes.ts's bus.emitTyped('astrologer:catalog_changed', ...))
+  // — not the data itself, just a trigger. Depend on this in any effect that
+  // fetches the astrologer roster (e.g. Astrologers.tsx's public listing) to
+  // refetch the always-correct server list instead of patching it by hand.
+  catalogVersion: number;
+
+  // Astrologer side
+  astrologerSync: AstrologerSyncSnapshot | null;
+  goOnline: () => Promise<void>;
+  goOffline: () => Promise<void>;
+  acceptAssignment: (id: string) => Promise<void>;
+  declineAssignment: (id: string) => Promise<void>;
+  endActiveConsultation: () => Promise<Consultation | undefined>;
+  markNotifRead: (id: string) => Promise<void>;
+  markAllNotifsRead: () => Promise<void>;
+  idleWarning: boolean;
+  stayOnline: () => Promise<void>;
+  notifPrefs: NotifPrefs;
+  completeOnboarding: (sound: boolean, browser: boolean) => Promise<void>;
+
+  // User side
+  userSync: UserSyncSnapshot | null;
+  requestConsultation: (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => Promise<RequestResult>;
+  cancelMyQueueEntry: () => Promise<void>;
+  recommendations: RecommendedAstrologer[] | null;
+  queueExpired: boolean;
+  clearQueueExpired: () => void;
+
+  // Time-boxed consultations — either party can end early; wallet top-ups
+  // extend automatically now (see onWalletTopUp, backend), so there's no
+  // separate pay-to-extend action here any more.
+  endConsultationById: (id: string) => Promise<Consultation | undefined>;
+  // The user's own way out of a request the astrologer hasn't accepted yet.
+  cancelConsultationById: (id: string) => Promise<Consultation | undefined>;
+  expiringSoon: { consultationId: string; remainingSeconds: number } | null;
+
+  toasts: Toast[];
+  dismissToast: (id: string) => void;
+
+  // Live chat — messages arrive here the instant either party sends one;
+  // ChatWindow merges these into the history it loaded via chatService.
+  liveChatMessages: ChatMessage[];
+
+  // WebRTC call signaling — a thin pass-through to the socket, used by
+  // CallWindow. Incoming signals go through a plain callback subscription
+  // rather than React state: ICE candidates can arrive many times in a
+  // couple seconds, and CallWindow needs to feed each one into its
+  // RTCPeerConnection immediately, not wait for a re-render.
+  sendCallSignal: (event: CallSignalEvent, consultationId: string, payload?: unknown) => void;
+  onCallSignal: (handler: (event: CallSignalEvent, consultationId: string, payload: unknown) => void) => () => void;
+}
+
+export type CallSignalEvent = 'call:offer' | 'call:answer' | 'call:ice-candidate' | 'call:hangup';
+
+const RealtimeContext = createContext<RealtimeContextValue | null>(null);
+
+export function useRealtime() {
+  const ctx = useContext(RealtimeContext);
+  if (!ctx) throw new Error('useRealtime must be used within RealtimeProvider');
+  return ctx;
+}
+
+export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+  const { currentUser } = useAppContext();
+  const socketRef = useRef<Socket | null>(null);
+  const seenNotificationIds = useRef(new Set<string>());
+  const callHandlersRef = useRef(new Set<(event: CallSignalEvent, consultationId: string, payload: unknown) => void>());
+
+  const [connected, setConnected] = useState(false);
+  const [publicStates, setPublicStates] = useState<Record<number, PublicAstrologerState>>({});
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  const [astrologerSync, setAstrologerSync] = useState<AstrologerSyncSnapshot | null>(null);
+  const [userSync, setUserSync] = useState<UserSyncSnapshot | null>(null);
+  const userSyncRef = useRef(userSync);
+  useEffect(() => { userSyncRef.current = userSync; }, [userSync]);
+  const [idleWarning, setIdleWarning] = useState(false);
+  const [recommendations, setRecommendations] = useState<RecommendedAstrologer[] | null>(null);
+  const [queueExpired, setQueueExpired] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [liveChatMessages, setLiveChatMessages] = useState<ChatMessage[]>([]);
+  const [expiringSoon, setExpiringSoon] = useState<{ consultationId: string; remainingSeconds: number } | null>(null);
+  const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(() => loadNotifPrefs());
+  const notifPrefsRef = useRef(notifPrefs);
+  useEffect(() => { notifPrefsRef.current = notifPrefs; }, [notifPrefs]);
+
+  const pushToast = useCallback((message: string, tone: Toast['tone'] = 'info') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts(prev => [...prev, { id, message, tone }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+
+  const notifyAstrologer = useCallback((n: AstrologerNotification) => {
+    if (seenNotificationIds.current.has(n.id)) return; // idempotent — never re-alert for an event we've already shown
+    seenNotificationIds.current.add(n.id);
+    pushToast(n.message, n.kind === 'chat_request' ? 'success' : 'info');
+    if (notifPrefsRef.current.sound) playNotificationChime();
+    if (notifPrefsRef.current.browser && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification('TredevaAstro', { body: n.message });
+    }
+  }, [pushToast]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setConnected(false);
+      setAstrologerSync(null);
+      setUserSync(null);
+      return;
+    }
+
+    // Function form: re-evaluated on every (re)connect, so a reconnect after
+    // the access token expired still authenticates with a fresh one.
+    const socket = io(SERVER_URL, { auth: cb => { getAccessToken().then(token => cb({ token })); }, transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('sync:public', (states: PublicAstrologerState[]) => {
+      setPublicStates(Object.fromEntries(states.map(s => [s.id, s])));
+    });
+    socket.on('astrologer:status', (state: PublicAstrologerState) => {
+      setPublicStates(prev => ({ ...prev, [state.id]: state }));
+    });
+    socket.on('astrologer:catalog_changed', () => setCatalogVersion(v => v + 1));
+
+    // Reconnect recovery: the server resends a full snapshot on every
+    // connection (including reconnects) — no manual refresh required.
+    socket.on('sync:astrologer', (snapshot: AstrologerSyncSnapshot) => {
+      setAstrologerSync(snapshot);
+      snapshot.notifications.forEach(n => seenNotificationIds.current.add(n.id));
+    });
+    socket.on('sync:user', (snapshot: UserSyncSnapshot) => setUserSync(snapshot));
+
+    socket.on('chat:assigned', (consultation) => {
+      setAstrologerSync(prev => prev ? { ...prev, pendingAssignments: [...prev.pendingAssignments.filter(p => p.id !== consultation.id), consultation] } : prev);
+      // Now also sent to the booking user's own room (see sockets.ts) — not
+      // just the astrologer's. Needed so "waiting for the astrologer" shows
+      // up live even when nothing round-tripped through this browser to set
+      // it directly (the payment-triggered booking flow: the consultation is
+      // created server-side after the user has already returned from the
+      // gateway, not from a request this tab made and awaited itself).
+      if (consultation.userEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+        setUserSync({ consultation, queueEntry: null, position: null, eta: null });
+      }
+    });
+    socket.on('chat:accepted', (consultation) => {
+      setAstrologerSync(prev => prev ? { ...prev, activeConsultation: consultation, pendingAssignments: prev.pendingAssignments.filter(p => p.id !== consultation.id) } : prev);
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
+    });
+    socket.on('chat:declined', (consultation) => {
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
+      pushToast('Your consultation request was declined.', 'warning');
+    });
+    // Distinct from chat:declined — this fires when the USER themselves
+    // cancels their own still-pending request, so "was declined" would be
+    // the wrong message. See cancelConsultationById below.
+    socket.on('chat:cancelled', (consultation) => {
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
+    });
+    socket.on('chat:ended', (consultation) => {
+      setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === consultation.id ? null : prev.activeConsultation } : prev);
+      setUserSync(prev => prev ? { ...prev, consultation } : prev);
+      setExpiringSoon(prev => prev?.consultationId === consultation.id ? null : prev);
+    });
+
+    socket.on('chat:expiring-soon', (payload: { consultationId: string; remainingSeconds: number }) => {
+      setExpiringSoon(payload);
+      // A separate audio cue (not just the visual top-up banner) on the
+      // user's side specifically, ~1 min before their session runs out.
+      if (userSyncRef.current?.consultation?.id === payload.consultationId && notifPrefsRef.current.sound) {
+        playExpiryWarningBeep();
+      }
+    });
+    socket.on('chat:extended', (consultation) => {
+      setAstrologerSync(prev => prev && prev.activeConsultation?.id === consultation.id ? { ...prev, activeConsultation: consultation } : prev);
+      setUserSync(prev => prev && prev.consultation?.id === consultation.id ? { ...prev, consultation } : prev);
+      setExpiringSoon(prev => prev?.consultationId === consultation.id ? null : prev);
+    });
+
+    socket.on('queue:position', ({ position, eta }: { position: number; eta: { minMinutes: number; maxMinutes: number } }) => {
+      setUserSync(prev => prev ? { ...prev, position, eta } : prev);
+    });
+    socket.on('queue:promoted', (consultation) => {
+      setUserSync({ consultation, queueEntry: null, position: null, eta: null });
+      pushToast('An astrologer is ready for you now.', 'success');
+    });
+    socket.on('queue:expired', ({ recommendations: recs }: { recommendations: RecommendedAstrologer[] }) => {
+      setQueueExpired(true);
+      setRecommendations(recs);
+    });
+
+    socket.on('notification:created', (n: AstrologerNotification) => {
+      setAstrologerSync(prev => prev ? { ...prev, notifications: [n, ...prev.notifications.filter(x => x.id !== n.id)] } : prev);
+      notifyAstrologer(n);
+    });
+
+    socket.on('astrologer:away', () => setIdleWarning(false));
+    socket.on('astrologer:idle-warning', () => setIdleWarning(true));
+
+    socket.on('chat:message', (message: ChatMessage) => {
+      setLiveChatMessages(prev => [...prev, message]);
+    });
+
+    (['call:offer', 'call:answer', 'call:ice-candidate', 'call:hangup'] as const).forEach(event => {
+      socket.on(event, (data: { consultationId: string; payload?: unknown }) => {
+        callHandlersRef.current.forEach(h => h(event, data.consultationId, data.payload));
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [currentUser?.email, currentUser?.role, notifyAstrologer, pushToast]);
+
+  // Keeps an online astrologer's lastActivityAt fresh while they just sit on
+  // the dashboard waiting for a request — previously the ONLY thing that
+  // reset it was a consultation lifecycle event (accept/end/decline/extend)
+  // or manually clicking "Stay Online" on the idle-warning banner, so simply
+  // being online and present (the single most common state) still hit
+  // runMaintenanceTick's awayTimeoutMinutes and got silently flipped to AWAY
+  // — which read to an astrologer as "I go offline on my own after a while"
+  // even though they never left. 60s is comfortably under the default
+  // 5-minute awayTimeoutMinutes (and the 70%-of-timeout idle-warning point);
+  // that admin-configurable value lives behind an ADMIN-only endpoint an
+  // astrologer account can't call, so this doesn't try to read it live. The
+  // banner/manual stayOnline still exist as a fallback for whenever this
+  // interval itself couldn't fire (tab frozen/backgrounded heavily, network blip).
+  const intent = astrologerSync?.intent;
+  useEffect(() => {
+    if (!currentUser || intent !== 'ONLINE') return;
+    const id = window.setInterval(() => {
+      realtimeApi.heartbeat(currentUser.email).catch(() => {});
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [currentUser, intent]);
+
+  // Loops a beep until the astrologer actually accepts (or the request
+  // otherwise leaves pendingAssignments) — a single chime was easy to miss
+  // if they weren't looking at the screen right when it fired. Respects the
+  // same sound preference the one-shot chime already does.
+  const pendingCount = astrologerSync?.pendingAssignments.length ?? 0;
+  useEffect(() => {
+    if (pendingCount > 0 && notifPrefs.sound) {
+      startPendingRequestAlarm();
+    } else {
+      stopPendingRequestAlarm();
+    }
+    return () => stopPendingRequestAlarm();
+  }, [pendingCount, notifPrefs.sound]);
+
+  const sendCallSignal = useCallback((event: CallSignalEvent, consultationId: string, payload?: unknown) => {
+    socketRef.current?.emit(event, { consultationId, payload });
+  }, []);
+
+  const onCallSignal = useCallback((handler: (event: CallSignalEvent, consultationId: string, payload: unknown) => void) => {
+    callHandlersRef.current.add(handler);
+    return () => callHandlersRef.current.delete(handler);
+  }, []);
+
+  const goOnline = useCallback(async () => {
+    if (!currentUser) return;
+    await realtimeApi.setAvailability(currentUser.email, 'ONLINE');
+  }, [currentUser]);
+
+  const goOffline = useCallback(async () => {
+    if (!currentUser) return;
+    await realtimeApi.setAvailability(currentUser.email, 'OFFLINE');
+  }, [currentUser]);
+
+  const acceptAssignment = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    await realtimeApi.acceptConsultation(id, currentUser.email);
+  }, [currentUser]);
+
+  const declineAssignment = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    await realtimeApi.declineConsultation(id, currentUser.email);
+    setAstrologerSync(prev => prev ? { ...prev, pendingAssignments: prev.pendingAssignments.filter(p => p.id !== id) } : prev);
+  }, [currentUser]);
+
+  const endActiveConsultation = useCallback(async () => {
+    if (!currentUser) return;
+    const targetId = astrologerSync?.activeConsultation?.id;
+    if (!targetId) return;
+    const ended = await realtimeApi.endConsultation(targetId, currentUser.email);
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: null } : prev);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : prev);
+    setExpiringSoon(prev => prev?.consultationId === targetId ? null : prev);
+    return ended;
+  }, [currentUser, astrologerSync]);
+
+  // Generic id-based versions (unlike endActiveConsultation, which only
+  // ever acts on the astrologer's OWN activeConsultation) — the user side
+  // has no equivalent "my active consultation" slot to reach for, so these
+  // just take whatever id the caller already has in scope.
+  const endConsultationById = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    const ended = await realtimeApi.endConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: ended } : { consultation: ended, queueEntry: null, position: null, eta: null });
+    setAstrologerSync(prev => prev ? { ...prev, activeConsultation: prev.activeConsultation?.id === id ? null : prev.activeConsultation } : prev);
+    setExpiringSoon(prev => prev?.consultationId === id ? null : prev);
+    return ended;
+  }, [currentUser]);
+
+  const cancelConsultationById = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    const cancelled = await realtimeApi.cancelConsultation(id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, consultation: cancelled } : prev);
+    return cancelled;
+  }, [currentUser]);
+
+  const markNotifRead = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    setAstrologerSync(prev => prev ? { ...prev, notifications: prev.notifications.map(n => n.id === id ? { ...n, read: true } : n) } : prev);
+    await realtimeApi.markNotificationRead(id, currentUser.email);
+  }, [currentUser]);
+
+  const markAllNotifsRead = useCallback(async () => {
+    if (!currentUser) return;
+    setAstrologerSync(prev => prev ? { ...prev, notifications: prev.notifications.map(n => ({ ...n, read: true })) } : prev);
+    await realtimeApi.markAllNotificationsRead(currentUser.email);
+  }, [currentUser]);
+
+  const stayOnline = useCallback(async () => {
+    if (!currentUser) return;
+    setIdleWarning(false);
+    await realtimeApi.heartbeat(currentUser.email);
+  }, [currentUser]);
+
+  const completeOnboarding = useCallback(async (sound: boolean, browser: boolean) => {
+    if (browser && 'Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch { /* ignored — visual notifications still work */ }
+    }
+    const next: NotifPrefs = { onboarded: true, sound, browser: browser && 'Notification' in window && Notification.permission === 'granted' };
+    setNotifPrefsState(next);
+    localStorage.setItem('astro_realtime_notif_prefs', JSON.stringify(next));
+  }, []);
+
+  const requestConsultation = useCallback(async (astrologerId: number, category: string, type: ConsultationType, durationMinutes?: number, kundliDetails?: ConsultationKundliDetails) => {
+    if (!currentUser) throw new Error('Not logged in');
+    const requestId = `req-${currentUser.email}-${astrologerId}-${Date.now()}`;
+    const result = await realtimeApi.requestConsultation({ requestId, astrologerId, userEmail: currentUser.email, userName: currentUser.name, category, type, durationMinutes, kundliDetails });
+    setQueueExpired(false);
+    if (result.outcome === 'QUEUED') {
+      setUserSync({ consultation: null, queueEntry: result.entry, position: result.position, eta: result.eta });
+      const recs = await realtimeApi.recommendations(astrologerId, category).catch(() => null);
+      setRecommendations(recs?.astrologers || []);
+    } else if (result.outcome === 'ASSIGNED') {
+      setUserSync({ consultation: result.consultation, queueEntry: null, position: null, eta: null });
+    }
+    return result;
+  }, [currentUser]);
+
+  const cancelMyQueueEntry = useCallback(async () => {
+    if (!currentUser || !userSync?.queueEntry) return;
+    await realtimeApi.cancelQueueEntry(userSync.queueEntry.id, currentUser.email);
+    setUserSync(prev => prev ? { ...prev, queueEntry: null, position: null, eta: null } : prev);
+  }, [currentUser, userSync]);
+
+  const clearQueueExpired = useCallback(() => setQueueExpired(false), []);
+
+  return (
+    <RealtimeContext.Provider value={{
+      connected, publicStates, catalogVersion,
+      astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
+      markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
+      userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,
+      endConsultationById, cancelConsultationById, expiringSoon,
+      toasts, dismissToast, liveChatMessages,
+      sendCallSignal, onCallSignal,
+    }}>
+      {children}
+    </RealtimeContext.Provider>
+  );
+}
