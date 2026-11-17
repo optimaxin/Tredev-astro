@@ -365,7 +365,7 @@ function StaticCampaignBanner() {
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              PREVIOUS
+              {t('nav_prev')}
             </motion.div>
           )}
           {edgeHover === 'right' && (
@@ -376,7 +376,7 @@ function StaticCampaignBanner() {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
             >
-              NEXT
+              {t('nav_next')}
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M8 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

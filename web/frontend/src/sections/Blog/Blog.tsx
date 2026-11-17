@@ -15,7 +15,7 @@ const TAG_COLORS: Record<string, string> = {
 };
 
 export default function Blog() {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, t } = useAppContext();
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
@@ -42,8 +42,8 @@ export default function Blog() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <span className="section-eyebrow">The Journal</span>
-          <h2 className={styles.title}>From the TredevaAstro Journal</h2>
+          <span className="section-eyebrow">{t('section_blog_eyebrow')}</span>
+          <h2 className={styles.title}>{t('section_blog_title')}</h2>
         </motion.div>
 
         <div className={styles.layout}>
@@ -73,7 +73,7 @@ export default function Blog() {
               <h3 className={styles.featuredTitle}>{featured.title}</h3>
               <p className={styles.featuredExcerpt}>{featured.excerpt}</p>
               <button className="btn btn-outline-gold btn-sm" id="blog-read-featured" onClick={(e) => { e.stopPropagation(); handleBlogClick(featured.id); }}>
-                Read Article →
+                {t('btn_read_article')}
               </button>
             </div>
           </motion.div>
@@ -100,7 +100,7 @@ export default function Blog() {
                 <h4 className={styles.smallTitle}>{post.title}</h4>
                 <p className={styles.smallExcerpt}>{post.excerpt.slice(0, 100)}...</p>
                 <button className={styles.readLink} id={`blog-read-${post.id}`} onClick={(e) => { e.stopPropagation(); handleBlogClick(post.id); }}>
-                  Read →
+                  {t('btn_read_more')}
                 </button>
               </motion.div>
             ))}

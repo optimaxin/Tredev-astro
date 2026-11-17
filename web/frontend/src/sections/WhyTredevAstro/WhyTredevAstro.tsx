@@ -2,36 +2,18 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import { AcharyaIcon, LockIcon, RashiChakraIcon, ManuscriptIcon } from '../../components/Icons/Icons';
+import { useAppContext } from '../../context/AppContext';
 import styles from './WhyTredevAstro.module.css';
 
 const PILLARS = [
-  {
-    icon: <AcharyaIcon size={26} />,
-    title: 'Verified Experts',
-    desc: 'Every astrologer on TredevaAstro is manually reviewed, assessed and verified for their knowledge, accuracy and approach.',
-    accent: 'gold',
-  },
-  {
-    icon: <LockIcon size={26} />,
-    title: 'Private & Secure',
-    desc: 'Your birth data, consultations and reports are private. We never share, sell or expose your personal information.',
-    accent: 'cyan',
-  },
-  {
-    icon: <RashiChakraIcon size={26} />,
-    title: 'Personalized Astrology',
-    desc: 'One birth profile powers your entire experience — Kundli, horoscope, AI insights, recommendations and more.',
-    accent: 'gold',
-  },
-  {
-    icon: <ManuscriptIcon size={26} />,
-    title: 'Traditional Wisdom, Modern Experience',
-    desc: 'Rooted in classical Vedic astrology, delivered through a thoughtfully designed modern platform.',
-    accent: 'cyan',
-  },
-];
+  { icon: <AcharyaIcon size={26} />, key: 'pillar1', accent: 'gold' },
+  { icon: <LockIcon size={26} />, key: 'pillar2', accent: 'cyan' },
+  { icon: <RashiChakraIcon size={26} />, key: 'pillar3', accent: 'gold' },
+  { icon: <ManuscriptIcon size={26} />, key: 'pillar4', accent: 'cyan' },
+] as const;
 
 export default function WhyTredevAstro() {
+  const { t } = useAppContext();
   return (
     <section className={styles.section} id="why">
       <div className={styles.container}>
@@ -42,14 +24,14 @@ export default function WhyTredevAstro() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <span className="section-eyebrow">Our Promise</span>
-          <h2 className={styles.title}>Why TredevaAstro</h2>
+          <span className="section-eyebrow">{t('section_why_eyebrow')}</span>
+          <h2 className={styles.title}>{t('section_why_title')}</h2>
         </motion.div>
 
         <div className={styles.grid}>
           {PILLARS.map((p, i) => (
             <motion.div
-              key={p.title}
+              key={p.key}
               className={`${styles.pillar} ${styles[`accent_${p.accent}`]}`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -59,8 +41,8 @@ export default function WhyTredevAstro() {
               <div className={styles.iconWrap}>
                 <span className={styles.icon}>{p.icon}</span>
               </div>
-              <h3 className={styles.pillarTitle}>{p.title}</h3>
-              <p className={styles.pillarDesc}>{p.desc}</p>
+              <h3 className={styles.pillarTitle}>{t(`why_${p.key}_title`)}</h3>
+              <p className={styles.pillarDesc}>{t(`why_${p.key}_desc`)}</p>
             </motion.div>
           ))}
         </div>

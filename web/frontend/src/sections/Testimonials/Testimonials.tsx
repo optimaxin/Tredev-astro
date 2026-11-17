@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { contentService } from '../../services/contentService';
 import type { Testimonial } from '../../services/contentService';
+import { useAppContext } from '../../context/AppContext';
 import styles from './Testimonials.module.css';
 
 export default function Testimonials() {
+  const { t } = useAppContext();
   const [TESTIMONIALS, setTestimonials] = useState<Testimonial[]>([]);
   const [active, setActive] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -41,9 +43,9 @@ export default function Testimonials() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <span className="section-eyebrow">What Our Users Say</span>
-          <h2 className={styles.title}>Stories of Insight</h2>
-          <p className={styles.demoNote}>The following are illustrative demo testimonials.</p>
+          <span className="section-eyebrow">{t('section_testimonials_eyebrow')}</span>
+          <h2 className={styles.title}>{t('section_testimonials_title')}</h2>
+          <p className={styles.demoNote}>{t('section_testimonials_demo_note')}</p>
         </motion.div>
 
         {/* Featured */}
