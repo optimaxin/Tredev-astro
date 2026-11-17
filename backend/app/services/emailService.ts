@@ -33,11 +33,18 @@ export function plainTextToEmailHtml(text: string): string {
   `;
 }
 
-// A fancier shell for the two emails every user actually sees often enough
-// to care about look-and-feel (welcome + welcome-back) — logo/photo banner,
-// gold CTA button — instead of the plain letter plainTextToEmailHtml gives
-// every other (staff-edited, rarely-seen) template. Still takes the same
-// plain-text body staff type/edit, just dresses it up more.
+// The 12 zodiac glyphs, used purely as a decorative strip (not tied to any
+// user's actual sign) — a quick recognizable "astrology" motif for the
+// welcome emails below.
+const ZODIAC_STRIP = '&#9800; &#9801; &#9802; &#9803; &#9804; &#9805; &#9806; &#9807; &#9808; &#9809; &#9810; &#9811;';
+
+// A cosmic, astrology-themed shell for the two emails every user actually
+// sees often enough to care about look-and-feel (welcome + welcome-back) —
+// starfield header, zodiac-wheel motif, glowing photo medallion, gold
+// "portal" CTA — deliberately not just a re-skinned version of the plain
+// letter plainTextToEmailHtml gives every other (staff-edited, rarely-seen)
+// template. Still takes the same plain-text body staff type/edit, just
+// dresses it up a lot more.
 export function renderCreativeEmailHtml(opts: { title: string; bodyText: string; ctaLabel: string; ctaUrl: string; siteOrigin: string }): string {
   const { title, bodyText, ctaLabel, ctaUrl, siteOrigin } = opts;
   const paragraphs = escapeHtml(bodyText.trim())
@@ -46,38 +53,48 @@ export function renderCreativeEmailHtml(opts: { title: string; bodyText: string;
     .join('');
   const logoUrl = `${siteOrigin}/logo.png`;
   const photoUrl = `${siteOrigin}/Astrologist/A2.png`;
+  const starfield = 'radial-gradient(1px 1px at 12% 22%, #f0c987 50%, transparent 52%), '
+    + 'radial-gradient(1px 1px at 28% 68%, #f0c987 50%, transparent 52%), '
+    + 'radial-gradient(1.5px 1.5px at 44% 15%, #ffe8b8 50%, transparent 52%), '
+    + 'radial-gradient(1px 1px at 58% 78%, #f0c987 50%, transparent 52%), '
+    + 'radial-gradient(1.5px 1.5px at 72% 32%, #ffe8b8 50%, transparent 52%), '
+    + 'radial-gradient(1px 1px at 85% 60%, #f0c987 50%, transparent 52%), '
+    + 'radial-gradient(1px 1px at 93% 20%, #f0c987 50%, transparent 52%), '
+    + 'radial-gradient(1.5px 1.5px at 8% 85%, #ffe8b8 50%, transparent 52%), '
+    + 'linear-gradient(160deg, #1b1033, #2a1245 55%, #170c29)';
   return `
-    <div style="background:#f3efe6;padding:28px 12px;font-family:Georgia,'Times New Roman',serif;">
-      <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e0d8;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#5c1a2b,#3c0f1c);">
-          <tr>
-            <td style="padding:20px 10px 20px 24px;vertical-align:middle;">
-              <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-                <td style="vertical-align:middle;"><img src="${logoUrl}" width="46" height="46" style="border-radius:50%;display:block;" alt="TredevaAstro"></td>
-                <td style="vertical-align:middle;padding-left:12px;">
-                  <div style="font-size:1.1rem;font-weight:700;color:#f5ecd8;">TredevaAstro</div>
-                  <div style="font-size:0.68rem;letter-spacing:0.08em;color:#d4a24c;text-transform:uppercase;">Jyotish &middot; Dharma &middot; Grahas</div>
-                </td>
-              </tr></table>
-            </td>
-            <td style="padding:16px 20px 0 0;text-align:right;width:84px;">
-              <img src="${photoUrl}" width="72" height="72" style="border-radius:50%;object-fit:cover;border:2px solid #d4a24c;display:inline-block;" alt="TredevaAstro">
-            </td>
-          </tr>
-        </table>
-        <div style="height:4px;background:linear-gradient(90deg,#d4a24c,#f0c987,#d4a24c);"></div>
-        <div style="padding:32px 28px;color:#2b2420;">
-          <h1 style="margin:0 0 16px;font-size:1.3rem;color:#5c1a2b;">${escapeHtml(title)}</h1>
+    <div style="background:#0d0718;padding:28px 12px;font-family:Georgia,'Times New Roman',serif;">
+      <div style="max-width:560px;margin:0 auto;background:#120a1e;border-radius:18px;overflow:hidden;border:1px solid #3a2a5c;box-shadow:0 0 24px rgba(240,201,135,0.12);">
+
+        <div style="background:${starfield};padding:26px 24px 22px;text-align:center;position:relative;">
+          <img src="${logoUrl}" width="36" height="36" style="border-radius:50%;border:1px solid #d4a24c;display:inline-block;vertical-align:middle;" alt="TredevaAstro">
+          <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:1.05rem;font-weight:700;color:#f5ecd8;letter-spacing:0.02em;">TredevaAstro</span>
+          <div style="margin-top:4px;font-size:0.64rem;letter-spacing:0.14em;color:#c9a86a;text-transform:uppercase;">Jyotish &middot; Dharma &middot; Grahas &middot; Nakshatras</div>
+
+          <div style="margin:18px 0 4px;font-size:0.95rem;letter-spacing:0.15em;color:#8a6fc9;">${ZODIAC_STRIP}</div>
+
+          <div style="margin:18px auto 4px;width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,rgba(240,201,135,0.35),rgba(240,201,135,0) 70%);padding:6px;">
+            <img src="${photoUrl}" width="100" height="100" style="border-radius:50%;object-fit:cover;border:3px solid #f0c987;display:block;margin:0 auto;" alt="TredevaAstro">
+          </div>
+          <div style="font-size:0.72rem;letter-spacing:0.08em;color:#d4a24c;margin-top:10px;">&#9728;&nbsp;&nbsp;&#9770;&nbsp;&nbsp;&#9789;</div>
+        </div>
+
+        <div style="text-align:center;padding:14px 0 0;color:#5c3fa8;font-size:0.9rem;letter-spacing:0.3em;background:#120a1e;">&#10022;&nbsp;&nbsp;&#10022;&nbsp;&nbsp;&#10022;&nbsp;&nbsp;&#10022;&nbsp;&nbsp;&#10022;</div>
+
+        <div style="background:#fdfaf3;padding:28px 28px 32px;color:#2b2420;">
+          <h1 style="margin:0 0 16px;font-size:1.3rem;color:#4a1f73;text-align:center;">${escapeHtml(title)}</h1>
           <div style="font-size:0.95rem;line-height:1.65;">${paragraphs}</div>
           <div style="text-align:center;margin:28px 0 4px;">
-            <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#f0c987,#d4a24c);color:#3c1a05;font-weight:700;text-decoration:none;padding:13px 34px;border-radius:6px;font-size:0.9rem;letter-spacing:0.02em;">${escapeHtml(ctaLabel)}</a>
+            <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#f0c987,#d4a24c);color:#3c1a05;font-weight:700;text-decoration:none;padding:13px 34px;border-radius:30px;font-size:0.9rem;letter-spacing:0.02em;box-shadow:0 4px 14px rgba(212,162,76,0.4);">&#10022;&nbsp; ${escapeHtml(ctaLabel)} &nbsp;&#10022;</a>
           </div>
-          <div style="text-align:center;font-size:0.78rem;color:#8a8373;margin-top:20px;">
+          <div style="text-align:center;font-size:0.78rem;color:#8a8373;margin-top:22px;">
             Questions? Reply to this email or contact us at <a href="mailto:${config.zeptomail.identities.support.address}" style="color:#8c6d32;">${config.zeptomail.identities.support.address}</a>
           </div>
         </div>
-        <div style="background:#2b141a;padding:16px 24px;text-align:center;">
-          <div style="font-size:0.72rem;color:#d4a24c;">Powered by TredevaAstro &middot; &copy; ${new Date().getFullYear()}</div>
+
+        <div style="background:#120a1e;padding:16px 24px;text-align:center;">
+          <div style="font-size:0.85rem;letter-spacing:0.1em;color:#5c3fa8;margin-bottom:6px;">${ZODIAC_STRIP}</div>
+          <div style="font-size:0.72rem;color:#c9a86a;">Powered by TredevaAstro &middot; &copy; ${new Date().getFullYear()}</div>
         </div>
       </div>
     </div>
