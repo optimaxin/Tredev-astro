@@ -47,12 +47,12 @@ export default function Store({ featured = false }: { featured?: boolean }) {
         </div>
 
         <p className={styles.disclaimer}>
-          Shown here as a preview — every purchase is completed on tredevastore.com.
+          {t('store_external_note')}
         </p>
 
         <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
           <a className="btn btn-outline-light" href={STORE_BASE_URL} target="_blank" rel="noopener noreferrer">
-            Explore All Products →
+            {t('btn_explore_all_products')} →
           </a>
         </div>
       </div>
@@ -61,6 +61,7 @@ export default function Store({ featured = false }: { featured?: boolean }) {
 }
 
 function ProductCard({ product: p }: { product: typeof EXTERNAL_STORE_PRODUCTS[0] }) {
+  const { t } = useAppContext();
   const url = storeProductUrl(p.slug);
   const discountPct = Math.round((1 - p.price / p.mrp) * 100);
 
@@ -80,7 +81,7 @@ function ProductCard({ product: p }: { product: typeof EXTERNAL_STORE_PRODUCTS[0
       </div>
 
       <div className={styles.productInfo}>
-        <div className={styles.productCategory}>Rudraksha</div>
+        <div className={styles.productCategory}>{t('cat_rudraksha')}</div>
         <h4 className={styles.productName}>{p.name}</h4>
 
         <div className={styles.productBottom}>
@@ -90,7 +91,7 @@ function ProductCard({ product: p }: { product: typeof EXTERNAL_STORE_PRODUCTS[0
               <span className={styles.originalPrice}>₹{p.mrp.toLocaleString()}</span>
             )}
           </div>
-          <span className="btn btn-gold btn-sm">Shop Now</span>
+          <span className="btn btn-gold btn-sm">{t('btn_shop_now')}</span>
         </div>
       </div>
     </a>

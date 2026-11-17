@@ -30,7 +30,7 @@ export default function Academy({ featured = false }: { featured?: boolean }) {
               className="section-explore-link"
               onClick={() => { setPage('academy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              {t('cta_explore')} Courses →
+              {t('cta_explore_courses')} →
             </button>
           )}
         </div>
