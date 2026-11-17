@@ -2233,19 +2233,20 @@ function BlogDetailPage({ id }: { id: any }) {
 
 // 17. About Page
 function AboutPage() {
+  const { t } = useAppContext();
   return (
     <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
       <div className={styles.container} style={{ maxWidth: '800px' }}>
         <div className={styles.pageHeader}>
-          <span className="section-eyebrow">Our Lineage</span>
-          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>About TredevaAstro</h1>
+          <span className="section-eyebrow">{t('about_eyebrow')}</span>
+          <h1 className={styles.pageTitle} style={{ color: 'var(--color-text-dark)' }}>{t('about_title')}</h1>
           <div className={styles.divider}>✦ ❖ ✦</div>
         </div>
 
         <div style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-base)', lineHeight: 1.75, color: 'var(--color-text-dark)' }}>
-          <p>TredevaAstro was founded to bridge ancient Vedic wisdom with modern digital clarity. Rather than generating generic commercial predictions, our platform is built on classical Indian astronomical observations (Jyotish Shastra).</p>
-          <p style={{ marginTop: '16px' }}>All calculations follow the Lahiri Ayanamsa, matching planetary alignments to the exact degrees of the stars. We partner with respected Acharyas initiated into authentic lineages to ensure all consultations and Pujas follow precise shastric codes.</p>
-          <p style={{ marginTop: '16px' }}>Explore your birth blueprint, balance energies through energized remedies, and walk your path with alignment, purpose and dharma.</p>
+          <p>{t('about_para1')}</p>
+          <p style={{ marginTop: '16px' }}>{t('about_para2')}</p>
+          <p style={{ marginTop: '16px' }}>{t('about_para3')}</p>
         </div>
       </div>
     </div>
