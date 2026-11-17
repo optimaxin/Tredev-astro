@@ -33,6 +33,57 @@ export function plainTextToEmailHtml(text: string): string {
   `;
 }
 
+// A fancier shell for the two emails every user actually sees often enough
+// to care about look-and-feel (welcome + welcome-back) — logo/photo banner,
+// gold CTA button — instead of the plain letter plainTextToEmailHtml gives
+// every other (staff-edited, rarely-seen) template. Still takes the same
+// plain-text body staff type/edit, just dresses it up more.
+export function renderCreativeEmailHtml(opts: { title: string; bodyText: string; ctaLabel: string; ctaUrl: string; siteOrigin: string }): string {
+  const { title, bodyText, ctaLabel, ctaUrl, siteOrigin } = opts;
+  const paragraphs = escapeHtml(bodyText.trim())
+    .split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 14px;">${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+  const logoUrl = `${siteOrigin}/logo.png`;
+  const photoUrl = `${siteOrigin}/Astrologist/A2.png`;
+  return `
+    <div style="background:#f3efe6;padding:28px 12px;font-family:Georgia,'Times New Roman',serif;">
+      <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e0d8;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#5c1a2b,#3c0f1c);">
+          <tr>
+            <td style="padding:20px 10px 20px 24px;vertical-align:middle;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                <td style="vertical-align:middle;"><img src="${logoUrl}" width="46" height="46" style="border-radius:50%;display:block;" alt="TredevaAstro"></td>
+                <td style="vertical-align:middle;padding-left:12px;">
+                  <div style="font-size:1.1rem;font-weight:700;color:#f5ecd8;">TredevaAstro</div>
+                  <div style="font-size:0.68rem;letter-spacing:0.08em;color:#d4a24c;text-transform:uppercase;">Jyotish &middot; Dharma &middot; Grahas</div>
+                </td>
+              </tr></table>
+            </td>
+            <td style="padding:16px 20px 0 0;text-align:right;width:84px;">
+              <img src="${photoUrl}" width="72" height="72" style="border-radius:50%;object-fit:cover;border:2px solid #d4a24c;display:inline-block;" alt="TredevaAstro">
+            </td>
+          </tr>
+        </table>
+        <div style="height:4px;background:linear-gradient(90deg,#d4a24c,#f0c987,#d4a24c);"></div>
+        <div style="padding:32px 28px;color:#2b2420;">
+          <h1 style="margin:0 0 16px;font-size:1.3rem;color:#5c1a2b;">${escapeHtml(title)}</h1>
+          <div style="font-size:0.95rem;line-height:1.65;">${paragraphs}</div>
+          <div style="text-align:center;margin:28px 0 4px;">
+            <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#f0c987,#d4a24c);color:#3c1a05;font-weight:700;text-decoration:none;padding:13px 34px;border-radius:6px;font-size:0.9rem;letter-spacing:0.02em;">${escapeHtml(ctaLabel)}</a>
+          </div>
+          <div style="text-align:center;font-size:0.78rem;color:#8a8373;margin-top:20px;">
+            Questions? Reply to this email or contact us at <a href="mailto:${config.zeptomail.identities.support.address}" style="color:#8c6d32;">${config.zeptomail.identities.support.address}</a>
+          </div>
+        </div>
+        <div style="background:#2b141a;padding:16px 24px;text-align:center;">
+          <div style="font-size:0.72rem;color:#d4a24c;">Powered by TredevaAstro &middot; &copy; ${new Date().getFullYear()}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export type EmailIdentityKey = keyof typeof config.zeptomail.identities;
 export const EMAIL_IDENTITY_KEYS = Object.keys(config.zeptomail.identities) as EmailIdentityKey[];
 

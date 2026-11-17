@@ -1,5 +1,5 @@
 import { config } from '../core/config.ts';
-import { plainTextToEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
+import { plainTextToEmailHtml, renderCreativeEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
 import { insertEmailLog } from '../repositories/emailLogRepository.ts';
 import { getNotifyEmails } from '../repositories/platformSettingsRepository.ts';
 import { findEmailTemplateById } from '../repositories/emailTemplateRepository.ts';
@@ -17,7 +17,13 @@ export async function sendAndLog(input: {
   from?: EmailIdentityKey;
 }): Promise<void> {
   const identity = config.zeptomail.identities[input.from ?? 'support'];
-  const ok = await sendEmail(input.toEmail, input.subject, plainTextToEmailHtml(input.body), identity).catch(() => false);
+  const siteOrigin = config.clientOrigins[0];
+  const html = input.templateId === 'tpl-welcome'
+    ? renderCreativeEmailHtml({ title: input.subject, bodyText: input.body, ctaLabel: 'Explore Your Dashboard', ctaUrl: siteOrigin, siteOrigin })
+    : input.templateId === 'tpl-welcome-back'
+    ? renderCreativeEmailHtml({ title: input.subject, bodyText: input.body, ctaLabel: 'Continue Your Journey', ctaUrl: siteOrigin, siteOrigin })
+    : plainTextToEmailHtml(input.body);
+  const ok = await sendEmail(input.toEmail, input.subject, html, identity).catch(() => false);
   await insertEmailLog({
     toEmail: input.toEmail, toName: input.toName, subject: input.subject,
     templateId: input.templateId, eventKey: input.eventKey, sentBy: input.sentBy,
