@@ -36,7 +36,7 @@ export function plainTextToEmailHtml(text: string): string {
 // A handful of the site's own zodiac icon assets (public/images/zodiac/),
 // shown as a plain decorative row — not tied to any user's actual sign,
 // and deliberately real artwork rather than emoji/unicode glyphs.
-const ZODIAC_SAMPLE = ['Aries', 'Leo', 'Libra', 'Scorpio', 'Capricorn', 'Pisces'];
+const ZODIAC_SAMPLE = ['Aries', 'Leo', 'Libra', 'Scorpio'];
 
 // A light, parchment-and-gold themed shell for the two emails every user
 // actually sees often enough to care about look-and-feel (welcome +
@@ -55,25 +55,32 @@ export function renderCreativeEmailHtml(opts: { title: string; bodyText: string;
     .join('');
   const logoUrl = `${siteOrigin}/logo.png`;
   const photoUrl = `${siteOrigin}/Astrologist/A2.png`;
-  const zodiacRow = ZODIAC_SAMPLE.map(sign => `
-    <td style="padding:0 6px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="width:30px;height:30px;border-radius:50%;background:#F2EBD9;border:1px solid rgba(181,138,59,0.35);">
-        <tr><td style="text-align:center;vertical-align:middle;"><img src="${siteOrigin}/images/zodiac/${sign}.png" width="18" height="18" style="display:inline-block;vertical-align:middle;" alt="${sign}"></td></tr>
-      </table>
+  // One row, one table (was 6 nested tables, one per icon) — some clients
+  // add their own "clipped message" affordance around deeply nested table
+  // markup, which is what was showing up as a stray "..." button under the
+  // header; this flatter version avoids that.
+  const zodiacRow = ZODIAC_SAMPLE.map((sign, i) => `
+    ${i > 0 ? '<td style="width:4px;"></td>' : ''}
+    <td style="width:24px;height:24px;border-radius:50%;background:#F2EBD9;border:1px solid rgba(181,138,59,0.35);text-align:center;vertical-align:middle;padding:0;">
+      <img src="${siteOrigin}/images/zodiac/${sign}.png" width="14" height="14" style="display:block;margin:5px auto;" alt="${sign}">
     </td>`).join('');
   return `
     <div style="background:#ECE4D6;padding:28px 12px;font-family:Georgia,'Times New Roman',serif;">
       <div style="max-width:560px;margin:0 auto;background:#FAF7F0;border-radius:14px;overflow:hidden;border:1px solid rgba(181,138,59,0.3);box-shadow:0 2px 20px rgba(23,37,58,0.08);">
 
-        <div style="background:#F2EBD9;padding:28px 24px 24px;text-align:center;border-bottom:1px solid rgba(181,138,59,0.3);">
-          <img src="${logoUrl}" width="44" height="44" style="border-radius:50%;border:1px solid #B58A3B;display:inline-block;vertical-align:middle;" alt="TredevaAstro">
-          <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:1.1rem;font-weight:700;color:#182333;letter-spacing:0.02em;">TredevaAstro</span>
-          <div style="margin-top:4px;font-size:0.64rem;letter-spacing:0.14em;color:#8F6A22;text-transform:uppercase;">Jyotish &middot; Dharma &middot; Grahas &middot; Nakshatras</div>
-
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px auto 20px;"><tr>${zodiacRow}</tr></table>
-
-          <img src="${photoUrl}" width="118" height="157" style="border-radius:10px;border:3px solid #FAF7F0;outline:1px solid rgba(181,138,59,0.4);display:block;margin:0 auto;box-shadow:0 4px 16px rgba(23,37,58,0.12);" alt="TredevaAstro">
-        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F2EBD9;border-bottom:1px solid rgba(181,138,59,0.3);">
+          <tr>
+            <td style="padding:24px 16px 24px 24px;vertical-align:middle;text-align:left;">
+              <img src="${logoUrl}" width="40" height="40" style="border-radius:50%;border:1px solid #B58A3B;display:inline-block;vertical-align:middle;" alt="TredevaAstro">
+              <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:1.05rem;font-weight:700;color:#182333;letter-spacing:0.02em;">TredevaAstro</span>
+              <div style="margin-top:4px;font-size:0.6rem;letter-spacing:0.12em;color:#8F6A22;text-transform:uppercase;">Jyotish &middot; Dharma &middot; Grahas &middot; Nakshatras</div>
+            </td>
+            <td style="padding:20px 24px 20px 0;vertical-align:top;text-align:right;width:118px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 10px auto;"><tr>${zodiacRow}</tr></table>
+              <img src="${photoUrl}" width="118" height="157" style="border-radius:10px;border:3px solid #FAF7F0;outline:1px solid rgba(181,138,59,0.4);display:block;box-shadow:0 4px 16px rgba(23,37,58,0.12);" alt="TredevaAstro">
+            </td>
+          </tr>
+        </table>
 
         <div style="padding:28px 28px 32px;color:#182333;">
           <h1 style="margin:0 0 16px;font-size:1.3rem;color:#182333;text-align:center;font-weight:600;">${escapeHtml(title)}</h1>
