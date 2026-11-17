@@ -14,10 +14,11 @@ import {
   countPoojaSessionRegistrations, findPoojaSession, isRegisteredForPoojaSession, listPoojaBooks, listPoojaVideos,
   listUpcomingPoojaSessions, registerForPoojaSession,
 } from '../repositories/poojaRepository.ts';
-import { requireAuth, requireRole } from '../middleware/auth.ts';
+import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.ts';
 import { findUserByEmail } from '../repositories/userRepository.ts';
 import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
 import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
+import { recordPageView } from '../repositories/pageViewRepository.ts';
 
 export const router = Router();
 
@@ -42,6 +43,16 @@ function myAstrologer(req: Request, res: Response) {
 // falls back to a sensible default in that case, same as pricing does.
 router.get('/geo/country', (req, res) => {
   res.json({ countryCode: countryFromRequest(req) });
+});
+
+// Fire-and-forget page-view logging for the admin/staff Users drawer's
+// activity trail (see pageViewRepository.ts) — optionalAuth so this never
+// 401s, it just has nothing to attribute an anonymous visit to and silently
+// no-ops. Never blocks or errors the page navigation that triggered it.
+router.post('/track/pageview', optionalAuth, async (req, res) => {
+  const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '';
+  if (req.user && path) await recordPageView(req.user.id, path).catch(() => {});
+  res.json({ success: true });
 });
 
 router.get('/astrologers', async (_req, res) => {

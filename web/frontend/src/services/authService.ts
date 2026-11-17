@@ -21,6 +21,7 @@ export interface ApiUser {
   phone_number: string | null;
   phone_verified: boolean;
   free_ai_chat_seconds: number;
+  wallet_balance: number;
 }
 
 export interface RegisterBirthDetails {

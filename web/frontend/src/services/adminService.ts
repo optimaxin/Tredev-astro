@@ -104,6 +104,7 @@ export interface ApiUserRecord {
   birth_date: string | null;
   phone_number: string | null;
   free_ai_chat_seconds: number;
+  wallet_balance: number;
 }
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
@@ -222,6 +223,7 @@ export interface ApiUserActivity {
   orders: number;
   recentChats: ApiChatAudit[];
   lastAction: ApiLastAction | null;
+  recentPageViews: { path: string; at: number }[];
 }
 
 export interface ApiAstrologerActivity {

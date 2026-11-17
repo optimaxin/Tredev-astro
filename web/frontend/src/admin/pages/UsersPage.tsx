@@ -6,7 +6,7 @@ import Drawer from '../components/Drawer';
 import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
 import { adminService } from '../../services/adminService';
 import type { ApiUserActivity } from '../../services/adminService';
-import { accountStatus, formatDate } from '../adminUtils';
+import { accountStatus, formatDate, formatDateTime } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 const PAGE_SIZE = 8;
@@ -148,6 +148,7 @@ export default function UsersPage() {
           { key: 'role', label: t('admin_staff_col_role'), render: u => u.role },
           { key: 'dob', label: 'Date of Birth', render: u => dobDisplay(u) },
           { key: 'joined', label: t('admin_users_col_joined'), render: u => joinedDate(u.id) },
+          { key: 'wallet', label: 'Wallet', render: u => `₹${(u.walletBalance ?? 0).toLocaleString('en-IN')}` },
           { key: 'status', label: t('admin_users_col_status'), render: u => { const s = accountStatus(u.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
         ]}
         rows={pageRows}
@@ -189,6 +190,7 @@ export default function UsersPage() {
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Email</span><span className={styles.drawerFieldValue}>{selected.email}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Date of Birth</span><span className={styles.drawerFieldValue}>{dobDisplay(selected)}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_joined')}</span><span className={styles.drawerFieldValue}>{joinedDate(selected.id)}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Wallet Balance</span><span className={styles.drawerFieldValue}>₹{(selected.walletBalance ?? 0).toLocaleString('en-IN')}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_reports')}</span><span className={styles.drawerFieldValue}>{activity ? activity.reports : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_consultations')}</span><span className={styles.drawerFieldValue}>{activity ? activity.consultations : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_orders')}</span><span className={styles.drawerFieldValue}>{activity ? activity.orders : activityError ? '—' : '…'}</span></div>
@@ -211,6 +213,21 @@ export default function UsersPage() {
               </div>
               {grantError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{grantError}</p>}
               {grantDone && <p style={{ color: 'var(--adm-success, #2e7d32)', fontSize: '0.8rem', marginTop: 8 }}>Updated.</p>}
+            </div>
+
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: 10 }}>Recent Activity</div>
+              {activity && activity.recentPageViews.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--adm-charcoal-soft)' }}>No page visits recorded yet.</p>}
+              {activity && activity.recentPageViews.length > 0 && (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {activity.recentPageViews.map((v, i) => (
+                    <li key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', gap: 10 }}>
+                      <span style={{ fontWeight: 600 }}>{v.path}</span>
+                      <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>

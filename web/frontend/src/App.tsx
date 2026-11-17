@@ -14,6 +14,7 @@ import ToastStack from './realtime/ToastStack';
 import BroadcastBanner from './components/BroadcastBanner/BroadcastBanner';
 import ActiveSessionBanner from './components/ActiveSessionBanner/ActiveSessionBanner';
 import KundliChatWidget from './sections/KundliSection/KundliChatWidget';
+import { trackingService } from './services/trackingService';
 
 // The Kundli page's own chat widget already knows the freshly-generated
 // chart's exact birth details; it renders itself there. Elsewhere on the
@@ -37,6 +38,13 @@ function AppContent() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Feeds the admin/staff Users drawer's "recent activity" trail — only
+  // attributed when logged in (see trackingService.ts), so this is a no-op
+  // ping for anonymous visitors.
+  useEffect(() => {
+    trackingService.pageView(page);
+  }, [page]);
 
   // Reflects the selected language again — t() (AppContext.tsx) now really
   // translates the ~680 strings its dictionary covers. Any hardcoded text

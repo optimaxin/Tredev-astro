@@ -72,6 +72,10 @@ export interface AuthUser {
   phoneNumber?: string | null;
   phoneVerified?: boolean;
   freeAiChatSeconds?: number;
+  // Only populated on the admin/staff Users list (see refreshAdminData) —
+  // currentUser's own live balance is the separate walletBalance context
+  // value below (refreshWalletBalance), not this field.
+  walletBalance?: number;
 }
 
 export interface AuditLogEntry {
@@ -3703,6 +3707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAccounts(users.map(u => ({
         id: u.id, name: u.name, email: u.email, role: u.role, status: u.status,
         birthDate: u.birth_date, phoneNumber: u.phone_number, freeAiChatSeconds: u.free_ai_chat_seconds,
+        walletBalance: u.wallet_balance,
       })));
     } catch (e) {
       console.error('Failed to load admin data', e);

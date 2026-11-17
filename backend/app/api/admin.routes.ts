@@ -12,6 +12,7 @@ import { countCompletedByAstrologerAndType, countForUser, countInProgress, findA
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
+import { listPageViewsForUser } from '../repositories/pageViewRepository.ts';
 import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
@@ -234,12 +235,13 @@ adminRouter.patch('/users/:id/free-ai-chat', requireSection('users'), async (req
 adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res) => {
   const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
-  const [reports, consultations, orders, allConsultations, lastAction] = await Promise.all([
+  const [reports, consultations, orders, allConsultations, lastAction, pageViews] = await Promise.all([
     countPurchasesForUser(target.id),
     countForUser(target.email),
     countOrdersForUser(target.id),
     findAllForUser(target.email),
     listAuditLogForTarget(target.email, 1),
+    listPageViewsForUser(target.id),
   ]);
   const recentChats = await buildChatAudit(allConsultations, async c => (await findAstrologerById(c.astrologerId))?.name ?? 'Unknown astrologer');
   res.json({
@@ -247,6 +249,7 @@ adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res)
     data: {
       reports, consultations, orders, recentChats,
       lastAction: lastAction[0] ? { action: lastAction[0].action, at: lastAction[0].created_at } : null,
+      recentPageViews: pageViews.map(v => ({ path: v.path, at: v.created_at })),
     },
   });
 });
