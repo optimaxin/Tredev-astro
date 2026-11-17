@@ -68,7 +68,7 @@
 
 .title {
   margin: 0;
-  font-family: var(--font-serif);
+  font-family: 'Cormorant Garamond', serif;
   font-size: 1.6rem;
   font-weight: 600;
   color: var(--gold-primary, #B58A3B);

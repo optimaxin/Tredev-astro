@@ -666,14 +666,9 @@ export function KundliMatchingPage() {
 // a single BirthDetailsForm feeding a calculator endpoint, with the result
 // shown alongside the raw computed values (not just a verdict), so the
 // numbers can be independently cross-checked against any other Kundli tool.
-// `noTranslate` is for a calculator rendering its own Devanagari through a
-// language toggle of its own — translation is otherwise left entirely to the
-// visitor's own browser, which treats the page as English, so real Hindi
-// left exposed to it comes back out as nonsense. Marking the page keeps any
-// browser translate feature off it entirely.
-function CalculatorPageShell({ eyebrow, title, description, children, noTranslate }: { eyebrow: string; title: string; description: string; children: React.ReactNode; noTranslate?: boolean }) {
+function CalculatorPageShell({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`} translate={noTranslate ? 'no' : undefined}>
+    <div className={`${styles.pageWrapper} ${styles.ivoryPage}`}>
       <div className={styles.container} style={{ maxWidth: '720px' }}>
         <div className={styles.pageHeader}>
           <span className="section-eyebrow">{eyebrow}</span>
@@ -1467,7 +1462,7 @@ export function VastuCalculatorPage({ currentUser = null }: { currentUser?: Mayb
   };
 
   return (
-    <CalculatorPageShell eyebrow={t.eyebrow} title={t.title} description={t.description} noTranslate={language === 'hi'}>
+    <CalculatorPageShell eyebrow={t.eyebrow} title={t.title} description={t.description}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
         <div role="group" aria-label="Language" style={{ display: 'flex', border: '1px solid var(--color-gold, #c9a227)', borderRadius: '999px', overflow: 'hidden' }}>
           {(['en', 'hi'] as const).map(lang => (

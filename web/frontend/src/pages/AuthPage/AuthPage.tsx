@@ -2,31 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
-import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164 } from '../../services/firebaseClient';
+import { MOCK_OTP, MOCK_OTP_ENABLED, sendFirebasePhoneOtp, signInWithGooglePopup, toE164 } from '../../services/firebaseClient';
 import { API_URL } from '../../services/apiUrl';
-import { authService, ApiRequestError } from '../../services/authService';
 import { COUNTRY_CODES, DEFAULT_COUNTRY, findByIso2, flagEmoji, type CountryCode } from '../../data/countryCodes';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
-// Unified sign-in/sign-up: phone number (OTP), "Continue with Google", or
-// email/password login and registration. Both Phone and Google use Firebase,
-// while email auth runs through our direct API.
-type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login' | 'register-otp';
+// Unified sign-in/sign-up: phone number (OTP) or "Continue with Google" —
+// no upfront email/password form for new users. Both are the SAME Firebase
+// call for a returning vs. brand-new person (see backend's loginWithFirebase,
+// which creates the account on first sign-in and returns `isNewUser`).
+// Google's token already carries a name, so a new Google user goes straight
+// through; Phone Auth's token doesn't, so a new phone user gets exactly one
+// extra "what's your name?" step. Old-style email+password accounts (the
+// seeded demo accounts, and anyone who signed up before this redesign) still
+// need a way in — that's the small "Log in with email instead" reveal below,
+// not a place to create new password accounts anymore.
+type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login';
 
 export default function AuthPage() {
-  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
+  const { setPage, login, loginWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
   const [step, setStep] = useState<Step>('entry');
 
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
-
-  // Required consent — gates both sign-up paths below (phone OTP and
-  // Google), since loginWithFirebase creates the account transparently on
-  // first sign-in for either one; there's no separate "create account" step
-  // to hang this on instead. A returning user sees it too — same as any
-  // combined login/signup screen elsewhere.
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Phone entry + OTP — country defaults to India, then swapped for the
   // visitor's actual country as soon as IP geolocation resolves (same
@@ -62,19 +61,7 @@ export default function AuthPage() {
   const [nameError, setNameError] = useState('');
   const [nameLoading, setNameLoading] = useState(false);
 
-  // Email login & registration
-  const [emailMode, setEmailMode] = useState<'signin' | 'register'>('signin');
-  const [registerName, setRegisterName] = useState('');
-  const [registerPhone, setRegisterPhone] = useState('');
-  // Set once the register-step OTP has been sent, so the verify step and its
-  // resend button know what number to confirm against without re-deriving it
-  // from registerPhone (which the user could still edit on the prior step).
-  const [pendingPhoneE164, setPendingPhoneE164] = useState('');
-  const [registerOtpCode, setRegisterOtpCode] = useState('');
-  const [registerOtpError, setRegisterOtpError] = useState('');
-  const [registerOtpLoading, setRegisterOtpLoading] = useState(false);
-  const [registerOtpSendLoading, setRegisterOtpSendLoading] = useState(false);
-  const [registerConfirmation, setRegisterConfirmation] = useState<ConfirmationResult | null>(null);
+  // Legacy email+password login (existing accounts only — see file comment)
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -89,9 +76,6 @@ export default function AuthPage() {
     else if (action === 'kundli-pdf') setPage('free-kundli');
     else if (action === 'astrologers') setPage('astrologers');
     else if (action === 'calculator') setPage('astrology-tools');
-    else if (action === 'pooja') setPage('pooja');
-    else if (action === 'raghav-booking') setPage('raghav-booking');
-    else if (action === 'apply-astrologer') setPage('apply-astrologer');
     else setPage('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -104,7 +88,6 @@ export default function AuthPage() {
 
   const handleGoogleSignIn = async () => {
     setGoogleError('');
-    if (!agreedToTerms) { setGoogleError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.'); return; }
     setGoogleLoading(true);
     try {
       const idToken = await signInWithGooglePopup();
@@ -123,29 +106,23 @@ export default function AuthPage() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
-    if (!agreedToTerms) { setPhoneError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.'); return; }
     setOtpSendLoading(true);
     try {
       const result = await sendFirebasePhoneOtp(toE164(phoneNumber, country.dialCode), 'firebase-recaptcha-container');
       setConfirmationResult(result);
       setStep('otp');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('auth/invalid-phone-number')) {
-        setPhoneError('Please enter a valid phone number — double-check the digit count for your country.');
-      } else if (msg.includes('auth/too-many-requests') || msg.includes('quota')) {
-        setPhoneError('SMS quota exceeded or too many requests. Please sign in with Google or Email.');
-      } else if (msg.includes('reCAPTCHA') || msg.includes('captcha')) {
-        setPhoneError('Verification check failed. Please refresh the page and try again.');
-      } else {
-        setPhoneError(msg || 'Could not send verification code. Please try again.');
-      }
+      setPhoneError(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
     } finally {
       setOtpSendLoading(false);
     }
   };
 
-  // Re-sends via the same Firebase call as the initial send
+  // Re-sends via the same Firebase call as the initial send (a new
+  // ConfirmationResult replaces the old one, since the previous code is
+  // still tied to the expired verification attempt) — needed because a
+  // Firebase OTP expires after a few minutes, and without this the only way
+  // out of an expired code was going back and re-entering the phone number.
   const handleResendOtp = async () => {
     setOtpError('');
     setOtpSendLoading(true);
@@ -154,8 +131,7 @@ export default function AuthPage() {
       setConfirmationResult(result);
       setOtpCode('');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setOtpError(msg || 'Could not resend the code. Please try again.');
+      setOtpError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.');
     } finally {
       setOtpSendLoading(false);
     }
@@ -178,6 +154,10 @@ export default function AuthPage() {
         redirectByRole(result.user.role);
       }
     } catch (err) {
+      // Firebase's own Error#message is the raw "Firebase: Error
+      // (auth/code-expired)." string — not something to show as-is. A
+      // Firebase auth error always carries a `.code` like that; map the
+      // common ones to something that tells the person what to actually do.
       const code = (err as { code?: string })?.code;
       if (code === 'auth/code-expired') setOtpError('This code has expired — tap "Resend code" below for a new one.');
       else if (code === 'auth/invalid-verification-code') setOtpError('That code is incorrect — double-check it and try again.');
@@ -204,102 +184,10 @@ export default function AuthPage() {
     e.preventDefault();
     setLoginError('');
     setLoginLoading(true);
-    try {
-      const user = await login(loginEmail.trim(), loginPassword);
-      if (!user) {
-        setLoginError('Invalid email or password. If you do not have an account yet, switch to "Create Account" above.');
-        return;
-      }
-      redirectByRole(user.role);
-    } catch (err) {
-      if (err instanceof ApiRequestError) {
-        setLoginError(err.message === 'Invalid email or password' ? 'Invalid email or password. If you do not have an account yet, switch to "Create Account" above.' : err.message);
-      } else {
-        setLoginError(err instanceof Error ? err.message : 'Could not sign in. Please verify your connection.');
-      }
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
-  // Phone is mandatory and must be OTP-verified before the account exists —
-  // so this only sends the code; the account itself is created in
-  // handleVerifyRegisterOtp, after the code is confirmed with Firebase.
-  const handleEmailRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    if (!agreedToTerms) {
-      setLoginError('Please agree to the Terms, Privacy Policy and Safety guidelines to continue.');
-      return;
-    }
-    if (loginPassword.length < 8) {
-      setLoginError('Password must be at least 8 characters.');
-      return;
-    }
-    if (!registerPhone.trim()) {
-      setLoginError('Phone number is required — we use it to verify your account.');
-      return;
-    }
-    setLoginLoading(true);
-    try {
-      const phoneVal = toE164(registerPhone, country.dialCode);
-      const result = await sendFirebasePhoneOtp(phoneVal, 'firebase-recaptcha-container');
-      setRegisterConfirmation(result);
-      setPendingPhoneE164(phoneVal);
-      setRegisterOtpCode('');
-      setRegisterOtpError('');
-      setStep('register-otp');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('auth/invalid-phone-number')) {
-        setLoginError('Please enter a valid phone number — double-check the digit count for your country.');
-      } else if (msg.includes('auth/too-many-requests') || msg.includes('quota')) {
-        setLoginError('SMS quota exceeded or too many requests. Please try again shortly.');
-      } else {
-        setLoginError(msg || 'Could not send a verification code to that phone number. Please try again.');
-      }
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
-  const handleResendRegisterOtp = async () => {
-    setRegisterOtpError('');
-    setRegisterOtpSendLoading(true);
-    try {
-      const result = await sendFirebasePhoneOtp(pendingPhoneE164, 'firebase-recaptcha-container');
-      setRegisterConfirmation(result);
-      setRegisterOtpCode('');
-    } catch (err) {
-      setRegisterOtpError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.');
-    } finally {
-      setRegisterOtpSendLoading(false);
-    }
-  };
-
-  const handleVerifyRegisterOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegisterOtpError('');
-    setRegisterOtpLoading(true);
-    try {
-      if (!registerConfirmation) throw new Error('No active verification code — go back and resend it.');
-      const credential = await registerConfirmation.confirm(registerOtpCode.trim());
-      const idToken = await credential.user.getIdToken();
-      const res = await register(registerName.trim(), loginEmail.trim(), loginPassword, pendingPhoneE164);
-      // Account now exists — attach the Firebase-verified phone to it so it
-      // isn't just stored but marked phone_verified (see authService.ts's
-      // linkFirebasePhone). The OTP was already confirmed above; this just
-      // records that onto the newly created account.
-      await verifyPhoneWithFirebase(idToken);
-      redirectByRole(res.user.role);
-    } catch (err) {
-      const code = (err as { code?: string })?.code;
-      if (code === 'auth/code-expired') setRegisterOtpError('This code has expired — tap "Resend code" below for a new one.');
-      else if (code === 'auth/invalid-verification-code') setRegisterOtpError('That code is incorrect — double-check it and try again.');
-      else setRegisterOtpError(err instanceof ApiRequestError ? err.message : (err instanceof Error ? err.message : 'Could not verify your phone number. Please try again.'));
-    } finally {
-      setRegisterOtpLoading(false);
-    }
+    const user = await login(loginEmail, loginPassword);
+    setLoginLoading(false);
+    if (!user) { setLoginError('Incorrect email or password.'); return; }
+    redirectByRole(user.role);
   };
 
   return (
@@ -420,14 +308,10 @@ export default function AuthPage() {
               <span className={styles.starGlyph}>✦</span>
             </div>
             <h1 className={styles.manuscriptTitle}>
-              {step === 'email-login'
-                ? (emailMode === 'signin' ? 'सदस्य प्रवेश ग्रन्थ' : 'नया सदस्य पंजीकरण')
-                : 'वैदिक जन्म पत्र ग्रन्थ'}
+              {step === 'email-login' ? 'सदस्य प्रवेश ग्रन्थ' : 'वैदिक जन्म पत्र ग्रन्थ'}
             </h1>
             <p className={styles.manuscriptSubtitle}>
-              {step === 'email-login'
-                ? (emailMode === 'signin' ? t('auth_subtitle_login') : 'वैदिक खाता बनाएं एवं अपनी जन्म पत्रिका सुरक्षित रखें')
-                : t('auth_subtitle_register')}
+              {step === 'email-login' ? t('auth_subtitle_login') : t('auth_subtitle_register')}
             </p>
           </div>
 
@@ -488,8 +372,6 @@ export default function AuthPage() {
                   </div>
                 </div>
 
-                <ConsentCheckbox agreed={agreedToTerms} onChange={setAgreedToTerms} goToPage={setPage} />
-
                 {phoneError && (
                   <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{phoneError}</p>
                 )}
@@ -497,7 +379,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   className={styles.waxSealBtn}
-                  disabled={otpSendLoading || !agreedToTerms}
+                  disabled={otpSendLoading}
                   id="auth-send-otp"
                 >
                   <div className={styles.sealEmblemInside}>ॐ</div>
@@ -508,10 +390,10 @@ export default function AuthPage() {
 
                 <button
                   type="button"
-                  onClick={() => { setStep('email-login'); setEmailMode('signin'); setLoginError(''); }}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-3)', opacity: 0.85, alignSelf: 'center', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                  onClick={() => setStep('email-login')}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', marginTop: 'var(--space-3)', opacity: 0.7, alignSelf: 'center' }}
                 >
-                  ई-मेल द्वारा प्रवेश या नया खाता बनाएं (Sign in or Register with Email)
+                  Already have an account with email &amp; password? Log in instead
                 </button>
               </motion.form>
             )}
@@ -528,7 +410,9 @@ export default function AuthPage() {
                 className={styles.scriptForm}
               >
                 <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
-                  We sent a 6-digit code to {toE164(phoneNumber, country.dialCode)}. Enter it below to continue.
+                  {MOCK_OTP_ENABLED
+                    ? `Dev mode — no SMS was sent. Enter ${MOCK_OTP} to continue.`
+                    : `We sent a 6-digit code to ${toE164(phoneNumber, country.dialCode)}. Enter it below to continue.`}
                 </p>
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>Verification Code</label>
@@ -561,75 +445,14 @@ export default function AuthPage() {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={otpSendLoading}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
                   >
                     {otpSendLoading ? 'Sending…' : "Didn't get it? Resend code"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setStep('entry')}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
-                  >
-                    Wrong number?
-                  </button>
-                </div>
-              </motion.form>
-            )}
-
-            {/* REGISTER-STEP PHONE VERIFICATION — account isn't created until
-                this code is confirmed (see handleVerifyRegisterOtp). */}
-            {step === 'register-otp' && (
-              <motion.form
-                key="register-otp-script"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                onSubmit={handleVerifyRegisterOtp}
-                className={styles.scriptForm}
-              >
-                <p className={styles.successSubtext} style={{ marginBottom: 'var(--space-4)' }}>
-                  We sent a 6-digit code to {pendingPhoneE164}. Enter it below to create your account.
-                </p>
-                <div className={styles.inkField}>
-                  <label className={styles.inkLabel}>Verification Code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    className={styles.inkInput}
-                    placeholder="123456"
-                    value={registerOtpCode}
-                    onChange={e => setRegisterOtpCode(e.target.value.replace(/\D/g, ''))}
-                    required
-                    autoFocus
-                  />
-                </div>
-                {registerOtpError && (
-                  <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{registerOtpError}</p>
-                )}
-                <button
-                  type="submit"
-                  className={styles.waxSealBtn}
-                  disabled={registerOtpLoading || registerOtpCode.length !== 6}
-                  id="auth-register-otp-verify-btn"
-                >
-                  <span>{registerOtpLoading ? 'Verifying…' : 'Verify & Create Account'}</span>
-                </button>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-2)' }}>
-                  <button
-                    type="button"
-                    onClick={handleResendRegisterOtp}
-                    disabled={registerOtpSendLoading}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
-                  >
-                    {registerOtpSendLoading ? 'Sending…' : "Didn't get it? Resend code"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setStep('email-login'); setEmailMode('register'); }}
-                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
                   >
                     Wrong number?
                   </button>
@@ -708,75 +531,19 @@ export default function AuthPage() {
               </motion.div>
             )}
 
-            {/* EMAIL LOGIN & REGISTRATION */}
+            {/* LEGACY EMAIL+PASSWORD LOGIN — existing accounts only (the
+                seeded demo accounts, and anyone who signed up before this
+                redesign). Not a signup path anymore; see file comment. */}
             {step === 'email-login' && (
               <motion.form
-                key="email-auth-script"
+                key="login-script"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                onSubmit={emailMode === 'signin' ? handleLegacyLogin : handleEmailRegister}
+                onSubmit={handleLegacyLogin}
                 className={styles.scriptForm}
               >
-                {/* Mode Selector Tabs */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                  <button
-                    type="button"
-                    onClick={() => { setEmailMode('signin'); setLoginError(''); }}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      background: emailMode === 'signin' ? '#8c6d32' : 'rgba(140, 109, 50, 0.1)',
-                      color: emailMode === 'signin' ? '#fff' : 'inherit',
-                      border: '1px solid #8c6d32',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    प्रवेश (Sign In)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEmailMode('register'); setLoginError(''); }}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      background: emailMode === 'register' ? '#8c6d32' : 'rgba(140, 109, 50, 0.1)',
-                      color: emailMode === 'register' ? '#fff' : 'inherit',
-                      border: '1px solid #8c6d32',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    नया खाता (Create Account)
-                  </button>
-                </div>
-
-                {emailMode === 'register' && (
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>नाम</span> Full Name
-                    </label>
-                    <input
-                      type="text"
-                      className={styles.inkInput}
-                      placeholder="Your full name"
-                      value={registerName}
-                      onChange={e => setRegisterName(e.target.value)}
-                      required
-                      minLength={2}
-                      autoFocus
-                    />
-                  </div>
-                )}
-
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
                     <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_login_email')}
@@ -788,45 +555,9 @@ export default function AuthPage() {
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     required
-                    autoFocus={emailMode === 'signin'}
+                    autoFocus
                   />
                 </div>
-
-                {emailMode === 'register' && (
-                  <div className={styles.inkField}>
-                    <label className={styles.inkLabel}>
-                      <span className={styles.devanagariTag}>फ़ोन नंबर</span> Phone Number
-                    </label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <select
-                        className={styles.inkInput}
-                        style={{ flex: '0 0 auto', width: 100 }}
-                        value={country.iso2}
-                        onChange={e => {
-                          const match = findByIso2(e.target.value);
-                          if (match) setCountry(match);
-                        }}
-                        aria-label="Country code"
-                      >
-                        {COUNTRY_CODES.map(c => (
-                          <option key={c.iso2} value={c.iso2}>{flagEmoji(c.iso2)} +{c.dialCode}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="tel"
-                        className={styles.inkInput}
-                        placeholder="Phone number"
-                        value={registerPhone}
-                        onChange={e => setRegisterPhone(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #8a8373)', marginTop: 4 }}>
-                      We'll text you a one-time code to verify this number before your account is created.
-                    </p>
-                  </div>
-                )}
 
                 <div className={styles.inkField}>
                   <label className={styles.inkLabel}>
@@ -835,17 +566,12 @@ export default function AuthPage() {
                   <input
                     type="password"
                     className={styles.inkInput}
-                    placeholder="•••••••• (min 8 characters)"
+                    placeholder="••••••••"
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
                     required
-                    minLength={emailMode === 'register' ? 8 : 1}
                   />
                 </div>
-
-                {emailMode === 'register' && (
-                  <ConsentCheckbox agreed={agreedToTerms} onChange={setAgreedToTerms} goToPage={setPage} />
-                )}
 
                 {loginError && (
                   <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{loginError}</p>
@@ -855,22 +581,18 @@ export default function AuthPage() {
                   type="submit"
                   className={styles.waxSealBtn}
                   disabled={loginLoading}
-                  id={emailMode === 'signin' ? 'auth-login-submit' : 'auth-register-submit'}
+                  id="auth-login-submit"
                 >
-                  <div className={styles.sealEmblemInside}>{emailMode === 'signin' ? '🗝️' : 'ॐ'}</div>
-                  <span>
-                    {loginLoading
-                      ? (emailMode === 'signin' ? t('auth_btn_unlocking') : 'Creating account…')
-                      : (emailMode === 'signin' ? `प्रवेश करें · ${t('auth_btn_signin_vault')}` : 'नया खाता बनाएं · Create Account')}
-                  </span>
+                  <div className={styles.sealEmblemInside}>🗝️</div>
+                  <span>{loginLoading ? t('auth_btn_unlocking') : `प्रवेश करें · ${t('auth_btn_signin_vault')}`}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setStep('entry')}
-                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)' }}
                 >
-                  ← Back to phone / Google sign-in
+                  Back to phone / Google sign-in
                 </button>
               </motion.form>
             )}
@@ -896,37 +618,6 @@ export default function AuthPage() {
   );
 }
 
-// Required before either sign-up path (phone OTP or Google) proceeds — see
-// the `agreedToTerms` comment above. The Terms/Privacy/Safety links navigate
-// away from this modal (setPage), losing whatever's been typed so far — this
-// app has no real per-page URLs to open in a new tab instead, and that's the
-// same tradeoff the footer's own links already make.
-function ConsentCheckbox({ agreed, onChange, goToPage }: { agreed: boolean; onChange: (v: boolean) => void; goToPage: (p: string) => void }) {
-  const linkStyle: React.CSSProperties = { textDecoration: 'underline', color: 'inherit', fontWeight: 600, fontFamily: 'inherit' };
-  const goTo = (page: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    goToPage(page);
-  };
-  return (
-    <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0 8px', fontSize: '0.8rem', lineHeight: 1.5, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
-      <input
-        type="checkbox"
-        checked={agreed}
-        onChange={e => onChange(e.target.checked)}
-        style={{ marginTop: '3px', flexShrink: 0 }}
-        required
-        id="auth-consent-checkbox"
-      />
-      <span>
-        I agree to the{' '}
-        <button type="button" onClick={goTo('terms')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Terms of Service</button>,{' '}
-        <button type="button" onClick={goTo('privacy')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Privacy Policy</button>, and{' '}
-        <button type="button" onClick={goTo('safety')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...linkStyle }}>Safety</button> guidelines.
-      </span>
-    </label>
-  );
-}
-
 // Deliberately plain (not manuscript-themed) — Google's own brand guidelines
 // want its sign-in button recognizable, not restyled into a site's theme.
 // Exported so the campaign's OnboardingModal (a separate, differently-themed
@@ -937,10 +628,10 @@ export function GoogleSignInButton({ loading, error, onClick }: { loading: boole
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 'var(--space-3) 0' }}>
         <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
-        <span style={{ fontSize: '0.75rem', color: '#8a6d3b', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>or</span>
+        <span style={{ fontSize: '0.75rem', color: '#8a6d3b' }}>or</span>
         <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.15)' }} />
       </div>
-      {error && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0', fontFamily: 'var(--font-sans)' }}>{error}</p>}
+      {error && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{error}</p>}
       <button
         type="button"
         onClick={onClick}
@@ -948,7 +639,7 @@ export function GoogleSignInButton({ loading, error, onClick }: { loading: boole
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
           padding: '10px 16px', borderRadius: '6px', border: '1px solid #dadce0', background: '#fff',
-          color: '#3c4043', fontSize: '0.9rem', fontWeight: 500, fontFamily: 'var(--font-sans)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
+          color: '#3c4043', fontSize: '0.9rem', fontWeight: 500, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
         }}
       >
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

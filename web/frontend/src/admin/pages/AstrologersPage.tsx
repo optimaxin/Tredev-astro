@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { useRealtime } from '../../realtime/RealtimeContext';
 import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
@@ -9,37 +8,14 @@ import type { ApiAstrologerRevenue, ApiAstrologerActivity, ApiAstrologerStatus }
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { StatusBadge, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
+import { accountStatus } from '../adminUtils';
 import styles from './AdminPages.module.css';
-
-// ApiAstrologerStatus carries the full public-profile fields too (see
-// admin.routes.ts's GET /astrologers/status) under the catalog's own field
-// names (experienceYears, chatPrice, etc.) rather than UiAstrologer's
-// shortened ones — this reshapes one into the other so joinedProfile below
-// can treat a "removed" astrologer (status-only, see its own comment) the
-// same as a normal catalog entry.
-function statusAsUiAstrologer(s: ApiAstrologerStatus): UiAstrologer {
-  // Only ever called on a row that matched by `.name`, which means this is
-  // the Removed-astrologer case where these otherwise-optional fields are
-  // actually populated (see the type's own comment) — safe to assert.
-  return {
-    id: s.id, name: s.name!, title: s.title!, rating: s.rating!, reviews: s.reviewCount!,
-    experience: s.experienceYears!, consultations: s.consultationCount!, languages: s.languages!,
-    price: s.chatPrice!, avatar: s.avatar!, about: s.bio!, category: s.categories!, specialization: s.expertise!,
-    activeOfferPercent: s.activeOfferPercent!,
-  };
-}
 
 // Matched by name against the real astrologer catalog — every astrologer
 // account (seeded roster or one created through the real apply/approve
 // flow) has exactly one catalog row with that account's real name.
-// `catalog` (the public listing) never includes a Removed astrologer
-// (is_active = 0 is filtered out server-side, same as the public site) —
-// `liveStatus` is the fallback since GET /astrologers/status additionally
-// appends removed rows (with their full profile) so staff can still see who
-// they're about to Restore instead of a blank card.
-function joinedProfile(account: AuthUser, catalog: UiAstrologer[], liveStatus: Record<number, ApiAstrologerStatus>) {
-  const fromStatus = Object.values(liveStatus).find(s => s.name === account.name);
-  const profile = catalog.find(a => a.name === account.name) ?? (fromStatus ? statusAsUiAstrologer(fromStatus) : undefined);
+function joinedProfile(account: AuthUser, catalog: UiAstrologer[]) {
+  const profile = catalog.find(a => a.name === account.name);
   return {
     id: profile?.id,
     rating: profile?.rating ?? 0,
@@ -68,10 +44,6 @@ interface EditForm {
   chatPrice: string;
   callPrice: string;
   videoPrice: string;
-  // What % of the per-minute price this astrologer actually earns — e.g.
-  // ₹25/min at 10% means ₹2.50/min shows up in their own Earnings tab, not
-  // the full ₹25.
-  commissionPercent: string;
 }
 
 const EMPTY_EDIT_FORM: EditForm = {
@@ -79,7 +51,6 @@ const EMPTY_EDIT_FORM: EditForm = {
   languages: '', categories: '', expertise: '',
   consultationTypes: ['chat', 'voice', 'video'],
   chatPrice: '0', callPrice: '0', videoPrice: '0',
-  commissionPercent: '100',
 };
 
 interface CreateForm extends EditForm {
@@ -90,71 +61,16 @@ interface CreateForm extends EditForm {
 
 const EMPTY_CREATE_FORM: CreateForm = { ...EMPTY_EDIT_FORM, name: '', email: '', password: '' };
 
-// commissionPercent isn't on astrologerService's ApiAstrologerProfile (that's
-// the PUBLIC catalog shape) — passed in separately from liveStatus, the one
-// place the staff panel already has it (see GET /astrologers/status).
-function profileToForm(p: ApiAstrologerProfile, commissionPercent: number): EditForm {
+function profileToForm(p: ApiAstrologerProfile): EditForm {
   return {
     title: p.title, bio: p.bio, avatar: p.avatar, experienceYears: String(p.experienceYears),
     languages: p.languages.join(', '), categories: p.categories.join(', '), expertise: p.expertise.join(', '),
     consultationTypes: p.consultationTypes,
     chatPrice: String(p.chatPrice), callPrice: String(p.callPrice), videoPrice: String(p.videoPrice),
-    commissionPercent: String(commissionPercent),
   };
 }
 
 const splitList = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
-
-// Same base64-data-URL convention as BannersPage.tsx / ApplyAstrologerPage.tsx
-// — this app has no object-storage service, so a dropped image file becomes
-// the `avatar` value directly (see editAstrologerSchema's own comment on the
-// backend for the body-size story).
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// Shared by both the Edit and Create drawers — a plain URL still works (the
-// text input), but staff can also drag an image file straight in, or click
-// to browse, same as BannersPage.tsx's media picker.
-function AvatarField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [dragOver, setDragOver] = useState(false);
-  const onFile = async (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    onChange(await fileToDataUrl(file));
-  };
-  return (
-    <div>
-      <input className={styles.formInput} value={value.startsWith('data:') ? '' : value} onChange={e => onChange(e.target.value)} placeholder="https://… (or drop an image below)" />
-      <div
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={e => { e.preventDefault(); setDragOver(false); onFile(e.dataTransfer.files?.[0]); }}
-        style={{
-          marginTop: 8, padding: '14px 10px', borderRadius: 8, textAlign: 'center', cursor: 'pointer',
-          border: `1.5px dashed ${dragOver ? 'var(--adm-gold, #b58a3b)' : 'var(--adm-border, #e5e0d8)'}`,
-          fontSize: '0.78rem', color: 'var(--adm-muted, #8a8678)', position: 'relative',
-        }}
-      >
-        {value.startsWith('data:') ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
-            <img src={value} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-            <span>Image selected — drop another to replace</span>
-          </div>
-        ) : 'Drag & drop an image here, or click to choose'}
-        <input
-          type="file" accept="image/*"
-          onChange={e => onFile(e.target.files?.[0])}
-          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-        />
-      </div>
-    </div>
-  );
-}
 
 const ZERO_REVENUE: ApiAstrologerRevenue = {
   astrologerId: -1, astrologerName: '', chatCount: 0, chatRevenue: 0, voiceCount: 0, voiceRevenue: 0, videoCount: 0, videoRevenue: 0, totalRevenue: 0,
@@ -163,10 +79,6 @@ const ZERO_REVENUE: ApiAstrologerRevenue = {
 
 export default function AstrologersPage() {
   const { t, accounts, suspendAccount, restoreAccount, currentUser, refreshAdminData } = useAppContext();
-  // So a second staff member's suspend/restore/delete from another tab/
-  // session shows up here too without a manual refresh — same event the
-  // public listing reacts to (see RealtimeContext's own comment).
-  const { catalogVersion } = useRealtime();
   // Revenue is an ADMIN-only view — Staff never sees it here regardless of
   // whether they've been granted the Astrologers section, mirrors the
   // backend's GET /astrologers/revenue being adminOnly now.
@@ -226,7 +138,6 @@ export default function AstrologersPage() {
         consultationTypes: createForm.consultationTypes,
         chatPrice: Number(createForm.chatPrice) || 0, callPrice: Number(createForm.callPrice) || 0, videoPrice: Number(createForm.videoPrice) || 0,
         experienceYears: Number(createForm.experienceYears) || 0,
-        commissionPercent: Math.min(100, Math.max(1, Number(createForm.commissionPercent) || 100)),
       });
       await Promise.all([refreshAdminData(), astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data))]);
       setCreateOpen(false);
@@ -239,14 +150,14 @@ export default function AstrologersPage() {
   };
 
   const openEdit = async (account: AuthUser) => {
-    const id = joinedProfile(account, catalog, liveStatus).id;
+    const id = joinedProfile(account, catalog).id;
     if (id === undefined) { setEditError('No catalog entry found for this astrologer.'); return; }
     setEditTarget(account);
     setEditError('');
     setEditLoading(true);
     try {
       const profile = await astrologerService.getRaw(id);
-      if (profile) setEditForm(profileToForm(profile, liveStatus[id]?.commissionPercent ?? 100));
+      if (profile) setEditForm(profileToForm(profile));
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Could not load this astrologer\'s profile.');
     } finally {
@@ -266,7 +177,7 @@ export default function AstrologersPage() {
   const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    const id = joinedProfile(editTarget, catalog, liveStatus).id;
+    const id = joinedProfile(editTarget, catalog).id;
     if (id === undefined) return;
     setEditSaving(true);
     setEditError('');
@@ -283,7 +194,6 @@ export default function AstrologersPage() {
         callPrice: Number(editForm.callPrice) || 0,
         videoPrice: Number(editForm.videoPrice) || 0,
         experienceYears: Number(editForm.experienceYears) || 0,
-        commissionPercent: Math.min(100, Math.max(1, Number(editForm.commissionPercent) || 100)),
       });
       // Reflect the save immediately in the list/cards without a full
       // reload — adapt() lives in astrologerService, so just re-map here.
@@ -292,65 +202,11 @@ export default function AstrologersPage() {
         experience: updated.experienceYears, languages: updated.languages, price: updated.chatPrice,
         avatar: updated.avatar, about: updated.bio, category: updated.categories, specialization: updated.expertise,
       } : c));
-      setLiveStatus(prev => prev[id] ? { ...prev, [id]: { ...prev[id], commissionPercent: updated.commissionPercent } } : prev);
       setEditTarget(null);
     } catch (err) {
       setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes.');
     } finally {
       setEditSaving(false);
-    }
-  };
-
-  // One Suspend/Activate toggle, not two separate controls — Suspend simply
-  // means "take this astrologer off the public site". For a real account,
-  // that's suspendAccount/restoreAccount (which the backend now also
-  // cascades into astrologers.is_active — see PATCH /users/:id/status's own
-  // comment). For an orphan pseudo-account (no real account to suspend —
-  // see isOrphanAccount above) it goes straight to setAstrologerActive.
-  // Re-fetches catalog + live status afterward either way, since both paths
-  // change whether this astrologer shows up in the "removed" half of GET
-  // /astrologers/status.
-  const [activeBusyId, setActiveBusyId] = useState<number | null>(null);
-  const handleSuspendToggle = async (a: AuthUser, id: number, suspend: boolean) => {
-    setActiveBusyId(id);
-    try {
-      if (isOrphanAccount(a)) {
-        await adminService.setAstrologerActive(id, !suspend);
-      } else if (suspend) {
-        await suspendAccount(a.email);
-      } else {
-        await restoreAccount(a.email);
-      }
-      const [catalogRes, statusRows] = await Promise.all([
-        astrologerService.list({ limit: 50 }),
-        adminService.getAstrologerStatuses(),
-      ]);
-      setCatalog(catalogRes.data);
-      setLiveStatus(Object.fromEntries(statusRows.map(r => [r.id, r])));
-    } finally {
-      setActiveBusyId(null);
-    }
-  };
-
-  const handleDeleteAstrologer = async (id: number, name: string) => {
-    if (!window.confirm(`Permanently delete ${name}? This also permanently deletes ALL their consultations, reviews, and booking history. This cannot be undone. Use Suspend instead if you just want to hide them.`)) return;
-    setActiveBusyId(id);
-    try {
-      await adminService.deleteAstrologer(id);
-      const [catalogRes, statusRows] = await Promise.all([
-        astrologerService.list({ limit: 50 }),
-        adminService.getAstrologerStatuses(),
-      ]);
-      setCatalog(catalogRes.data);
-      setLiveStatus(Object.fromEntries(statusRows.map(r => [r.id, r])));
-      if (selected && joinedProfile(selected, catalogRes.data, Object.fromEntries(statusRows.map(r => [r.id, r]))).id === id) setSelected(null);
-    } catch (err) {
-      // window.alert, not a page-top paragraph easy to miss while scrolled
-      // down a long roster — same reasoning as every other destructive
-      // admin-page delete's confirm (see BannersPage/PoojaPage's own).
-      window.alert(err instanceof AdminApiError ? err.message : `Could not delete ${name}.`);
-    } finally {
-      setActiveBusyId(null);
     }
   };
 
@@ -360,13 +216,13 @@ export default function AstrologersPage() {
     adminService.getAstrologerStatuses()
       .then(rows => setLiveStatus(Object.fromEntries(rows.map(r => [r.id, r]))))
       .catch(() => {});
-  }, [isAdmin, catalogVersion]);
+  }, [isAdmin]);
 
   // Reset the Boost payout override draft whenever a different astrologer's
   // drawer opens, seeded from their current override (blank = using the
   // platform default).
   useEffect(() => {
-    const id = selected ? joinedProfile(selected, catalog, liveStatus).id : undefined;
+    const id = selected ? joinedProfile(selected, catalog).id : undefined;
     const override = id !== undefined ? liveStatus[id]?.boostPayoutOverridePercent : null;
     setBoostPayoutDraft(override != null ? String(override) : '');
     setBoostPayoutError('');
@@ -398,7 +254,7 @@ export default function AstrologersPage() {
   // Fetched fresh per astrologer when the profile drawer opens — same
   // pattern as UsersPage's activity fetch.
   useEffect(() => {
-    const id = selected ? joinedProfile(selected, catalog, liveStatus).id : undefined;
+    const id = selected ? joinedProfile(selected, catalog).id : undefined;
     if (id === undefined) { setActivity(null); return; }
     setActivity(null);
     setActivityError('');
@@ -409,77 +265,10 @@ export default function AstrologersPage() {
 
   const astrologers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const real = accounts
+    return accounts
       .filter(a => a.role === 'ASTROLOGIST')
       .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
-    // Dummy/orphan catalog rows with no linked user account (old seed data,
-    // or an account later deleted/role-changed) are otherwise completely
-    // invisible here — this page is account-driven and joinedProfile only
-    // matches a catalog/liveStatus row to an EXISTING account by name. GET
-    // /astrologers/status now fills in full profile fields (name included)
-    // for these (see its own comment), so synthesize a minimal pseudo-account
-    // per orphan name so staff can still see and manage (Remove/Restore/
-    // Delete) it the same way as any real astrologer.
-    const realNames = new Set(real.map(a => a.name));
-    const seen = new Set<string>();
-    const orphans: AuthUser[] = [];
-    for (const s of Object.values(liveStatus)) {
-      if (!s.name || realNames.has(s.name) || seen.has(s.name)) continue;
-      seen.add(s.name);
-      if (q && !s.name.toLowerCase().includes(q)) continue;
-      orphans.push({ id: `orphan-${s.id}`, name: s.name, email: `orphan-${s.id}@no-account.local`, role: 'ASTROLOGIST', status: 'ACTIVE' });
-    }
-    return [...real, ...orphans];
-  }, [accounts, search, liveStatus]);
-
-  const isOrphanAccount = (a: AuthUser) => a.id.startsWith('orphan-');
-
-  // Whole-roster CSV — download every astrologer's editable fields, bulk-edit
-  // in a spreadsheet, re-upload. Same download/re-upload convention as
-  // PricingRegionsPage's region-pricing CSV.
-  const [csvBusy, setCsvBusy] = useState(false);
-  const [csvMessage, setCsvMessage] = useState('');
-  const csvFileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDownloadAstrologersCsv = async () => {
-    setCsvBusy(true);
-    setCsvMessage('');
-    try {
-      const blob = await adminService.downloadAstrologersCsv();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'astrologers.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setCsvMessage(err instanceof AdminApiError ? err.message : 'Could not download the astrologers CSV.');
-    } finally {
-      setCsvBusy(false);
-    }
-  };
-
-  const handleImportAstrologersCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setCsvBusy(true);
-    setCsvMessage('');
-    try {
-      const text = await file.text();
-      const result = await adminService.importAstrologersCsv(text);
-      setCsvMessage(result.errors.length ? `Updated ${result.updated} — ${result.errors.length} row(s) skipped: ${result.errors.join('; ')}` : `Updated ${result.updated} astrologer(s).`);
-      const [catalogRes, statusRows] = await Promise.all([astrologerService.list({ limit: 50 }), adminService.getAstrologerStatuses()]);
-      setCatalog(catalogRes.data);
-      setLiveStatus(Object.fromEntries(statusRows.map(r => [r.id, r])));
-    } catch (err) {
-      setCsvMessage(err instanceof AdminApiError ? err.message : 'Could not import this CSV.');
-    } finally {
-      setCsvBusy(false);
-    }
-  };
+  }, [accounts, search]);
 
   // Real per-type revenue (chat/voice/video, each at that astrologer's own
   // price, counted only from completed consultations) — replaces the old
@@ -488,11 +277,6 @@ export default function AstrologersPage() {
   // actually completed.
   const revenueFor = (astrologerId: number | undefined): ApiAstrologerRevenue =>
     revenue.find(r => r.astrologerId === astrologerId) ?? ZERO_REVENUE;
-
-  // Whether staff has Removed this astrologer from the bookable catalog —
-  // separate from both the live ONLINE/OFFLINE status and the account's own
-  // ACTIVE/SUSPENDED (login) status.
-  const isActiveFor = (astrologerId: number | undefined) => liveStatus[astrologerId ?? -1]?.isActive ?? true;
 
   // Live realtime availability (see ApiAstrologerStatus) — separate from the
   // account ACTIVE/SUSPENDED StatusBadge, which only reflects moderation.
@@ -533,16 +317,11 @@ export default function AstrologersPage() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <SearchInput value={search} onChange={setSearch} placeholder={t('admin_search_name_email')} />
-          <AdminButton disabled={csvBusy} onClick={handleDownloadAstrologersCsv}>Download CSV</AdminButton>
-          <AdminButton disabled={csvBusy} onClick={() => csvFileInputRef.current?.click()}>Upload CSV</AdminButton>
-          <input ref={csvFileInputRef} type="file" accept=".csv,text/csv" hidden onChange={handleImportAstrologersCsv} />
           <AdminButton variant="gold" onClick={() => { setCreateForm(EMPTY_CREATE_FORM); setCreateError(''); setCreateOpen(true); }}>
             {t('admin_astro_add')}
           </AdminButton>
         </div>
       </div>
-
-      {csvMessage && <p style={{ fontSize: '0.82rem', marginBottom: 12 }}>{csvMessage}</p>}
 
       {astrologers.length === 0 && (
         <EmptyState title={t('admin_empty_title')} description={t('admin_empty_desc')} />
@@ -552,12 +331,12 @@ export default function AstrologersPage() {
         <DataTable
           columns={[
             { key: 'name', label: t('admin_astro_col_name'), render: a => a.name },
-            { key: 'chat', label: t('admin_astro_revenue_chat'), render: a => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).chatRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog, liveStatus).id).chatCount})` },
-            { key: 'voice', label: t('admin_astro_revenue_voice'), render: a => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).voiceRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog, liveStatus).id).voiceCount})` },
-            { key: 'video', label: t('admin_astro_revenue_video'), render: a => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).videoRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog, liveStatus).id).videoCount})` },
-            { key: 'total', label: t('admin_astro_revenue_total'), render: a => <strong>₹{revenueFor(joinedProfile(a, catalog, liveStatus).id).totalRevenue.toLocaleString()}</strong> },
-            { key: 'payout', label: 'Astrologer Payout', render: a => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).astrologerPayout.toLocaleString()}` },
-            { key: 'platformShare', label: 'Platform Share', render: a => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).platformShare.toLocaleString()}` },
+            { key: 'chat', label: t('admin_astro_revenue_chat'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).chatRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).chatCount})` },
+            { key: 'voice', label: t('admin_astro_revenue_voice'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).voiceRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).voiceCount})` },
+            { key: 'video', label: t('admin_astro_revenue_video'), render: a => `₹${revenueFor(joinedProfile(a, catalog).id).videoRevenue.toLocaleString()} (${revenueFor(joinedProfile(a, catalog).id).videoCount})` },
+            { key: 'total', label: t('admin_astro_revenue_total'), render: a => <strong>₹{revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}</strong> },
+            { key: 'payout', label: 'Astrologer Payout', render: a => `₹${revenueFor(joinedProfile(a, catalog).id).astrologerPayout.toLocaleString()}` },
+            { key: 'platformShare', label: 'Platform Share', render: a => `₹${revenueFor(joinedProfile(a, catalog).id).platformShare.toLocaleString()}` },
           ]}
           rows={astrologers}
           keyField="email"
@@ -567,8 +346,8 @@ export default function AstrologersPage() {
       {astrologers.length > 0 && view === 'cards' && (
         <div className={styles.astroCardGrid}>
           {astrologers.map(a => {
-            const p = joinedProfile(a, catalog, liveStatus);
-            const active = isActiveFor(p.id);
+            const p = joinedProfile(a, catalog);
+            const status = accountStatus(a.status);
             return (
               <div key={a.email} className={styles.astroCard}>
                 <div className={styles.astroCardHeader}>
@@ -585,7 +364,7 @@ export default function AstrologersPage() {
                   {isAdmin && <div><span className={styles.astroStatLabel}>{t('admin_astro_col_earnings')}: </span><span className={styles.astroStatValue}>₹{revenueFor(p.id).totalRevenue.toLocaleString()}</span></div>}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <StatusBadge status={active ? 'active' : 'suspended'} label={active ? 'Active' : 'Suspended'} />
+                  <StatusBadge status={status} label={t(`admin_status_${status.toLowerCase()}`)} />
                   {liveStatusBadge(p.id)}
                   {boostBadge(p.id)}
                   {offerBadge(p.activeOfferPercent)}
@@ -593,10 +372,9 @@ export default function AstrologersPage() {
                 <div className={styles.astroCardActions}>
                   <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                   <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
-                  {active
-                    ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
-                    : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                  <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
+                  {status === 'ACTIVE'
+                    ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
+                    : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
                 </div>
               </div>
             );
@@ -608,36 +386,29 @@ export default function AstrologersPage() {
         <DataTable
           columns={[
             { key: 'name', label: t('admin_astro_col_name'), render: a => a.name },
-            { key: 'rating', label: t('admin_astro_col_rating'), render: a => `★ ${joinedProfile(a, catalog, liveStatus).rating}` },
-            { key: 'experience', label: t('admin_astro_col_experience'), render: a => `${joinedProfile(a, catalog, liveStatus).experience}y` },
-            { key: 'languages', label: t('admin_astro_col_languages'), render: a => joinedProfile(a, catalog, liveStatus).languages.join(', ') || '—' },
-            { key: 'consultations', label: t('admin_astro_col_consultations'), render: a => joinedProfile(a, catalog, liveStatus).consultations.toLocaleString() },
-            ...(isAdmin ? [{ key: 'earnings', label: t('admin_astro_col_earnings'), render: (a: AuthUser) => `₹${revenueFor(joinedProfile(a, catalog, liveStatus).id).totalRevenue.toLocaleString()}` }] : []),
-            { key: 'liveStatus', label: t('admin_astro_col_live_status'), render: a => liveStatusBadge(joinedProfile(a, catalog, liveStatus).id) },
+            { key: 'rating', label: t('admin_astro_col_rating'), render: a => `★ ${joinedProfile(a, catalog).rating}` },
+            { key: 'experience', label: t('admin_astro_col_experience'), render: a => `${joinedProfile(a, catalog).experience}y` },
+            { key: 'languages', label: t('admin_astro_col_languages'), render: a => joinedProfile(a, catalog).languages.join(', ') || '—' },
+            { key: 'consultations', label: t('admin_astro_col_consultations'), render: a => joinedProfile(a, catalog).consultations.toLocaleString() },
+            ...(isAdmin ? [{ key: 'earnings', label: t('admin_astro_col_earnings'), render: (a: AuthUser) => `₹${revenueFor(joinedProfile(a, catalog).id).totalRevenue.toLocaleString()}` }] : []),
+            { key: 'liveStatus', label: t('admin_astro_col_live_status'), render: a => liveStatusBadge(joinedProfile(a, catalog).id) },
             {
               key: 'promotions', label: 'Promotions', render: a => {
-                const p = joinedProfile(a, catalog, liveStatus);
+                const p = joinedProfile(a, catalog);
                 return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{boostBadge(p.id)}{offerBadge(p.activeOfferPercent)}</div>;
               },
             },
-            {
-              key: 'status', label: t('admin_astro_col_status'), render: a => {
-                const active = isActiveFor(joinedProfile(a, catalog, liveStatus).id);
-                return <StatusBadge status={active ? 'active' : 'suspended'} label={active ? 'Active' : 'Suspended'} />;
-              },
-            },
+            { key: 'status', label: t('admin_astro_col_status'), render: a => { const s = accountStatus(a.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
             {
               key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: a => {
-                const p = joinedProfile(a, catalog, liveStatus);
-                const active = isActiveFor(p.id);
+                const s = accountStatus(a.status);
                 return (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                     <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
-                    {active
-                      ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
-                      : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                    <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
+                    {s === 'ACTIVE'
+                      ? <AdminButton variant="danger" onClick={() => suspendAccount(a.email)}>{t('admin_action_suspend')}</AdminButton>
+                      : <AdminButton variant="gold" onClick={() => restoreAccount(a.email)}>{t('admin_action_activate')}</AdminButton>}
                   </div>
                 );
               }
@@ -650,7 +421,7 @@ export default function AstrologersPage() {
 
       <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.name || ''} wide>
         {selected && (() => {
-          const p = joinedProfile(selected, catalog, liveStatus);
+          const p = joinedProfile(selected, catalog);
           return (
             <>
               <div className={styles.tabsRow}>
@@ -764,7 +535,7 @@ export default function AstrologersPage() {
             </div>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>{t('admin_astro_edit_avatar')}</label>
-              <AvatarField value={editForm.avatar} onChange={avatar => setEditForm({ ...editForm, avatar })} />
+              <input className={styles.formInput} value={editForm.avatar} onChange={e => setEditForm({ ...editForm, avatar: e.target.value })} placeholder="https://…" />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>{t('admin_astro_edit_experience')}</label>
@@ -804,13 +575,6 @@ export default function AstrologersPage() {
               <label className={styles.formLabel}>{t('admin_astro_edit_video_price')}</label>
               <input type="number" min={0} className={styles.formInput} value={editForm.videoPrice} onChange={e => setEditForm({ ...editForm, videoPrice: e.target.value })} />
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Astrologer's Cut (%)</label>
-              <input type="number" min={1} max={100} className={styles.formInput} value={editForm.commissionPercent} onChange={e => setEditForm({ ...editForm, commissionPercent: e.target.value })} />
-              <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
-                What % of the per-minute price this astrologer actually earns — e.g. at ₹{editForm.chatPrice || 0}/min and {editForm.commissionPercent || 100}%, they earn ₹{((Number(editForm.chatPrice) || 0) * (Number(editForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
-              </p>
-            </div>
             {editError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{editError}</p>}
           </form>
         )}
@@ -845,7 +609,7 @@ export default function AstrologersPage() {
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_astro_edit_avatar')}</label>
-            <AvatarField value={createForm.avatar} onChange={avatar => setCreateForm({ ...createForm, avatar })} />
+            <input className={styles.formInput} value={createForm.avatar} onChange={e => setCreateForm({ ...createForm, avatar: e.target.value })} placeholder="https://…" />
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_astro_edit_experience')}</label>
@@ -884,13 +648,6 @@ export default function AstrologersPage() {
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_astro_edit_video_price')}</label>
             <input type="number" min={0} className={styles.formInput} value={createForm.videoPrice} onChange={e => setCreateForm({ ...createForm, videoPrice: e.target.value })} />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Astrologer's Cut (%)</label>
-            <input type="number" min={1} max={100} className={styles.formInput} value={createForm.commissionPercent} onChange={e => setCreateForm({ ...createForm, commissionPercent: e.target.value })} />
-            <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
-              What % of the per-minute price this astrologer actually earns — e.g. at ₹{createForm.chatPrice || 0}/min and {createForm.commissionPercent || 100}%, they earn ₹{((Number(createForm.chatPrice) || 0) * (Number(createForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
-            </p>
           </div>
           {createError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{createError}</p>}
         </form>

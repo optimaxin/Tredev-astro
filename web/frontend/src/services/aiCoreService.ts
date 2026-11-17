@@ -7,9 +7,7 @@
 // birth details instead, so nothing the browser could tamper with ends up in
 // the model's prompt. See ai-core/app/kundli/kundli_service.py.
 
-import { drainSseBuffer } from './sse';
-
-const AI_CORE_URL =(import.meta.env.VITE_AI_CORE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const AI_CORE_URL = (import.meta.env.VITE_AI_CORE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 export class AiCoreApiError extends Error {}
 
@@ -46,11 +44,8 @@ export interface AiCoreUsage {
 
 export interface AiCoreChatResponse {
   answer: string;
-  // One reply is ONE message (paragraphs separated by blank lines). Kept as a
-  // list for compatibility; render `answer` in a single bubble.
+  // The same answer split into chat bubbles by the server.
   messages: string[];
-  // The language style the server resolved for this reply.
-  response_style?: string;
   persona: string;
   session_id: string;
   request_id: string;
@@ -63,17 +58,6 @@ export interface AiCoreChatResponse {
   // "try again" note, not a reading, so the UI must not dress it up as one.
   degraded: boolean;
   notices: string[];
-  // Issued to logged-out visitors on their first reply; echoed back
-  // automatically by this service.
-  session_token?: string | null;
-  // Knowledge-base documents this answer actually drew on (validated
-  // server-side against what was retrieved; never invented).
-  citations?: AiCoreCitation[];
-}
-
-export interface AiCoreCitation {
-  id: string;
-  title: string;
 }
 
 export interface AiCorePersona {
@@ -86,39 +70,12 @@ export interface AiCorePersona {
   topK: number | null;
 }
 
-// Identity for ai-core is decided server-side: a signed-in user's access
-// token (verified by the backend), or — for logged-out visitors — a signed
-// session token ai-core issued on the first reply. Neither is invented here.
-const SESSION_TOKEN_KEY = 'ai_core_session_token';
-
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {};
-  try {
-    const accessToken = localStorage.getItem('auth_access_token');
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
-    if (sessionToken) headers['X-Chat-Session-Token'] = sessionToken;
-  } catch {
-    // Storage blocked: the request goes out anonymous, which still works.
-  }
-  return headers;
-}
-
-function rememberSessionToken(token: string | null | undefined) {
-  if (!token) return;
-  try {
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
-  } catch {
-    // Storage blocked: the next turn simply starts a fresh anonymous session.
-  }
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${AI_CORE_URL}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
   } catch {
     throw new AiCoreApiError('Could not reach the astrology assistant. Please try again.');
@@ -155,89 +112,6 @@ function anonymousUserId(): string {
   }
 }
 
-
-// ── streaming (POST /chat/stream, Server-Sent Events) ──────────────────
-// One assistant TURN per reply, made of 1–4 semantic SEGMENTS (one chat
-// bubble each, chosen by the model by topic): `start` gives the turn id;
-// `segment_start` opens a bubble; `delta` events append to that segment;
-// `segment_end` carries the segment's full text; `done` carries the final,
-// authoritative `messages` (one per bubble) + metadata; `error` replaces
-// `done` on failure. `status` reports progress while the server works.
-export type AiCoreStreamStage =
-  | 'reading_chart' | 'understanding' | 'consulting_knowledge' | 'writing' | 'checking';
-
-export interface AiCoreStreamHandlers {
-  onStart?: (messageId: string) => void;
-  onStatus?: (stage: AiCoreStreamStage) => void;
-  onSegmentStart?: (segmentId: string, index: number) => void;
-  onDelta?: (segmentId: string, text: string) => void;
-  onSegmentEnd?: (segmentId: string, index: number, text: string) => void;
-}
-
-// Thrown when the stream endpoint itself is unavailable (older ai-core, a
-// proxy that buffers SSE...) BEFORE anything was shown, so the caller can
-// safely fall back to the plain /chat request.
-export class AiCoreStreamUnavailable extends Error {}
-
-async function streamChat(body: Record<string, unknown>, handlers: AiCoreStreamHandlers): Promise<AiCoreChatResponse> {
-  let res: Response;
-  try {
-    res = await fetch(`${AI_CORE_URL}/chat/stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeaders() },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new AiCoreStreamUnavailable('stream unreachable');
-  }
-  if (res.status === 429) {
-    throw new AiCoreApiError('You are asking a little too quickly — give it a moment and try again.');
-  }
-  if (!res.ok || !res.body || !(res.headers.get('content-type') || '').includes('text/event-stream')) {
-    throw new AiCoreStreamUnavailable(`stream endpoint unavailable (${res.status})`);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let started = false;
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    const drained = drainSseBuffer(buffer + decoder.decode(value, { stream: true }));
-    buffer = drained.rest;
-    for (const parsed of drained.events) {
-      const data = parsed.data as Record<string, unknown>;
-      if (parsed.event === 'start') {
-        started = true;
-        handlers.onStart?.(String(data.message_id || ''));
-      } else if (parsed.event === 'status') {
-        handlers.onStatus?.(data.stage as AiCoreStreamStage);
-      } else if (parsed.event === 'segment_start') {
-        handlers.onSegmentStart?.(String(data.segment_id), Number(data.index));
-      } else if (parsed.event === 'delta') {
-        handlers.onDelta?.(String(data.segment_id ?? 'seg-0'), String(data.text ?? ''));
-      } else if (parsed.event === 'segment_end') {
-        handlers.onSegmentEnd?.(String(data.segment_id), Number(data.index), String(data.text ?? ''));
-      } else if (parsed.event === 'done') {
-        const final = data as unknown as AiCoreChatResponse;
-        rememberSessionToken(final.session_token);
-        return final;
-      } else if (parsed.event === 'error') {
-        throw new AiCoreApiError(typeof data.detail === 'string' ? data.detail
-          : 'The astrology assistant could not answer that right now.');
-      }
-    }
-  }
-  if (!started) throw new AiCoreStreamUnavailable('stream closed before it started');
-  throw new AiCoreApiError('The connection dropped before the answer finished. Please try again.');
-}
-
-export interface AiCoreHistoryTurn {
-  role: 'user' | 'assistant';
-  text?: string;          // user turns
-  messages?: string[];    // assistant turns, one entry per bubble
-}
 
 export type FeedbackType = 'helpful' | 'not_helpful';
 
@@ -279,7 +153,6 @@ export const aiCoreService = {
     request<AiCoreChatResponse>('/chat', {
       method: 'POST',
       body: JSON.stringify({
-        // Kept for API compatibility; ai-core derives identity itself.
         user_id: params.userId || anonymousUserId(),
         session_id: params.sessionId,
         persona_id: params.personaId,
@@ -287,46 +160,7 @@ export const aiCoreService = {
         birth: params.birth,
         chat_bubbles: true,
       }),
-    }).then((res) => {
-      rememberSessionToken(res.session_token);
-      return res;
     }),
-
-  // Same turn as `ask`, streamed segment by segment. Falls back to `ask` when
-  // the stream endpoint is unavailable and nothing has been shown yet; the
-  // turn is never sent twice once the stream has started.
-  askStream: async (
-    params: { question: string; birth: AiCoreBirthDetails; sessionId: string; personaId?: string; userId?: string },
-    handlers: AiCoreStreamHandlers,
-  ): Promise<AiCoreChatResponse> => {
-    const body = {
-      user_id: params.userId || anonymousUserId(),
-      session_id: params.sessionId,
-      persona_id: params.personaId,
-      question: params.question,
-      birth: params.birth,
-      chat_bubbles: true,
-    };
-    try {
-      return await streamChat(body, handlers);
-    } catch (err) {
-      if (!(err instanceof AiCoreStreamUnavailable)) throw err;
-      const res = await aiCoreService.ask(params);
-      const parts = res.messages?.length ? res.messages : [res.answer].filter(Boolean);
-      parts.forEach((text, index) => {
-        handlers.onSegmentStart?.(`fallback-${index}`, index);
-        handlers.onSegmentEnd?.(`fallback-${index}`, index, text);
-      });
-      return res;
-    }
-  },
-
-  // This chart's earlier conversation, each assistant turn already split into
-  // the bubbles it was shown as. Empty when there is no identity yet.
-  history: (sessionId: string) =>
-    request<{ session_id: string; turns: AiCoreHistoryTurn[] }>(
-      `/chat/history?session_id=${encodeURIComponent(sessionId)}`,
-    ).then(res => res.turns || []),
 
   personas: () => request<AiCorePersona[]>('/personas'),
 

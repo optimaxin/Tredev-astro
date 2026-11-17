@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { getPublicUser } from '../services/authService.ts';
-import { ChatError, listMessages, sendMessage, getClientKundliForAstrologer } from '../services/chatService.ts';
+import { ChatError, listMessages, sendMessage } from '../services/chatService.ts';
 import { CallRecordingError, uploadCallRecording } from '../services/callRecordingService.ts';
 import { findAllForAstrologer, findAllForUser } from '../repositories/consultationRepository.ts';
 import { findAstrologerByIdRaw, findAstrologerByUserId } from '../repositories/astrologerRepository.ts';
@@ -59,11 +59,8 @@ chatRouter.get('/mine-as-astrologer', requireAuth, async (req, res) => {
   // Each consultation already carries its own locked-at-creation price
   // (offer/loyalty/Boost-adjusted) — use that instead of the astrologer's
   // current catalog price, so a past session's estimate doesn't drift when
-  // pricing changes later. Then apply the staff-set commission split, so
-  // this astrologer only ever sees THEIR cut, not the full per-minute price
-  // (commission_percent defaults to 100, so nothing changes for anyone
-  // staff hasn't set a cut for).
-  const data = rows.map(c => ({ ...c, estimatedAmount: Math.round((c.pricePerMin || 0) * astro.commission_percent / 100) }));
+  // pricing changes later.
+  const data = rows.map(c => ({ ...c, estimatedAmount: c.pricePerMin || 0 }));
   res.json({ success: true, data });
 });
 
@@ -89,20 +86,6 @@ const sendMessageSchema = z.object({
   b => b.content.length <= (b.messageType === 'TEXT' ? 4000 : 7_000_000),
   { message: 'Message content is too large' }
 );
-
-// Astrologer-only: the client's real Kundli for this consultation, so the
-// astrologer can answer without asking the client to repeat their birth
-// details in chat. See getClientKundliForAstrologer's own comment.
-chatRouter.get('/:id/client-kundli', requireAuth, async (req, res) => {
-  const email = await requesterEmail(req, res);
-  if (!email) return;
-  try {
-    res.json({ success: true, data: await getClientKundliForAstrologer(String(req.params.id), email) });
-  } catch (e) {
-    if (e instanceof ChatError) return fail(res, e.status, 'CHAT_ERROR', e.message);
-    throw e;
-  }
-});
 
 chatRouter.post('/:id/messages', requireAuth, messageLimiter, async (req, res) => {
   const email = await requesterEmail(req, res);

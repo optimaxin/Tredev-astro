@@ -73,24 +73,6 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
         </div>
 
 
-        {/* Premium Report entry point. Lives on the Reports page because
-            that is where someone looking for a report already is — not as a
-            separate destination competing with the catalogue below. */}
-        <button
-          type="button"
-          className={styles.premiumBanner}
-          onClick={() => { setPage('premium-report'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-        >
-          <span className={styles.premiumBannerBody}>
-            <span className={styles.premiumBannerEyebrow}>{t('premium_banner_eyebrow')}</span>
-            <span className={styles.premiumBannerTitle}>{t('premium_banner_title')}</span>
-            <span className={styles.premiumBannerText}>
-              {t('premium_banner_text')}
-            </span>
-          </span>
-          <span className={styles.premiumBannerCta}>{t('premium_banner_cta')} →</span>
-        </button>
-
         {/* Report Cards */}
         <div className={styles.reportsGrid} id="reports-grid">
           {(featured ? REPORTS.slice(0, 4) : REPORTS).map((report, i) => (

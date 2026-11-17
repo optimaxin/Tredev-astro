@@ -47,10 +47,6 @@ export interface ApiAstrologerProfile {
   reviewCount: number;
   experienceYears: number;
   consultationCount: number;
-  commissionPercent: number;
-  // Percentage discount currently active for this astrologer (0 = none).
-  // The backend's astrologer model returns it; AstrologersPage reads it.
-  activeOfferPercent: number;
 }
 
 export interface ApiAstrologerRevenue {
@@ -82,10 +78,6 @@ export interface AstrologerProfilePatch {
   callPrice: number;
   videoPrice: number;
   experienceYears: number;
-  // What % of the per-minute price this astrologer actually earns — the rest
-  // is the platform's cut. Optional so an older caller that doesn't set it
-  // leaves the astrologer's existing commission untouched.
-  commissionPercent?: number;
 }
 
 export interface NewAstrologer extends AstrologerProfilePatch {
@@ -101,17 +93,11 @@ export interface ApiUserRecord {
   role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED';
   created_at: string;
-  birth_date: string | null;
-  phone_number: string | null;
-  free_ai_chat_seconds: number;
 }
 
 // Mirrors ADMIN_SECTIONS in backend/app/repositories/staffPermissionRepository.ts
-// — was missing 'applications' (hence no "Hiring" toggle here), 'tokens',
-// and 'evaluation' entirely; a STAFF account could never be granted those
-// sections even though the backend has always supported it.
 export const ADMIN_SECTIONS = [
-  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails',
+  'overview', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'settings', 'call-recordings', 'banners',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -246,54 +232,19 @@ export interface ApiStaffMember extends ApiUserRecord {
 
 export interface ApiApplication {
   id: string;
-  userId: string | null;
-  userName: string | null;
-  userEmail: string | null;
+  userId: string;
+  userName: string;
+  userEmail: string;
   expertise: string;
   experience: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   submittedAt: number;
   decidedAt: number | null;
-  fullName: string | null;
-  phoneNumber: string | null;
-  email: string | null;
-  languages: string | null;
-  bio: string | null;
-  resumeData: string | null;
-  driveLink: string | null;
-}
-
-export interface ApiEmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface ApiEmailLogEntry {
-  id: string;
-  to_email: string;
-  to_name: string | null;
-  subject: string;
-  template_id: string | null;
-  event_key: string | null;
-  status: 'SENT' | 'FAILED';
-  error: string | null;
-  sent_by: string | null;
-  sent_at: number;
 }
 
 // Live availability from the realtime server, not account status — see
-// backend/app/services/realtimeStore.ts. A normal (bookable) row only ever
-// carries the fields declared directly below — the inherited profile fields
-// (name/title/bio/pricing/etc, same shape as ApiAstrologerProfile) are
-// `undefined` for those. A Removed astrologer has no live-status row at all,
-// so the backend appends one with no status/activeCount/etc but the full
-// profile instead (see the route's own comment) — that's the one case these
-// inherited fields are actually populated, which is why they're optional.
-export interface ApiAstrologerStatus extends Partial<Omit<ApiAstrologerProfile, 'id'>> {
+// backend/app/services/realtimeStore.ts.
+export interface ApiAstrologerStatus {
   id: number;
   status: 'ONLINE_AVAILABLE' | 'ONLINE_BUSY' | 'AWAY' | 'OFFLINE';
   activeCount: number;
@@ -307,12 +258,6 @@ export interface ApiAstrologerStatus extends Partial<Omit<ApiAstrologerProfile, 
   // Payout Share card). effective* is override ?? platform default.
   boostPayoutOverridePercent: number | null;
   effectiveBoostPayoutSharePercent: number;
-  // What % of the per-minute price this astrologer actually earns.
-  commissionPercent: number;
-  // Whether this astrologer is live in the bookable catalog — false means
-  // staff has "Removed" them (see the Remove/Restore button); their past
-  // consultation/review history is untouched either way.
-  isActive: boolean;
 }
 
 export interface ApiPricingRegion {
@@ -360,8 +305,6 @@ export interface AiUsageQuery {
   provider?: string;
   status?: 'success' | 'failed';
   conversationId?: string;
-  // Defaults to real users server-side; 'internal' = evaluation/profiling/probe runs.
-  traffic?: 'user' | 'internal' | 'unknown' | 'all';
 }
 
 export interface AiUsageOverview {
@@ -399,14 +342,6 @@ export interface AiUsageModelRow {
   outputTokens: number;
   totalTokens: number;
   estimatedCostInr: number;
-  // Optional so an older backend without these fields still renders.
-  avgLatencyMs?: number | null;
-  p95LatencyMs?: number | null;
-  errorRate?: number;
-  fallbackRate?: number;
-  callsWithoutTokens?: number;
-  evaluationRequests?: number;
-  evaluationTokens?: number;
 }
 
 export interface AiUsageUserRow {
@@ -565,37 +500,11 @@ export const adminService = {
     request<{ ok: boolean }>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   updateUserRole: (id: string, role: 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN') =>
     request<{ ok: boolean }>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
-  setFreeAiChatSeconds: (id: string, seconds: number) =>
-    request<{ seconds: number }>(`/users/${id}/free-ai-chat`, { method: 'PATCH', body: JSON.stringify({ seconds }) }),
   updateAstrologerProfile: (id: number, patch: AstrologerProfilePatch) =>
     request<ApiAstrologerProfile>(`/astrologers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createAstrologer: (body: NewAstrologer) =>
     request<ApiAstrologerProfile>('/astrologers', { method: 'POST', body: JSON.stringify(body) }),
   getAstrologerRevenue: () => request<ApiAstrologerRevenue[]>('/astrologers/revenue'),
-  // "Remove" (active: false) / "Restore" (active: true) — a flag flip, not a
-  // delete; see backend's setAstrologerActive for why.
-  setAstrologerActive: (id: number, active: boolean) =>
-    request<{ id: number; isActive: boolean }>(`/astrologers/${id}/active`, { method: 'PATCH', body: JSON.stringify({ active }) }),
-
-  // Permanent delete — distinct from setAstrologerActive above. Rejects
-  // (409, surfaced via AdminApiError.message) for any astrologer with real
-  // consultation/review/booking history — only ever succeeds for one that's
-  // never actually been used.
-  deleteAstrologer: (id: number) =>
-    request<{ id: number; deleted: boolean }>(`/astrologers/${id}`, { method: 'DELETE' }),
-
-  // Raw fetch (text/csv attachment, not the {success, data} envelope) — same
-  // pattern as downloadAstrologerRegionPriceCsv below.
-  downloadAstrologersCsv: async (): Promise<Blob> => {
-    const token = localStorage.getItem('auth_access_token');
-    const res = await fetch(`${API_URL}/api/admin/astrologers/csv-export`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new AdminApiError('DOWNLOAD_FAILED', 'Could not download the astrologers CSV.');
-    return res.blob();
-  },
-  importAstrologersCsv: (csv: string) =>
-    request<{ updated: number; errors: string[] }>('/astrologers/csv-import', { method: 'POST', body: JSON.stringify({ csv }) }),
 
   listConsultations: (page = 1, limit = 100) => request<ApiConsultation[]>(`/consultations?page=${page}&limit=${limit}`),
 
@@ -645,22 +554,6 @@ export const adminService = {
   getBoostPayoutShare: () => request<{ percent: number }>('/settings/boost-payout'),
   updateBoostPayoutShare: (percent: number) =>
     request<{ percent: number }>('/settings/boost-payout', { method: 'PATCH', body: JSON.stringify({ percent }) }),
-
-  getNotifyEmails: () => request<{ adminEmail: string | null; headAstrologerEmail: string | null }>('/settings/notify-emails'),
-  updateNotifyEmails: (input: { adminEmail: string | null; headAstrologerEmail: string | null }) =>
-    request<{ adminEmail: string | null; headAstrologerEmail: string | null }>('/settings/notify-emails', { method: 'PATCH', body: JSON.stringify(input) }),
-
-  listEmailTemplates: () => request<ApiEmailTemplate[]>('/emails/templates'),
-  createEmailTemplate: (input: { name: string; subject: string; body: string }) =>
-    request<ApiEmailTemplate>('/emails/templates', { method: 'POST', body: JSON.stringify(input) }),
-  updateEmailTemplate: (id: string, input: { name: string; subject: string; body: string }) =>
-    request<ApiEmailTemplate>(`/emails/templates/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
-  deleteEmailTemplate: (id: string) =>
-    request<{ id: string; deleted: boolean }>(`/emails/templates/${id}`, { method: 'DELETE' }),
-  composeEmail: (input: { toEmail: string; toName?: string; subject: string; body: string; templateId?: string; fromIdentity?: string }) =>
-    request<{ ok: boolean }>('/emails/compose', { method: 'POST', body: JSON.stringify(input) }),
-  listEmailIdentities: () => request<{ key: string; name: string }[]>('/emails/identities'),
-  listEmailLog: () => request<ApiEmailLogEntry[]>('/emails/log'),
 
   // `percent: null` clears the override, falling back to the platform default.
   updateAstrologerBoostPayout: (id: number, percent: number | null) =>
@@ -747,22 +640,6 @@ export const adminService = {
   updateBanner: (id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }) =>
     request<ApiBanner>(`/banners/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteBanner: (id: string) => request<{ ok: true }>(`/banners/${id}`, { method: 'DELETE' }),
-
-  // ── Pooja hub (recorded videos, group sessions, aarti/book library) ───
-  listPoojaVideos: () => request<ApiPoojaVideo[]>('/pooja/videos'),
-  createPoojaVideo: (v: { title: string; category: string; videoUrl: string; thumbnailUrl: string | null }) =>
-    request<ApiPoojaVideo>('/pooja/videos', { method: 'POST', body: JSON.stringify(v) }),
-  deletePoojaVideo: (id: string) => request<{ ok: true }>(`/pooja/videos/${id}`, { method: 'DELETE' }),
-
-  listPoojaSessions: () => request<ApiPoojaSession[]>('/pooja/sessions'),
-  createPoojaSession: (s: { title: string; panditName: string; scheduledAt: number; meetingUrl: string | null; pricePaise: number | null; capacity: number | null }) =>
-    request<ApiPoojaSession>('/pooja/sessions', { method: 'POST', body: JSON.stringify(s) }),
-  deletePoojaSession: (id: string) => request<{ ok: true }>(`/pooja/sessions/${id}`, { method: 'DELETE' }),
-
-  listPoojaBooks: () => request<ApiPoojaBook[]>('/pooja/books'),
-  createPoojaBook: (b: { title: string; author: string | null; category: string; content: string | null; pdfUrl: string | null; coverImageUrl: string | null }) =>
-    request<ApiPoojaBook>('/pooja/books', { method: 'POST', body: JSON.stringify(b) }),
-  deletePoojaBook: (id: string) => request<{ ok: true }>(`/pooja/books/${id}`, { method: 'DELETE' }),
 };
 
 export interface ApiBanner {
@@ -772,37 +649,6 @@ export interface ApiBanner {
   linkUrl: string | null;
   createdAt: number;
   expiresAt: number | null;
-}
-
-export interface ApiPoojaVideo {
-  id: string;
-  title: string;
-  category: string;
-  videoUrl: string;
-  thumbnailUrl: string | null;
-  createdAt: number;
-}
-
-export interface ApiPoojaSession {
-  id: string;
-  title: string;
-  panditName: string;
-  scheduledAt: number;
-  meetingUrl: string | null;
-  pricePaise: number | null;
-  capacity: number | null;
-  createdAt: number;
-}
-
-export interface ApiPoojaBook {
-  id: string;
-  title: string;
-  author: string | null;
-  category: string;
-  content: string | null;
-  pdfUrl: string | null;
-  coverImageUrl: string | null;
-  createdAt: number;
 }
 
 export interface ApiCallRecording {

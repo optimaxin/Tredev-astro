@@ -4,7 +4,6 @@ import { adminService, AdminApiError } from '../../services/adminService';
 import type { ApiPricingRegion, ApiAstrologerRegionPrice } from '../../services/adminService';
 import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer } from '../../services/astrologerService';
-import { COUNTRY_CODES } from '../../data/countryCodes';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { AdminButton, ConfirmDialog, EmptyState } from '../components/SharedControls';
@@ -18,12 +17,8 @@ import styles from './AdminPages.module.css';
 // price, and the actual session charge) — see backend/app/services/
 // pricingEngine.ts's computeRegionAdjustedPrice. A country covered by no
 // region here uses the default multiplier of 1 (today's plain price).
-type FormState = { name: string; countryCodes: string[]; priceMultiplier: string };
-const EMPTY_FORM: FormState = { name: '', countryCodes: [], priceMultiplier: '1' };
-// Every country, sorted by name — same canonical list the phone-number
-// country picker (AuthPage.tsx) already uses, so "all possible options" here
-// means the same 130-country set, not a second list to keep in sync.
-const SORTED_COUNTRIES = [...COUNTRY_CODES].sort((a, b) => a.name.localeCompare(b.name));
+type FormState = { name: string; countryCodes: string; priceMultiplier: string };
+const EMPTY_FORM: FormState = { name: '', countryCodes: '', priceMultiplier: '1' };
 
 // DataTable needs one real key field per row; an override's real identity is
 // the (astrologerId, regionId) pair, so this stitches those into one string.
@@ -37,11 +32,6 @@ export default function PricingRegionsPage() {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<ApiPricingRegion | 'new' | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  // Closed dropdown (plain <select>, has the native arrow) to pick ONE
-  // country at a time — "Add" moves it into form.countryCodes, shown below
-  // as removable chips. Replaces an always-open multi-select listbox, which
-  // isn't what "dropdown" usually means to staff.
-  const [countryPicker, setCountryPicker] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ApiPricingRegion | null>(null);
@@ -56,19 +46,18 @@ export default function PricingRegionsPage() {
 
   useEffect(load, []);
 
-  const openAdd = () => { setForm(EMPTY_FORM); setFormError(''); setCountryPicker(''); setEditing('new'); };
+  const openAdd = () => { setForm(EMPTY_FORM); setFormError(''); setEditing('new'); };
   const openEdit = (r: ApiPricingRegion) => {
-    setForm({ name: r.name, countryCodes: r.countryCodes, priceMultiplier: String(r.priceMultiplier) });
+    setForm({ name: r.name, countryCodes: r.countryCodes.join(', '), priceMultiplier: String(r.priceMultiplier) });
     setFormError('');
-    setCountryPicker('');
     setEditing(r);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const countryCodes = form.countryCodes;
+    const countryCodes = form.countryCodes.split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
     const priceMultiplier = Number(form.priceMultiplier);
-    if (countryCodes.length === 0) { setFormError(t('admin_pricing_error_country_code')); return; }
+    if (countryCodes.some(c => c.length !== 2)) { setFormError(t('admin_pricing_error_country_code')); return; }
     if (!Number.isFinite(priceMultiplier) || priceMultiplier <= 0) { setFormError(t('admin_pricing_error_multiplier')); return; }
 
     setSaving(true);
@@ -264,55 +253,7 @@ export default function PricingRegionsPage() {
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_pricing_field_countries')}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select
-                className={styles.formInput}
-                value={countryPicker}
-                onChange={e => setCountryPicker(e.target.value)}
-              >
-                <option value="">Select a country…</option>
-                {SORTED_COUNTRIES.filter(c => !form.countryCodes.includes(c.iso2)).map(c => (
-                  <option key={c.iso2} value={c.iso2}>{c.name} ({c.iso2})</option>
-                ))}
-              </select>
-              <AdminButton
-                type="button"
-                disabled={!countryPicker}
-                onClick={() => {
-                  if (!countryPicker) return;
-                  setForm(prev => ({ ...prev, countryCodes: [...prev.countryCodes, countryPicker] }));
-                  setCountryPicker('');
-                }}
-              >
-                Add
-              </AdminButton>
-            </div>
-            {form.countryCodes.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                {form.countryCodes.map(code => {
-                  const country = SORTED_COUNTRIES.find(c => c.iso2 === code);
-                  return (
-                    <span
-                      key={code}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999,
-                        background: 'var(--adm-chip-bg, #f2ece0)', fontSize: '0.78rem',
-                      }}
-                    >
-                      {country ? `${country.name} (${code})` : code}
-                      <button
-                        type="button"
-                        onClick={() => setForm(prev => ({ ...prev, countryCodes: prev.countryCodes.filter(c => c !== code) }))}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--adm-muted, #8a8678)' }}
-                        aria-label={`Remove ${code}`}
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
+            <input className={styles.formInput} required placeholder="US, CA" value={form.countryCodes} onChange={e => setForm({ ...form, countryCodes: e.target.value })} />
             <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>{t('admin_pricing_field_countries_hint')}</p>
           </div>
           <div className={styles.formGroup}>

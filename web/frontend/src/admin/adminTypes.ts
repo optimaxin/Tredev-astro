@@ -26,6 +26,4 @@ export type AdminSection =
   | 'evaluation'
   | 'settings'
   | 'call-recordings'
-  | 'banners'
-  | 'pooja'
-  | 'emails';
+  | 'banners';

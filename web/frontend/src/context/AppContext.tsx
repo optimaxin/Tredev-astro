@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { authService, ApiRequestError } from '../services/authService';
 import type { ApiUser, RegisterBirthDetails } from '../services/authService';
 import { adminService } from '../services/adminService';
+import { astrologerService } from '../services/astrologerService';
 import { paymentService } from '../services/paymentService';
 
 export interface BirthProfile {
@@ -38,7 +39,7 @@ export interface CartItem {
 
 export interface PaymentResultInfo {
   status: 'success' | 'failed';
-  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND' | 'SLOT_BOOKING';
+  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
   amount: number;
   message?: string;
 }
@@ -71,7 +72,6 @@ export interface AuthUser {
   birthTimezoneOffsetMinutes?: number | null;
   phoneNumber?: string | null;
   phoneVerified?: boolean;
-  freeAiChatSeconds?: number;
 }
 
 export interface AuditLogEntry {
@@ -341,10 +341,6 @@ interface AppContextValue {
   isLoggedIn: boolean;
   currentUser: AuthUser | null;
   authLoading: boolean;
-  // Wallet-based consultation billing balance — see its useState's own
-  // comment in the provider for why this isn't part of AuthUser.
-  walletBalance: number | null;
-  refreshWalletBalance: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthUser | null>;
   register: (name: string, email: string, password: string, phoneNumber: string, birthDetails?: RegisterBirthDetails) => Promise<{ user: AuthUser }>;
   loginWithFirebase: (idToken: string) => Promise<{ user: AuthUser; isNewUser: boolean } | null>;
@@ -362,6 +358,7 @@ interface AppContextValue {
   // an account (e.g. AstrologersPage's "Add Astrologer") can refresh the
   // list itself instead of waiting for the next full page load.
   refreshAdminData: () => Promise<void>;
+  applyToBecomeAstrologer: (details: { expertise: string; experience: string }) => Promise<void>;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
   // Admin console actions — real backend, requires an ADMIN-role JWT
@@ -419,11 +416,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'Free Kundli',
     nav_calculators: 'Calculators',
     nav_reports: 'Reports',
-    nav_premium_report: 'Premium Report',
     nav_panchang: 'Panchang',
     nav_academy: 'Academy',
     nav_store: 'Store',
-    nav_pooja: 'Pooja',
     nav_free_kundli: 'Free Kundli',
     nav_consult: 'Consult',
     nav_login: 'LOGIN',
@@ -448,17 +443,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     // Core headings
     section_reports_title: 'Go Deeper with Jyotish',
     section_reports_desc: 'Detailed, manuscript-grade Kundli readings translating cosmic alignment into direct life direction.',
-    premium_banner_eyebrow: 'New · Premium',
-    premium_banner_title: 'Your full birth-chart reading',
-    premium_banner_text: 'A complete, personalised report — your Lagna, Moon, every planet, your Dashas and the life areas they shape — written section by section from classical sources.',
-    premium_banner_cta: 'Create My Report',
     section_tools_title: 'Free Astrology Tools',
     section_tools_desc: 'Trusted Vedic astrology tools — free, accurate, and always available.',
     section_panchang_title: "Today's Panchang",
     section_panchang_desc: 'Vedic daily almanac for auspicious timings, planetary transits, and daily energy grid.',
     section_horoscope_title: 'Your Daily Horoscope',
     section_horoscope_desc: 'Real, freshly-computed planetary transits for your Moon Sign — updated every day.',
-    horoscope_loading: "Reading today's transits for {rashi}...",
     section_astrologers_title: 'Consult an Astrologist',
     section_astrologers_desc: 'Seek guidance from verified Jyotish masters rooted in authentic Vedic lineages.',
     section_store_title: 'TredevaStore',
@@ -486,33 +476,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_cta_consult: 'Consult an Astrologist',
     hero_trust_acharyas: 'Verified Acharyas',
     hero_trust_jyotish: 'Personalized Jyotish',
-
-    // Homepage campaign carousel (CampaignBanner.tsx) — its own Google
-    // Translate pass is unreliable (verified live: text repeatedly stayed
-    // English) because each slide fully unmounts/remounts every 6s via
-    // framer-motion, which races Google's translation faster than it can
-    // keep up — so this carousel's copy is translated through this
-    // dictionary like the rest of the site instead of relying on Google.
-    banner_0_category: 'VEDIC JYOTISH',
-    banner_0_title: 'Discover the Map\nWritten at Your Birth.',
-    banner_0_desc: 'Explore your Rashis, Grahas and Nakshatras through an authentic Vedic Kundli — free, instantly.',
-    banner_0_cta: 'Generate Free Kundli',
-    banner_1_category: 'Astrologist CONSULTATION',
-    banner_1_title: 'Speak to an Astrologist\nWho Understands.',
-    banner_1_desc: 'Connect with verified Vedic astrologers for personalized guidance on your life\'s most important questions.',
-    banner_1_cta: 'Consult an Astrologist',
-    banner_2_category: 'JYOTISH REPORTS',
-    banner_2_title: 'Go Deeper into\nYour Planetary Patterns.',
-    banner_2_desc: 'Detailed Jyotish analysis across career, marriage, health and destiny by classical Vedic methods.',
-    banner_2_cta: 'Explore Reports',
-    banner_3_category: 'TREDEVASTORE',
-    banner_3_title: 'Sacred Objects Chosen\nfor Your Journey.',
-    banner_3_desc: 'Authentic gemstones, Rudraksha, Yantras and sacred objects — energized for your Kundli.',
-    banner_3_cta: 'Explore TredevaStore',
-    banner_4_category: 'TREDEVAASTRO GURUKUL',
-    banner_4_title: 'Learn the Language\nof Jyotish.',
-    banner_4_desc: 'Study Vedic astrology from foundation to mastery through structured courses taught by expert Acharyas.',
-    banner_4_cta: 'Explore Gurukul',
     hero_trust_secure: 'Private & Secure',
     hero_scroll_text: 'Scroll to explore',
 
@@ -588,12 +551,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_numerology: 'Numerology',
     cat_tarot: 'Tarot',
     cat_vastu: 'Vastu Shastra',
-    cat_family: 'Family & Heritage',
-    cat_pooja: 'Pooja & Rituals',
-    // Astrologers.tsx's "All" filter pill deliberately does NOT reuse cat_all
-    // above — that key means "All Remedies" (Store's own "All" category) and
-    // was leaking onto this unrelated page's All pill before this existed.
-    cat_all_astrologers: 'All Astrologers',
 
     // Reports translations
     report_1_title: 'Career Intelligence',
@@ -678,12 +635,10 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_about_us: 'About Us',
     footer_our_approach: 'Our Approach',
     footer_careers: 'Careers',
-    footer_join_astrologer: 'Join as an Astrologer/Pandit',
     footer_press: 'Press',
     footer_help_centre: 'Help Centre',
     footer_privacy_policy: 'Privacy Policy',
     footer_terms_of_service: 'Terms of Service',
-    footer_safety: 'Safety',
     footer_contact_us: 'Contact Us',
     footer_copyright: '© 2026 TredevaAstro. All rights reserved.',
     footer_privacy_short: 'Privacy',
@@ -772,8 +727,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_profile_field_new_password: 'New Password (leave blank to keep current)',
     admin_logout: 'Logout',
     admin_sidebar_overview: 'Overview',
-    admin_sidebar_applications: 'Hiring',
-    admin_sidebar_emails: 'Emails',
+    admin_sidebar_applications: 'Applications',
     admin_sidebar_astrologers: 'Astrologers',
     admin_sidebar_users: 'Users',
     admin_sidebar_staff: 'Staff',
@@ -790,7 +744,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_settings: 'Settings',
     'admin_sidebar_call-recordings': 'Call Recordings',
     'admin_sidebar_banners': 'Banners',
-    'admin_sidebar_pooja': 'Pooja',
     admin_call_recordings_desc: 'Recorded voice consultations. Staff-only, and each recording is automatically deleted 10 days after the call.',
     admin_call_recordings_col_user: 'User',
     admin_call_recordings_col_recorded: 'Recorded',
@@ -862,10 +815,10 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_pricing_edit_title: 'Edit Pricing Region',
     admin_pricing_field_name: 'Region Name',
     admin_pricing_field_countries: 'Country Codes',
-    admin_pricing_field_countries_hint: 'Pick a country and click Add — repeat for each country in this region.',
+    admin_pricing_field_countries_hint: 'Comma-separated ISO country codes, e.g. US, CA',
     admin_pricing_field_multiplier: 'Price Multiplier',
     admin_pricing_field_multiplier_hint: 'e.g. 1.5 = 50% more than the astrologer\'s own price, 0.8 = 20% less',
-    admin_pricing_error_country_code: 'Select at least one country.',
+    admin_pricing_error_country_code: 'Each country code must be exactly 2 letters (e.g. US, CA).',
     admin_pricing_error_multiplier: 'Multiplier must be a positive number.',
     admin_pricing_confirm_remove_title: 'Remove this region?',
     admin_pricing_confirm_remove_desc: 'Its countries will fall back to the default ×1 price immediately.',
@@ -1162,7 +1115,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कैलकुलेटर',
     nav_reports: 'रिपोर्ट्स',
-    nav_premium_report: 'प्रीमियम रिपोर्ट',
     nav_panchang: 'पंचांग',
     nav_academy: 'गुरुकुल',
     nav_store: 'स्टोर',
@@ -1188,17 +1140,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     section_reports_title: 'ज्योतिष के साथ गहराई में जाएं',
     section_reports_desc: 'विस्तृत, हस्तलिखित स्तर की कुंडली पठन जो ब्रह्मांडीय संरेखण को जीवन की दिशा में बदलता है।',
-    premium_banner_eyebrow: 'नया · प्रीमियम',
-    premium_banner_title: 'आपकी पूर्ण जन्म-कुंडली पठन',
-    premium_banner_text: 'एक संपूर्ण, व्यक्तिगत रिपोर्ट — आपकी लग्न, चंद्र, हर ग्रह, आपकी दशाएं और वे जीवन क्षेत्र जिन्हें वे प्रभावित करती हैं — शास्त्रीय स्रोतों से खंड दर खंड लिखी गई।',
-    premium_banner_cta: 'मेरी रिपोर्ट बनाएं',
     section_tools_title: 'मुफ़्त ज्योतिष उपकरण',
     section_tools_desc: 'विश्वसनीय वैदिक ज्योतिष उपकरण — मुफ़्त, सटीक और हमेशा उपलब्ध।',
     section_panchang_title: 'आज का पंचांग',
     section_panchang_desc: 'शुभ समय, ग्रहों के गोचर और दैनिक ऊर्जा ग्रिड के लिए वैदिक दैनिक पंचांग।',
     section_horoscope_title: 'आपका दैनिक राशिफल',
     section_horoscope_desc: 'आपकी चंद्र राशि के लिए वास्तविक, ताज़ा गणना किए गए ग्रह गोचर — प्रतिदिन अपडेट।',
-    horoscope_loading: 'आज के {rashi} गोचर पढ़ रहे हैं...',
     section_astrologers_title: 'आचार्य से परामर्श करें',
     section_astrologers_desc: 'प्रामाणिक वैदिक परंपराओं से जुड़े सत्यापित ज्योतिष आचार्यों से मार्गदर्शन प्राप्त करें।',
     section_store_title: 'त्रिदेव स्टोर',
@@ -1227,27 +1174,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'व्यक्तिगत ज्योतिष',
     hero_trust_secure: 'निजी और सुरक्षित',
     hero_scroll_text: 'खोजने के लिए स्क्रॉल करें',
-
-    banner_0_category: 'वैदिक ज्योतिष',
-    banner_0_title: 'वह नक्शा खोजें\nजो आपके जन्म पर लिखा गया।',
-    banner_0_desc: 'एक प्रामाणिक वैदिक कुंडली के माध्यम से अपनी राशियों, ग्रहों और नक्षत्रों को जानें — मुफ़्त, तुरंत।',
-    banner_0_cta: 'मुफ़्त कुंडली बनाएं',
-    banner_1_category: 'ज्योतिषी परामर्श',
-    banner_1_title: 'एक ज्योतिषी से बात करें\nजो आपको समझे।',
-    banner_1_desc: 'अपने जीवन के सबसे महत्वपूर्ण प्रश्नों पर व्यक्तिगत मार्गदर्शन के लिए सत्यापित वैदिक ज्योतिषियों से जुड़ें।',
-    banner_1_cta: 'ज्योतिषी से परामर्श करें',
-    banner_2_category: 'ज्योतिष रिपोर्ट्स',
-    banner_2_title: 'अपने ग्रहों के पैटर्न में\nऔर गहराई से जाएं।',
-    banner_2_desc: 'पारंपरिक वैदिक विधियों द्वारा करियर, विवाह, स्वास्थ्य और भाग्य पर विस्तृत ज्योतिष विश्लेषण।',
-    banner_2_cta: 'रिपोर्ट्स देखें',
-    banner_3_category: 'ट्रेडेवास्टोर',
-    banner_3_title: 'आपकी यात्रा के लिए\nचुनी गई पवित्र वस्तुएं।',
-    banner_3_desc: 'प्रामाणिक रत्न, रुद्राक्ष, यंत्र और पवित्र वस्तुएं — आपकी कुंडली के लिए ऊर्जावान।',
-    banner_3_cta: 'ट्रेडेवास्टोर देखें',
-    banner_4_category: 'ट्रेडेवाएस्ट्रो गुरुकुल',
-    banner_4_title: 'ज्योतिष की भाषा\nसीखें।',
-    banner_4_desc: 'विशेषज्ञ आचार्यों द्वारा संरचित पाठ्यक्रमों के माध्यम से आधार से लेकर निपुणता तक वैदिक ज्योतिष का अध्ययन करें।',
-    banner_4_cta: 'गुरुकुल देखें',
 
     // Guidance Banner
     guidance_eyebrow: '✦ ज्योतिष मार्गदर्शन',
@@ -1319,9 +1245,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cat_numerology: 'अंकशास्त्र',
     cat_tarot: 'टैरो',
     cat_vastu: 'वास्तु शास्त्र',
-    cat_family: 'परिवार व विरासत',
-    cat_pooja: 'पूजा व अनुष्ठान',
-    cat_all_astrologers: 'सभी ज्योतिषी',
 
     report_1_title: 'करियर इंटेलिजेंस',
     report_1_sub: 'आपका व्यावसायिक मार्ग, डिकोड किया गया',
@@ -1789,7 +1712,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'मुफ़्त कुंडली',
     nav_calculators: 'कॅल्क्युलेटर',
     nav_reports: 'अहवाल',
-    nav_premium_report: 'प्रीमियम अहवाल',
     nav_panchang: 'पंचांग',
     nav_academy: 'गुरुकुल',
     nav_store: 'स्टोअर',
@@ -1799,17 +1721,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     section_reports_title: 'ज्योतिषशास्त्रासह सखोल जा',
     section_reports_desc: 'अचूक आणि सखोल कुंडली वाचन जे ग्रहस्थितीला योग्य दिशा दाखवते.',
-    premium_banner_eyebrow: 'नवीन · प्रीमियम',
-    premium_banner_title: 'तुमचे संपूर्ण जन्म-कुंडली वाचन',
-    premium_banner_text: 'एक संपूर्ण, वैयक्तिक अहवाल — तुमची लग्न, चंद्र, प्रत्येक ग्रह, तुमच्या दशा आणि त्या प्रभावित करणारे जीवन क्षेत्र — शास्त्रीय स्त्रोतांमधून विभागवार लिहिलेला.',
-    premium_banner_cta: 'माझा अहवाल तयार करा',
     section_tools_title: 'मोफत ज्योतिष साधने',
     section_tools_desc: 'विश्वासार्ह वैदिक ज्योतिष साधने — मोफत, अचूक आणि नेहमी उपलब्ध.',
     section_panchang_title: 'आजचे पंचांग',
     section_panchang_desc: 'शुभ काळ, ग्रहांचे गोचर आणि दैनिक ऊर्जा ग्रिडसाठी वैदिक दैनिक पंचांग.',
     section_horoscope_title: 'तुमचे दैनिक राशीफल',
     section_horoscope_desc: 'तुमच्या चंद्र राशीसाठी खरे, ताजे मोजलेले ग्रह गोचर — दररोज अद्ययावत.',
-    horoscope_loading: 'आजच्या {rashi} साठी गोचर वाचत आहोत...',
     section_astrologers_title: 'आचार्यांचा सल्ला घ्या',
     section_astrologers_desc: 'प्रामाणिक वैदिक परंपरेतील अनुभवी ज्योतिष आचार्यांकडून मार्गदर्शन मिळवा.',
     section_store_title: 'त्रिदेव स्टोअर',
@@ -1838,27 +1755,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'वैयक्तिकृत ज्योतिष',
     hero_trust_secure: 'खाजगी आणि सुरक्षित',
     hero_scroll_text: 'अन्वेषण करण्यासाठी स्क्रोल करा',
-
-    banner_0_category: 'वैदिक ज्योतिष',
-    banner_0_title: 'तो नकाशा शोधा\nजो तुमच्या जन्मावेळी लिहिला गेला.',
-    banner_0_desc: 'अस्सल वैदिक कुंडलीद्वारे तुमच्या राशी, ग्रह आणि नक्षत्रे जाणून घ्या — मोफत, त्वरित.',
-    banner_0_cta: 'मोफत कुंडली तयार करा',
-    banner_1_category: 'ज्योतिषी सल्लामसलत',
-    banner_1_title: 'अशा ज्योतिषीशी बोला\nजो तुम्हाला समजतो.',
-    banner_1_desc: 'तुमच्या आयुष्यातील सर्वात महत्त्वाच्या प्रश्नांसाठी वैयक्तिक मार्गदर्शनासाठी सत्यापित वैदिक ज्योतिषींशी संपर्क साधा.',
-    banner_1_cta: 'ज्योतिषीशी सल्लामसलत करा',
-    banner_2_category: 'ज्योतिष अहवाल',
-    banner_2_title: 'तुमच्या ग्रहस्थितींमध्ये\nअधिक खोलवर जा.',
-    banner_2_desc: 'पारंपरिक वैदिक पद्धतींद्वारे करिअर, विवाह, आरोग्य आणि नशिबाचे सविस्तर ज्योतिष विश्लेषण.',
-    banner_2_cta: 'अहवाल पहा',
-    banner_3_category: 'ट्रेडेवास्टोअर',
-    banner_3_title: 'तुमच्या प्रवासासाठी\nनिवडलेल्या पवित्र वस्तू.',
-    banner_3_desc: 'अस्सल रत्ने, रुद्राक्ष, यंत्रे आणि पवित्र वस्तू — तुमच्या कुंडलीसाठी ऊर्जान्वित.',
-    banner_3_cta: 'ट्रेडेवास्टोअर पहा',
-    banner_4_category: 'ट्रेडेवाअॅस्ट्रो गुरुकुल',
-    banner_4_title: 'ज्योतिषाची भाषा\nशिका.',
-    banner_4_desc: 'तज्ञ आचार्यांनी शिकवलेल्या संरचित अभ्यासक्रमांद्वारे पायाभूत ते प्रावीण्यापर्यंत वैदिक ज्योतिषाचा अभ्यास करा.',
-    banner_4_cta: 'गुरुकुल पहा',
 
     // Guidance Banner
     guidance_eyebrow: '✦ ज्योतिषीय मार्गदर्शन',
@@ -2380,7 +2276,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'কোষ্ঠী',
     nav_calculators: 'ক্যালকুলেটর',
     nav_reports: 'রিপোর্ট',
-    nav_premium_report: 'প্রিমিয়াম রিপোর্ট',
     nav_panchang: 'পঞ্জিকা',
     nav_academy: 'গুরুকুল',
     nav_store: 'স্টোর',
@@ -2390,10 +2285,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     section_reports_title: 'জ্যোতিষের সাথে গভীরে যান',
     section_reports_desc: 'বিস্তারিত কোষ্ঠী বিচার যা আপনার গ্রহের অবস্থানকে জীবনের সঠিক দিশায় রূপান্তর করে।',
-    premium_banner_eyebrow: 'নতুন · প্রিমিয়াম',
-    premium_banner_title: 'আপনার সম্পূর্ণ জন্ম-কোষ্ঠী বিচার',
-    premium_banner_text: 'একটি সম্পূর্ণ, ব্যক্তিগতকৃত রিপোর্ট — আপনার লগ্ন, চন্দ্র, প্রতিটি গ্রহ, আপনার দশা এবং যে জীবন ক্ষেত্রগুলি তারা প্রভাবিত করে — ধ্রুপদী উৎস থেকে অংশ অনুযায়ী লেখা।',
-    premium_banner_cta: 'আমার রিপোর্ট তৈরি করুন',
     section_tools_title: 'ফ্রি জ্যোতিষ সরঞ্জাম',
     section_tools_desc: 'নির্ভরযোগ্য বৈদিক জ্যোতিষ সরঞ্জাম — সম্পূর্ণ ফ্রি ও নির্ভুল।',
     section_panchang_title: 'আজকের পঞ্জিকা',
@@ -2426,27 +2317,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'ব্যক্তিগতকৃত জ্যোতিষ',
     hero_trust_secure: 'ব্যক্তিগত ও সুরক্ষিত',
     hero_scroll_text: 'আবিষ্কার করতে স্ক্রোল করুন',
-
-    banner_0_category: 'বৈদিক জ্যোতিষ',
-    banner_0_title: 'সেই মানচিত্র আবিষ্কার করুন\nযা আপনার জন্মের সময় লেখা হয়েছিল।',
-    banner_0_desc: 'একটি সত্যিকারের বৈদিক কুণ্ডলীর মাধ্যমে আপনার রাশি, গ্রহ এবং নক্ষত্র সম্পর্কে জানুন — বিনামূল্যে, তাৎক্ষণিকভাবে।',
-    banner_0_cta: 'বিনামূল্যে কুণ্ডলী তৈরি করুন',
-    banner_1_category: 'জ্যোতিষী পরামর্শ',
-    banner_1_title: 'এমন একজন জ্যোতিষীর সাথে কথা বলুন\nযিনি আপনাকে বোঝেন।',
-    banner_1_desc: 'আপনার জীবনের সবচেয়ে গুরুত্বপূর্ণ প্রশ্নগুলির জন্য ব্যক্তিগত নির্দেশনার জন্য যাচাইকৃত বৈদিক জ্যোতিষীদের সাথে সংযুক্ত হন।',
-    banner_1_cta: 'জ্যোতিষীর সাথে পরামর্শ করুন',
-    banner_2_category: 'জ্যোতিষ প্রতিবেদন',
-    banner_2_title: 'আপনার গ্রহের অবস্থান সম্পর্কে\nআরও গভীরে যান।',
-    banner_2_desc: 'ক্লাসিক্যাল বৈদিক পদ্ধতিতে কর্মজীবন, বিবাহ, স্বাস্থ্য এবং ভাগ্য জুড়ে বিস্তারিত জ্যোতিষ বিশ্লেষণ।',
-    banner_2_cta: 'প্রতিবেদন দেখুন',
-    banner_3_category: 'ট্রেডেভাস্টোর',
-    banner_3_title: 'আপনার যাত্রার জন্য\nনির্বাচিত পবিত্র বস্তু।',
-    banner_3_desc: 'প্রকৃত রত্ন, রুদ্রাক্ষ, যন্ত্র এবং পবিত্র বস্তু — আপনার কুণ্ডলীর জন্য শক্তিসম্পন্ন।',
-    banner_3_cta: 'ট্রেডেভাস্টোর দেখুন',
-    banner_4_category: 'ট্রেডেভাঅ্যাস্ট্রো গুরুকুল',
-    banner_4_title: 'জ্যোতিষের ভাষা\nশিখুন।',
-    banner_4_desc: 'বিশেষজ্ঞ আচার্যদের দ্বারা পরিচালিত কাঠামোবদ্ধ কোর্সের মাধ্যমে ভিত্তি থেকে দক্ষতা পর্যন্ত বৈদিক জ্যোতিষ অধ্যয়ন করুন।',
-    banner_4_cta: 'গুরুকুল দেখুন',
 
     // Guidance Banner
     guidance_eyebrow: '✦ জ্যোতিষীয় নির্দেশনা',
@@ -2561,7 +2431,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'ஜாதகம்',
     nav_calculators: 'கணக்கீடுகள்',
     nav_reports: 'அறிக்கைகள்',
-    nav_premium_report: 'பிரீமியம் அறிக்கை',
     nav_panchang: 'பஞ்சாங்கம்',
     nav_academy: 'குருகுலம்',
     nav_store: 'கடை',
@@ -2571,10 +2440,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     section_reports_title: 'ஜோதிடத்தின் ஆழம் அறியுங்கள்',
     section_reports_desc: 'உங்கள் கிரக அமைப்புகளை வாழ்வின் நேரடி வழிகாட்டியாக மாற்றும் விரிவான ஜாதக வாசிப்பு.',
-    premium_banner_eyebrow: 'புதியது · பிரீமியம்',
-    premium_banner_title: 'உங்கள் முழுமையான ஜாதக வாசிப்பு',
-    premium_banner_text: 'ஒரு முழுமையான, தனிப்பயன் அறிக்கை — உங்கள் லக்னம், சந்திரன், ஒவ்வொரு கிரகமும், உங்கள் தசைகள் மற்றும் அவை பாதிக்கும் வாழ்க்கைத் துறைகள் — பாரம்பரிய ஆதாரங்களிலிருந்து பிரிவு வாரியாக எழுதப்பட்டது.',
-    premium_banner_cta: 'எனது அறிக்கையை உருவாக்கு',
     section_tools_title: 'இலவச ஜோதிட கருவிகள்',
     section_tools_desc: 'நம்பகமான வேத ஜோதிட கருவிகள் — இலவசம், துல்லியமானது, எப்போதும் கிடைக்கும்.',
     section_panchang_title: 'இன்றைய பஞ்சாங்கம்',
@@ -2607,27 +2472,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'தனிப்பயனாக்கப்பட்ட ஜோதிடம்',
     hero_trust_secure: 'தனிப்பட்ட மற்றும் பாதுகாப்பானது',
     hero_scroll_text: 'ஆராய கீழே உருட்டவும்',
-
-    banner_0_category: 'வேத ஜோதிடம்',
-    banner_0_title: 'உங்கள் பிறப்பில் எழுதப்பட்ட\nவரைபடத்தைக் கண்டறியுங்கள்.',
-    banner_0_desc: 'உண்மையான வேத ஜாதகத்தின் மூலம் உங்கள் ராசிகள், கிரகங்கள் மற்றும் நட்சத்திரங்களை ஆராயுங்கள் — இலவசமாக, உடனடியாக.',
-    banner_0_cta: 'இலவச ஜாதகம் உருவாக்கவும்',
-    banner_1_category: 'ஜோதிடர் ஆலோசனை',
-    banner_1_title: 'உங்களைப் புரிந்துகொள்ளும்\nஜோதிடருடன் பேசுங்கள்.',
-    banner_1_desc: 'உங்கள் வாழ்க்கையின் மிக முக்கியமான கேள்விகளுக்கு தனிப்பயனாக்கப்பட்ட வழிகாட்டுதலுக்காக சரிபார்க்கப்பட்ட வேத ஜோதிடர்களுடன் இணையுங்கள்.',
-    banner_1_cta: 'ஜோதிடரிடம் ஆலோசிக்கவும்',
-    banner_2_category: 'ஜோதிட அறிக்கைகள்',
-    banner_2_title: 'உங்கள் கிரக அமைப்புகளில்\nஆழமாகச் செல்லுங்கள்.',
-    banner_2_desc: 'பாரம்பரிய வேத முறைகள் மூலம் தொழில், திருமணம், ஆரோக்கியம் மற்றும் தலைவிதி குறித்த விரிவான ஜோதிட பகுப்பாய்வு.',
-    banner_2_cta: 'அறிக்கைகளை ஆராயுங்கள்',
-    banner_3_category: 'ட்ரெடேவாஸ்டோர்',
-    banner_3_title: 'உங்கள் பயணத்திற்காகத்\nதேர்ந்தெடுக்கப்பட்ட புனித பொருட்கள்.',
-    banner_3_desc: 'உண்மையான ரத்தினங்கள், உருத்திராட்சம், யந்திரங்கள் மற்றும் புனித பொருட்கள் — உங்கள் ஜாதகத்திற்காக சக்தியூட்டப்பட்டவை.',
-    banner_3_cta: 'ட்ரெடேவாஸ்டோரை ஆராயுங்கள்',
-    banner_4_category: 'ட்ரெடேவாஜோதிடம் குருகுலம்',
-    banner_4_title: 'ஜோதிடத்தின் மொழியைக்\nகற்றுக்கொள்ளுங்கள்.',
-    banner_4_desc: 'நிபுணர் ஆசார்யர்களால் கற்பிக்கப்படும் கட்டமைக்கப்பட்ட பாடநெறிகள் மூலம் அடிப்படையிலிருந்து தேர்ச்சி வரை வேத ஜோதிடத்தைப் படியுங்கள்.',
-    banner_4_cta: 'குருகுலத்தை ஆராயுங்கள்',
 
     // Guidance Banner
     guidance_eyebrow: '✦ ஜோதிட வழிகாட்டுதல்',
@@ -2742,7 +2586,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     nav_kundli: 'జాతకం',
     nav_calculators: 'క్యాలిక్యులేటర్లు',
     nav_reports: 'নিవేదికలు',
-    nav_premium_report: 'ప్రీమియం నివేదిక',
     nav_panchang: 'పంచాంగం',
     nav_academy: 'గురుకులం',
     nav_store: 'స్టోర్',
@@ -2752,10 +2595,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     section_reports_title: 'జ్యోతిష్యం తో లోతుగా తెలుసుకోండి',
     section_reports_desc: 'గ్రహాల గమనాన్ని జీవిత మార్గదర్శకంగా మార్చే వివరణాత్మక జాతక నివేదిక.',
-    premium_banner_eyebrow: 'కొత్తది · ప్రీమియం',
-    premium_banner_title: 'మీ పూర్తి జన్మ-కుండలి పఠనం',
-    premium_banner_text: 'ఒక సంపూర్ణ, వ్యక్తిగతీకరించిన నివేదిక — మీ లగ్నం, చంద్రుడు, ప్రతి గ్రహం, మీ దశలు మరియు అవి ప్రభావితం చేసే జీవిత రంగాలు — సాంప్రదాయ మూలాల నుండి విభాగాల వారీగా రాయబడింది.',
-    premium_banner_cta: 'నా నివేదికను సృష్టించండి',
     section_tools_title: 'ఉచిత జ్యోతిష్య సాధనాలు',
     section_tools_desc: 'ఖచ్చితమైన మరియు విశ్వసనీయమైన ఉచిత వైదిక జ్యోతిష్య సాధనాలు.',
     section_panchang_title: 'నేటి పంచాంగం',
@@ -2788,27 +2627,6 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     hero_trust_jyotish: 'వ్యక్తిగతీకరించిన జ్యోతిష్యం',
     hero_trust_secure: 'వ్యక్తిగత & సురక్షితం',
     hero_scroll_text: 'అన్వేషించడానికి స్క్రోల్ చేయండి',
-
-    banner_0_category: 'వైదిక జ్యోతిష్యం',
-    banner_0_title: 'మీ జననం వద్ద వ్రాయబడిన\nపటాన్ని కనుగొనండి.',
-    banner_0_desc: 'ప్రామాణికమైన వేద జాతకం ద్వారా మీ రాశులు, గ్రహాలు మరియు నక్షత్రాలను అన్వేషించండి — ఉచితంగా, తక్షణమే.',
-    banner_0_cta: 'ఉచిత జాతకం సృష్టించండి',
-    banner_1_category: 'జ్యోతిష్కుడి సంప్రదింపు',
-    banner_1_title: 'మిమ్మల్ని అర్థం చేసుకునే\nజ్యోతిష్కుడితో మాట్లాడండి.',
-    banner_1_desc: 'మీ జీవితంలోని అతి ముఖ్యమైన ప్రశ్నలపై వ్యక్తిగత మార్గదర్శకత్వం కోసం ధృవీకరించబడిన వేద జ్యోతిష్కులతో కనెక్ట్ అవ్వండి.',
-    banner_1_cta: 'జ్యోతిష్కుడిని సంప్రదించండి',
-    banner_2_category: 'జ్యోతిష్య నివేదికలు',
-    banner_2_title: 'మీ గ్రహ నమూనాలలో\nమరింత లోతుగా వెళ్ళండి.',
-    banner_2_desc: 'సాంప్రదాయ వేద పద్ధతుల ద్వారా వృత్తి, వివాహం, ఆరోగ్యం మరియు విధి గురించి వివరణాత్మక జ్యోతిష్య విశ్లేషణ.',
-    banner_2_cta: 'నివేదికలను అన్వేషించండి',
-    banner_3_category: 'ట్రెడేవాస్టోర్',
-    banner_3_title: 'మీ ప్రయాణం కోసం\nఎంచుకున్న పవిత్ర వస్తువులు.',
-    banner_3_desc: 'ప్రామాణికమైన రత్నాలు, రుద్రాక్షలు, యంత్రాలు మరియు పవిత్ర వస్తువులు — మీ జాతకం కోసం శక్తివంతం చేయబడ్డాయి.',
-    banner_3_cta: 'ట్రెడేవాస్టోర్‌ను అన్వేషించండి',
-    banner_4_category: 'ట్రెడేవాఆస్ట్రో గురుకులం',
-    banner_4_title: 'జ్యోతిష్య భాషను\nనేర్చుకోండి.',
-    banner_4_desc: 'నిపుణులైన ఆచార్యులు బోధించే నిర్మాణాత్మక కోర్సుల ద్వారా పునాది నుండి నైపుణ్యం వరకు వేద జ్యోతిష్యాన్ని అధ్యయనం చేయండి.',
-    banner_4_cta: 'గురుకులాన్ని అన్వేషించండి',
 
     // Guidance Banner
     guidance_eyebrow: '✦ జ్యోతిష్య మార్గదర్శకత్వం',
@@ -2946,28 +2764,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [astrologerFilter, setAstrologerFilter] = useState('All');
 
   // Navigation & Cart States
-  // Every other "page" here is pure in-memory state with no real URL (see
-  // the pushState/replaceState calls below, which pass '' for every page
-  // except this one) — this app has no router. Giving every page a real URL
-  // would be a much bigger, riskier change to this shared mechanism, so this
-  // is deliberately narrow: just the one page staff specifically asked for
-  // a real, shareable/bookmarkable link for. wrangler.jsonc's
-  // `not_found_handling: "single-page-application"` already makes a fresh
-  // load of this path work (serves index.html instead of a 404).
-  const APPLY_ASTROLOGER_PATH = '/apply-astrologer';
   const [page, setPageState] = useState(() => {
-    if (window.history.state && window.history.state.page) return window.history.state.page;
-    if (window.location.pathname === APPLY_ASTROLOGER_PATH) return 'apply-astrologer';
-    return 'home';
+    return (window.history.state && window.history.state.page) || 'home';
   });
   const [selectedId, setSelectedIdState] = useState<number | string | null>(() => {
     return (window.history.state && window.history.state.selectedId) || null;
   });
   const [paymentResult, setPaymentResult] = useState<PaymentResultInfo | null>(null);
-  // Was plain in-memory state — any reload silently wiped whatever someone
-  // was building, with no explanation. Every other cross-reload state here
-  // already persists this same way.
-  const [cart, setCart] = useState<CartItem[]>(() => loadLS('cart', [] as CartItem[]));
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const setPage = (p: string) => {
     setPageState(p);
@@ -3012,7 +2816,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener('popstate', handlePopState);
 
     if (!window.history.state) {
-      window.history.replaceState({ page, selectedId, concern }, '', page === 'apply-astrologer' ? APPLY_ASTROLOGER_PATH : '/');
+      window.history.replaceState({ page, selectedId, concern }, '', '');
     }
 
     return () => {
@@ -3033,7 +2837,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    window.history.pushState({ page, selectedId, concern }, '', page === 'apply-astrologer' ? APPLY_ASTROLOGER_PATH : '/');
+    window.history.pushState({ page, selectedId, concern }, '', '');
   }, [page, selectedId, concern]);
 
   // Theme State — DEFAULT IS LIGHT
@@ -3050,28 +2854,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const isLoggedIn = !!currentUser;
 
-  // The wallet-based consultation billing model's balance — deliberately NOT
-  // part of AuthUser (that's a login-time snapshot; this changes mid-session
-  // on every recharge and every consultation that ends) so it's refreshed on
-  // its own schedule: on login, after a WALLET_RECHARGE payment succeeds
-  // (see the payment-status effect below), and after a consultation ends
-  // (RealtimeContext calls refreshWalletBalance via useAppContext).
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const refreshWalletBalance = React.useCallback(async () => {
-    if (!localStorage.getItem('auth_access_token')) { setWalletBalance(null); return; }
-    try {
-      const { balance } = await paymentService.getWalletBalance();
-      setWalletBalance(balance);
-    } catch {
-      // Best-effort — the header just keeps showing whatever it last had.
-    }
-  }, []);
-
   React.useEffect(() => {
     currentUserRoleRef.current = currentUser?.role;
-    if (currentUser) refreshWalletBalance();
-    else setWalletBalance(null);
-  }, [currentUser, refreshWalletBalance]);
+  }, [currentUser]);
 
   // Defense in depth: the popstate handler above already prevents a
   // workspace-role user (ADMIN/STAFF/ASTROLOGIST) from ever landing on a
@@ -3099,7 +2884,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     birthDate: u.birth_date, birthTime: u.birth_time, birthPlace: u.birth_place,
     birthLatitude: u.birth_latitude, birthLongitude: u.birth_longitude, birthTimezoneOffsetMinutes: u.birth_timezone_offset_minutes,
     phoneNumber: u.phone_number, phoneVerified: u.phone_verified,
-    freeAiChatSeconds: u.free_ai_chat_seconds,
   });
 
   // Restore session on load: an access token is short-lived (15 min), so a
@@ -3141,10 +2925,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshAdminData = async () => {
     try {
       const users = await adminService.listUsers();
-      setAccounts(users.map(u => ({
-        id: u.id, name: u.name, email: u.email, role: u.role, status: u.status,
-        birthDate: u.birth_date, phoneNumber: u.phone_number, freeAiChatSeconds: u.free_ai_chat_seconds,
-      })));
+      setAccounts(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status })));
     } catch (e) {
       console.error('Failed to load admin data', e);
     }
@@ -3250,6 +3031,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (refreshToken) authService.logout(refreshToken).catch(() => { }); // best-effort server-side revoke
     clearTokens();
     setCurrentUser(null);
+  };
+
+  const applyToBecomeAstrologer = async (details: { expertise: string; experience: string }) => {
+    if (!currentUser) return;
+    await astrologerService.submitApplication(details.expertise, details.experience);
   };
 
   const suspendAccount = async (email: string) => {
@@ -3430,13 +3216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persistAstrologerNotifications(allAstrologerNotifications.map(n => n.recipientEmail === astrologerEmail ? { ...n, read: true } : n));
   };
 
-  // Language selector state — drives real translation again (see t() below)
-  // for the ~680 keyed strings this dictionary covers. Coverage past that is
-  // partial by design: hi/mr are close to complete, bn/ta/te cover a smaller
-  // subset (see TRANSLATIONS), and any hardcoded page text with no key at
-  // all stays English regardless of this setting — there's no page-wide
-  // machine translation layer any more (the previous embedded Google
-  // Translate widget was removed for being inconsistent device-to-device).
+  // Language selector state
   const [language, setLanguageState] = useState<'en' | 'hi' | 'mr' | 'bn' | 'ta' | 'te'>(() => {
     const saved = localStorage.getItem('language');
     return (saved as any) || 'en';
@@ -3447,16 +3227,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', l);
   };
 
-  // Falls back to English per-key (not just when the whole language is
-  // missing) since bn/ta/te only cover a subset of keys — a selected
-  // language with a gap should show that one string in English, not the
-  // bare untranslated key.
   const t = (key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key;
   };
 
   const tOr = (key: string, fallbackKey: string): string => {
-    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || t(fallbackKey);
+    return TRANSLATIONS[language]?.[key] || t(fallbackKey);
   };
 
   const setBirthProfile = (p: BirthProfile) => {
@@ -3477,29 +3253,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const persistCart = (next: CartItem[]) => {
-    setCart(next);
-    try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
-  };
-
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const exists = prev.find(i => i.id === item.id);
-      const next = exists ? prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i) : [...prev, item];
-      try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
-      return next;
+      if (exists) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, item];
     });
   };
 
   const removeFromCart = (id: number) => {
-    setCart(prev => {
-      const next = prev.filter(i => i.id !== id);
-      try { localStorage.setItem('cart', JSON.stringify(next)); } catch { /* best-effort */ }
-      return next;
-    });
+    setCart(prev => prev.filter(i => i.id !== id));
   };
 
-  const clearCart = () => persistCart([]);
+  const clearCart = () => setCart([]);
 
   // Picks up after a gateway's hosted payment page (see paymentService.pay's
   // redirect) redirects the browser back to `/?payment_id=...`
@@ -3553,10 +3321,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const { status, purpose, amount } = await paymentService.getStatus(paymentId);
           if (status === 'PAID') {
             if (purpose === 'STORE_ORDER') clearCart();
-            // Credited server-side already (fulfillment.ts) — this just
-            // syncs the header's displayed balance with that real outcome,
-            // same best-effort pattern refreshWalletBalance already uses.
-            if (purpose === 'WALLET_RECHARGE') refreshWalletBalance();
             // A consultation is booked server-side only once the payment
             // clears (see fulfillment.ts's CONSULTATION case) — the waiting
             // page itself (driven by the realtime socket's userSync) is the
@@ -3601,10 +3365,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
       isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, logout,
-      walletBalance, refreshWalletBalance,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,
-      accounts, refreshAdminData,
+      accounts, refreshAdminData, applyToBecomeAstrologer,
       auditLog, notifications,
       logAdminAction: (action: string, target: string) => { adminService.logNote(action, target).then(refreshAdminData); },
       suspendAccount, restoreAccount, updateAccountRole, updateMyProfile,

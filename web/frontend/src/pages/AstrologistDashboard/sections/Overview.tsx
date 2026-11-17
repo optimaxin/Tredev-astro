@@ -6,7 +6,6 @@ import { consultationService } from '../../../services/consultationService';
 import type { MyConsultationAsAstrologer } from '../../../services/consultationService';
 import ChatWindow from '../../../components/ChatWindow/ChatWindow';
 import CallWindow from '../../../components/CallWindow/CallWindow';
-import ClientKundliPanel from '../ClientKundliPanel';
 import {
   DAY_MS, TYPE_ICON, isSameDay, formatTime, formatDateShort,
   EmptyState, KpiCard, MiniBarChart, Panel, ConfirmModal,
@@ -22,9 +21,8 @@ function timeAgo(ts: number): string {
 }
 
 function LiveStatusCard() {
-  const { astrologerSync, goOnline, goOffline, connected, endActiveConsultation } = useRealtime();
+  const { astrologerSync, goOnline, goOffline, connected } = useRealtime();
   const [busy, setBusy] = useState(false);
-  const [endingConsultation, setEndingConsultation] = useState(false);
   const [elapsed, setElapsed] = useState('');
 
   const active = astrologerSync?.activeConsultation;
@@ -50,17 +48,6 @@ function LiveStatusCard() {
     try { await (isOnline ? goOffline() : goOnline()); } finally { setBusy(false); }
   };
 
-  const handleEndConsultation = async () => {
-    setEndingConsultation(true);
-    try {
-      await endActiveConsultation();
-    } catch (e) {
-      console.error('Failed to end consultation:', e);
-    } finally {
-      setEndingConsultation(false);
-    }
-  };
-
   return (
     <Panel title="Live Status">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -84,25 +71,16 @@ function LiveStatusCard() {
               <div className={styles.tablePrimary}>{active.userName}</div>
               <div className={styles.tableMuted}>{active.category} · {active.type}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ textAlign: 'right' }}>
               <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--gold-primary)' }}>{elapsed}</div>
-              <button
-                type="button"
-                className={`${styles.btnSm} ${styles.btnDanger}`}
-                disabled={endingConsultation}
-                onClick={handleEndConsultation}
-              >
-                {endingConsultation ? 'Ending…' : 'End Consultation'}
-              </button>
             </div>
           </div>
-          <div className={styles.split6535} style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16 }}>
             {active.type === 'voice' ? (
               <CallWindow consultationId={active.id} otherPartyName={active.userName} isInitiator={false} />
             ) : (
               <ChatWindow consultationId={active.id} otherPartyName={active.userName} />
             )}
-            <ClientKundliPanel consultationId={active.id} fallbackName={active.userName} />
           </div>
         </div>
       )}
@@ -193,7 +171,7 @@ function BoostCard() {
 
 export default function Overview() {
   const { t, currentUser } = useAppContext();
-  const { astrologerSync, acceptAssignment, declineAssignment } = useRealtime();
+  const { astrologerSync, acceptAssignment } = useRealtime();
   const { navigate } = useDashboardNav();
   const [rating, setRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -234,7 +212,6 @@ export default function Overview() {
   const firstName = currentUser?.name?.split(' ').slice(-1)[0];
 
   const handleAccept = async (id: string) => { setBusyId(id); try { await acceptAssignment(id); } finally { setBusyId(null); } };
-  const handleDecline = async (id: string) => { setBusyId(id); try { await declineAssignment(id); } finally { setBusyId(null); } };
 
   return (
     <div>
@@ -299,7 +276,6 @@ export default function Overview() {
                 </div>
                 <div className={styles.requestActions}>
                   <button className={`${styles.btnSm} ${styles.btnGold}`} disabled={busyId === req.id} onClick={() => handleAccept(req.id)}>{t('astro_action_accept')}</button>
-                  <button className={`${styles.btnSm} ${styles.btnDanger}`} disabled={busyId === req.id} onClick={() => handleDecline(req.id)}>{t('astro_action_decline')}</button>
                 </div>
               </div>
             ))

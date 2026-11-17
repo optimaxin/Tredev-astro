@@ -32,13 +32,6 @@ export interface CashfreeOrder {
 }
 
 export async function createCashfreeOrder(orderId: string, amount: number, customer: CashfreeCustomer, returnUrl: string): Promise<CashfreeOrder> {
-  // Cashfree production API strictly requires order_meta.return_url to begin with https://
-  const safeReturnUrl = (config.cashfree.env === 'production' && returnUrl.startsWith('http://'))
-    ? returnUrl.replace(/^http:\/\//, 'https://')
-    : returnUrl;
-
-  const cleanPhone = (customer.phone || '').replace(/\D/g, '').slice(-10);
-
   const res = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
     headers: headers(),
@@ -47,12 +40,15 @@ export async function createCashfreeOrder(orderId: string, amount: number, custo
       order_amount: amount,
       order_currency: 'INR',
       customer_details: {
-        customer_id: customer.id || `cust_${Date.now()}`,
-        customer_name: (customer.name || 'Valued Customer').trim() || 'Valued Customer',
-        customer_email: customer.email && customer.email.includes('@') ? customer.email : 'support@tredevaastro.com',
-        customer_phone: cleanPhone.length === 10 ? cleanPhone : '9999999999',
+        customer_id: customer.id,
+        customer_name: customer.name,
+        customer_email: customer.email,
+        // Cashfree requires a plausible 10-digit phone; fall back to a
+        // placeholder for accounts that registered without one (this app's
+        // phone_number is optional — see users table).
+        customer_phone: /^\d{10}$/.test(customer.phone) ? customer.phone : '9999999999',
       },
-      order_meta: { return_url: safeReturnUrl },
+      order_meta: { return_url: returnUrl },
     }),
   });
   const body = await res.json() as { message?: string };

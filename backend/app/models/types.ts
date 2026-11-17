@@ -44,18 +44,6 @@ export interface AstrologerRecord {
   durationSamplesMs: number[]; // recent completed-consultation durations, for ETA
 }
 
-// Snapshot of the client's saved birth details at request time — enough for
-// the astrologer to review before accepting, without a separate lookup.
-export interface ConsultationKundliDetails {
-  name: string;
-  date: string;
-  time?: string;
-  placeName?: string;
-  latitude?: number;
-  longitude?: number;
-  timezoneOffsetMinutes?: number;
-}
-
 export interface Consultation {
   id: string;
   astrologerId: number;
@@ -67,24 +55,14 @@ export interface Consultation {
   fromQueue: boolean;
   requestId: string;
   createdAt: number;
-  kundliDetails?: ConsultationKundliDetails;
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
-  // Wallet-affordable minutes (walletBalance / pricePerMin), computed fresh
-  // at acceptConsultation and recomputed on every mid-call wallet top-up
-  // (see realtimeStore.ts's onWalletTopUp) — not chosen by the user. Almost
-  // never a whole number; see migration 054.
-  durationMinutes: number;
-  extendedMinutes: number; // unused by wallet billing (folded into durationMinutes on top-up) — kept for schema/display compatibility
+  durationMinutes: number; // chosen by the user at booking time
+  extendedMinutes: number; // accumulated top-ups added mid-call
   pricePerMin: number; // locked in at session start (offer/loyalty/price-increase-adjusted)
   appliedOfferPercent: number; // the discount % actually applied to pricePerMin, for display
   boostId?: number; // set if this session was attributed to an astrologer Boost
-  // Transient, not persisted — set only on the one chat:ended emission that
-  // fires when the wallet-affordability deadline timer fires (see
-  // autoEndConsultation), so the frontend can show the right message instead
-  // of a generic "consultation ended."
-  endReason?: 'INSUFFICIENT_BALANCE';
 }
 
 export interface QueueEntry {
@@ -99,7 +77,6 @@ export interface QueueEntry {
   joinedAt: number;
   promotedConsultationId?: string;
   durationMinutes: number; // carried through to the Consultation once promoted
-  kundliDetails?: ConsultationKundliDetails;
 }
 
 export type NotificationKind = 'chat_request' | 'queue_waiting' | 'consultation_completed' | 'system';

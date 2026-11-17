@@ -15,16 +15,6 @@ export interface PublicAstrologerState {
   queueLength: number;
 }
 
-export interface ConsultationKundliDetails {
-  name: string;
-  date: string;
-  time?: string;
-  placeName?: string;
-  latitude?: number;
-  longitude?: number;
-  timezoneOffsetMinutes?: number;
-}
-
 export interface Consultation {
   id: string;
   astrologerId: number;
@@ -36,14 +26,11 @@ export interface Consultation {
   fromQueue: boolean;
   requestId: string;
   createdAt: number;
-  kundliDetails?: ConsultationKundliDetails;
   acceptedAt?: number;
   startedAt?: number;
   endedAt?: number;
-  durationMinutes: number; // wallet-affordable minutes, computed server-side — see backend/app/services/realtimeStore.ts's acceptConsultation
+  durationMinutes: number;
   extendedMinutes: number;
-  pricePerMin: number;
-  endReason?: 'INSUFFICIENT_BALANCE';
 }
 
 export interface QueueEntry {
@@ -56,7 +43,6 @@ export interface QueueEntry {
   status: 'QUEUED' | 'PROMOTED' | 'CANCELLED' | 'EXPIRED';
   requestId: string;
   joinedAt: number;
-  kundliDetails?: ConsultationKundliDetails;
 }
 
 export interface EtaEstimate {

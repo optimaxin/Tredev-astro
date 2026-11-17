@@ -18,9 +18,6 @@ import { createApplication, findLatestApplicationForUser, findPendingApplication
 import { canActivateOffer } from '../services/pricingEngine.ts';
 import { activateBoost, boostDisplayId, getActiveBoost, listBoostHistory } from '../repositories/boostRepository.ts';
 import { getBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
-import { listMySlots, listUpcomingSlots } from '../repositories/consultationSlotRepository.ts';
-import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
-import { notifyEventByTemplateId } from '../services/notificationService.ts';
 
 // Discovery/catalog API (spec §9-10). Separate from the existing
 // GET /api/astrologers in routes.ts, which returns bare live-availability
@@ -86,24 +83,6 @@ astrologersCatalogRouter.get('/catalog/:id', async (req, res) => {
   const region = await getRegionForCountry(countryFromRequest(req));
   const override = region ? await getOverride(id, region.id) : undefined;
   res.json({ success: true, data: withRegionPricing(toPublicAstrologerProfile(row), region ? Number(region.price_multiplier) : 1, override) });
-});
-
-// Upcoming scheduled 1:1 slots for this astrologer (see consultation_slots —
-// a fixed-time, pay-up-front booking, distinct from the live chat/voice
-// queue). bookedByUserId is stripped — a visitor should see a slot is taken,
-// never by whom.
-astrologersCatalogRouter.get('/:id/slots', async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
-    return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'id must be an integer' } });
-  }
-  const slots = await listUpcomingSlots(id, Date.now());
-  res.json({ success: true, data: slots.map(({ bookedByUserId, ...s }) => ({ ...s, isBooked: !!bookedByUserId })) });
-});
-
-// The logged-in user's own booked slots, across any astrologer.
-astrologersCatalogRouter.get('/slots/mine', requireAuth, async (req, res) => {
-  res.json({ success: true, data: await listMySlots(req.user!.id) });
 });
 
 // The exact per-minute price a booking would lock in RIGHT NOW for this
@@ -271,55 +250,18 @@ astrologersCatalogRouter.delete('/:id/favorite', requireAuth, async (req, res) =
 
 // ── Become an astrologer ─────────────────────────────────────────────────
 
-// Same ~5MB raw-file ceiling as banner uploads (see bannerService.ts) —
-// comfortably under the 8mb JSON body limit main.ts scopes to this exact
-// path (/api/astrologers/applications), unlike the rest of /api/astrologers.
-const MAX_RESUME_DATA_CHARS = 7_000_000;
-
 const applicationSchema = z.object({
   expertise: z.string().trim().min(2).max(200),
   experience: z.string().trim().min(1).max(200),
-  fullName: z.string().trim().min(2).max(150),
-  phoneNumber: z.string().trim().min(6).max(20),
-  email: z.string().trim().email().max(200),
-  languages: z.string().trim().min(1).max(300),
-  bio: z.string().trim().min(10).max(3000),
-  resumeData: z.string().max(MAX_RESUME_DATA_CHARS).nullable().default(null),
-  driveLink: z.string().trim().url().max(500).nullable().default(null),
-  // The frontend runs Firebase Phone Auth (OTP) on this number before
-  // submitting at all (see firebaseClient.ts) and hands us the resulting ID
-  // token here — verified the same way loginWithFirebase/linkFirebasePhone
-  // verify theirs, so a fake/typo'd number can't reach a real application.
-  phoneIdToken: z.string().min(10),
 });
 
-// optionalAuth: anonymous visitors can submit this form too — a logged-in
-// applicant's duplicate-pending check still applies, but there's no account
-// to check an anonymous one against, so that's simply skipped for them.
-astrologersCatalogRouter.post('/applications', optionalAuth, async (req, res) => {
+astrologersCatalogRouter.post('/applications', requireAuth, async (req, res) => {
   const parsed = applicationSchema.safeParse(req.body);
   if (!parsed.success) return res.status(422).json({ success: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join('; ') } });
-  if (req.user && await findPendingApplicationForUser(req.user.id)) {
+  if (await findPendingApplicationForUser(req.user!.id)) {
     return res.status(409).json({ success: false, error: { code: 'ALREADY_PENDING', message: 'You already have a pending application' } });
   }
-
-  const auth = await getFirebaseAuth();
-  let decoded;
-  try {
-    decoded = await auth.verifyIdToken(parsed.data.phoneIdToken);
-  } catch {
-    return res.status(401).json({ success: false, error: { code: 'INVALID_OTP_TOKEN', message: 'Phone verification is invalid or expired — please verify your number again.' } });
-  }
-  if (decoded.phone_number !== parsed.data.phoneNumber) {
-    return res.status(400).json({ success: false, error: { code: 'PHONE_MISMATCH', message: 'The verified phone number does not match the number on this form.' } });
-  }
-
-  const { phoneIdToken, ...input } = parsed.data;
-  const row = await createApplication({ userId: req.user?.id, ...input });
-  void notifyEventByTemplateId({
-    templateId: 'tpl-application-submitted', eventKey: 'application.submitted',
-    vars: { name: row.full_name || 'there' }, user: { email: row.email!, name: row.full_name || 'there' }, from: 'hiring',
-  });
+  const row = await createApplication(req.user!.id, parsed.data.expertise, parsed.data.experience);
   res.status(201).json({ success: true, data: row });
 });
 

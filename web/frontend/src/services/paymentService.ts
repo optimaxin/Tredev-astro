@@ -42,17 +42,16 @@ export type ReportPurchaseIntent = { purpose: 'REPORT_PURCHASE'; reportId: numbe
 export type WalletRechargeIntent = { purpose: 'WALLET_RECHARGE'; amount: number };
 export type ConsultationIntent = { purpose: 'CONSULTATION'; astrologerId: number; category: string; type: 'chat' | 'voice' | 'video'; durationMinutes: number };
 export type ConsultationExtendIntent = { purpose: 'CONSULTATION_EXTEND'; consultationId: string; extraMinutes: number };
-export type SlotBookingIntent = { purpose: 'SLOT_BOOKING'; slotId: string };
-export type PaymentIntent = StoreOrderIntent | ReportPurchaseIntent | WalletRechargeIntent | ConsultationIntent | ConsultationExtendIntent | SlotBookingIntent;
+export type PaymentIntent = StoreOrderIntent | ReportPurchaseIntent | WalletRechargeIntent | ConsultationIntent | ConsultationExtendIntent;
 
 export interface PaymentStatusResult {
   status: 'CREATED' | 'PAID' | 'FAILED';
-  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND' | 'SLOT_BOOKING';
+  purpose: 'STORE_ORDER' | 'REPORT_PURCHASE' | 'WALLET_RECHARGE' | 'CONSULTATION' | 'CONSULTATION_EXTEND';
   amount: number;
 }
 
 interface CashfreeCheckout {
-  checkout: (opts: { paymentSessionId: string; redirectTarget?: '_self' | '_modal' | '_blank' }) => Promise<unknown>;
+  checkout: (opts: { paymentSessionId: string; redirectTarget: '_self' }) => Promise<unknown>;
 }
 
 let cashfreeSdk: Promise<(opts: { mode: 'sandbox' | 'production' }) => CashfreeCheckout> | null = null;
@@ -72,7 +71,7 @@ function loadCashfreeSdk() {
   return cashfreeSdk;
 }
 
-const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CASHFREE_ENV === 'sandbox' ? 'sandbox' : 'production';
+const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
 
 // Creates the payment intent server-side, then sends the whole browser tab
 // to the chosen gateway's own hosted payment page — Cashfree via its JS SDK
@@ -84,14 +83,8 @@ const DEFAULT_CASHFREE_MODE: 'sandbox' | 'production' = import.meta.env.VITE_CAS
 // outcome is decided later, when the gateway redirects back to
 // `/?payment_id=...` and AppContext's bootstrap effect calls getStatus() to
 // find out what happened.
-export async function payWithGateway(intent: PaymentIntent, cashfreeMode?: 'sandbox' | 'production'): Promise<void> {
-  const result = await request<{
-    paymentId: string;
-    gateway: PaymentGateway;
-    paymentSessionId?: string;
-    redirectUrl?: string;
-    cashfreeMode?: 'sandbox' | 'production';
-  }>('/orders', {
+export async function payWithGateway(intent: PaymentIntent, cashfreeMode: 'sandbox' | 'production' = DEFAULT_CASHFREE_MODE): Promise<void> {
+  const result = await request<{ paymentId: string; gateway: PaymentGateway; paymentSessionId?: string; redirectUrl?: string }>('/orders', {
     method: 'POST',
     body: JSON.stringify(intent),
   });
@@ -112,9 +105,8 @@ export async function payWithGateway(intent: PaymentIntent, cashfreeMode?: 'sand
     window.location.href = result.redirectUrl!;
     return;
   }
-  const mode = result.cashfreeMode || cashfreeMode || DEFAULT_CASHFREE_MODE || 'production';
   const Cashfree = await loadCashfreeSdk();
-  const cashfree = Cashfree({ mode });
+  const cashfree = Cashfree({ mode: cashfreeMode });
   await cashfree.checkout({ paymentSessionId: result.paymentSessionId!, redirectTarget: '_self' });
 }
 

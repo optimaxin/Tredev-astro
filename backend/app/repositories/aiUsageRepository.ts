@@ -49,18 +49,6 @@ export interface ModelUsageRow {
   outputTokens: number;
   totalTokens: number;
   estimatedCostInr: number;
-  // Reliability and speed, per model. Latency is per LLM call as recorded by
-  // ai-core; failed rows are counted in errorRate and excluded from latency.
-  avgLatencyMs: number | null;
-  p95LatencyMs: number | null;
-  errorRate: number;          // failed / requests, 0-1
-  fallbackRate: number;       // answered by a fallback model / requests, 0-1
-  // Calls whose provider sent no usage block (tokens are not estimated into
-  // the sums above, so this says how much the totals undercount).
-  callsWithoutTokens: number;
-  // Share of this model's tokens spent grading answers (job-evaluate-response).
-  evaluationRequests: number;
-  evaluationTokens: number;
 }
 
 export interface UserUsageRow {
@@ -111,10 +99,6 @@ export interface UsageFilters {
   provider?: string;
   status?: string;
   conversationId?: string;
-  // 'user' (default): real chat traffic only. 'internal': evaluation,
-  // profiling, security-probe, benchmark, test and debug runs. 'unknown':
-  // history that could not be verified either way (migration 061). 'all'.
-  traffic?: 'user' | 'internal' | 'unknown' | 'all';
 }
 
 /**
@@ -153,14 +137,6 @@ function buildWhere(
   if (filters.provider) { conditions.push(`${p}provider = $${i++}`); params.push(filters.provider); }
   if (filters.status) { conditions.push(`${p}status = $${i++}`); params.push(filters.status); }
   if (filters.conversationId) { conditions.push(`${p}conversation_id = $${i++}`); params.push(filters.conversationId); }
-  // Real user traffic only by default (migration 058). Fixed literals, not
-  // user input, so they are inlined rather than bound.
-  const traffic = filters.traffic ?? 'user';
-  if (traffic === 'user') conditions.push(`${p}traffic_source = 'user'`);
-  // 'unknown' (migration 061): historical rows that could not be verified as
-  // either; shown only on request, never folded into the other two views.
-  else if (traffic === 'internal') conditions.push(`${p}traffic_source NOT IN ('user', 'unknown')`);
-  else if (traffic === 'unknown') conditions.push(`${p}traffic_source = 'unknown'`);
 
   return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
 }
@@ -248,18 +224,10 @@ export async function getModelUsage(filters: UsageFilters): Promise<ModelUsageRo
        COALESCE(SUM(input_tokens), 0)  AS input_tokens,
        COALESCE(SUM(output_tokens), 0) AS output_tokens,
        COALESCE(SUM(total_tokens), 0)  AS total_tokens,
-       COALESCE(SUM(${costInr()}), 0)   AS cost_inr,
-       AVG(latency_ms) FILTER (WHERE status = 'success')                       AS avg_latency_ms,
-       percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)
-         FILTER (WHERE status = 'success')                                     AS p95_latency_ms,
-       COUNT(*) FILTER (WHERE status <> 'success')                             AS failed,
-       COUNT(*) FILTER (WHERE fallback_used)                                   AS fallbacks,
-       COUNT(*) FILTER (WHERE total_tokens IS NULL AND status = 'success')     AS no_tokens,
-       COUNT(*) FILTER (WHERE role = 'job-evaluate-response')                  AS eval_requests,
-       COALESCE(SUM(total_tokens) FILTER (WHERE role = 'job-evaluate-response'), 0) AS eval_tokens
+       COALESCE(SUM(${costInr()}), 0)   AS cost_inr
      FROM ai_usage ${clause}
      GROUP BY provider, model
-     ORDER BY cost_inr DESC, requests DESC`,
+     ORDER BY cost_inr DESC`,
     params,
   );
   return rows.map(r => ({
@@ -270,13 +238,6 @@ export async function getModelUsage(filters: UsageFilters): Promise<ModelUsageRo
     outputTokens: num(r.output_tokens),
     totalTokens: num(r.total_tokens),
     estimatedCostInr: num(r.cost_inr),
-    avgLatencyMs: r.avg_latency_ms == null ? null : Math.round(num(r.avg_latency_ms)),
-    p95LatencyMs: r.p95_latency_ms == null ? null : Math.round(num(r.p95_latency_ms)),
-    errorRate: num(r.requests) ? num(r.failed) / num(r.requests) : 0,
-    fallbackRate: num(r.requests) ? num(r.fallbacks) / num(r.requests) : 0,
-    callsWithoutTokens: num(r.no_tokens),
-    evaluationRequests: num(r.eval_requests),
-    evaluationTokens: num(r.eval_tokens),
   }));
 }
 

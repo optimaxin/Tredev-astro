@@ -20,7 +20,6 @@ backend/data/
 # Personal/scratch workspace — sample kundli PDFs, reference repos, ad-hoc
 # assets. Never meant for the shared repo (real names, unrelated projects).
 Extra/
-Tredeva-Navaratri/
 
 # Android (mobile/)
 mobile/local.properties
@@ -78,11 +77,3 @@ Thumbs.db
 .claude-flow/logs/
 .claude-flow/sessions/
 .swarm/
-
-# Archive extracted from a macOS zip; never part of the source tree.
-__MACOSX/
-
-# Flat disk-recovery dump of the old ai_core service. Kept locally as a
-# reference while features are ported out of it, but it is neither the source
-# of truth nor a build artifact, so it does not belong in the repo.
-ai-core-recovered/

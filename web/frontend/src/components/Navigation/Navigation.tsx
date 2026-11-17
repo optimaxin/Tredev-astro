@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { CartIcon, ProfileIcon, SunIcon, MoonIcon, WalletIcon } from '../Icons/Icons';
+import { CartIcon, ProfileIcon, SunIcon, MoonIcon } from '../Icons/Icons';
 import NotificationBell from './NotificationBell';
-import ConsultDropdown from './ConsultDropdown';
-import RechargeWalletModal from '../RechargeWalletModal/RechargeWalletModal';
 import styles from './Navigation.module.css';
 
 const NAV_LINKS = [
@@ -14,8 +12,8 @@ const NAV_LINKS = [
   { translationKey: 'nav_astrology', page: 'horoscope' },
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },
-  { translationKey: 'nav_premium_report', page: 'premium-report' },
   { translationKey: 'nav_panchang', page: 'panchang' },
+  { translationKey: 'nav_academy', page: 'academy' },
   { translationKey: 'nav_store', page: 'store' },
 ];
 
@@ -44,20 +42,17 @@ export default function Navigation() {
     language,
     setLanguage,
     t,
-    walletBalance,
+    birthProfile
   } = useAppContext();
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [consultDropdownOpen, setConsultDropdownOpen] = useState(false);
-  const [showRecharge, setShowRecharge] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const consultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -82,13 +77,10 @@ export default function Navigation() {
       if (profileDropdownOpen && profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileDropdownOpen(false);
       }
-      if (consultDropdownOpen && consultRef.current && !consultRef.current.contains(e.target as Node)) {
-        setConsultDropdownOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [langDropdownOpen, profileDropdownOpen, consultDropdownOpen]);
+  }, [langDropdownOpen, profileDropdownOpen]);
 
   const handleNavClick = (targetPage: string) => {
     setMenuOpen(false);
@@ -150,12 +142,13 @@ export default function Navigation() {
           aria-label="TredevaAstro home"
         >
           <img src="/logo.png" alt="" className={styles.logoStar} />
-          <span className={styles.logoText} translate="no">TredevaAstro</span>
+          <span className={styles.logoText}>TredevaAstro</span>
         </button>
 
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
           {NAV_LINKS.map(link => {
+            const label = t(link.translationKey);
             const isLinkActive = page === link.page;
             return (
               <button
@@ -163,7 +156,7 @@ export default function Navigation() {
                 className={`${styles.link} ${isLinkActive ? styles.active : ''}`}
                 onClick={() => handleNavClick(link.page)}
               >
-                {t(link.translationKey)}
+                {label}
                 {isLinkActive && <span className={styles.activeIndicator} />}
               </button>
             );
@@ -180,38 +173,11 @@ export default function Navigation() {
           </button>
 
           <button
-            className={`${styles.ctaBtn} ${page === 'pooja' ? styles.active : ''}`}
-            onClick={() => handleNavClick('pooja')}
+            className={`${styles.ctaBtn} ${page === 'astrologers' ? styles.active : ''}`}
+            onClick={handleConsultClick}
           >
-            {t('nav_pooja')}
+            {t('nav_consult')}
           </button>
-
-          <div style={{ position: 'relative' }} ref={consultRef}>
-            <button
-              className={`${styles.ctaBtn} ${page === 'astrologers' || page === 'raghav-booking' ? styles.active : ''}`}
-              onClick={() => setConsultDropdownOpen(v => !v)}
-            >
-              {t('nav_consult')}
-            </button>
-            {consultDropdownOpen && (
-              <ConsultDropdown onClose={() => setConsultDropdownOpen(false)} onViewAll={handleConsultClick} />
-            )}
-          </div>
-
-          {/* Wallet balance — consultations bill straight out of this (see
-              realtimeStore.ts's acceptConsultation); click opens the recharge modal. */}
-          {isLoggedIn && (
-            <button
-              className={styles.cartBtn}
-              onClick={() => setShowRecharge(true)}
-              aria-label="Recharge wallet"
-              title="Recharge wallet"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', width: 'auto', padding: '0 8px' }}
-            >
-              <WalletIcon size={22} />
-              <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-sans)' }}>₹{walletBalance ?? '—'}</span>
-            </button>
-          )}
 
           {/* Cart Icon */}
           <button
@@ -245,14 +211,10 @@ export default function Navigation() {
               aria-label="Language settings"
             >
               <span className={styles.langGlobe}>🌐</span>
-              <span className={styles.langText} translate="no">{currentLangLabel}</span>
+              <span className={styles.langText}>{currentLangLabel}</span>
             </button>
             {langDropdownOpen && (
-              /* Each language is named in its own script — a browser
-                 translate feature would otherwise translate those names
-                 into whatever is currently selected, leaving the picker
-                 itself unreadable. */
-              <div className={styles.langDropdown} translate="no">
+              <div className={styles.langDropdown}>
                 {LANGUAGES.map(lang => (
                   <button
                     key={lang.code}
@@ -277,8 +239,9 @@ export default function Navigation() {
                 onClick={() => setProfileDropdownOpen(v => !v)}
               >
                 <div className={styles.avatarCircle}>
-                  {(currentUser?.name || 'Yajamana').substring(0, 1).toUpperCase()}
+                  {(currentUser?.name || birthProfile.name).substring(0, 1).toUpperCase()}
                 </div>
+                <span className={styles.profileNameText}>{(currentUser?.name || birthProfile.name).split(' ')[0]}</span>
                 <span className={styles.profileArrow}>▼</span>
               </button>
               {profileDropdownOpen && (
@@ -289,11 +252,6 @@ export default function Navigation() {
                   {currentUser?.role === 'USER' && (
                     <button onClick={() => { handleNavClick('free-kundli'); setProfileDropdownOpen(false); }}>
                       New Kundli
-                    </button>
-                  )}
-                  {currentUser?.role === 'USER' && (
-                    <button onClick={() => { handleNavClick('my-premium-reports'); setProfileDropdownOpen(false); }}>
-                      My Premium Reports
                     </button>
                   )}
                   <button
@@ -335,20 +293,21 @@ export default function Navigation() {
       <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ''}`} aria-hidden={!menuOpen}>
         <div className={styles.mobileLinks}>
           {NAV_LINKS.map(link => {
+            const label = t(link.translationKey);
             return (
               <button
                 key={link.page + link.translationKey}
                 className={styles.mobileLink}
                 onClick={() => handleNavClick(link.page)}
               >
-                {t(link.translationKey)}
+                {label}
               </button>
             );
           })}
           <div className={styles.mobileDivider} />
 
           {/* Language selector in Mobile Menu */}
-          <div className={styles.mobileLangList} translate="no">
+          <div className={styles.mobileLangList}>
             {LANGUAGES.map(lang => (
               <button
                 key={lang.code}
@@ -373,12 +332,6 @@ export default function Navigation() {
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}
-            onClick={() => handleNavClick('pooja')}
-          >
-            {t('nav_pooja')}
-          </button>
-          <button
-            className={`${styles.mobileLink} ${styles.mobileCta}`}
             onClick={() => handleNavClick('astrologers')}
           >
             {t('nav_consult')}
@@ -389,14 +342,6 @@ export default function Navigation() {
           >
             {isLoggedIn ? 'My Profile' : t('nav_login')}
           </button>
-          {isLoggedIn && (
-            <button
-              className={styles.mobileLink}
-              onClick={() => handleNavClick('my-premium-reports')}
-            >
-              My Premium Reports
-            </button>
-          )}
           {isLoggedIn && (
             <button
               className={styles.mobileLink}
@@ -417,8 +362,6 @@ export default function Navigation() {
           </button>
         </div>
       </div>
-
-      {showRecharge && <RechargeWalletModal onClose={() => setShowRecharge(false)} />}
     </header>
   );
 }

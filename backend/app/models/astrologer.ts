@@ -28,15 +28,6 @@ export interface AstrologerCatalogRow {
   // "use the platform default" (platform_settings). Internal/staff-only,
   // deliberately never exposed on PublicAstrologerProfile below.
   boost_payout_override_percent: number | null;
-  // Staff-set revenue split — what % of the per-minute price this astrologer
-  // actually earns (the rest is the platform's cut). Internal/staff-only,
-  // never exposed on PublicAstrologerProfile — a client never needs to know
-  // another astrologer's commission rate.
-  commission_percent: number;
-  // Persisted online/offline toggle — survives a server restart so an
-  // astrologer doesn't silently get flipped back OFFLINE by a deploy or an
-  // idle-dyno respawn (see realtimeStore.ts buildAstrologerRecord).
-  intent: 'ONLINE' | 'OFFLINE';
 }
 
 // Public-safe astrologer profile — section 10: no phone/email/internal

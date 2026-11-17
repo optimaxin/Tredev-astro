@@ -24,7 +24,6 @@ export interface EvaluationFilters {
   feedbackType?: string;
   minReward?: number;
   maxReward?: number;
-  traffic?: 'user' | 'internal' | 'unknown' | 'all';
 }
 
 export interface QualityOverview {
@@ -132,11 +131,6 @@ function buildWhere(
   if (filters.feedbackType) { conditions.push(`f.feedback_type = $${i++}`); params.push(filters.feedbackType); }
   if (filters.minReward !== undefined) { conditions.push(`e.reward_score >= $${i++}`); params.push(filters.minReward); }
   if (filters.maxReward !== undefined) { conditions.push(`e.reward_score <= $${i++}`); params.push(filters.maxReward); }
-  // Real user traffic only by default (migration 058).
-  const traffic = filters.traffic ?? 'user';
-  if (traffic === 'user') conditions.push(`u.traffic_source = 'user'`);
-  else if (traffic === 'internal') conditions.push(`u.traffic_source NOT IN ('user', 'unknown')`);
-  else if (traffic === 'unknown') conditions.push(`u.traffic_source = 'unknown'`);
 
   return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
 }

@@ -29,12 +29,6 @@ export default function LiveQueue() {
                 <div>
                   <div className={styles.requestName}>{entry.userName}</div>
                   <div className={styles.requestMeta}>{entry.category} · waiting {waitingFor(entry.joinedAt)} · ETA {eta.minMinutes}-{eta.maxMinutes} min</div>
-                  {entry.kundliDetails && (
-                    <div className={styles.requestMeta}>
-                      Kundli: {entry.kundliDetails.name} · {entry.kundliDetails.date}
-                      {entry.kundliDetails.time ? ` ${entry.kundliDetails.time}` : ''}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

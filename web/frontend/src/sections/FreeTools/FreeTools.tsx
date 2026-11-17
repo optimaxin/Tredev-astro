@@ -33,7 +33,6 @@ const TOOL_ROUTES: Record<string, string> = {
   'Sade Sati': 'sade-sati',
   'Rahu Ketu Transit': 'rahu-ketu-transit',
   'Numerology': 'numerology',
-  'My Numerology': 'numerology',
   'Numerology Report': 'numerology',
   'Life Path Number': 'life-path-number',
   'Name Numerology': 'name-numerology',

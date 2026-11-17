@@ -140,16 +140,14 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme, language: siteLanguage } = useAppContext();
-  // Starts in sync with the site-wide language picker (Hindi selected there
-  // -> this card opens in Hindi too), but stays a separate bit of local
-  // state so the dedicated English/हिंदी button below can still flip just
-  // this card on its own. `translate="no"` on the card (see the render
-  // below) still matters regardless — a visitor's own browser translate
-  // feature would otherwise re-translate this card's real Hindi as if it
-  // were garbled English.
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>(siteLanguage === 'hi' ? 'hi' : 'en');
-  useEffect(() => { setPanchangLang(siteLanguage === 'hi' ? 'hi' : 'en'); }, [siteLanguage]);
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
+  // Scoped to this card only — deliberately NOT the site-wide language
+  // toggle (AppContext's language/setLanguage), so switching this doesn't
+  // also change the rest of the site's language. Defaults to English (not
+  // Hindi) to match the rest of the home page's default — a visitor who
+  // hasn't touched any language toggle shouldn't see this one card start in
+  // a different language than everything else.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');
@@ -487,7 +485,7 @@ export default function Panchang() {
                   exit={{ opacity: 0 }}
                   onClick={handleChangeLocation}
                 >
-                  {isHindi ? 'स्थान बदलें' : 'Change Location'}
+                  Change Location
                 </motion.button>
               )}
             </AnimatePresence>
@@ -507,11 +505,7 @@ export default function Panchang() {
               animate={{ opacity: changing ? 0.3 : 1, x: 0 }}
               transition={{ duration: 0.4 }}
             >
-              {/* translate="no" only while this card is showing its own real
-                  Devanagari — Google would otherwise re-translate it as if it
-                  were English and mangle it. In English it translates with
-                  the rest of the page like normal content. */}
-              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'} translate={isHindi ? 'no' : undefined}>
+              <div className={styles.panchangDash} ref={cardRef} lang={isHindi ? 'hi' : 'en'}>
                 <img src="/logo.png" alt="" aria-hidden="true" className={styles.panchangDashWatermark} />
                 <div className={styles.panchangDashContent}>
                 <div className={styles.panchangDashBrandBlock}>

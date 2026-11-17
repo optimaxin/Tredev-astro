@@ -9,9 +9,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tredevastro.app.i18n.tr
 import com.tredevastro.app.ui.theme.LocalAppColors
-import com.tredevastro.app.ui.theme.NotoSerif
+import com.tredevastro.app.ui.theme.YatraOne
 
 /** Ports `.section-eyebrow-gold` + `.section-title-serif` — the small gold
  * label above every serif section title on the website. */
@@ -25,7 +24,7 @@ fun SectionHeader(
     val colors = LocalAppColors.current
     Column(modifier = modifier) {
         Text(
-            text = tr(eyebrow).uppercase(),
+            text = eyebrow.uppercase(),
             color = colors.goldPrimary,
             fontWeight = FontWeight.SemiBold,
             fontSize = 11.sp,
@@ -34,9 +33,9 @@ fun SectionHeader(
             modifier = Modifier.padding(bottom = 6.dp),
         )
         Text(
-            text = tr(title),
+            text = title,
             color = colors.textPrimary,
-            fontFamily = NotoSerif,
+            fontFamily = YatraOne,
             fontSize = 24.sp,
             textAlign = align,
         )

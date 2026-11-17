@@ -4,7 +4,6 @@ import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackd
 import PlanetIcon from '../../components/PlanetIcon/PlanetIcon';
 import { PLANET_META } from '../../data/planetMeta';
 import { HOUSE_MEANINGS } from '../../data/mockData';
-import { HINDI_RASHI, HINDI_PLANET } from '../../utils/panchangHindi';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { DailyHoroscopeResult } from '../../services/calculatorService';
 import styles from './Horoscope.module.css';
@@ -29,8 +28,7 @@ const RASHIS = [
 // picker plus the same "Today's Focus" line (1st-house transit) that page
 // already computes, not a re-implementation of its full zodiac wheel.
 export default function Horoscope() {
-  const { setPage, t, language } = useAppContext();
-  const isHindi = language === 'hi';
+  const { setPage, t } = useAppContext();
   const [active, setActive] = useState(0);
   const [data, setData] = useState<DailyHoroscopeResult | null>(null);
   const [error, setError] = useState('');
@@ -99,7 +97,7 @@ export default function Horoscope() {
                   title={r.eng}
                 >
                   <img src={`/images/zodiac/${r.eng}.png`} alt="" width={26} height={26} />
-                  <span>{isHindi ? HINDI_RASHI[r.eng] || r.eng : r.eng}</span>
+                  <span>{r.eng}</span>
                 </button>
               ))}
             </div>
@@ -107,23 +105,15 @@ export default function Horoscope() {
 
           <div className={styles.preview} onClick={explore} role="button" tabIndex={0}>
             {error && <p className={styles.error}>{error}</p>}
-            {!error && !data && (
-              <p className={styles.loading}>
-                {t('horoscope_loading').replace('{rashi}', isHindi ? HINDI_RASHI[current.eng] || current.eng : current.eng)}
-              </p>
-            )}
+            {!error && !data && <p className={styles.loading}>Reading today's transits for {current.eng}...</p>}
             {data && focusPlanet && (
               <p className={styles.focusLine}>
                 <PlanetIcon id={focusPlanet.id} size={24} />
                 <span>
-                  <strong className={styles.focusRashi}>
-                    {isHindi ? HINDI_RASHI[current.eng] || current.name : current.name} ({current.eng}):
-                  </strong>{' '}
-                  {isHindi ? HINDI_PLANET[focusPlanet.id] || PLANET_META[focusPlanet.id]?.name : PLANET_META[focusPlanet.id]?.name}
-                  {isHindi ? ' आपके ' : ' is transiting your '}{focusHouseName}
-                  {focusHouseTheme ? ` (${focusHouseTheme.split(',')[0]})` : ''}
-                  {isHindi ? ' में, राशि: ' : ' in '}{isHindi ? HINDI_RASHI[focusPlanet.rashi] || focusPlanet.rashi : focusPlanet.rashi}
-                  {focusPlanet.retrograde ? (isHindi ? ' — वक्री' : ' — Retrograde') : ''} — {PLANET_META[focusPlanet.id]?.quality}.
+                  <strong className={styles.focusRashi}>{current.name} ({current.eng}):</strong>{' '}
+                  {PLANET_META[focusPlanet.id]?.name} is transiting your {focusHouseName}
+                  {focusHouseTheme ? ` (${focusHouseTheme.split(',')[0]})` : ''} in {focusPlanet.rashi}
+                  {focusPlanet.retrograde ? ' — Retrograde' : ''} — {PLANET_META[focusPlanet.id]?.quality}.
                 </span>
               </p>
             )}
