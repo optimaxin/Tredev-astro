@@ -196,18 +196,6 @@ fun LoginScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         CosmicBackground()
 
-        if (mode != LoginMode.START) {
-            IconButton(
-                onClick = {
-                    errorMessage = null
-                    mode = if (mode == LoginMode.OTP_INPUT) LoginMode.PHONE_INPUT else LoginMode.START
-                },
-                modifier = Modifier.padding(top = 8.dp, start = 8.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.textPrimary)
-            }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -310,6 +298,19 @@ fun LoginScreen(
             }
 
             OutlineGoldButton(text = tr("Continue as Guest"), onClick = onGuest)
+        }
+
+        // Drawn after the Column so it sits on top and receives taps.
+        if (mode != LoginMode.START) {
+            IconButton(
+                onClick = {
+                    errorMessage = null
+                    mode = if (mode == LoginMode.OTP_INPUT) LoginMode.PHONE_INPUT else LoginMode.START
+                },
+                modifier = Modifier.padding(top = 8.dp, start = 8.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.textPrimary)
+            }
         }
     }
 }
