@@ -59,13 +59,13 @@ export default function OverviewPage({ onNavigate, allowedSections }: Props) {
   // and truncated.
   const dated: (TimelineItem & { ts: number })[] = [];
   stats?.recentConsultations.forEach(c =>
-    dated.push({ id: `consult-${c.id}`, icon: '◐', text: formatMsg(t('admin_activity_consultation_booked'), { user: c.userName, astrologer: c.astrologerName }), at: formatDateTime(c.createdAt), ts: Number(c.createdAt) })
+    dated.push({ id: `consult-${c.id}`, icon: '◐', text: formatMsg(t('admin_activity_consultation_booked'), { user: c.userName, astrologer: c.astrologerName }), at: formatDateTime(new Date(c.createdAt).toISOString()), ts: c.createdAt })
   );
   stats?.recentPurchases.forEach(r =>
-    dated.push({ id: `report-${r.id}`, icon: '▤', text: formatMsg(t('admin_activity_report_purchased'), { user: r.userName, report: r.reportTitle }), at: formatDateTime(r.purchasedAt), ts: Number(r.purchasedAt) })
+    dated.push({ id: `report-${r.id}`, icon: '▤', text: formatMsg(t('admin_activity_report_purchased'), { user: r.userName, report: r.reportTitle }), at: formatDateTime(new Date(r.purchasedAt).toISOString()), ts: r.purchasedAt })
   );
   stats?.recentDeliveredOrders.forEach(o =>
-    dated.push({ id: `order-${o.id}`, icon: '▢', text: formatMsg(t('admin_activity_order_completed'), { id: o.id }), at: formatDateTime(o.createdAt), ts: Number(o.createdAt) })
+    dated.push({ id: `order-${o.id}`, icon: '▢', text: formatMsg(t('admin_activity_order_completed'), { id: o.id }), at: formatDateTime(new Date(o.createdAt).toISOString()), ts: o.createdAt })
   );
   const activity: TimelineItem[] = dated.sort((a, b) => b.ts - a.ts);
 

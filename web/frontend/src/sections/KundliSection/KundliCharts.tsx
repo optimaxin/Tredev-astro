@@ -1,7 +1,6 @@
 import React from 'react';
 import { PLANET_META } from '../../data/planetMeta';
-import type { KundliResult, KundliFullResult } from '../../services/calculatorService';
-import { VARGA_LABELS } from '../../services/calculatorService';
+import type { KundliResult } from '../../services/calculatorService';
 import { HINDI_PLANET, HINDI_RASHI } from '../../utils/panchangHindi';
 import styles from './KundliSection.module.css';
 
@@ -384,35 +383,4 @@ export function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-// Every chart key selectable anywhere a full Kundli result is shown — the
-// public Charts tab (KundliSection.tsx) and the astrologer's client-Kundli
-// sidebar (ClientKundliPanel.tsx) both pick from this same list instead of
-// each keeping their own, so a new divisional chart only needs adding once.
-export const CHART_KEYS = ['D1', 'CHANDRA', 'D9', 'D4', 'D6', 'D7', 'D10', 'D60', 'D2', 'D3', 'D5', 'D8', 'D11', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'BHAV_CHALIT'] as const;
-
-export const CHART_LABELS: Record<string, string> = {
-  D1: 'D1 — Rashi (Birth Chart)', BHAV_CHALIT: 'Bhav Chalit (Real KP Cusps)', CHANDRA: 'Chandra (Moon) Chart', D9: 'D9 — Navamsa (Marriage)',
-};
-
-export function chartLabel(key: string): string {
-  return CHART_LABELS[key] || VARGA_LABELS[key] || key;
-}
-
-// One place that knows how to turn any chart key into {planets,
-// ascendantRashi} from a full Kundli result — shared by every chart picker
-// (see CHART_KEYS's own comment) instead of duplicating this branch per caller.
-export function resolveChart(fullResult: KundliFullResult | null, key: string): { planets: ChartPlanet[]; ascendantRashi: string } {
-  if (!fullResult) return { planets: [], ascendantRashi: '' };
-  if (key === 'D1') return { planets: toChartPlanets(fullResult.kundli, fullResult.bhavChalit), ascendantRashi: fullResult.kundli.ascendant.rashi };
-  if (key === 'CHANDRA') return { planets: toChandraChartPlanets(fullResult.chandraChart), ascendantRashi: fullResult.chandraChart.moonRashi };
-  if (key === 'BHAV_CHALIT') {
-    const planets = toSimpleChartPlanets(fullResult.bhavChalit);
-    return { planets, ascendantRashi: planets.find(p => p.id === 'asc')?.sign ?? '' };
-  }
-  if (key === 'D9') return { planets: toSimpleChartPlanets(fullResult.navamsaChart), ascendantRashi: fullResult.navamsaChart.ascendant.rashi };
-  const varga = fullResult.vargaCharts[key];
-  if (varga) return { planets: toSimpleChartPlanets(varga), ascendantRashi: varga.ascendant.rashi };
-  return { planets: [], ascendantRashi: '' };
 }

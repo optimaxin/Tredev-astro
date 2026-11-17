@@ -20,10 +20,11 @@ export async function seedDemoAccounts() {
       user = await createUser({ name: acc.name, email: acc.email, passwordHash: bcrypt.hashSync(acc.password, 12), role: acc.role });
     }
 
-    // Without a catalog row the demo astrologer login would be unable to go
-    // online, accept consultations, or show up in its own dashboard's real
-    // data. Give it one, same as the real apply→approve flow does for a
-    // genuine astrologer account.
+    // The originally-seeded catalog roster (seedAstrologerCatalog.ts) has no
+    // real account behind it, so the demo astrologer login would otherwise
+    // have no catalog row at all — unable to go online, accept consultations,
+    // or show up in its own dashboard's real data. Give it one, same as the
+    // real apply→approve flow does for a genuine astrologer account.
     if (acc.role === 'ASTROLOGIST' && !(await findAstrologerByUserId(user.id))) {
       await insertAstrologerForUser(user.id, user.name, 'General Astrology');
     }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { generateKundli } from '../services/astrology/kundli.ts';
+import { generateKundli, getNavamsaChart, getChandraChart } from '../services/astrology/kundli.ts';
 import { checkKaalSarpDosha, checkPitraDosha, checkRahuKetuTransit, checkSadeSati } from '../services/astrology/doshas.ts';
 import { getHouseFromAscendant, getNakshatra, getRashi, RASHIS } from '../services/astrology/zodiac.ts';
 import { getPlanetaryPositions } from '../services/astrology/ephemeris.ts';
@@ -13,16 +13,22 @@ import { calculateFlames } from '../services/astrology/flames.ts';
 import { buildKundliMatchingReport } from '../services/astrology/kundliMatching.ts';
 import { calculatePanchang } from '../services/astrology/panchang.ts';
 import { getDailyHoroscope } from '../services/astrology/dailyHoroscope.ts';
-import { getCurrentMahadasha } from '../services/astrology/vimshottariDasha.ts';
+import { getCurrentMahadasha, getMahadashaTimeline } from '../services/astrology/vimshottariDasha.ts';
 import { answerAstrologyQuestion } from '../services/astrology/aiGuidance.ts';
-import { getLuckyAttributes } from '../services/astrology/avakhada.ts';
+import { checkYogas } from '../services/astrology/yogas.ts';
+import { buildKundliAnalysis } from '../services/astrology/kundliAnalysis.ts';
+import { buildAvakhada, recommendGemstones, recommendRudraksha, getLuckyAttributes } from '../services/astrology/avakhada.ts';
 import { getBabyNameSyllable } from '../services/astrology/babyName.ts';
 import { getLalKitabHouses } from '../services/astrology/lalKitab.ts';
+import { getAllVargaCharts } from '../services/astrology/divisionalCharts.ts';
+import { getYoginiDashaTimeline } from '../services/astrology/yoginiDasha.ts';
+import { calculateAshtakavarga } from '../services/astrology/ashtakavarga.ts';
+import { buildKpTable, getBhavChalitChart } from '../services/astrology/kpAstrology.ts';
+import { getSiderealHouseCusps } from '../services/astrology/swissEphemeris.ts';
+import { calculateShadbala } from '../services/astrology/shadbala.ts';
+import { buildAscendantPredictions } from '../services/astrology/ascendantPredictions.ts';
+import { buildDashaPredictions } from '../services/astrology/dashaPredictions.ts';
 import { geocodePlace, suggestPlaces, resolvePlaceId, type GeocodeResult } from '../services/geocoding.ts';
-import { computeKundliFullCached, ttlCache } from '../services/astrology/kundliFullBuilder.ts';
-import { rewriteKundliFull, warmDescriptionCache } from '../services/llm/kundliDescriptionRewriter.ts';
-import { requireAuth } from '../middleware/auth.ts';
-import { consumeFreeAiChatSeconds } from '../repositories/userRepository.ts';
 
 export const calculatorsRouter = Router();
 
@@ -44,7 +50,7 @@ function fail(res: import('express').Response, status: number, code: string, mes
 const birthSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
   time: z.string().regex(/^\d{2}:\d{2}$/, 'time must be HH:MM (24h)'),
-  timezoneOffsetMinutes: z.coerce.number().min(-720).max(840), // standard "UTC = local - offset" convention, so India (UTC+5:30) = +330 — see toUtcDate below, which subtracts this
+  timezoneOffsetMinutes: z.coerce.number().min(-720).max(840), // e.g. India = -330 (UTC+5:30, so offset FROM local TO UTC is -330)
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
 });
@@ -65,8 +71,29 @@ function toUtcDate(b: z.infer<typeof birthSchema>): Date {
   return new Date(Date.UTC(year, month - 1, day, hour, minute) - b.timezoneOffsetMinutes * 60_000);
 }
 
+// ponytail: in-process TTL cache, oldest-first eviction, per instance.
+// Calculator results are pure functions of their input (plus the clock, so
+// every key below carries the date and a TTL), and the same inputs repeat a
+// lot — every homepage visitor asks for today's Panchang for the same
+// default city; a kundli is re-requested on language toggle / after login.
+function ttlCache<T>(ttlMs: number, maxEntries: number) {
+  const entries = new Map<string, { at: number; value: T }>();
+  return (key: string, compute: () => T): T => {
+    const now = Date.now();
+    const hit = entries.get(key);
+    if (hit && now - hit.at < ttlMs) return hit.value;
+    const value = compute();
+    entries.delete(key);
+    entries.set(key, { at: now, value });
+    if (entries.size > maxEntries) entries.delete(entries.keys().next().value!);
+    return value;
+  };
+}
+
 // 60s: "today's" Panchang is timed from the live clock, so it can't be stale by much.
 const panchangCache = ttlCache<unknown>(60_000, 500);
+// ~53KB each → ≤ ~10MB. Keyed by UTC day too — dasha/sade-sati read "now".
+const kundliFullCache = ttlCache<unknown>(30 * 60_000, 200);
 
 function handle(res: import('express').Response, fn: () => unknown) {
   try {
@@ -91,28 +118,64 @@ calculatorsRouter.post('/kundli', limiter, (req, res) => {
 // Each piece reuses the exact same calculators already exposed individually
 // above — this just composes them from one real chart instead of asking the
 // client to make 6 separate requests.
-calculatorsRouter.post('/kundli-full', limiter, async (req, res) => {
-  try {
+calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
+  handle(res, () => {
     const birth = birthSchema.parse(req.body);
     const language = languageSchema.parse(req.body?.language);
-    const full = computeKundliFullCached(birth, language);
-    // Applies whatever natural-language rewrites (NVIDIA NIM, see
-    // kundliDescriptionRewriter.ts) are already cached from a previous
-    // request — a pure DB lookup, never an LLM call, so the response is
-    // never slowed down by (or dependent on) NVIDIA's API.
-    const withCachedRewrites = await rewriteKundliFull(full, language);
-    res.json({ success: true, data: withCachedRewrites });
-    // Fire-and-forget: fills in whatever wasn't cached yet, in the
-    // background, for next time. Never awaited — a slow or unreachable
-    // NVIDIA endpoint can only delay how soon the nicer text shows up, never
-    // this (or any other) request.
-    warmDescriptionCache(full, language).catch(() => {});
-  } catch (e) {
-    if (e instanceof z.ZodError) return fail(res, 422, 'VALIDATION_ERROR', e.issues.map(i => i.message).join('; '));
-    console.error(e);
-    fail(res, 500, 'INTERNAL_ERROR', 'Calculation failed');
-  }
+    const key = [birth.date, birth.time, birth.timezoneOffsetMinutes, birth.latitude, birth.longitude, language, new Date().toISOString().slice(0, 10)].join('|');
+    return kundliFullCache(key, () => buildKundliFull(birth, language));
+  });
 });
+
+function buildKundliFull(birth: z.infer<typeof birthSchema>, language: 'en' | 'hi') {
+  const utcDate = toUtcDate(birth);
+  const kundli = generateKundli({ utcDate, latitude: birth.latitude, longitude: birth.longitude });
+  const moon = kundli.planets.find(p => p.id === 'moon')!;
+  const moonRashiIndex = getRashi(moon.longitude).index;
+
+  const span = 360 / 27;
+  const fractionElapsed = (moon.longitude % span) / span;
+  const now = new Date();
+  const mahadashaTimeline = getMahadashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
+
+  const yoginiDashaTimeline = getYoginiDashaTimeline(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, now);
+
+  const navamsaChart = getNavamsaChart(kundli);
+  const chandraChart = getChandraChart(kundli);
+  const vargaCharts = getAllVargaCharts(kundli);
+  const [birthHourStr, birthMinuteStr] = birth.time.split(':');
+  const birthLocalHour = Number(birthHourStr) + Number(birthMinuteStr) / 60;
+  const houseCusps = getSiderealHouseCusps(utcDate, birth.latitude, birth.longitude, kundli.ascendant.longitude);
+
+  return {
+    kundli,
+    navamsaChart,
+    chandraChart,
+    vargaCharts,
+    mahadashaTimeline,
+    yoginiDashaTimeline,
+    shadbala: calculateShadbala({
+      kundli, navamsaChart, vargaCharts, birthUtcDate: utcDate, birthLocalHour,
+      dateOnly: birth.date, latitude: birth.latitude, longitude: birth.longitude,
+    }),
+    doshas: {
+      kaalSarp: checkKaalSarpDosha(kundli),
+      sadeSati: checkSadeSati(moonRashiIndex, now),
+      rahuKetuTransit: checkRahuKetuTransit(moonRashiIndex, now),
+    },
+    yogas: checkYogas(kundli, language),
+    analysis: buildKundliAnalysis(kundli, language),
+    ascendantPredictions: buildAscendantPredictions(kundli.ascendant.rashi, language),
+    dashaPredictions: buildDashaPredictions(kundli, mahadashaTimeline, language),
+    avakhada: buildAvakhada(kundli, language),
+    gemstones: recommendGemstones(kundli, language),
+    rudraksha: recommendRudraksha(kundli, language),
+    panchang: calculatePanchang(birth.date, birth.latitude, birth.longitude),
+    ashtakavarga: calculateAshtakavarga(kundli),
+    kp: buildKpTable(kundli, utcDate, houseCusps),
+    bhavChalit: getBhavChalitChart(kundli, houseCusps),
+  };
+}
 
 calculatorsRouter.post('/nakshatra', limiter, (req, res) => {
   handle(res, () => {
@@ -389,16 +452,6 @@ calculatorsRouter.post('/ai-ask', aiLimiter, (req, res) => {
     const mahadasha = getCurrentMahadasha(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, new Date());
     return { answer: answerAstrologyQuestion(body.question, kundli, mahadasha) };
   });
-});
-
-// Real, server-tracked balance instead of the frontend's old plain 5-minute
-// countdown (which a page refresh reset for free) — consumes whatever the
-// account currently has (set at signup, or by staff for a dispute — see
-// userRepository.ts's consumeFreeAiChatSeconds/setFreeAiChatSeconds) and
-// hands that back as this session's actual countdown length.
-calculatorsRouter.post('/ai-chat/start', requireAuth, async (req, res) => {
-  const grantedSeconds = await consumeFreeAiChatSeconds(req.user!.id);
-  res.json({ success: true, data: { grantedSeconds } });
 });
 
 // ── Place → coordinates ────────────────────────────────────────────────

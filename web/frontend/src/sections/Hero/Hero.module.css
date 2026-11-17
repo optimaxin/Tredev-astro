@@ -35,6 +35,24 @@
   pointer-events: none;
 }
 
+/* Person cutout (transparent PNG) — contain + bottom-anchored instead of
+   cover, so it sits naturally on the hero's own background instead of being
+   cropped like the full-bleed video. On desktop this doubles as the
+   low-connection video fallback, so it's anchored right — matching where
+   the video's subject sits — instead of dead-center. On mobile (where this
+   same image is always used as the poster) it stays centered, since there's
+   no side-by-side text column to share the frame with. */
+.bgPersonImg {
+  object-fit: contain;
+  object-position: bottom right;
+}
+
+@media (max-width: 768px) {
+  .bgPersonImg {
+    object-position: bottom center;
+  }
+}
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -44,19 +62,11 @@
 }
 
 @media (max-width: 768px) {
-  /* Video is framed with the sage toward the right third — on a narrow
-     portrait crop, centered object-position crops him off past the edge.
-     Shift the visible window right so he lands centered in frame. */
-  .bgVideo {
-    object-position: 78% center;
-  }
-
-  /* The mobile poster is a full-frame subject sitting dead-center behind
-     the headline (not a side-positioned video scene), so the text column
-     sits directly over his face — needs a uniformly darker scrim than
-     desktop's side vignette, with no bright dip, to keep text legible. */
+  /* The mobile poster is a full-frame subject (not a side-positioned video
+     scene), so the text column sits directly over its brightest area —
+     needs a stronger, more even scrim than desktop's side vignette. */
   .overlay {
-    background: linear-gradient(180deg, rgba(18, 7, 4, 0.82) 0%, rgba(18, 7, 4, 0.74) 45%, rgba(18, 7, 4, 0.88) 100%);
+    background: linear-gradient(180deg, rgba(18, 7, 4, 0.8) 0%, rgba(18, 7, 4, 0.6) 45%, rgba(18, 7, 4, 0.85) 100%);
   }
 }
 
@@ -287,6 +297,167 @@
   margin: 0 2px;
 }
 
+/* Right Column: Visual Celestial Scene (Zodiac + Sage + Planets) */
+.rightColumn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 55%;
+  height: 100%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Central Halo Light behind Sage Head */
+.sageHaloLight {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 183, 42, 0.35) 0%, rgba(231, 165, 26, 0.08) 50%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 2;
+  top: 36%;
+  left: 55%;
+  transform: translate(-50%, -50%);
+}
+
+/* Zodiac circle composition container */
+.zodiacComposition {
+  position: absolute;
+  top: 42%;
+  left: 55%;
+  transform: translate(-50%, -50%);
+  width: 650px;
+  height: 650px;
+  max-width: 90vw;
+  max-height: 90vh;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: slowZodiacRotate 180s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slowZodiacRotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.zodiacSvg {
+  width: 100%;
+  height: 100%;
+  opacity: 0.85;
+}
+
+/* Planet Styling */
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 0 15px rgba(245, 183, 42, 0.2));
+}
+
+.planetJupiter {
+  width: 84px;
+  height: 84px;
+  background: radial-gradient(circle at 30% 30%, #fbe6c4 0%, #d98a3c 35%, #8a4215 75%, #3b1906 100%);
+  bottom: 24%;
+  left: 12%;
+  animation: floatJupiter 12s ease-in-out infinite;
+}
+
+.planetSaturn {
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle at 30% 30%, #fcebb6 0%, #c49b55 50%, #4a3412 100%);
+  top: 42%;
+  right: 12%;
+  animation: floatSaturn 14s ease-in-out infinite;
+}
+
+.planetSaturnRing {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 86px;
+  height: 18px;
+  border: 2px solid rgba(231, 165, 26, 0.7);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(231, 165, 26, 0.3);
+}
+
+.planetMars {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(circle at 30% 30%, #ffa07a 0%, #cd5c5c 50%, #4a1010 100%);
+  bottom: 36%;
+  left: 24%;
+  animation: floatMars 10s ease-in-out infinite;
+}
+
+.planetBlue {
+  width: 24px;
+  height: 24px;
+  background: radial-gradient(circle at 30% 30%, #a0d8ef 0%, #4682b4 50%, #0f2d4a 100%);
+  top: 44%;
+  left: 32%;
+  animation: floatBlue 9s ease-in-out infinite;
+}
+
+@keyframes floatJupiter {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+
+@keyframes floatSaturn {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-3deg); }
+}
+
+@keyframes floatMars {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes floatBlue {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Sage Character Wrapper */
+.sageWrapper {
+  position: absolute;
+  bottom: 40px;
+  left: 55%;
+  transform: translateX(-50%);
+  width: 560px;
+  height: 75%;
+  max-height: 600px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sageImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  mix-blend-mode: normal;
+  filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.6)) drop-shadow(0 -5px 15px rgba(245, 183, 42, 0.08));
+}
+
 /* Translucent Curved Glass Wave Section at Hero Bottom */
 .bottomWaveContainer {
   position: absolute;
@@ -408,7 +579,7 @@
     align-items: center;
     text-align: center;
     padding-top: 140px;
-    padding-bottom: 140px;
+    padding-bottom: 380px; /* Space for absolute visual columns */
     gap: 48px;
   }
   .leftColumn {
@@ -425,6 +596,24 @@
   .trustLine {
     justify-content: center;
   }
+  .rightColumn {
+    width: 100%;
+    height: 400px;
+    top: auto;
+    bottom: 20px;
+  }
+  .zodiacComposition {
+    width: 420px;
+    height: 420px;
+    top: 50%;
+    left: 50%;
+  }
+  .sageWrapper {
+    width: 340px;
+    height: 90%;
+    bottom: 0;
+    left: 50%;
+  }
   .bottomWaveContainer {
     height: 200px;
   }
@@ -433,7 +622,7 @@
 @media (max-width: 768px) {
   .content {
     padding-top: 120px;
-    padding-bottom: 120px;
+    padding-bottom: 320px;
     gap: 32px;
   }
   .headline {
@@ -453,6 +642,16 @@
     height: 50px;
     font-size: var(--text-sm);
   }
+  .rightColumn {
+    height: 320px;
+  }
+  .zodiacComposition {
+    width: 320px;
+    height: 320px;
+  }
+  .sageWrapper {
+    width: 280px;
+  }
   .bottomWaveContainer {
     height: 160px;
   }
@@ -464,6 +663,16 @@
 @media (max-width: 480px) {
   .headline {
     font-size: 2.3rem;
+  }
+  .rightColumn {
+    height: 260px;
+  }
+  .zodiacComposition {
+    width: 260px;
+    height: 260px;
+  }
+  .sageWrapper {
+    width: 220px;
   }
 }
 

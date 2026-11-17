@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 
 const { pool, runMigrations } = await import('../app/core/db.ts');
-const { register, login, refresh, logout, verifyAccessToken, authenticate, AuthError } = await import('../app/services/authService.ts');
+const { register, login, refresh, logout, verifyAccessToken, authenticate, loginWithFirebase, AuthError } = await import('../app/services/authService.ts');
+const { config } = await import('../app/core/config.ts');
 
 await runMigrations();
 
@@ -62,6 +63,28 @@ async function main() {
   // Another session of the same user is unaffected by that logout
   assert.equal((await authenticate(loginResult.accessToken))?.id, user.id);
   console.log('✓ logout only ends its own session');
+
+  // Dev-only mock login (see decodeMockToken in authService.ts). The
+  // production gate is the whole point of these three — a mock token must
+  // never be a valid credential once NODE_ENV says production.
+  const mockPhone = `+9990000${String(Date.now()).slice(-6)}`;
+  const realShortcuts = config.devShortcuts;
+  config.devShortcuts = true;
+  const mocked = await loginWithFirebase(`mock:${mockPhone}`);
+  assert.equal(mocked.user.phone_number, mockPhone);
+  assert.ok(mocked.accessToken && mocked.refreshToken);
+  console.log('✓ dev mock login issues tokens for a phone number');
+
+  await assert.rejects(loginWithFirebase('mock:not-a-phone'), AuthError);
+  console.log('✓ dev mock login rejects a malformed phone number');
+
+  config.devShortcuts = false;
+  try {
+    await assert.rejects(loginWithFirebase(`mock:${mockPhone}`), AuthError);
+  } finally {
+    config.devShortcuts = realShortcuts;
+  }
+  console.log('✓ dev mock login is rejected unless DEV_SHORTCUTS is on');
 
   console.log('\nAll auth smoke tests passed.');
 }

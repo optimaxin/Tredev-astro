@@ -20,7 +20,6 @@ export interface ApiUser {
   birth_timezone_offset_minutes: number | null;
   phone_number: string | null;
   phone_verified: boolean;
-  free_ai_chat_seconds: number;
 }
 
 export interface RegisterBirthDetails {

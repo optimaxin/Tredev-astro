@@ -143,7 +143,6 @@
   align-items: center;
   gap: 8px;
   height: 100%;
-  min-width: 0;
 }
 
 /* CTAs */
@@ -463,17 +462,13 @@
   position: relative;
   display: flex;
   align-items: center;
-  /* Lets this shrink instead of forcing the pill wider than the navbar —
-     a flex item's default min-width is "auto" (its content's natural
-     width), which overrides max-width/overflow on anything inside it. */
-  min-width: 0;
 }
 
 .profileSelectorBtn {
   background: transparent;
   border: 1px solid rgba(231, 165, 26, 0.35);
   border-radius: 999px;
-  padding: 4px 10px 4px 4px;
+  padding: 4px 12px 4px 6px;
   cursor: pointer;
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -506,6 +501,10 @@
 :global([data-theme='dark']) .avatarCircle {
   color: var(--nav-ink);
   background: var(--nav-gold);
+}
+
+.profileNameText {
+  font-weight: 500;
 }
 
 .profileArrow {
@@ -696,26 +695,12 @@
   gap: 7px;
 }
 
-/* Same tight-pill-nav typographic adjustment as hi/mr, now also covering
-   bn/ta/te. Currently dormant: `<html lang>` is hardcoded to 'en' (see
-   App.tsx) so translation can only come from the visitor's own browser now,
-   which this app has no hook into — kept in case this site moves to its own
-   dictionary-driven translation and sets `lang` again. */
 :global(html[lang='hi']) .link,
 :global(html[lang='mr']) .link,
-:global(html[lang='bn']) .link,
-:global(html[lang='ta']) .link,
-:global(html[lang='te']) .link,
 :global(html[lang='hi']) .ctaBtn,
 :global(html[lang='mr']) .ctaBtn,
-:global(html[lang='bn']) .ctaBtn,
-:global(html[lang='ta']) .ctaBtn,
-:global(html[lang='te']) .ctaBtn,
 :global(html[lang='hi']) .ctaBtnSecondary,
-:global(html[lang='mr']) .ctaBtnSecondary,
-:global(html[lang='bn']) .ctaBtnSecondary,
-:global(html[lang='ta']) .ctaBtnSecondary,
-:global(html[lang='te']) .ctaBtnSecondary {
+:global(html[lang='mr']) .ctaBtnSecondary {
   letter-spacing: 0.01em;
 }
 
@@ -725,20 +710,6 @@
 :global(html[lang='mr']) .ctaBtnSecondary {
   padding-left: 11px;
   padding-right: 11px;
-}
-
-/* bn/ta/te run visibly longer than hi/mr for the same nav labels (Bengali/
-   Tamil/Telugu glyphs are wider on average) — the padding trim alone that's
-   enough for hi/mr isn't, so these three also get a slightly smaller size. */
-:global(html[lang='bn']) .ctaBtn,
-:global(html[lang='ta']) .ctaBtn,
-:global(html[lang='te']) .ctaBtn,
-:global(html[lang='bn']) .ctaBtnSecondary,
-:global(html[lang='ta']) .ctaBtnSecondary,
-:global(html[lang='te']) .ctaBtnSecondary {
-  padding-left: 10px;
-  padding-right: 10px;
-  font-size: calc(var(--nav-cta-size) * 0.9);
 }
 
 @media (max-width: 1024px) {

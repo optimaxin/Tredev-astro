@@ -1,21 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { astrologerService } from '../../../services/astrologerService';
-import type { UiAstrologer } from '../../../services/astrologerService';
+import { ASTROLOGERS } from '../../../data/mockData';
 import { SPECIALIZATION_OPTIONS, LANGUAGE_OPTIONS, SectionHeader, Panel } from './shared';
 import styles from './sections.module.css';
 
 export default function ProfileSection() {
-  const { setPage, setSelectedId, profileOverride, updateProfileOverride } = useAppContext();
-  const [profile, setProfile] = useState<UiAstrologer | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    astrologerService.getMyProfile().then(p => { if (!cancelled) setProfile(p); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  if (!profile) return <SectionHeader title="My Profile" subtitle="Loading your catalog profile…" />;
+  const { currentUser, setPage, setSelectedId, profileOverride, updateProfileOverride } = useAppContext();
+  const profile = ASTROLOGERS.find(a => a.name === currentUser?.name) || ASTROLOGERS[0];
 
   const effectiveSpecialization = profileOverride.specialization.length ? profileOverride.specialization : profile.specialization;
   const effectiveLanguages = profileOverride.languages.length ? profileOverride.languages : profile.languages;

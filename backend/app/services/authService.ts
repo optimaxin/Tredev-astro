@@ -9,8 +9,6 @@ import {
 } from '../repositories/userRepository.ts';
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
 import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
-import { sendEmail } from './emailService.ts';
-import { notifyEventByTemplateId } from './notificationService.ts';
 
 export class AuthError extends Error {
   status: number;
@@ -61,11 +59,6 @@ export async function register(params: {
   // Phone number is stored but not verified here — that only happens if/when
   // this account signs in via Firebase Phone Auth (see loginWithFirebase),
   // which replaced the old custom OTP-over-SMS verification step.
-  // Best-effort, never blocks registration itself (see notifyEventByTemplateId).
-  void notifyEventByTemplateId({
-    templateId: 'tpl-welcome', eventKey: 'user.welcome',
-    vars: {}, user: { email: row.email, name: row.name },
-  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -78,10 +71,6 @@ export async function login(email: string, password: string): Promise<{ user: Pu
   }
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
-  void notifyEventByTemplateId({
-    templateId: 'tpl-welcome-back', eventKey: 'user.login',
-    vars: {}, user: { email: row.email, name: row.name },
-  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -135,21 +124,15 @@ export async function getPublicUser(userId: string): Promise<PublicUser | undefi
   return row ? toPublicUser(row) : undefined;
 }
 
-// Returns the raw reset token only in non-production (devShortcuts) so the
-// flow is testable without a real inbox. In every environment it's also
-// emailed via ZeptoMail (see emailService.ts) — never expose it over the API
-// in production.
+// Returns the raw reset token only in non-production so the flow is testable
+// end-to-end without an email provider wired up yet. A real deployment must
+// plug EMAIL_PROVIDER_KEYS in and send this token by email instead of
+// returning it — never expose it over the API in production.
 export async function requestPasswordReset(email: string): Promise<{ devResetToken?: string }> {
   const row = await findUserByEmail(email);
   if (!row) return {}; // don't reveal whether the email exists
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
-  const resetLink = `${config.clientOrigins[0]}/reset-password?token=${raw}`;
-  await sendEmail(row.email, 'Reset your TredevaAstro password', `
-    <p>We received a request to reset your password.</p>
-    <p><a href="${resetLink}">Click here to reset your password</a> (expires in 30 minutes).</p>
-    <p>If you didn't request this, you can ignore this email.</p>
-  `);
   return config.devShortcuts ? { devResetToken: raw } : {};
 }
 
@@ -162,6 +145,25 @@ export async function resetPassword(rawToken: string, newPassword: string) {
 }
 
 // ── Firebase sign-in (Google, Phone Auth) ───────────────────────────────
+// Dev-only login bypass. With VITE_FIREBASE_* unset the frontend can't run a
+// real Phone Auth flow at all, so it accepts a fixed mock OTP and sends
+// `mock:<E.164 phone>` here in place of a Firebase ID token (see
+// firebaseClient.ts). Mapped to a local account by the same code path as a
+// real sign-in below, so nothing downstream knows the difference.
+// ponytail: bypass for any number when DEV_SHORTCUTS=true; delete
+// this (and its firebaseClient.ts half) once Firebase is configured locally.
+function decodeMockToken(idToken: string) {
+  if (!idToken.startsWith('mock:')) return null;
+  // Explicit opt-in only (DEV_SHORTCUTS=true), never inferred from
+  // NODE_ENV being unset — this would otherwise be "log in as any phone
+  // number with no credential at all" on any host that forgot NODE_ENV.
+  if (!config.devShortcuts) throw new AuthError('Invalid or expired sign-in token', 401);
+  const phoneNumber = idToken.slice('mock:'.length).trim();
+  if (!/^\+[1-9]\d{6,19}$/.test(phoneNumber)) throw new AuthError('Invalid or expired sign-in token', 401);
+  console.warn(`[auth] DEV MOCK LOGIN accepted for ${phoneNumber} — no real verification happened.`);
+  return { uid: `mock-${phoneNumber}`, phone_number: phoneNumber };
+}
+
 // The frontend does the actual Google popup / phone-OTP flow with the
 // Firebase client SDK and hands us the resulting ID token — Firebase itself
 // already verified the phone number (sent + checked the OTP) or the Google
@@ -169,12 +171,17 @@ export async function resetPassword(rawToken: string, newPassword: string) {
 // verify the token's signature and map it to a local account. Replaces the
 // old custom OTP-over-SMS verification (sendPhoneOtp/verifyPhoneOtp, AWS SNS).
 export async function loginWithFirebase(idToken: string): Promise<{ user: PublicUser; isNewUser: boolean } & TokenPair> {
-  const auth = await getFirebaseAuth();
-  let decoded;
-  try {
-    decoded = await auth.verifyIdToken(idToken);
-  } catch {
-    throw new AuthError('Invalid or expired sign-in token', 401);
+  let decoded: { uid: string; email?: unknown; phone_number?: unknown; name?: unknown };
+  const mock = decodeMockToken(idToken);
+  if (mock) {
+    decoded = mock;
+  } else {
+    const auth = await getFirebaseAuth();
+    try {
+      decoded = await auth.verifyIdToken(idToken);
+    } catch {
+      throw new AuthError('Invalid or expired sign-in token', 401);
+    }
   }
   const uid = decoded.uid;
   const email = decoded.email as string | undefined;
@@ -206,29 +213,12 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
       firebaseUid: uid,
     });
     if (phoneNumber) await markPhoneVerified(row.id);
-    // Phone-only signups get a synthetic @firebase.local placeholder (see
-    // above) — nothing to send there, so only email real addresses.
-    if (email) {
-      void notifyEventByTemplateId({
-        templateId: 'tpl-welcome', eventKey: 'user.welcome',
-        vars: {}, user: { email: row.email, name: row.name },
-      });
-    }
   } else if (!row.firebase_uid) {
     await linkFirebaseUid(row.id, uid);
   }
 
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
-  // Phone-only accounts still carry the synthetic @firebase.local
-  // placeholder (see above) if they've never since added a real email —
-  // nothing deliverable to send there.
-  if (!isNewUser && !row.email.endsWith('@firebase.local')) {
-    void notifyEventByTemplateId({
-      templateId: 'tpl-welcome-back', eventKey: 'user.login',
-      vars: {}, user: { email: row.email, name: row.name },
-    });
-  }
   return { user: toPublicUser(row), isNewUser, ...tokens };
 }
 

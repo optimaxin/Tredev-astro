@@ -31,9 +31,9 @@ export const config = {
     if (!url) throw new Error('Missing required environment variable: DATABASE_URL (see backend/.env.example)');
     return url;
   })(),
-  // Dev-only shortcuts (returning the password-reset token in the API
-  // response — see authService.ts — plus geoLocation.ts's ?debugCountry=
-  // pricing override). Must be
+  // Dev-only shortcuts (the `mock:` phone login and returning the
+  // password-reset token in the API response — see authService.ts — plus
+  // geoLocation.ts's ?debugCountry= pricing override). Must be
   // switched on explicitly; never inferred from NODE_ENV being unset.
   devShortcuts: process.env.DEV_SHORTCUTS === 'true' && process.env.NODE_ENV !== 'production',
   jwt: {
@@ -58,13 +58,11 @@ export const config = {
     // silently hitting Cashfree with empty credentials.
     appId: process.env.CASHFREE_APP_ID,
     secretKey: process.env.CASHFREE_SECRET_KEY,
-    env: (process.env.CASHFREE_SECRET_KEY?.startsWith('cfsk_ma_prod_')
-      ? 'production'
-      : (process.env.CASHFREE_ENV || 'sandbox')) as 'sandbox' | 'production',
+    env: process.env.CASHFREE_ENV || 'sandbox', // 'sandbox' | 'production'
   },
-  paymentGateway: (process.env.PAYMENT_GATEWAY || 'cashfree') as 'cashfree' | 'razorpay',
   razorpay: {
-    // Secondary gateway, selectable or fallback — same "undefined check, clear error"
+    // Second gateway, selectable alongside Cashfree at checkout (see
+    // PaymentGatewayPicker.tsx) — same "undefined check, clear error"
     // pattern as cashfree above, no dev fallback.
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_KEY_SECRET,
@@ -83,65 +81,6 @@ export const config = {
     // Turn Key at the Cloudflare dashboard → Realtime → TURN Service.
     keyId: process.env.CLOUDFLARE_TURN_KEY_ID,
     apiToken: process.env.CLOUDFLARE_TURN_API_TOKEN,
-  },
-  premiumReport: {
-    // The Stage 6 Premium Report service (Tradeva Premium, kb_report/api.py).
-    // This URL is SERVER-SIDE ONLY and must never reach the frontend: that
-    // service has no authentication of its own, so anyone who can reach it
-    // can read any report by id. Keep it bound to localhost or a private
-    // network and let api/premiumReports.routes.ts be its only client.
-    baseUrl: (process.env.PREMIUM_REPORT_API_URL || 'http://127.0.0.1:8100').replace(/\/+$/, ''),
-    // Generation itself runs asynchronously upstream, so every call this
-    // backend makes is a short one (submit, poll, fetch). A long timeout
-    // here would only hold an Express connection open on a dead service.
-    timeoutMs: Number(process.env.PREMIUM_REPORT_TIMEOUT_MS) || 30_000,
-  },
-  nvidia: {
-    // NVIDIA NIM (OpenAI-compatible) — rewrites the template-generated Kundli
-    // descriptions (kundliAnalysis.ts, dashaPredictions.ts, etc.) into natural
-    // conversational Hindi/English. Optional, like cashfree/aws above:
-    // kundliDescriptionRewriter.ts skips straight to the original template
-    // text (no error, no delay) when this isn't set, so the Kundli feature
-    // never depends on it being configured.
-    apiKey: process.env.NVIDIA_API_KEY,
-    baseUrl: (process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1').replace(/\/+$/, ''),
-    primaryModel: process.env.NVIDIA_PRIMARY_MODEL || 'mistralai/mistral-large-4-1t-a52b',
-    fallbackModel: process.env.NVIDIA_FALLBACK_MODEL || 'deepseek-ai/deepseek-v4.1-flash',
-    temperature: Number(process.env.LLM_TEMPERATURE) || 0.3,
-    timeoutMs: (Number(process.env.LLM_TIMEOUT) || 30) * 1000,
-    maxRetries: Number(process.env.LLM_MAX_RETRIES) || 2,
-  },
-  zeptomail: {
-    // Transactional email (password reset, etc.) — optional like cashfree/aws
-    // above; emailService.ts no-ops with a console warning when unset so
-    // local dev doesn't need a real account. Token format from ZeptoMail's
-    // dashboard already includes the "Zoho-enczapikey " prefix — paste it
-    // whole. Set in backend/.env (local) and Render's dashboard (production).
-    apiKey: process.env.ZEPTOMAIL_API_KEY,
-    fromAddress: process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
-    fromName: process.env.ZEPTOMAIL_FROM_NAME || 'TredevaAstro',
-    // Per-purpose "send as" identities (notificationService.ts, and the
-    // Compose screen's "Send As" picker) — e.g. a hiring decision mails from
-    // "TredevaAstro Hiring Team", not the generic noreply address. Each one
-    // falls back to the single address/name above when its own env var isn't
-    // set, so this works out of the box with zero extra config; set the
-    // *_ADDRESS vars once real mailboxes/verified senders for them exist in
-    // ZeptoMail (each sending address must be verified there before it can
-    // actually send, same as the default one already is).
-    identities: {
-      support: {
-        address: process.env.ZEPTOMAIL_SUPPORT_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
-        name: process.env.ZEPTOMAIL_SUPPORT_NAME || 'TredevaAstro Support',
-      },
-      hiring: {
-        address: process.env.ZEPTOMAIL_HIRING_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
-        name: process.env.ZEPTOMAIL_HIRING_NAME || 'TredevaAstro Hiring Team',
-      },
-      notifications: {
-        address: process.env.ZEPTOMAIL_NOTIFICATIONS_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@tredevaastro.com',
-        name: process.env.ZEPTOMAIL_NOTIFICATIONS_NAME || 'TredevaAstro Notifications',
-      },
-    },
   },
   firebase: {
     // The whole service-account JSON (from Firebase Console → Project

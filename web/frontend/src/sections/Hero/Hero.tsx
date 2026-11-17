@@ -1,11 +1,50 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import styles from './Hero.module.css';
 
 export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  );
+  // Hero3.mp4 is ~15MB with no adaptive bitrate — great on a fast connection,
+  // unusable on a slow/metered one. Network Information API skips it for
+  // visitors on an obviously bad connection, but that API is Chromium-only
+  // (no Safari/Firefox support) and says nothing about decode-bound low-end
+  // devices on a fine connection. The canplaythrough timeout below is the
+  // real safety net: whatever the reason, if the video isn't actually ready
+  // to play smoothly within a few seconds, drop to the static image.
+  const [useVideo, setUseVideo] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { t, kundliGenerated, setPage } = useAppContext();
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handleChange = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    const conn = (navigator as any).connection;
+    if (conn && (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType))) {
+      setUseVideo(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMobile || !useVideo) return;
+    const el = videoRef.current;
+    if (!el) return;
+    const timer = window.setTimeout(() => setUseVideo(false), 4000);
+    const markReady = () => clearTimeout(timer);
+    el.addEventListener('canplaythrough', markReady, { once: true });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('canplaythrough', markReady);
+    };
+  }, [isMobile, useVideo]);
 
   // #kundli only exists on the dedicated /free-kundli page, never here on
   // the home page — this must navigate there (same behavior as the nav
@@ -24,14 +63,26 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className={styles.hero} id="hero" aria-label="Hero">
-      <video
-        src="/Hero3.mp4"
-        className={styles.bgVideo}
-        autoPlay
-        loop
-        muted
-        playsInline
-      />
+      {/* Background: video loop on desktop, a static poster on mobile — no
+          point paying video decode/bandwidth cost on a phone screen where the
+          motion barely reads anyway. */}
+      {isMobile || !useVideo ? (
+        <img
+          src="/Astrologist/A2.png"
+          alt=""
+          className={`${styles.bgVideo} ${styles.bgPersonImg}`}
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          src="/Hero3.mp4"
+          className={styles.bgVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      )}
 
       {/* Atmospheric dark vignette overlay */}
       <div className={styles.overlay} />

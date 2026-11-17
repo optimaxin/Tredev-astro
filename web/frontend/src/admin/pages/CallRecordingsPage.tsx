@@ -75,8 +75,8 @@ export default function CallRecordingsPage() {
           columns={[
             { key: 'astrologer', label: t('admin_astro_col_name'), render: r => r.astrologerName },
             { key: 'user', label: t('admin_call_recordings_col_user'), render: r => `${r.userName} (${r.userEmail})` },
-            { key: 'created', label: t('admin_call_recordings_col_recorded'), render: r => formatDateTime(r.createdAt) },
-            { key: 'expires', label: t('admin_call_recordings_col_expires'), render: r => formatDateTime(r.expiresAt) },
+            { key: 'created', label: t('admin_call_recordings_col_recorded'), render: r => formatDateTime(new Date(r.createdAt).toISOString()) },
+            { key: 'expires', label: t('admin_call_recordings_col_expires'), render: r => formatDateTime(new Date(r.expiresAt).toISOString()) },
             { key: 'size', label: t('admin_call_recordings_col_size'), render: r => formatSize(r.sizeBytes) },
             {
               key: 'action', label: t('admin_apps_col_action'), hideOnCard: true, render: r => (

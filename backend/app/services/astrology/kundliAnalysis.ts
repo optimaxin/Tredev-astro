@@ -157,7 +157,7 @@ function planetParagraph(planet: ChartPlanet, language: 'en' | 'hi'): string {
     const OPENINGS_HI = [
       `आपका ${planetHi} ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में, ${rashiHi} राशि में स्थित है। शास्त्रीय रूप से ${planetHi} ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक है, इसलिए यहाँ यह इसी क्षेत्र को प्रभावित करता है।`,
       `${rashiHi} राशि में स्थित आपका ${planetHi} ${HINDI_HOUSE_ORDINAL[planet.house]} भाव — ${houseAreaHi} — में बैठा है। यह ग्रह पारंपरिक रूप से ${PLANET_SIGNIFICATIONS_HI[planet.id]} से जुड़ा है, और यही रंग यहाँ लाता है।`,
-      `आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${planetHi} बैठा है, ${rashiHi} राशि में। ज्योतिष में ${planetHi} को ${PLANET_SIGNIFICATIONS_HI[planet.id]} से जोड़ा जाता है।`,
+      `आपके ${HINDI_HOUSE_ORDINAL[planet.house]} भाव (${houseAreaHi}) में ${planetHi} विराजमान है, ${rashiHi} राशि में। ज्योतिष में ${planetHi} को ${PLANET_SIGNIFICATIONS_HI[planet.id]} का कारक माना जाता है।`,
     ];
     const NAKSHATRA_HI = [
       ` यह राशि के ${planet.degreeInSign.toFixed(1)}° पर, ${HINDI_NAKSHATRA[planet.nakshatra] || planet.nakshatra} नक्षत्र (चरण ${planet.nakshatraPada}, स्वामी ${HINDI_PLANET[planet.nakshatraLord as PlanetId] || planet.nakshatraLord}) में है, जो राशि के स्वभाव पर एक सूक्ष्म भावनात्मक छटा जोड़ता है।`,

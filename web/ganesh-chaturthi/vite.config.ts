@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react'
 // Deploying this app on its own separate domain (the normal setup — this is
 // its own Vite app, not served by the shared `backend`): set VITE_API_URL in
 // this app's own build environment to the real deployed backend URL (e.g.
-// https://api.tredevaastro.com). Without it, frontend/src/services/apiUrl.ts
+// https://api.tredevastro.com). Without it, frontend/src/services/apiUrl.ts
 // falls back to http://localhost:4000, which only works in local dev where
 // both this app and the backend run on one machine. The backend's own
 // CLIENT_ORIGIN (for CORS) and CAMPAIGN_APP_URL (so its Playwright PDF

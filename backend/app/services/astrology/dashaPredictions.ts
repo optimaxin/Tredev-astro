@@ -73,8 +73,8 @@ const DASHA_OPENERS_EN: ((lord: string, house: string, area: string, sig: string
   (lord, house, area, sig, rashi, tone) => `${lord}, the ruling planet of this Mahadasha, is placed in ${rashi} in your ${house} house of ${area}. Its classical significations — ${sig} — play out here with ${tone}.`,
 ];
 const DASHA_OPENERS_HI: ((lord: string, house: string, area: string, sig: string, rashi: string, tone: string) => string)[] = [
-  (lord, house, area, sig, rashi, tone) => `${lord} आपके ${house} भाव (${area}) में ${rashi} राशि में स्थित है। शास्त्रीय रूप से ${lord} ${sig} से जुड़ा है — इस महादशा में इसका असर इसी भाव — ${area} — में दिखता है, ${rashi} राशि से ${tone} का पुट लिए हुए।`,
-  (lord, house, area, sig, rashi, tone) => `यह महादशा ${lord} की है, जो आपके ${house} भाव — ${area} — में ${rashi} राशि में बैठा है। ${lord} का शास्त्रीय कारक ${sig} है, इसलिए यह अवधि इसी भाव से जुड़े विषयों में ${tone} लेकर आती है।`,
+  (lord, house, area, sig, rashi, tone) => `${lord} आपके ${house} भाव (${area}) में ${rashi} राशि में स्थित है। शास्त्रीय रूप से ${lord} ${sig} का कारक है — इस महादशा में यह विषय ${area} के इर्द-गिर्द उभरता है, ${rashi} राशि से ${tone} का पुट लिए हुए।`,
+  (lord, house, area, sig, rashi, tone) => `यह महादशा ${lord} की है, जो आपके ${house} भाव — ${area} — में ${rashi} राशि में बैठा है। ${lord} का शास्त्रीय कारक ${sig} है, इसलिए यह अवधि ${area} से जुड़े विषयों में ${tone} लेकर आती है।`,
   (lord, house, area, sig, rashi, tone) => `इस महादशा के स्वामी ${lord}, आपके ${house} भाव (${area}) में ${rashi} राशि में स्थित हैं। इनका शास्त्रीय कारक — ${sig} — यहाँ ${tone} के साथ प्रकट होता है।`,
 ];
 

@@ -11,12 +11,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,16 +24,13 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tredevastro.app.i18n.tr
 import com.tredevastro.app.ui.theme.LocalAppColors
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
@@ -52,7 +46,6 @@ fun GoldButton(
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
     compact: Boolean = false,
-    leadingIcon: ImageVector? = null,
 ) {
     val colors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -71,7 +64,7 @@ fun GoldButton(
         modifier = modifier
             .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 Brush.linearGradient(listOf(colors.goldPrimary, colors.goldSoft, colors.goldSecondary)),
             )
@@ -94,17 +87,12 @@ fun GoldButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (leadingIcon != null) {
-                Icon(leadingIcon, contentDescription = null, tint = Color.White, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
-            }
-            Text(
-                text = tr(text),
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = if (compact) 13.sp else 15.sp,
-            )
-        }
+        Text(
+            text = text,
+            color = colors.bgPrimary,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = if (compact) 13.sp else 15.sp,
+        )
     }
 }
 
@@ -115,8 +103,6 @@ fun OutlineGoldButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
-    compact: Boolean = false,
-    leadingIcon: ImageVector? = null,
 ) {
     val colors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -124,7 +110,7 @@ fun OutlineGoldButton(
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "outline-btn-scale")
     val borderColor = if (pressed) colors.goldPrimary else colors.borderStrong
 
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = modifier
             .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
@@ -132,94 +118,9 @@ fun OutlineGoldButton(
             .clip(shape)
             .border(width = 1.dp, color = borderColor, shape = shape)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(
-                if (compact) PaddingValues(horizontal = 18.dp, vertical = 10.dp)
-                else PaddingValues(horizontal = 28.dp, vertical = 16.dp),
-            ),
+            .padding(PaddingValues(horizontal = 28.dp, vertical = 16.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (leadingIcon != null) {
-                Icon(leadingIcon, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
-            }
-            Text(text = tr(text), color = colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = if (compact) 13.sp else 15.sp)
-        }
+        Text(text = text, color = colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
     }
 }
-
-/** A fixed deep-navy solid button (Stitch: "Talk Now" / "Chat" — the Vedic
- * Sanctuary design's other primary action color, alongside gold). Always
- * navy regardless of theme, matching the mockups exactly. */
-@Composable
-fun DarkButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    fillWidth: Boolean = true,
-    compact: Boolean = false,
-    leadingIcon: ImageVector? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "dark-btn-scale")
-
-    Box(
-        modifier = modifier
-            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(12.dp))
-            .background(SanctuaryNavy)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(
-                if (compact) PaddingValues(horizontal = 18.dp, vertical = 10.dp)
-                else PaddingValues(horizontal = 28.dp, vertical = 16.dp),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (leadingIcon != null) {
-                Icon(leadingIcon, contentDescription = null, tint = Color.White, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
-            }
-            Text(text = tr(text), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 13.sp else 15.sp)
-        }
-    }
-}
-
-/** A light tonal button (Stitch: "Call" next to the dark "Chat" button). */
-@Composable
-fun TonalButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    fillWidth: Boolean = true,
-    compact: Boolean = false,
-    leadingIcon: ImageVector? = null,
-) {
-    val colors = LocalAppColors.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "tonal-btn-scale")
-
-    Box(
-        modifier = modifier
-            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(12.dp))
-            .background(colors.bgSecondary)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(
-                if (compact) PaddingValues(horizontal = 18.dp, vertical = 10.dp)
-                else PaddingValues(horizontal = 28.dp, vertical = 16.dp),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (leadingIcon != null) {
-                Icon(leadingIcon, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(if (compact) 14.dp else 18.dp))
-            }
-            Text(text = tr(text), color = colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = if (compact) 13.sp else 15.sp)
-        }
-    }
-}
-
-private val SanctuaryNavy = Color(0xFF182333)

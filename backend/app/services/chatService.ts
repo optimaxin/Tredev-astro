@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getAstrologer, getConsultation } from './realtimeStore.ts';
 import { insertMessage, listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
-import { findUserByEmail } from '../repositories/userRepository.ts';
-import { computeKundliFullCached, type KundliFullResult } from './astrology/kundliFullBuilder.ts';
 import { bus } from '../websocket/bus.ts';
 import type { ChatMessage, MessageType, SenderRole } from '../models/chatMessage.ts';
 import type { Consultation } from '../models/types.ts';
@@ -64,56 +62,4 @@ export async function sendMessage(consultationId: string, requesterEmail: string
   await insertMessage(message);
   bus.emitTyped('chat:message', message);
   return message;
-}
-
-export interface ClientKundliContext {
-  userName: string;
-  hasBirthDetails: boolean;
-  birthDate?: string;
-  birthTime?: string;
-  birthPlace?: string;
-  birthLatitude?: number;
-  birthLongitude?: number;
-  birthTimezoneOffsetMinutes?: number;
-  kundliFull?: KundliFullResult;
-}
-
-// The astrologer-side "client Kundli" sidebar (see ChatWindow/CallWindow's
-// consumers in AstrologistDashboard) — lets the astrologer see the birth
-// chart of whoever they're actually talking to, instead of asking the
-// client to repeat their birth details over chat. Astrologer-only (a
-// client has no reason to see this) and reuses the exact same computation
-// as the public /api/calculators/kundli-full endpoint.
-export async function getClientKundliForAstrologer(consultationId: string, requesterEmail: string): Promise<ClientKundliContext> {
-  const { consultation, role } = assertParticipant(await getConsultation(consultationId), requesterEmail);
-  if (role !== 'ASTROLOGIST') throw new ChatError("Only the astrologer can view the client's Kundli", 403);
-
-  const client = await findUserByEmail(consultation.userEmail);
-  if (!client) throw new ChatError('Client account not found', 404);
-
-  const hasBirthDetails = !!(
-    client.birth_date && client.birth_time &&
-    client.birth_latitude != null && client.birth_longitude != null && client.birth_timezone_offset_minutes != null
-  );
-  if (!hasBirthDetails) return { userName: consultation.userName, hasBirthDetails: false };
-
-  const kundliFull = computeKundliFullCached({
-    date: client.birth_date!,
-    time: client.birth_time!,
-    latitude: client.birth_latitude!,
-    longitude: client.birth_longitude!,
-    timezoneOffsetMinutes: client.birth_timezone_offset_minutes!,
-  }, 'en');
-
-  return {
-    userName: consultation.userName,
-    hasBirthDetails: true,
-    birthDate: client.birth_date!,
-    birthTime: client.birth_time ?? undefined,
-    birthPlace: client.birth_place ?? undefined,
-    birthLatitude: client.birth_latitude ?? undefined,
-    birthLongitude: client.birth_longitude ?? undefined,
-    birthTimezoneOffsetMinutes: client.birth_timezone_offset_minutes ?? undefined,
-    kundliFull,
-  };
 }

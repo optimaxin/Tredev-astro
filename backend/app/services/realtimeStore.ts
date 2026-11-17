@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { withTransaction, type Executor } from '../core/db.ts';
-import { findAstrologerByIdRaw, listAllAstrologersRaw, setAstrologerIntent, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
-import { findUserById, findUserByEmail, debitWallet } from '../repositories/userRepository.ts';
+import { findAstrologerByIdRaw, listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import { findUserById } from '../repositories/userRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
 import * as notificationRepo from '../repositories/notificationRepository.ts';
@@ -9,12 +9,11 @@ import * as processedRequestRepo from '../repositories/processedRequestRepositor
 import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
 import * as boostRepo from '../repositories/boostRepository.ts';
 import { computePriceWithOverride } from './pricingEngine.ts';
-import { notifyEventByTemplateId } from './notificationService.ts';
 import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import type {
-  AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationKundliDetails, ConsultationType,
+  AdminConfig, AstrologerNotification, AstrologerRecord, Consultation, ConsultationType,
   EtaEstimate, NotificationKind, PublicAstrologerState, QueueEntry, RequestResult,
 } from '../models/types.ts';
 import type { AstrologerCatalogRow } from '../models/astrologer.ts';
@@ -68,8 +67,8 @@ async function buildAstrologerRecord(row: AstrologerCatalogRow): Promise<Astrolo
     price: row.chat_price,
     avatar: row.avatar,
     email,
-    intent: row.intent,
-    status: row.intent === 'ONLINE' ? 'ONLINE_AVAILABLE' : 'OFFLINE',
+    intent: 'OFFLINE',
+    status: 'OFFLINE',
     maxConcurrent: row.max_concurrent,
     lastActivityAt: Date.now(),
     durationSamplesMs: [],
@@ -83,9 +82,6 @@ export async function seedRealtimeStore() {
   for (const row of await listAllAstrologersRaw()) {
     astrologers.set(row.id, await buildAstrologerRecord(row));
   }
-  // Re-derive status (ONLINE_BUSY vs ONLINE_AVAILABLE) from persisted
-  // intent + any consultations still active from before this restart.
-  for (const id of astrologers.keys()) await recomputeStatus(id);
 }
 
 // Registers a single newly-created catalog row into the live store —
@@ -167,7 +163,6 @@ export async function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLIN
   astro.intent = intent;
   astro.lastActivityAt = Date.now();
   if (intent === 'ONLINE') awayFlags.set(astrologerId, false);
-  await setAstrologerIntent(astrologerId, intent);
   await recomputeStatus(astrologerId);
   // Coming back online (or going offline while a stale queue exists from
   // before) should re-check whether anyone waiting can now be promoted.
@@ -278,7 +273,6 @@ export interface RequestParams {
   // price multiplier so what's actually charged matches what the catalog
   // and effective-price endpoints showed this same visitor before booking.
   countryCode?: string | null;
-  kundliDetails?: ConsultationKundliDetails;
 }
 
 export async function requestConsultation(params: RequestParams): Promise<RequestResult> {
@@ -303,7 +297,6 @@ export async function requestConsultation(params: RequestParams): Promise<Reques
         id: randomUUID(), astrologerId: astro.id, userEmail: params.userEmail, userName: params.userName,
         category: params.category, type: params.type, status: 'QUEUED', requestId: params.requestId, joinedAt: Date.now(),
         durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
-        kundliDetails: params.kundliDetails,
       };
       await queueRepo.insertQueueEntry(entry, client);
       const queued = await queueRepo.listQueuedForAstrologer(astro.id, client);
@@ -366,7 +359,6 @@ async function createConsultation(astrologerId: number, params: Omit<RequestPara
     durationMinutes: params.durationMinutes && params.durationMinutes > 0 ? params.durationMinutes : adminConfig.defaultConsultationMinutes,
     extendedMinutes: 0,
     pricePerMin, appliedOfferPercent, boostId,
-    kundliDetails: params.kundliDetails,
   };
   await consultationRepo.insertConsultation(consultation, executor);
   if (attribution) await boostRepo.consumeAttribution(attribution.id, consultation.id, executor);
@@ -392,12 +384,9 @@ function assertOwnership(consultation: Consultation | undefined, astrologerEmail
 // astrologer to hang up.
 function assertParticipant(consultation: Consultation | undefined, requesterEmail: string): Consultation {
   if (!consultation) throw new Error('Consultation not found');
-  const email = requesterEmail.trim().toLowerCase();
   const astro = astrologers.get(consultation.astrologerId);
-  const astroByEmail = getAstrologerByEmail(email);
-  const isAstro = (astro && astro.email.trim().toLowerCase() === email) || (astroByEmail && astroByEmail.id === consultation.astrologerId);
-  const isUser = consultation.userEmail.trim().toLowerCase() === email;
-  if (!isAstro && !isUser) {
+  const email = requesterEmail.toLowerCase();
+  if (astro?.email.toLowerCase() !== email && consultation.userEmail.toLowerCase() !== email) {
     throw new Error('Not authorized for this consultation');
   }
   return consultation;
@@ -442,27 +431,9 @@ function scheduleExpiry(c: Consultation) {
   expiryTimers.set(c.id, { warn, end });
 }
 
-// Wallet billing happens exactly once, here, when a consultation actually
-// ends — never ticked during the call. Deferring it this way is what lets
-// onWalletTopUp below recompute "how much time is this worth" from the raw
-// wallet balance at any point mid-call (nothing's been subtracted from it
-// yet) instead of tracking a separate "remaining" counter. Debits only the
-// real elapsed time, clamped to whatever's left (debitWallet's own guard) —
-// an early hangup is only charged for the minutes actually used.
-async function settleConsultationBilling(c: Consultation): Promise<void> {
-  if (!c.startedAt || !c.endedAt || c.pricePerMin <= 0) return;
-  const user = await findUserByEmail(c.userEmail);
-  if (!user) return;
-  const elapsedMinutes = (c.endedAt - c.startedAt) / 60_000;
-  const cost = Math.round(c.pricePerMin * elapsedMinutes);
-  if (cost > 0) await debitWallet(user.id, cost);
-}
-
 // System-initiated end (the clock ran out, nobody topped up) — same
 // bookkeeping as endConsultation but with no participant to authorize
-// against. In the wallet-billing model this timer's deadline IS the
-// affordability limit (see acceptConsultation/onWalletTopUp), so reaching it
-// always means "ran out of balance" — tagged via endReason for the frontend.
+// against.
 async function autoEndConsultation(consultationId: string) {
   const c = await consultationRepo.findConsultationById(consultationId);
   if (!c || c.status !== 'ACTIVE') return;
@@ -470,12 +441,11 @@ async function autoEndConsultation(consultationId: string) {
   c.status = 'COMPLETED';
   c.endedAt = Date.now();
   await consultationRepo.updateConsultation(c);
-  await settleConsultationBilling(c);
   recordDurationSample(c);
   if (c.startedAt && c.endedAt) await loyaltyRepo.addSessionMinutes(c.userEmail, c.astrologerId, c.endedAt - c.startedAt);
   await touchActivity(c.astrologerId);
   await recomputeStatus(c.astrologerId);
-  bus.emitTyped('chat:ended', { ...c, endReason: 'INSUFFICIENT_BALANCE' });
+  bus.emitTyped('chat:ended', c);
   await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
   await processQueue(c.astrologerId);
 }
@@ -514,17 +484,6 @@ export async function extendConsultation(consultationId: string, requesterEmail:
 export async function acceptConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
   const c = assertOwnership(await consultationRepo.findConsultationById(consultationId), astrologerEmail);
   if (c.status !== 'ASSIGNED') throw new Error(`Cannot accept a consultation in status ${c.status}`);
-
-  // The real timer starts here, not at request time — this is the first
-  // moment billing matters, so it's also where "how long can this balance
-  // actually buy" gets computed (wallet-based billing; see requestConsultation's
-  // route-level balance precheck, settleConsultationBilling, and
-  // onWalletTopUp for the rest of this model).
-  const user = await findUserByEmail(c.userEmail);
-  if (!user || user.wallet_balance <= 0) throw new Error('Insufficient wallet balance');
-  c.durationMinutes = c.pricePerMin > 0 ? user.wallet_balance / c.pricePerMin : adminConfig.defaultConsultationMinutes;
-  c.extendedMinutes = 0;
-
   c.status = 'ACTIVE';
   c.acceptedAt = Date.now();
   c.startedAt = Date.now();
@@ -534,26 +493,6 @@ export async function acceptConsultation(consultationId: string, astrologerEmail
   bus.emitTyped('chat:accepted', c);
   bus.emitTyped('chat:started', c);
   return c;
-}
-
-// A recharge landing while the user is mid-call extends it live — the
-// deferred-billing model (see settleConsultationBilling) means the wallet
-// balance hasn't been touched since the call started, so re-running the
-// exact same "balance / pricePerMin" formula from acceptConsultation
-// correctly accounts for time already elapsed AND the new top-up in one go.
-// Reuses `chat:extended` — the same event/UI the old pay-to-extend flow used,
-// so the frontend's existing handler (clears the low-balance banner) needs
-// no changes for this.
-export async function onWalletTopUp(userEmail: string): Promise<void> {
-  const c = await consultationRepo.findActiveForUser(userEmail);
-  if (!c || !c.startedAt) return;
-  const user = await findUserByEmail(userEmail);
-  if (!user || c.pricePerMin <= 0) return;
-  c.durationMinutes = user.wallet_balance / c.pricePerMin;
-  c.extendedMinutes = 0;
-  await consultationRepo.updateConsultation(c);
-  scheduleExpiry(c);
-  bus.emitTyped('chat:extended', c);
 }
 
 export async function declineConsultation(consultationId: string, astrologerEmail: string): Promise<Consultation> {
@@ -569,62 +508,22 @@ export async function declineConsultation(consultationId: string, astrologerEmai
   return c;
 }
 
-// The user's own way out of a request the astrologer hasn't responded to
-// yet — previously there was genuinely no path here: endConsultation only
-// accepts ACTIVE, and declineConsultation can only be called by the
-// astrologer (assertOwnership). Without this, an ASSIGNED request nobody
-// ever acted on left the user stuck on the waiting screen with no way out
-// but abandoning the tab (reopening the app lands them right back on it,
-// since this is server-tracked state). Separate from declineConsultation
-// (and its own `chat:declined` event) rather than reusing it, since that
-// path's "your request was declined" toast would be the wrong message for
-// something the user themselves chose to do.
-export async function cancelConsultation(consultationId: string, requesterEmail: string): Promise<Consultation> {
-  const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
-  if (c.status !== 'ASSIGNED') throw new Error(`Cannot cancel a consultation in status ${c.status}`);
-  c.status = 'CANCELLED';
-  c.endedAt = Date.now();
-  await consultationRepo.updateConsultation(c);
-  await touchActivity(c.astrologerId);
-  await recomputeStatus(c.astrologerId);
-  bus.emitTyped('chat:cancelled', c);
-  await processQueue(c.astrologerId);
-  return c;
-}
-
 // Either the astrologer or the user can end an active consultation now —
 // previously only the astrologer could (assertOwnership), leaving the user
 // with no way to disconnect on their own.
 export async function endConsultation(consultationId: string, requesterEmail: string): Promise<Consultation> {
   const c = assertParticipant(await consultationRepo.findConsultationById(consultationId), requesterEmail);
-  if (c.status === 'COMPLETED') {
-    // Idempotent: already ended, return immediately so client transitions smoothly
-    return c;
-  }
-  if (c.status !== 'ACTIVE' && c.status !== 'ACCEPTED') {
-    throw new Error(`Cannot end a consultation in status ${c.status}`);
-  }
+  if (c.status !== 'ACTIVE') throw new Error(`Cannot end a consultation in status ${c.status}`);
   clearExpiryTimers(c.id);
   c.status = 'COMPLETED';
   c.endedAt = Date.now();
   await consultationRepo.updateConsultation(c);
-  await settleConsultationBilling(c);
   recordDurationSample(c);
   if (c.startedAt && c.endedAt) await loyaltyRepo.addSessionMinutes(c.userEmail, c.astrologerId, c.endedAt - c.startedAt);
   await touchActivity(c.astrologerId);
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
   await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
-  // Thank-you + feedback-request email — only for a session that actually
-  // ran (startedAt set), not one ended before it ever started. Best-effort,
-  // never blocks the consultation itself (see notifyEventByTemplateId).
-  if (c.startedAt) {
-    void notifyEventByTemplateId({
-      templateId: 'tpl-consultation-thanks', eventKey: 'consultation.completed',
-      vars: { astrologerName: astrologers.get(c.astrologerId)?.name ?? 'your astrologer', consultationType: c.type },
-      user: { email: c.userEmail, name: c.userName },
-    });
-  }
   await processQueue(c.astrologerId);
   return c;
 }

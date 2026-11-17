@@ -5,7 +5,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber,
-  type ConfirmationResult,
+  type ConfirmationResult, type UserCredential,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -74,7 +74,34 @@ function getFreshRecaptchaVerifier(containerId: string): RecaptchaVerifier {
 // "+919876543210"). Returns a ConfirmationResult; call `.confirm(code)` on
 // it with the 6-digit code the user enters to complete verification.
 export async function sendFirebasePhoneOtp(phoneNumberE164: string, containerId: string): Promise<ConfirmationResult> {
+  if (MOCK_OTP_ENABLED) return mockConfirmation(phoneNumberE164);
   return signInWithPhoneNumber(getAuthClient(), phoneNumberE164, getFreshRecaptchaVerifier(containerId));
+}
+
+// ── Dev-only login bypass ────────────────────────────────────────────────
+// Without VITE_FIREBASE_* there is no Firebase project to send an SMS
+// through, so local dev couldn't log in at all. In a dev build with no
+// config, skip the SMS entirely: any number is accepted with the fixed code
+// below, and `confirm()` hands back a `mock:<phone>` token in place of a
+// Firebase ID token — the backend accepts that shape only outside
+// production (see decodeMockToken in backend/app/services/authService.ts).
+// Production builds (import.meta.env.DEV === false) never take this path,
+// and neither does a dev build once VITE_FIREBASE_API_KEY is set.
+export const MOCK_OTP = '123456';
+export const MOCK_OTP_ENABLED = import.meta.env.DEV && !firebaseConfig.apiKey;
+
+function mockConfirmation(phoneNumberE164: string): ConfirmationResult {
+  return {
+    verificationId: 'mock-verification',
+    confirm: async (code: string) => {
+      if (code.trim() !== MOCK_OTP) {
+        // Same `.code` Firebase itself sets, so AuthPage's existing error
+        // mapping produces the same message it would for a real wrong OTP.
+        throw Object.assign(new Error('Invalid verification code'), { code: 'auth/invalid-verification-code' });
+      }
+      return { user: { getIdToken: async () => `mock:${phoneNumberE164}` } } as unknown as UserCredential;
+    },
+  };
 }
 
 // Combines the user's selected country dial code with whatever they typed
@@ -86,12 +113,6 @@ export async function sendFirebasePhoneOtp(phoneNumberE164: string, containerId:
 export function toE164(raw: string, dialCode: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('+')) return trimmed;
-  let digits = trimmed.replace(/\D/g, '');
-  if (dialCode === '91' && digits.length === 11 && digits.startsWith('0')) {
-    digits = digits.slice(1);
-  }
-  if (digits.startsWith(dialCode) && digits.length > dialCode.length + 8) {
-    digits = digits.slice(dialCode.length);
-  }
+  const digits = trimmed.replace(/\D/g, '');
   return `+${dialCode}${digits}`;
 }

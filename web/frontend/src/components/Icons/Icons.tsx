@@ -154,68 +154,6 @@ export function BellIcon({ size = 26, ...props }: IconProps) {
   );
 }
 
-export function WalletIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M4 7a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v2" />
-      <path d="M4 7v10a2 2 0 0 0 2 2h12a1 1 0 0 0 1-1v-4" />
-      <path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" />
-    </svg>
-  );
-}
-
-// Consultation type indicators — chat/voice/video slot cards on the
-// Raghav booking page (and anywhere else a 1:1 session type needs marking).
-export function ChatBubbleIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M4 5h16v11H8l-4 4V5Z" />
-      <line x1="8" y1="9" x2="16" y2="9" />
-      <line x1="8" y1="12.5" x2="13" y2="12.5" />
-    </svg>
-  );
-}
-
-export function PhoneCallIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v3a2 2 0 0 1-2.2 2A16 16 0 0 1 3 5.2 2 2 0 0 1 5 4Z" />
-    </svg>
-  );
-}
-
-export function VideoCameraIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect x="3" y="6" width="13" height="12" rx="2" />
-      <path d="M16 10.5 21 7v10l-5-3.5Z" />
-    </svg>
-  );
-}
-
-// Recorded Pooja / video-play affordance — a plain triangle-in-circle,
-// same stroke recipe as every other icon here, instead of the Unicode
-// "▶" glyph (renders as a colored emoji triangle on some platforms).
-export function PlayIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M10 8.5v7l6-3.5-6-3.5Z" />
-    </svg>
-  );
-}
-
-// Pooja / ritual flame — a diya's flame redrawn as line art (the "🪔" emoji
-// renders as a full-colour picture that clashes with this app's monochrome
-// icon language; this reads the same at a glance without that mismatch).
-export function FlameIcon({ size = 26, ...props }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M12 2c2 3-1 4-1 6.5A3 3 0 0 0 14 11c1-1.5.5-3 .5-3 2 2 3 4.5 3 6.5a5.5 5.5 0 1 1-11 0C6.5 9 9 6 12 2Z" />
-    </svg>
-  );
-}
-
 export function ProfileIcon({ size = 26, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>

@@ -11,7 +11,6 @@ import { findAstrologyReportById } from '../repositories/astrologyReportReposito
 import { findUserById } from '../repositories/userRepository.ts';
 import { findAstrologerById } from '../repositories/astrologerRepository.ts';
 import { findConsultationById } from '../repositories/consultationRepository.ts';
-import { findSlot } from '../repositories/consultationSlotRepository.ts';
 import { getLoyalty } from '../repositories/loyaltyRepository.ts';
 import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
@@ -50,20 +49,7 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
 
   if (paymentStatus === 'SUCCESS') {
     const updated = await markPaymentPaid(orderId, cfPaymentId);
-    // markPaymentPaid's guard is `WHERE status = 'CREATED'` — once this
-    // flips, no retry (a redelivered webhook, or the status-poll fallback
-    // below) will ever call fulfillPayment again for this payment. If it
-    // throws, the customer's money is taken with nothing granted and no
-    // visible trace — loud logging here is the least that must exist so
-    // this doesn't fail completely silently; a real reconciliation/retry
-    // queue is the fuller fix this doesn't attempt.
-    if (updated) {
-      try {
-        await fulfillPayment(updated);
-      } catch (err) {
-        console.error(`[payments] fulfillPayment failed after webhook marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
-      }
-    }
+    if (updated) await fulfillPayment(updated);
   } else if (paymentStatus === 'FAILED' || paymentStatus === 'USER_DROPPED' || paymentStatus === 'VOID') {
     await markPaymentFailed(orderId);
   }
@@ -93,22 +79,19 @@ const shippingSchema = z.object({
 const createIntentSchema = z.discriminatedUnion('purpose', [
   z.object({ purpose: z.literal('STORE_ORDER'), items: z.array(orderItemSchema).min(1).max(50), shipping: shippingSchema }),
   z.object({ purpose: z.literal('REPORT_PURCHASE'), reportId: z.number().int(), bundle: z.enum(['report-only', 'report-qa', 'report-consult']) }),
-  z.object({
-    purpose: z.literal('WALLET_RECHARGE'),
-    amount: z.number().int().min(50).max(500000).refine(n => n % 50 === 0, 'Amount must be a multiple of ₹50'),
-  }),
+  z.object({ purpose: z.literal('WALLET_RECHARGE'), amount: z.number().int().min(100).max(500000) }),
   z.object({ purpose: z.literal('CONSULTATION'), astrologerId: z.number().int(), category: z.string().trim().min(1).max(100), type: z.enum(['chat', 'voice', 'video']), durationMinutes: z.number().int().min(5).max(120) }),
   z.object({ purpose: z.literal('CONSULTATION_EXTEND'), consultationId: z.string().trim().min(1), extraMinutes: z.number().int().min(1).max(120) }),
-  z.object({ purpose: z.literal('SLOT_BOOKING'), slotId: z.string().trim().min(1) }),
 ]);
 
-// All transactions across the project are processed via Cashfree as the primary gateway.
-// Can be overridden via config.paymentGateway / PAYMENT_GATEWAY env var if needed.
-function gatewayForRequest(_req?: Request): PaymentGateway {
-  if (config.paymentGateway === 'razorpay' || config.paymentGateway === 'cashfree') {
-    return config.paymentGateway;
-  }
-  return 'cashfree';
+// Which processor actually handles the money is decided here, server-side,
+// from the visitor's IP-derived country — never a client choice (see
+// geoLocation.ts, already used the same way for region pricing). India →
+// Cashfree; everyone else (including unresolvable/local IPs) → Razorpay,
+// since Cashfree's India-first onboarding makes it the natural default for
+// domestic traffic and Razorpay the fallback for international cards.
+function gatewayForRequest(req: Request): PaymentGateway {
+  return countryFromRequest(req) === 'IN' ? 'cashfree' : 'razorpay';
 }
 
 // Creates a pending payment intent, then a matching order with whichever
@@ -152,13 +135,6 @@ paymentsRouter.post('/orders', async (req, res) => {
     if (consultation.status !== 'ACTIVE') return fail(res, 422, 'VALIDATION_ERROR', 'Consultation is not active');
     amount = consultation.pricePerMin * parsed.data.extraMinutes;
     payload = { consultationId: parsed.data.consultationId, extraMinutes: parsed.data.extraMinutes };
-  } else if (parsed.data.purpose === 'SLOT_BOOKING') {
-    const slot = await findSlot(parsed.data.slotId);
-    if (!slot) return fail(res, 404, 'NOT_FOUND', 'Slot not found');
-    if (slot.bookedByUserId) return fail(res, 409, 'ALREADY_BOOKED', 'This slot has already been booked');
-    if (slot.scheduledAt <= Date.now()) return fail(res, 422, 'VALIDATION_ERROR', 'This slot is no longer available');
-    amount = slot.price;
-    payload = { slotId: slot.id };
   } else {
     amount = parsed.data.amount;
     payload = { amount };
@@ -183,15 +159,7 @@ paymentsRouter.post('/orders', async (req, res) => {
         { id: user.id, name: user.name, email: user.email, phone: user.phone_number || '' },
         returnUrl
       );
-      res.status(201).json({
-        success: true,
-        data: {
-          paymentId: id,
-          gateway,
-          paymentSessionId: cfOrder.payment_session_id,
-          cashfreeMode: config.cashfree.env,
-        },
-      });
+      res.status(201).json({ success: true, data: { paymentId: id, gateway, paymentSessionId: cfOrder.payment_session_id } });
     } else {
       const link = await createPaymentLink(id, amount, { name: user.name, email: user.email, contact: user.phone_number || '' }, returnUrl);
       // Razorpay assigns its OWN id to the link ("plink_xxx") — not our
@@ -223,16 +191,7 @@ paymentsRouter.get('/orders/:id/status', async (req, res) => {
         const cfOrder = await fetchCashfreeOrder(payment.id);
         if (cfOrder.order_status === 'PAID') {
           const updated = await markPaymentPaid(payment.id, null);
-          // Separate try/catch from the gateway-lookup one below — once
-          // markPaymentPaid flips CREATED->PAID, nothing will ever call
-          // fulfillPayment for this payment again (same reasoning as the
-          // webhook handler above), so a failure here must be logged
-          // distinctly, not folded into "gateway lookup failed, ignore."
-          if (updated) {
-            try { await fulfillPayment(updated); } catch (err) {
-              console.error(`[payments] fulfillPayment failed after status-poll marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
-            }
-          }
+          if (updated) await fulfillPayment(updated);
         } else if (cfOrder.order_status === 'EXPIRED' || cfOrder.order_status === 'TERMINATED') {
           await markPaymentFailed(payment.id);
         }
@@ -240,11 +199,7 @@ paymentsRouter.get('/orders/:id/status', async (req, res) => {
         const link = await fetchPaymentLink(payment.gateway_ref);
         if (link.status === 'paid') {
           const updated = await markPaymentPaid(payment.id, link.id);
-          if (updated) {
-            try { await fulfillPayment(updated); } catch (err) {
-              console.error(`[payments] fulfillPayment failed after status-poll marked PAID — payment ${updated.id}, purpose ${updated.purpose}, user ${updated.user_id}:`, err);
-            }
-          }
+          if (updated) await fulfillPayment(updated);
         } else if (link.status === 'expired' || link.status === 'cancelled') {
           await markPaymentFailed(payment.id);
         }

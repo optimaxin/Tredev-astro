@@ -3,8 +3,7 @@ import { NorthIndianChart, cap, toChartPlanets, toSimpleChartPlanets } from './K
 import { VARGA_LABELS, VARGA_LABELS_HI } from '../../services/calculatorService';
 import type { KundliFullResult } from '../../services/calculatorService';
 import { HINDI_RASHI, HINDI_NAKSHATRA, HINDI_PLANET, HINDI_TITHI, HINDI_YOGA, HINDI_KARANA, PAKSHA_HI } from '../../utils/panchangHindi';
-import { INK, MUTED, FAINT, GOLD, LINE, TINT, FONT, COVER_BANNER_SRC, PAGE_BG } from './printTheme';
-import { MiniChart, SectionHeader, SubHeading, KVGrid, KVRow, Table, MinorHeading, ActiveBadge, Td } from './printPrimitives';
+import chartStyles from './KundliSection.module.css';
 
 // A dedicated, non-interactive, print-styled layout captured via
 // html2canvas for the "Download PDF" feature (see handleDownloadPdf in
@@ -56,6 +55,9 @@ import { MiniChart, SectionHeader, SubHeading, KVGrid, KVRow, Table, MinorHeadin
 // (rashi/nakshatra/planet names, yes/no, strong/weak, ordinal house
 // numbers) — via the LABELS dictionary and the small helper functions
 // below it.
+const INK = '#182333', MUTED = '#68717A', FAINT = '#8C8A84', GOLD = '#B58A3B', LINE = '#E8DEC8', TINT = '#F2EBD9', PAGE_BG = '#FAF7F0';
+const FONT = { title: 30, section: 14, sub: 12.5, body: 11.5, label: 9.5 };
+const COVER_BANNER_SRC = '/images/kundli-cover-banner.jpg';
 
 // Every divisional chart the app computes, in ascending order — D1/D9 are
 // already shown in "02 Kundli" above, so only the rest appears here.
@@ -225,12 +227,9 @@ interface KundliPrintLayoutProps {
   // param) AND which language this file's own labels/computed-value
   // lookups (rashi/nakshatra/planet names, yes/no, ordinals) render in.
   language?: Language;
-  // When generated for an astrologer, attributed with "for (astrologer name)"
-  // across every page of the report.
-  preparedForAstrologer?: string;
 }
 
-export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, latitude, longitude, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en', preparedForAstrologer }: KundliPrintLayoutProps) {
+export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false, place, timezoneOffsetMinutes, latitude, longitude, result, skipExtraDivisionalCharts = false, bannerImageSrc, language = 'en' }: KundliPrintLayoutProps) {
   const L = LABELS[language];
   const isHi = language === 'hi';
 
@@ -290,7 +289,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
 
   return (
     <div data-theme="light" style={{ width: 800, position: 'relative', background: '#FAF7F0' }}>
-      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'var(--font-sans)', padding: 40 }}>
+      <div style={{ position: 'relative', zIndex: 1, color: INK, fontFamily: 'DM Sans, sans-serif', padding: 40 }}>
 
         {/* Cover — its own dedicated first page. `breakAfter: 'page'` is
             what actually enforces that under native print pagination
@@ -311,14 +310,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
           <img src="/logo.png" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
           <div style={{ fontSize: FONT.label, letterSpacing: '0.28em', color: MUTED, textTransform: 'uppercase', fontWeight: 700 }}>TredevaAstro</div>
           <div style={{ fontSize: FONT.label, letterSpacing: '0.22em', color: GOLD, textTransform: 'uppercase', margin: '8px 0 14px', fontWeight: 700 }}>{L.vedicReport}</div>
-          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
-          {preparedForAstrologer && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 22px', borderRadius: 999, background: 'rgba(181, 138, 59, 0.12)', border: '1.5px solid rgba(181, 138, 59, 0.45)', color: '#8a641d', fontSize: 14, fontWeight: 700, letterSpacing: '0.04em', margin: '4px 0 14px' }}>
-              <span>✦</span>
-              <span>for {preparedForAstrologer}</span>
-              <span>✦</span>
-            </div>
-          )}
+          <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 40, color: INK, margin: '0 0 10px', maxWidth: 600 }}>{L.coverTitle(name)}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ width: 40, height: 1, background: GOLD }} />
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: GOLD }} />
@@ -346,7 +338,6 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
             {latitude != null && <KVRow label={L.latitude}>{latitude.toFixed(4)}</KVRow>}
             {longitude != null && <KVRow label={L.longitude}>{longitude.toFixed(4)}</KVRow>}
             <KVRow label={L.timezone}>{formatGmtOffset(timezoneOffsetMinutes)}</KVRow>
-            {preparedForAstrologer && <KVRow label="Prepared For">for {preparedForAstrologer}</KVRow>}
           </KVGrid>
           {timeUnknown && (
             <p style={{ fontSize: FONT.label, color: '#b8860b', margin: '6px 0 0', lineHeight: 1.5 }}>⚠ {L.timeUnknownNotice}</p>
@@ -472,11 +463,11 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               { label: L.totalShadbala, strong: true, cells: result.shadbala.planets.map(p => p.totalVirupas.toFixed(2)) },
               { label: L.shadbalaRupas, strong: true, cells: result.shadbala.planets.map(p => p.rupas.toFixed(2)) },
               { label: L.colRequired, cells: result.shadbala.planets.map(p => p.minRequiredRupas.toFixed(2)) },
-              { label: L.colRatio, cells: result.shadbala.planets.map((p, idx) => <span key={p.planet || idx} style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{(p.rupas / p.minRequiredRupas).toFixed(2)}</span>) },
+              { label: L.colRatio, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{(p.rupas / p.minRequiredRupas).toFixed(2)}</span>) },
               { label: L.ranking, cells: rankDesc(result.shadbala.planets.map(p => p.rupas)).map(String) },
               { label: L.ishtaPhala, cells: result.shadbala.planets.map(p => p.ishtabala.toFixed(2)) },
               { label: L.kashtaPhala, cells: result.shadbala.planets.map(p => p.kashtabala.toFixed(2)) },
-              { label: L.colVerdict, cells: result.shadbala.planets.map((p, idx) => <span key={p.planet || idx} style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span>) },
+              { label: L.colVerdict, cells: result.shadbala.planets.map(p => <span style={{ color: p.isStrong ? '#2E7D4F' : '#B05A2E', fontWeight: 600 }}>{p.isStrong ? L.strong : L.weak}</span>) },
             ]}
           />
         </div>
@@ -752,12 +743,7 @@ export default function KundliPrintLayout({ name, dob, tob, timeUnknown = false,
               page — reads as a designed closing panel rather than
               leftover text under the banner. */}
           <div style={{ border: `1px solid ${LINE}`, borderRadius: 14, background: TINT, padding: '28px 36px', maxWidth: 460 }}>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
-            {preparedForAstrologer && (
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: GOLD, letterSpacing: '0.04em', marginBottom: 12 }}>
-                for {preparedForAstrologer}
-              </div>
-            )}
+            <div style={{ fontFamily: 'Yatra One, Georgia, serif', fontSize: 26, color: INK, margin: '0 0 12px' }}>{L.journeyContinues(name)}</div>
             <p style={{ fontSize: FONT.body, lineHeight: 1.6, color: MUTED, margin: '0 0 16px' }}>{L.closingInvite}</p>
             <div style={{ width: 48, height: 2, background: GOLD, margin: '0 auto 14px' }} />
             <div style={{ fontSize: FONT.label, color: FAINT, letterSpacing: '0.08em' }}>{L.brandFooter}</div>
@@ -807,13 +793,89 @@ function formatLocalTime(isoUtc: string, timezoneOffsetMinutes: number): string 
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
+// A chart + its title, sized to sit several-to-a-block (NOT its own capture
+// — callers place this inside a shared data-pdf-block grid). `small` is
+// used for the dense 3-per-row "05 Charts" grid.
+function MiniChart({ title, planets, ascendantRashi, small, language = 'en' }: { title: string; planets: SimplePlanets; ascendantRashi: string; small?: boolean; language?: Language }) {
+  const noop = () => {};
+  return (
+    <div>
+      <div style={{ fontSize: small ? FONT.label : FONT.sub, fontWeight: 700, color: INK, textAlign: 'center', marginBottom: 4 }}>{title}</div>
+      <div className={chartStyles.svgWrap} style={{ maxWidth: small ? 200 : 320, margin: '0 auto' }}>
+        <NorthIndianChart planets={planets} ascendantRashi={ascendantRashi} onPlanetHover={noop} onPlanetLeave={noop} onHouseHover={noop} onHouseLeave={noop} language={language} />
+        {/* Every chart already has its own centered logo watermark
+            (ChartWatermark, an SVG <image href> inside NorthIndianChart) —
+            but html2canvas doesn't reliably rasterize an SVG-embedded
+            external image reference, so it silently didn't survive capture
+            here. A plain HTML <img> sibling does — this is PDF-only (the
+            live site keeps using ChartWatermark, which renders fine in a
+            real browser), so it doesn't touch the shared chart component. */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative, purely cosmetic */}
+        <img src="/logo.png" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '22%', opacity: 0.14, pointerEvents: 'none' }} />
+      </div>
+    </div>
+  );
+}
 
+// Numbered gold-circle badge + bold title + rule — the reference's "01
+// Basic" / "02 Kundli" style section marker.
+function SectionHeader({ num, title }: { num: string; title: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: GOLD, color: '#FAF7F0', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{num}</span>
+      <span style={{ fontSize: 19, fontWeight: 700, color: INK }}>{title}</span>
+      <span style={{ flex: 1, height: 1, background: LINE }} />
+    </div>
+  );
+}
 
+// A gold accent bar + bold subtitle — the reference's "BIRTH DETAILS" /
+// "PANCHANG" style sub-heading within a numbered section.
+function SubHeading({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 8px' }}>
+      <span style={{ width: 3, height: 14, background: GOLD, borderRadius: 2, flexShrink: 0 }} />
+      <span style={{ fontSize: FONT.sub, fontWeight: 700, color: INK, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{children}</span>
+    </div>
+  );
+}
 
+// Dotted-underline label/value rows in a multi-column grid — the
+// reference's "NAME ... Sparsh Bansal" key-value list style.
+function KVGrid({ cols, children }: { cols: number; children: ReactNode }) {
+  return <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, columnGap: 24 }}>{children}</div>;
+}
 
+function KVRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '6px 0', borderBottom: `1px dotted ${LINE}` }}>
+      <span style={{ fontSize: FONT.label, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: FONT.body, fontWeight: 600, color: INK, textAlign: 'right' }}>{children}</span>
+    </div>
+  );
+}
 
+function Table({ head, children }: { head: string[]; children: ReactNode }) {
+  return (
+    <table style={{ width: '100%', fontSize: FONT.body, borderCollapse: 'collapse' }}>
+      <thead>
+        <tr style={{ textAlign: 'left', color: FAINT, textTransform: 'uppercase', fontSize: FONT.label }}>
+          {head.map(h => <th key={h} style={{ padding: '3px 4px' }}>{h}</th>)}
+        </tr>
+      </thead>
+      <tbody>{children}</tbody>
+    </table>
+  );
+}
 
+// Small gold uppercase label under a SubHeading (e.g. MAHADASHA / ANTARDASHA).
+function MinorHeading({ children }: { children: ReactNode }) {
+  return <div style={{ fontSize: FONT.label, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 6px' }}>{children}</div>;
+}
 
+function ActiveBadge({ label }: { label: string }) {
+  return <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 999, background: GOLD, color: '#FAF7F0', fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', verticalAlign: 'middle' }}>{label}</span>;
+}
 
 // Rows-by-columns grid (components down the side, planets/houses across the
 // top) — the reference report's Shadbala/Bhavbala layout.
@@ -838,6 +900,9 @@ function MatrixTable({ corner, columns, rows }: { corner: string; columns: strin
   );
 }
 
+function Td({ children }: { children: ReactNode }) {
+  return <td style={{ padding: '3px 4px' }}>{children}</td>;
+}
 
 // Compact 4-column bindu-count grid — a real, complete stand-in for the
 // reference's diamond-shaped bindu charts (12 rashi x bindus, same data).

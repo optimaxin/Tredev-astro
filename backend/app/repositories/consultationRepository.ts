@@ -1,5 +1,5 @@
 import { query, queryOne, type Executor } from '../core/db.ts';
-import type { Consultation, ConsultationKundliDetails, ConsultationStatus, ConsultationType } from '../models/types.ts';
+import type { Consultation, ConsultationStatus, ConsultationType } from '../models/types.ts';
 
 interface ConsultationDbRow {
   id: string;
@@ -20,7 +20,6 @@ interface ConsultationDbRow {
   price_per_min: number;
   applied_offer_percent: number;
   boost_id: number | null;
-  kundli_details: string | null;
 }
 
 function fromRow(row: ConsultationDbRow): Consultation {
@@ -43,7 +42,6 @@ function fromRow(row: ConsultationDbRow): Consultation {
     pricePerMin: row.price_per_min,
     appliedOfferPercent: row.applied_offer_percent,
     boostId: row.boost_id ?? undefined,
-    kundliDetails: row.kundli_details ? (JSON.parse(row.kundli_details) as ConsultationKundliDetails) : undefined,
   };
 }
 
@@ -54,13 +52,12 @@ function fromRow(row: ConsultationDbRow): Consultation {
 export async function insertConsultation(c: Consultation, executor?: Executor) {
   await query(
     `INSERT INTO consultations
-      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes, price_per_min, applied_offer_percent, boost_id, kundli_details)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+      (id, astrologer_id, user_email, user_name, category, type, status, from_queue, request_id, created_at, accepted_at, started_at, ended_at, duration_minutes, extended_minutes, price_per_min, applied_offer_percent, boost_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
     [
       c.id, c.astrologerId, c.userEmail.toLowerCase(), c.userName, c.category, c.type, c.status,
       c.fromQueue ? 1 : 0, c.requestId, c.createdAt, c.acceptedAt ?? null, c.startedAt ?? null, c.endedAt ?? null,
       c.durationMinutes, c.extendedMinutes, c.pricePerMin, c.appliedOfferPercent, c.boostId ?? null,
-      c.kundliDetails ? JSON.stringify(c.kundliDetails) : null,
     ],
     executor
   );
@@ -95,21 +92,6 @@ export async function countActiveForAstrologer(astrologerId: number, executor?: 
     executor
   );
   return Number(row?.n ?? 0);
-}
-
-// Used by routes.ts's /consultations/request to stop a user from being
-// assigned to two astrologers at once — nothing else enforced this (see
-// its own call-site comment): requestConsultation only locks the TARGET
-// astrologer's row, so two different astrologers' requests never serialize
-// against each other, and acceptConsultation independently sizes each
-// session's duration off the same, still-undiminished wallet balance —
-// without this check, one of the two ends up free.
-export async function findNonTerminalForUser(userEmail: string): Promise<Consultation | undefined> {
-  const row = await queryOne<ConsultationDbRow>(
-    `SELECT * FROM consultations WHERE user_email = $1 AND status = ANY($2::text[]) LIMIT 1`,
-    [userEmail.toLowerCase(), ACTIVE_STATUSES]
-  );
-  return row ? fromRow(row) : undefined;
 }
 
 export async function findActiveOrAcceptedForAstrologer(astrologerId: number): Promise<Consultation | undefined> {
@@ -166,18 +148,16 @@ export async function countForUser(userEmail: string): Promise<number> {
 // `revenue` is the gross figure (what users paid, summed) — unchanged
 // methodology. `astrologerPayout` additionally applies each boost-attributed
 // session's own LOCKED payout_share_percent (see boostRepository.ts's
-// activateBoost) on top of that; a non-boosted session instead applies the
-// astrologer's own staff-set commission_percent (the general platform-cut
-// model — defaults to 100 so nothing changes for an astrologer staff never
-// set a cut for).
+// activateBoost) on top of that; a non-boosted session pays the astrologer
+// its full price_per_min, since there's no general platform-commission model
+// for ordinary sessions — only Boost carries an explicit revenue split.
 export async function countCompletedByAstrologerAndType(): Promise<{ astrologerId: number; type: string; count: number; revenue: number; astrologerPayout: number }[]> {
   const rows = await query<{ astrologer_id: number; type: string; n: string; revenue: string; astrologer_payout: string }>(
     `SELECT c.astrologer_id, c.type, COUNT(*) AS n,
        COALESCE(SUM(c.price_per_min), 0) AS revenue,
-       COALESCE(SUM(CASE WHEN b.payout_share_percent IS NOT NULL THEN c.price_per_min * b.payout_share_percent / 100.0 ELSE c.price_per_min * COALESCE(a.commission_percent, 100) / 100.0 END), 0) AS astrologer_payout
+       COALESCE(SUM(CASE WHEN b.payout_share_percent IS NOT NULL THEN c.price_per_min * b.payout_share_percent / 100.0 ELSE c.price_per_min END), 0) AS astrologer_payout
      FROM consultations c
      LEFT JOIN boosts b ON b.id = c.boost_id
-     LEFT JOIN astrologers a ON a.id = c.astrologer_id
      WHERE c.status = 'COMPLETED'
      GROUP BY c.astrologer_id, c.type`
   );
@@ -210,19 +190,6 @@ export async function listAllConsultations(page: number, limit: number): Promise
     [limit, (page - 1) * limit]
   );
   return { rows: rows.map(fromRow), total: Number(totalRow?.n ?? 0) };
-}
-
-// The user's current live call, if any — used by onWalletTopUp (realtimeStore.ts)
-// to find what to reschedule when a recharge lands mid-consultation. A user
-// can only ever have one ACTIVE consultation at a time (capacity is enforced
-// per-astrologer, and nothing lets a user request a second one while already
-// in one), so LIMIT 1 is safe rather than arbitrary.
-export async function findActiveForUser(userEmail: string): Promise<Consultation | undefined> {
-  const row = await queryOne<ConsultationDbRow>(
-    `SELECT * FROM consultations WHERE user_email = $1 AND status = 'ACTIVE' LIMIT 1`,
-    [userEmail.toLowerCase()]
-  );
-  return row ? fromRow(row) : undefined;
 }
 
 export async function findActiveStartedForAstrologer(astrologerId: number, executor?: Executor): Promise<Consultation[]> {
