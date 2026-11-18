@@ -45,9 +45,8 @@ interface Bubble {
 
 // The opening message — always casual Hinglish (like the teaser bubbles
 // above), not the site's selected language, and randomized per chart so it
-// doesn't read like a canned bot line every time. Line 1 greets by name,
-// line 2 is a varied nudge about what it can help with; `.bubble`'s
-// `white-space: pre-wrap` renders the '\n' as a real line break.
+// doesn't read like a canned bot line every time — two separate bubbles,
+// the name greeting first and a varied helper line after.
 const GREETING_OPENERS = (name: string) => [
   `Radhe Radhe, ${name}!`,
   `Namaste, ${name}!`,
@@ -62,11 +61,11 @@ const GREETING_HELPERS = [
   'Main aapki Kundli padh chuka hoon, poochiye jo bhi jaanna hai.',
 ];
 
-const greetingFor = (name: string): string => {
+const greetingFor = (name: string): [string, string] => {
   const openers = GREETING_OPENERS(name || 'aap');
   const opener = openers[Math.floor(Math.random() * openers.length)];
   const helper = GREETING_HELPERS[Math.floor(Math.random() * GREETING_HELPERS.length)];
-  return `${opener}\n${helper}`;
+  return [opener, helper];
 };
 
 // Shown inside the (empty) reply bubble while the server works.
@@ -113,13 +112,16 @@ export default function KundliChatWidget({ birth, chartKey, displayName, autoOpe
     autoOpenedFor.current = chartKey;
     setBubbles([]);
     setError('');
-    const greeting = greetingFor(displayName || '');
+    const [opener, helper] = greetingFor(displayName || '');
     // A short delay lets the chart finish rendering first, so the panel
     // sliding in does not compete with the page settling.
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (autoOpen) setOpen(true);
-      setBubbles([{ id: nextId(), role: 'assistant', text: greeting }]);
+      setBubbles([
+        { id: nextId(), role: 'assistant', text: opener },
+        { id: nextId(), role: 'assistant', text: helper },
+      ]);
       // Restore this chart's earlier conversation (after a reload) with the
       // SAME bubbles it was shown in — the server re-segments the stored
       // reply with the same function the live path uses.
