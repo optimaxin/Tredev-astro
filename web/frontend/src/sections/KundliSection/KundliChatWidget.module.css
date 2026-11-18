@@ -290,11 +290,15 @@
   margin: var(--space-2, 0.5rem) 0 0;
 }
 
+/* Pinned just above the input row (not inside the scrollable .messages),
+   so it sits right next to where you'd type instead of floating under the
+   greeting with a gap of empty space below it. */
 .suggestions {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: var(--space-2, 0.5rem);
+  padding: 0 17px 10px;
 }
 
 .suggestion {
