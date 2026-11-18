@@ -32,14 +32,27 @@ export interface RecentPageViewRow extends PageViewRow {
   user_email: string | null;
 }
 
-// Site-wide traffic feed (logged-in AND anonymous) for the admin Overview
-// page's "Recent Traffic" panel — a left join so an anonymous visit (no
-// user_id) still comes back with null name/email instead of being excluded.
-export function listRecentPageViews(limit = 50): Promise<RecentPageViewRow[]> {
+// Registered and anonymous traffic are fetched as two SEPARATE queries
+// (not one combined list filtered client-side) — anonymous visits are far
+// more frequent, so a single "most recent N overall" query was almost
+// entirely anonymous rows, making registered-user traffic look like it
+// never showed up even though it was being recorded. Each gets its own
+// limit instead of competing for the same slots.
+export function listRecentRegisteredPageViews(limit = 50): Promise<RecentPageViewRow[]> {
   return query<RecentPageViewRow>(
     `SELECT pv.*, u.name AS user_name, u.email AS user_email
      FROM page_views pv
-     LEFT JOIN users u ON u.id = pv.user_id
+     JOIN users u ON u.id = pv.user_id
+     ORDER BY pv.created_at DESC LIMIT $1`,
+    [limit]
+  );
+}
+
+export function listRecentAnonymousPageViews(limit = 50): Promise<RecentPageViewRow[]> {
+  return query<RecentPageViewRow>(
+    `SELECT pv.*, NULL AS user_name, NULL AS user_email
+     FROM page_views pv
+     WHERE pv.user_id IS NULL
      ORDER BY pv.created_at DESC LIMIT $1`,
     [limit]
   );

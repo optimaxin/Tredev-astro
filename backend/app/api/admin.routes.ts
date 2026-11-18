@@ -12,7 +12,7 @@ import { countCompletedByAstrologerAndType, countForUser, countInProgress, findA
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { listPageViewsForUser, listRecentPageViews } from '../repositories/pageViewRepository.ts';
+import { listPageViewsForUser, listRecentRegisteredPageViews, listRecentAnonymousPageViews } from '../repositories/pageViewRepository.ts';
 import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
@@ -689,19 +689,31 @@ adminRouter.get('/dashboard-stats', requireSection('overview'), async (req, res)
   });
 });
 
-// Site-wide traffic feed (logged-in AND anonymous visits) for the Overview
-// page's "Recent Traffic" panel — answers "where is traffic actually going"
-// with each visit's path plus its fingerprint (IP/device/country), not just
-// counts. Same 'overview' section as dashboard-stats above — no separate
-// permission needed, every Staff/Admin who can see the dashboard can see this.
+// Traffic feed for the Overview page's "Recent Traffic" panel — answers
+// "where is traffic actually going" with each visit's path plus its
+// fingerprint (IP/device/country). Registered and anonymous come back as
+// two separate lists (see listRecentRegisteredPageViews's own comment on
+// why — anonymous volume was crowding registered visits out of a single
+// combined "most recent N" list). Same 'overview' section as
+// dashboard-stats above — no separate permission needed.
+function toTrafficEntry(v: { path: string; created_at: number; ip_address: string | null; user_agent: string | null; country: string | null; user_name: string | null; user_email: string | null }) {
+  return {
+    path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country,
+    userName: v.user_name, userEmail: v.user_email,
+  };
+}
+
 adminRouter.get('/traffic', requireSection('overview'), async (_req, res) => {
-  const rows = await listRecentPageViews(50);
+  const [registered, anonymous] = await Promise.all([
+    listRecentRegisteredPageViews(50),
+    listRecentAnonymousPageViews(50),
+  ]);
   res.json({
     success: true,
-    data: rows.map(v => ({
-      path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country,
-      userName: v.user_name, userEmail: v.user_email,
-    })),
+    data: {
+      registered: registered.map(toTrafficEntry),
+      anonymous: anonymous.map(toTrafficEntry),
+    },
   });
 });
 

@@ -236,9 +236,16 @@ export interface ApiUserActivity {
 
 // Site-wide traffic feed (Overview page) — same fingerprint fields as
 // ApiPageView, plus who it was (null name/email for an anonymous visit).
+// Registered and anonymous come back as two separate lists (see
+// listRecentRegisteredPageViews's comment) rather than one combined feed.
 export interface ApiTrafficEntry extends ApiPageView {
   userName: string | null;
   userEmail: string | null;
+}
+
+export interface ApiTraffic {
+  registered: ApiTrafficEntry[];
+  anonymous: ApiTrafficEntry[];
 }
 
 export interface ApiAstrologerActivity {
@@ -642,7 +649,7 @@ export const adminService = {
   getAstrologerActivity: (id: number) => request<ApiAstrologerActivity>(`/astrologers/${id}/activity`),
 
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
-  getTraffic: () => request<ApiTrafficEntry[]>('/traffic'),
+  getTraffic: () => request<ApiTraffic>('/traffic'),
 
   listStaff: () => request<ApiStaffMember[]>('/staff'),
   addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>
