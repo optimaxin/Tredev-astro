@@ -12,7 +12,7 @@ import { countCompletedByAstrologerAndType, countForUser, countInProgress, findA
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { listPageViewsForUser } from '../repositories/pageViewRepository.ts';
+import { listPageViewsForUser, listRecentPageViews } from '../repositories/pageViewRepository.ts';
 import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
@@ -249,7 +249,7 @@ adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res)
     data: {
       reports, consultations, orders, recentChats,
       lastAction: lastAction[0] ? { action: lastAction[0].action, at: lastAction[0].created_at } : null,
-      recentPageViews: pageViews.map(v => ({ path: v.path, at: v.created_at })),
+      recentPageViews: pageViews.map(v => ({ path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country })),
     },
   });
 });
@@ -686,6 +686,22 @@ adminRouter.get('/dashboard-stats', requireSection('overview'), async (req, res)
       recentPurchases: recentPurchases.map(r => ({ id: r.id, userName: r.user_name, reportTitle: r.report_title, purchasedAt: Number(r.purchased_at) })),
       recentDeliveredOrders: recentDeliveredOrders.map(o => ({ id: orderDisplayId(o.id), createdAt: Number(o.created_at) })),
     },
+  });
+});
+
+// Site-wide traffic feed (logged-in AND anonymous visits) for the Overview
+// page's "Recent Traffic" panel — answers "where is traffic actually going"
+// with each visit's path plus its fingerprint (IP/device/country), not just
+// counts. Same 'overview' section as dashboard-stats above — no separate
+// permission needed, every Staff/Admin who can see the dashboard can see this.
+adminRouter.get('/traffic', requireSection('overview'), async (_req, res) => {
+  const rows = await listRecentPageViews(50);
+  res.json({
+    success: true,
+    data: rows.map(v => ({
+      path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country,
+      userName: v.user_name, userEmail: v.user_email,
+    })),
   });
 });
 

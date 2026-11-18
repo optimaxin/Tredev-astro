@@ -8,13 +8,14 @@ import {
   setMaxConcurrent, touchActivity, updateAdminConfig,
 } from '../services/realtimeStore.ts';
 import type { ConsultationType } from '../models/types.ts';
-import { countryFromRequest } from '../services/geoLocation.ts';
+import { clientIp, countryFromRequest } from '../services/geoLocation.ts';
 import { listActiveBanners } from '../repositories/bannerRepository.ts';
 import {
   countPoojaSessionRegistrations, findPoojaSession, isRegisteredForPoojaSession, listPoojaBooks, listPoojaVideos,
   listUpcomingPoojaSessions, registerForPoojaSession,
 } from '../repositories/poojaRepository.ts';
 import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.ts';
+import { rateLimit } from '../middleware/rateLimit.ts';
 import { findUserByEmail } from '../repositories/userRepository.ts';
 import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
 import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
@@ -45,13 +46,18 @@ router.get('/geo/country', (req, res) => {
   res.json({ countryCode: countryFromRequest(req) });
 });
 
+const pageViewLimiter = rateLimit({ windowMs: 60_000, max: 120 });
+
 // Fire-and-forget page-view logging for the admin/staff Users drawer's
-// activity trail (see pageViewRepository.ts) — optionalAuth so this never
-// 401s, it just has nothing to attribute an anonymous visit to and silently
-// no-ops. Never blocks or errors the page navigation that triggered it.
-router.post('/track/pageview', optionalAuth, async (req, res) => {
+// activity trail and the Overview page's traffic feed (see
+// pageViewRepository.ts) — optionalAuth so this never 401s. Logged even for
+// an anonymous visitor (user_id null) so staff/admin can see where traffic
+// is coming from before/without a signup, not just from existing accounts.
+router.post('/track/pageview', pageViewLimiter, optionalAuth, async (req, res) => {
   const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '';
-  if (req.user && path) await recordPageView(req.user.id, path).catch(() => {});
+  if (path) {
+    await recordPageView(req.user?.id ?? null, path, clientIp(req), req.headers['user-agent'] || '', countryFromRequest(req)).catch(() => {});
+  }
   res.json({ success: true });
 });
 

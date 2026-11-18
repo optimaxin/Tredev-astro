@@ -4,8 +4,8 @@ import { StatCard, ActivityTimeline } from '../components/SharedControls';
 import type { TimelineItem } from '../components/SharedControls';
 import type { AdminSection } from '../adminTypes';
 import { adminService } from '../../services/adminService';
-import type { ApiDashboardStats } from '../../services/adminService';
-import { formatMsg, formatDateTime } from '../adminUtils';
+import type { ApiDashboardStats, ApiTrafficEntry } from '../../services/adminService';
+import { formatMsg, formatDateTime, visitFingerprint } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 interface Props {
@@ -21,9 +21,11 @@ interface Props {
 export default function OverviewPage({ onNavigate, allowedSections }: Props) {
   const { t, currentUser, accounts } = useAppContext();
   const [stats, setStats] = useState<ApiDashboardStats | null>(null);
+  const [traffic, setTraffic] = useState<ApiTrafficEntry[] | null>(null);
 
   useEffect(() => {
     adminService.getDashboardStats().then(setStats).catch(() => setStats(null));
+    adminService.getTraffic().then(setTraffic).catch(() => setTraffic(null));
   }, []);
 
   const totalUsers = accounts.filter(a => a.role === 'USER').length;
@@ -97,6 +99,30 @@ export default function OverviewPage({ onNavigate, allowedSections }: Props) {
       <div className={styles.section}>
         <div className={styles.sectionTitle}>{t('admin_recent_activity')}</div>
         <ActivityTimeline items={activity.slice(0, 10)} />
+      </div>
+
+      {/* Every visit — logged-in AND anonymous (see GET /admin/traffic) —
+          with its fingerprint, so staff/admin can see where traffic is
+          actually coming from, not just what registered accounts do. */}
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>Recent Traffic</div>
+        {traffic === null && <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)' }}>Loading…</p>}
+        {traffic && traffic.length === 0 && <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)' }}>No visits recorded yet.</p>}
+        {traffic && traffic.length > 0 && (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {traffic.map((v, i) => (
+              <li key={i} style={{ fontSize: '0.82rem', paddingBottom: 8, borderBottom: '1px solid var(--adm-border, #e5e0d8)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontWeight: 600 }}>{v.path}</span>
+                  <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                </div>
+                <div style={{ color: 'var(--adm-charcoal-soft)', fontSize: '0.74rem', marginTop: 2 }}>
+                  {v.userName ? `${v.userName} (${v.userEmail})` : 'Anonymous visitor'} · {visitFingerprint(v)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

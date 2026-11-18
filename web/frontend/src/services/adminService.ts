@@ -217,13 +217,28 @@ export interface ApiLastAction {
   at: number;
 }
 
+export interface ApiPageView {
+  path: string;
+  at: number;
+  ip: string | null;
+  userAgent: string | null;
+  country: string | null;
+}
+
 export interface ApiUserActivity {
   reports: number;
   consultations: number;
   orders: number;
   recentChats: ApiChatAudit[];
   lastAction: ApiLastAction | null;
-  recentPageViews: { path: string; at: number }[];
+  recentPageViews: ApiPageView[];
+}
+
+// Site-wide traffic feed (Overview page) — same fingerprint fields as
+// ApiPageView, plus who it was (null name/email for an anonymous visit).
+export interface ApiTrafficEntry extends ApiPageView {
+  userName: string | null;
+  userEmail: string | null;
 }
 
 export interface ApiAstrologerActivity {
@@ -627,6 +642,7 @@ export const adminService = {
   getAstrologerActivity: (id: number) => request<ApiAstrologerActivity>(`/astrologers/${id}/activity`),
 
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
+  getTraffic: () => request<ApiTrafficEntry[]>('/traffic'),
 
   listStaff: () => request<ApiStaffMember[]>('/staff'),
   addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>

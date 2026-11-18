@@ -6,7 +6,7 @@ import Drawer from '../components/Drawer';
 import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
 import { adminService } from '../../services/adminService';
 import type { ApiUserActivity } from '../../services/adminService';
-import { accountStatus, formatDate, formatDateTime } from '../adminUtils';
+import { accountStatus, formatDate, formatDateTime, visitFingerprint } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 const PAGE_SIZE = 8;
@@ -221,9 +221,12 @@ export default function UsersPage() {
               {activity && activity.recentPageViews.length > 0 && (
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {activity.recentPageViews.map((v, i) => (
-                    <li key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', gap: 10 }}>
-                      <span style={{ fontWeight: 600 }}>{v.path}</span>
-                      <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                    <li key={i} style={{ fontSize: '0.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ fontWeight: 600 }}>{v.path}</span>
+                        <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                      </div>
+                      <div style={{ color: 'var(--adm-charcoal-soft)', fontSize: '0.72rem', marginTop: 2 }}>{visitFingerprint(v)}</div>
                     </li>
                   ))}
                 </ul>

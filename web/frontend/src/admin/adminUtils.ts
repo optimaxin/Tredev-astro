@@ -29,3 +29,36 @@ export function formatDateTime(value: string | number): string {
 export function accountStatus(status?: 'ACTIVE' | 'SUSPENDED'): 'ACTIVE' | 'SUSPENDED' {
   return status ?? 'ACTIVE';
 }
+
+// A quick "browser on OS" summary from the raw User-Agent header — enough
+// to tell traffic apart by device at a glance, not a full UA-parsing
+// library. Order matters: Edge/Chrome UAs both contain "Safari", and
+// Android UAs contain "Linux", so the more specific checks go first.
+function browserFrom(ua: string): string {
+  if (/edg\//i.test(ua)) return 'Edge';
+  if (/opr\/|opera/i.test(ua)) return 'Opera';
+  if (/chrome\//i.test(ua)) return 'Chrome';
+  if (/crios\//i.test(ua)) return 'Chrome';
+  if (/fxios\/|firefox\//i.test(ua)) return 'Firefox';
+  if (/safari\//i.test(ua)) return 'Safari';
+  return 'Unknown browser';
+}
+function osFrom(ua: string): string {
+  if (/android/i.test(ua)) return 'Android';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'iOS';
+  if (/windows/i.test(ua)) return 'Windows';
+  if (/mac os x/i.test(ua)) return 'macOS';
+  if (/linux/i.test(ua)) return 'Linux';
+  return 'Unknown OS';
+}
+
+// The per-visit "fingerprint" shown to staff/admin: IP + a plain-language
+// device summary + country, e.g. "103.21.x.x · Chrome on Android · IN".
+export function visitFingerprint(v: { ip: string | null; userAgent: string | null; country: string | null }): string {
+  const parts = [
+    v.ip || 'Unknown IP',
+    v.userAgent ? `${browserFrom(v.userAgent)} on ${osFrom(v.userAgent)}` : 'Unknown device',
+    v.country || 'Unknown location',
+  ];
+  return parts.join(' · ');
+}
