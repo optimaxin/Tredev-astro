@@ -4,6 +4,8 @@ import AncientTimePicker from '../AncientTimePicker/AncientTimePicker';
 import LocationAutocomplete from '../LocationAutocomplete/LocationAutocomplete';
 import { calculatorService, CalculatorApiError } from '../../services/calculatorService';
 import type { BirthDetailsInput, GeocodeResult } from '../../services/calculatorService';
+import { useAppContext } from '../../context/AppContext';
+import { validateRequiredEmail } from '../../utils/emailValidation';
 import styles from './BirthDetailsForm.module.css';
 
 // Common timezones only — full IANA-zone coverage isn't worth the added
@@ -23,6 +25,7 @@ export const TIMEZONES = [
 
 export interface BirthDetailsSubmitValue extends BirthDetailsInput {
   name: string;
+  email: string;
   placeName: string;
   gender?: 'Male' | 'Female';
   // Set when the caller opted into allowUnknownTime and the visitor checked
@@ -72,8 +75,16 @@ function currentTimeHHMM(): string {
 }
 
 export default function BirthDetailsForm({ onSubmit, showNameField = true, showGenderField = false, nameLabel = 'Full Name', submitLabel, idPrefix, initialValues, allowUnknownTime = false }: BirthDetailsFormProps) {
+  const { currentUser } = useAppContext();
+  // Logged in: use the account's own email, not re-asked and not editable
+  // here (it's not this form's job to change it). Anonymous: a required,
+  // validated field — every calculator needs a real email on record, and
+  // this is the one shared form all of them submit through.
+  const loggedInEmail = currentUser?.email || '';
   const [name, setName] = useState(initialValues?.name || '');
   const [gender, setGender] = useState<'Male' | 'Female' | ''>('');
+  const [email, setEmail] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
   const [dob, setDob] = useState(initialValues?.date || '');
   const [tob, setTob] = useState(initialValues?.time || '');
   const [timeUnknown, setTimeUnknown] = useState(false);
@@ -87,7 +98,8 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, showG
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canSubmit = (!showNameField || name.trim()) && dob && (timeUnknown || tob) && place.trim() && !loading;
+  const emailError = loggedInEmail ? null : validateRequiredEmail(email);
+  const canSubmit = (!showNameField || name.trim()) && !emailError && dob && (timeUnknown || tob) && place.trim() && !loading;
 
   const handlePlaceChange = (v: string) => {
     setPlace(v);
@@ -108,6 +120,7 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, showG
       const geo = selectedGeo ?? await calculatorService.geocode(place.trim());
       await onSubmit({
         name: name.trim(),
+        email: loggedInEmail || email.trim(),
         placeName: geo.displayName,
         date: dob,
         // A real, valid HH:MM either way — the exact moment of submission
@@ -143,6 +156,33 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, showG
             />
           </div>
         )}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={`${idPrefix}-email`}>Email</label>
+          {loggedInEmail ? (
+            <input
+              id={`${idPrefix}-email`}
+              type="email"
+              className={`${styles.input} input-field`}
+              value={loggedInEmail}
+              disabled
+              readOnly
+            />
+          ) : (
+            <>
+              <input
+                id={`${idPrefix}-email`}
+                type="email"
+                className={`${styles.input} input-field`}
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onBlur={() => setEmailTouched(true)}
+                required
+              />
+              {emailTouched && emailError && <p className={styles.error} style={{ marginTop: 4 }}>{emailError}</p>}
+            </>
+          )}
+        </div>
         {showGenderField && (
           <div className={styles.field}>
             <label className={styles.label} id={`${idPrefix}-gender-label`}>Gender</label>
