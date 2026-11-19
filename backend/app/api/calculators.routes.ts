@@ -20,6 +20,9 @@ import { getBabyNameSyllable } from '../services/astrology/babyName.ts';
 import { getLalKitabHouses } from '../services/astrology/lalKitab.ts';
 import { geocodePlace, suggestPlaces, resolvePlaceId, type GeocodeResult } from '../services/geocoding.ts';
 import { computeKundliFullCached, ttlCache } from '../services/astrology/kundliFullBuilder.ts';
+import { rewriteKundliFull, warmDescriptionCache } from '../services/llm/kundliDescriptionRewriter.ts';
+import { requireAuth } from '../middleware/auth.ts';
+import { consumeFreeAiChatSeconds } from '../repositories/userRepository.ts';
 
 export const calculatorsRouter = Router();
 
@@ -88,12 +91,27 @@ calculatorsRouter.post('/kundli', limiter, (req, res) => {
 // Each piece reuses the exact same calculators already exposed individually
 // above — this just composes them from one real chart instead of asking the
 // client to make 6 separate requests.
-calculatorsRouter.post('/kundli-full', limiter, (req, res) => {
-  handle(res, () => {
+calculatorsRouter.post('/kundli-full', limiter, async (req, res) => {
+  try {
     const birth = birthSchema.parse(req.body);
     const language = languageSchema.parse(req.body?.language);
-    return computeKundliFullCached(birth, language);
-  });
+    const full = computeKundliFullCached(birth, language);
+    // Applies whatever natural-language rewrites (NVIDIA NIM, see
+    // kundliDescriptionRewriter.ts) are already cached from a previous
+    // request — a pure DB lookup, never an LLM call, so the response is
+    // never slowed down by (or dependent on) NVIDIA's API.
+    const withCachedRewrites = await rewriteKundliFull(full, language);
+    res.json({ success: true, data: withCachedRewrites });
+    // Fire-and-forget: fills in whatever wasn't cached yet, in the
+    // background, for next time. Never awaited — a slow or unreachable
+    // NVIDIA endpoint can only delay how soon the nicer text shows up, never
+    // this (or any other) request.
+    warmDescriptionCache(full, language).catch(() => {});
+  } catch (e) {
+    if (e instanceof z.ZodError) return fail(res, 422, 'VALIDATION_ERROR', e.issues.map(i => i.message).join('; '));
+    console.error(e);
+    fail(res, 500, 'INTERNAL_ERROR', 'Calculation failed');
+  }
 });
 
 calculatorsRouter.post('/nakshatra', limiter, (req, res) => {
@@ -371,6 +389,16 @@ calculatorsRouter.post('/ai-ask', aiLimiter, (req, res) => {
     const mahadasha = getCurrentMahadasha(utcDate, getNakshatra(moon.longitude).index, fractionElapsed, new Date());
     return { answer: answerAstrologyQuestion(body.question, kundli, mahadasha) };
   });
+});
+
+// Real, server-tracked balance instead of the frontend's old plain 5-minute
+// countdown (which a page refresh reset for free) — consumes whatever the
+// account currently has (set at signup, or by staff for a dispute — see
+// userRepository.ts's consumeFreeAiChatSeconds/setFreeAiChatSeconds) and
+// hands that back as this session's actual countdown length.
+calculatorsRouter.post('/ai-chat/start', requireAuth, async (req, res) => {
+  const grantedSeconds = await consumeFreeAiChatSeconds(req.user!.id);
+  res.json({ success: true, data: { grantedSeconds } });
 });
 
 // ── Place → coordinates ────────────────────────────────────────────────

@@ -8,16 +8,18 @@ import {
   setMaxConcurrent, touchActivity, updateAdminConfig,
 } from '../services/realtimeStore.ts';
 import type { ConsultationType } from '../models/types.ts';
-import { countryFromRequest } from '../services/geoLocation.ts';
+import { clientIp, countryFromRequest } from '../services/geoLocation.ts';
 import { listActiveBanners } from '../repositories/bannerRepository.ts';
 import {
   countPoojaSessionRegistrations, findPoojaSession, isRegisteredForPoojaSession, listPoojaBooks, listPoojaVideos,
   listUpcomingPoojaSessions, registerForPoojaSession,
 } from '../repositories/poojaRepository.ts';
-import { requireAuth, requireRole } from '../middleware/auth.ts';
+import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.ts';
+import { rateLimit } from '../middleware/rateLimit.ts';
 import { findUserByEmail } from '../repositories/userRepository.ts';
 import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
 import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
+import { recordPageView } from '../repositories/pageViewRepository.ts';
 
 export const router = Router();
 
@@ -42,6 +44,21 @@ function myAstrologer(req: Request, res: Response) {
 // falls back to a sensible default in that case, same as pricing does.
 router.get('/geo/country', (req, res) => {
   res.json({ countryCode: countryFromRequest(req) });
+});
+
+const pageViewLimiter = rateLimit({ windowMs: 60_000, max: 120 });
+
+// Fire-and-forget page-view logging for the admin/staff Users drawer's
+// activity trail and the Overview page's traffic feed (see
+// pageViewRepository.ts) — optionalAuth so this never 401s. Logged even for
+// an anonymous visitor (user_id null) so staff/admin can see where traffic
+// is coming from before/without a signup, not just from existing accounts.
+router.post('/track/pageview', pageViewLimiter, optionalAuth, async (req, res) => {
+  const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '';
+  if (path) {
+    await recordPageView(req.user?.id ?? null, path, clientIp(req), req.headers['user-agent'] || '', countryFromRequest(req)).catch(() => {});
+  }
+  res.json({ success: true });
 });
 
 router.get('/astrologers', async (_req, res) => {

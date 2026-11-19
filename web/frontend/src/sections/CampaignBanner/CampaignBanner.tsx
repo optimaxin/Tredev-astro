@@ -13,10 +13,10 @@ interface ApiBanner {
 
 // Non-text data only — the actual copy (category/title/description/cta)
 // comes from AppContext's TRANSLATIONS (banner_<id>_*) at render time instead
-// of living here, since this carousel's own Google Translate pass is
+// of living here, since a live browser translate pass over this carousel is
 // unreliable (each slide fully unmounts/remounts every 6s via framer-motion,
-// racing faster than Google can keep up — verified live, text stayed
-// English indefinitely) — see buildSlides below.
+// racing faster than a translator can keep up — verified live with Google
+// Translate, text stayed English indefinitely) — see buildSlides below.
 const SLIDE_META = [
   {
     id: 0,
@@ -365,7 +365,7 @@ function StaticCampaignBanner() {
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              PREVIOUS
+              {t('nav_prev')}
             </motion.div>
           )}
           {edgeHover === 'right' && (
@@ -376,7 +376,7 @@ function StaticCampaignBanner() {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
             >
-              NEXT
+              {t('nav_next')}
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M8 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

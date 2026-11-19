@@ -143,6 +143,7 @@
   align-items: center;
   gap: 8px;
   height: 100%;
+  min-width: 0;
 }
 
 /* CTAs */
@@ -462,13 +463,17 @@
   position: relative;
   display: flex;
   align-items: center;
+  /* Lets this shrink instead of forcing the pill wider than the navbar —
+     a flex item's default min-width is "auto" (its content's natural
+     width), which overrides max-width/overflow on anything inside it. */
+  min-width: 0;
 }
 
 .profileSelectorBtn {
   background: transparent;
   border: 1px solid rgba(231, 165, 26, 0.35);
   border-radius: 999px;
-  padding: 4px 12px 4px 6px;
+  padding: 4px 10px 4px 4px;
   cursor: pointer;
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -501,10 +506,6 @@
 :global([data-theme='dark']) .avatarCircle {
   color: var(--nav-ink);
   background: var(--nav-gold);
-}
-
-.profileNameText {
-  font-weight: 500;
 }
 
 .profileArrow {
@@ -696,10 +697,10 @@
 }
 
 /* Same tight-pill-nav typographic adjustment as hi/mr, now also covering
-   bn/ta/te — those only became reachable text once Google Translate
-   (utils/googleTranslate.ts) started actually translating into them, so
-   this exact nowrap/fixed-height nav bar had never really been exercised
-   with real content in those scripts before. */
+   bn/ta/te. Currently dormant: `<html lang>` is hardcoded to 'en' (see
+   App.tsx) so translation can only come from the visitor's own browser now,
+   which this app has no hook into — kept in case this site moves to its own
+   dictionary-driven translation and sets `lang` again. */
 :global(html[lang='hi']) .link,
 :global(html[lang='mr']) .link,
 :global(html[lang='bn']) .link,

@@ -6,7 +6,7 @@ import Drawer from '../components/Drawer';
 import { StatusBadge, FilterBar, SearchInput, EmptyState, AdminButton, ChatAuditPanel } from '../components/SharedControls';
 import { adminService } from '../../services/adminService';
 import type { ApiUserActivity } from '../../services/adminService';
-import { accountStatus, formatDate } from '../adminUtils';
+import { accountStatus, formatDate, formatDateTime, visitFingerprint } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 const PAGE_SIZE = 8;
@@ -16,10 +16,14 @@ function joinedDate(id: string): string {
   return match ? formatDate(new Date(Number(match[1])).toISOString()) : '—';
 }
 
+function dobDisplay(u: AuthUser): string {
+  return u.birthDate ? formatDate(new Date(u.birthDate).toISOString()) : '—';
+}
+
 type RoleFilter = 'ALL' | 'USER' | 'ASTROLOGIST' | 'STAFF' | 'ADMIN';
 
 export default function UsersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser, refreshAdminData } = useAppContext();
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   // Was hardcoded to role==='USER' only — an admin couldn't find or block a
   // Staff/Astrologer/Admin account here at all, only plain Users. This is
@@ -32,6 +36,10 @@ export default function UsersPage() {
   const [activityError, setActivityError] = useState('');
   const [roleBusy, setRoleBusy] = useState(false);
   const [roleError, setRoleError] = useState('');
+  const [grantMinutes, setGrantMinutes] = useState('5');
+  const [grantBusy, setGrantBusy] = useState(false);
+  const [grantError, setGrantError] = useState('');
+  const [grantDone, setGrantDone] = useState(false);
 
   // Fetched fresh per user when the drawer opens (was 3 name-matched counts
   // against SAMPLE_* mock arrays) — kept out of the main table since that
@@ -40,10 +48,35 @@ export default function UsersPage() {
     if (!selected) { setActivity(null); return; }
     setActivity(null);
     setActivityError('');
+    setGrantError('');
+    setGrantDone(false);
     adminService.getUserActivity(selected.id)
       .then(setActivity)
       .catch(() => setActivityError('Could not load this user\'s activity.'));
   }, [selected]);
+
+  // Dispute resolution for the "Ask TredevaAstro" free AI chat session — a
+  // real, server-tracked balance (see userRepository.ts's
+  // setFreeAiChatSeconds), not just the old client-side 5-minute countdown.
+  const grantFreeAiChat = async () => {
+    if (!selected) return;
+    const minutes = Number(grantMinutes);
+    if (!Number.isFinite(minutes) || minutes < 0) { setGrantError('Enter a valid number of minutes (0 or more).'); return; }
+    setGrantBusy(true);
+    setGrantError('');
+    setGrantDone(false);
+    try {
+      const seconds = Math.round(minutes * 60);
+      await adminService.setFreeAiChatSeconds(selected.id, seconds);
+      setSelected({ ...selected, freeAiChatSeconds: seconds });
+      setGrantDone(true);
+      refreshAdminData();
+    } catch (err) {
+      setGrantError(err instanceof Error ? err.message : 'Could not update this account\'s free chat time.');
+    } finally {
+      setGrantBusy(false);
+    }
+  };
   // Only an ADMIN can grant Staff or Admin — STAFF only ever sees the
   // "Make Astrologer" action. Mirrors the server-side check in
   // admin.routes.ts's PATCH /users/:id/role handler.
@@ -68,7 +101,7 @@ export default function UsersPage() {
     return accounts
       .filter(a => roleFilter === 'ALL' || a.role === roleFilter)
       .filter(a => filter === 'ALL' || accountStatus(a.status) === filter)
-      .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
+      .filter(a => !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q) || a.phoneNumber?.toLowerCase().includes(q));
   }, [accounts, filter, roleFilter, search]);
 
   // A Staff viewer can only touch (suspend/restore) plain User/Astrologer
@@ -106,14 +139,16 @@ export default function UsersPage() {
           active={filter}
           onChange={k => { setFilter(k as any); setPage(1); }}
         />
-        <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder={t('admin_search_name_email')} />
+        <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Search by name, email, or phone" />
       </div>
 
       <DataTable
         columns={[
           { key: 'user', label: t('admin_users_col_user'), render: u => (<div><div style={{ fontWeight: 700 }}>{u.name}</div><div style={{ fontSize: '0.72rem', color: 'var(--adm-muted)' }}>{u.email}</div></div>) },
           { key: 'role', label: t('admin_staff_col_role'), render: u => u.role },
+          { key: 'dob', label: 'Date of Birth', render: u => dobDisplay(u) },
           { key: 'joined', label: t('admin_users_col_joined'), render: u => joinedDate(u.id) },
+          { key: 'wallet', label: 'Wallet', render: u => `₹${(u.walletBalance ?? 0).toLocaleString('en-IN')}` },
           { key: 'status', label: t('admin_users_col_status'), render: u => { const s = accountStatus(u.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; } },
         ]}
         rows={pageRows}
@@ -153,13 +188,50 @@ export default function UsersPage() {
         {selected && (
           <>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Email</span><span className={styles.drawerFieldValue}>{selected.email}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Date of Birth</span><span className={styles.drawerFieldValue}>{dobDisplay(selected)}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_joined')}</span><span className={styles.drawerFieldValue}>{joinedDate(selected.id)}</span></div>
+            <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>Wallet Balance</span><span className={styles.drawerFieldValue}>₹{(selected.walletBalance ?? 0).toLocaleString('en-IN')}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_reports')}</span><span className={styles.drawerFieldValue}>{activity ? activity.reports : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_consultations')}</span><span className={styles.drawerFieldValue}>{activity ? activity.consultations : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_orders')}</span><span className={styles.drawerFieldValue}>{activity ? activity.orders : activityError ? '—' : '…'}</span></div>
             <div className={styles.drawerField}><span className={styles.drawerFieldLabel}>{t('admin_users_col_status')}</span><span className={styles.drawerFieldValue}>{(() => { const s = accountStatus(selected.status); return <StatusBadge status={s} label={t(`admin_status_${s.toLowerCase()}`)} />; })()}</span></div>
             {activityError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{activityError}</p>}
             {roleError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{roleError}</p>}
+
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: 10 }}>Free AI Chat (Ask TredevaAstro)</div>
+              <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)', marginBottom: 10 }}>
+                Currently available: <strong>{Math.round((selected.freeAiChatSeconds ?? 0) / 60)} min</strong>. Set a new amount below — e.g. to resolve a dispute by granting another free session.
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  type="number" min={0} step={1} value={grantMinutes} onChange={e => setGrantMinutes(e.target.value)}
+                  style={{ width: 90, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--adm-border, #e5e0d8)', fontFamily: 'inherit', fontSize: '0.85rem' }}
+                />
+                <span style={{ fontSize: '0.8rem', color: 'var(--adm-charcoal-soft)' }}>minutes</span>
+                <AdminButton variant="gold" disabled={grantBusy} onClick={grantFreeAiChat}>{grantBusy ? 'Saving…' : 'Set Free Chat Time'}</AdminButton>
+              </div>
+              {grantError && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginTop: 8 }}>{grantError}</p>}
+              {grantDone && <p style={{ color: 'var(--adm-success, #2e7d32)', fontSize: '0.8rem', marginTop: 8 }}>Updated.</p>}
+            </div>
+
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: 10 }}>Recent Activity</div>
+              {activity && activity.recentPageViews.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--adm-charcoal-soft)' }}>No page visits recorded yet.</p>}
+              {activity && activity.recentPageViews.length > 0 && (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {activity.recentPageViews.map((v, i) => (
+                    <li key={i} style={{ fontSize: '0.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ fontWeight: 600 }}>{v.path}</span>
+                        <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                      </div>
+                      <div style={{ color: 'var(--adm-charcoal-soft)', fontSize: '0.72rem', marginTop: 2 }}>{visitFingerprint(v)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--adm-border, #e5e0d8)' }}>
               <ChatAuditPanel

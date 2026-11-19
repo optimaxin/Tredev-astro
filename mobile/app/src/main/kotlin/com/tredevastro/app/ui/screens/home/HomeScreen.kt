@@ -41,6 +41,7 @@ import com.tredevastro.app.network.ApiResult
 import com.tredevastro.app.network.PanchangBody
 import com.tredevastro.app.network.dto.PanchangDto
 import com.tredevastro.app.network.safeApiCall
+import com.tredevastro.app.network.TokenStore
 import com.tredevastro.app.ui.components.CosmicBackground
 import com.tredevastro.app.ui.components.HomeAstrologerRow
 import com.tredevastro.app.ui.components.HeroBanner
@@ -91,8 +92,9 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         ) {
             item {
+                val firstName = TokenStore.userName?.takeIf { it.isNotBlank() }?.split(' ')?.first() ?: tr("Guest")
                 HeroBanner(
-                    title = tr("Namaste, Aarav"),
+                    title = tr("Namaste, $firstName"),
                     subtitle = tr("Your cosmic dashboard for today"),
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
@@ -188,7 +190,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     )
                 }
             }
-            item { HomeStoreRow(onClick = { toast("Checkout is coming soon") }, modifier = Modifier.padding(bottom = 28.dp)) }
+            item { HomeStoreRow(modifier = Modifier.padding(bottom = 28.dp)) }
 
             item {
                 SectionIntro(title = tr("Blogs"), subtitle = tr("Learn Vedic astrology at your own pace"), modifier = Modifier.padding(bottom = 14.dp))

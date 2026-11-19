@@ -78,7 +78,7 @@ export default function NotificationsPage() {
             <div key={b.id} className={styles.drawerField}>
               <span className={styles.drawerFieldLabel}>{b.message}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className={styles.drawerFieldValue}>{formatDateTime(new Date(b.createdAt).toISOString())}</span>
+                <span className={styles.drawerFieldValue}>{formatDateTime(b.createdAt)}</span>
                 <AdminButton variant="danger" onClick={() => handleRemove(b)}>Remove</AdminButton>
               </span>
             </div>

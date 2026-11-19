@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { withTransaction, type Executor } from '../core/db.ts';
-import { findAstrologerByIdRaw, listAllAstrologersRaw, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
+import { findAstrologerByIdRaw, listAllAstrologersRaw, setAstrologerIntent, updateMaxConcurrent } from '../repositories/astrologerRepository.ts';
 import { findUserById, findUserByEmail, debitWallet } from '../repositories/userRepository.ts';
 import * as consultationRepo from '../repositories/consultationRepository.ts';
 import * as queueRepo from '../repositories/queueRepository.ts';
@@ -9,6 +9,7 @@ import * as processedRequestRepo from '../repositories/processedRequestRepositor
 import * as loyaltyRepo from '../repositories/loyaltyRepository.ts';
 import * as boostRepo from '../repositories/boostRepository.ts';
 import { computePriceWithOverride } from './pricingEngine.ts';
+import { notifyEventByTemplateId } from './notificationService.ts';
 import { getRegionForCountry } from '../repositories/pricingRegionRepository.ts';
 import { getOverride } from '../repositories/astrologerRegionPriceRepository.ts';
 import { bus } from '../websocket/bus.ts';
@@ -67,8 +68,8 @@ async function buildAstrologerRecord(row: AstrologerCatalogRow): Promise<Astrolo
     price: row.chat_price,
     avatar: row.avatar,
     email,
-    intent: 'OFFLINE',
-    status: 'OFFLINE',
+    intent: row.intent,
+    status: row.intent === 'ONLINE' ? 'ONLINE_AVAILABLE' : 'OFFLINE',
     maxConcurrent: row.max_concurrent,
     lastActivityAt: Date.now(),
     durationSamplesMs: [],
@@ -82,6 +83,9 @@ export async function seedRealtimeStore() {
   for (const row of await listAllAstrologersRaw()) {
     astrologers.set(row.id, await buildAstrologerRecord(row));
   }
+  // Re-derive status (ONLINE_BUSY vs ONLINE_AVAILABLE) from persisted
+  // intent + any consultations still active from before this restart.
+  for (const id of astrologers.keys()) await recomputeStatus(id);
 }
 
 // Registers a single newly-created catalog row into the live store —
@@ -163,6 +167,7 @@ export async function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLIN
   astro.intent = intent;
   astro.lastActivityAt = Date.now();
   if (intent === 'ONLINE') awayFlags.set(astrologerId, false);
+  await setAstrologerIntent(astrologerId, intent);
   await recomputeStatus(astrologerId);
   // Coming back online (or going offline while a stale queue exists from
   // before) should re-check whether anyone waiting can now be promoted.
@@ -610,6 +615,16 @@ export async function endConsultation(consultationId: string, requesterEmail: st
   await recomputeStatus(c.astrologerId);
   bus.emitTyped('chat:ended', c);
   await createNotification(c.astrologerId, 'consultation_completed', `${c.userName}'s consultation has ended.`, c.id, `complete-${c.id}`);
+  // Thank-you + feedback-request email — only for a session that actually
+  // ran (startedAt set), not one ended before it ever started. Best-effort,
+  // never blocks the consultation itself (see notifyEventByTemplateId).
+  if (c.startedAt) {
+    void notifyEventByTemplateId({
+      templateId: 'tpl-consultation-thanks', eventKey: 'consultation.completed',
+      vars: { astrologerName: astrologers.get(c.astrologerId)?.name ?? 'your astrologer', consultationType: c.type },
+      user: { email: c.userEmail, name: c.userName },
+    });
+  }
   await processQueue(c.astrologerId);
   return c;
 }

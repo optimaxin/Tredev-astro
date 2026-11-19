@@ -5,7 +5,6 @@ import { WalletIcon } from '../Icons/Icons';
 import modalStyles from '../PaymentResultModal/PaymentResultModal.module.css';
 
 const PRESETS = [50, 100, 200, 500, 1000];
-const STEP = 50;
 
 // Top-up only, in multiples of ₹50 — the sole way money gets into the wallet
 // that consultation billing spends from (see realtimeStore.ts's
@@ -15,20 +14,14 @@ const STEP = 50;
 // always a quick in-context action, not a destination.
 export default function RechargeWalletModal({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = React.useState(PRESETS[1]);
-  const [custom, setCustom] = React.useState('');
   const [paying, setPaying] = React.useState(false);
   const [error, setError] = React.useState('');
 
-  const customValue = custom.trim() ? Number(custom) : null;
-  const effectiveAmount = customValue ?? amount;
-  const isValid = Number.isInteger(effectiveAmount) && effectiveAmount >= STEP && effectiveAmount % STEP === 0;
-
   const recharge = async () => {
-    if (!isValid) return;
     setPaying(true);
     setError('');
     try {
-      await paymentService.pay({ purpose: 'WALLET_RECHARGE', amount: effectiveAmount });
+      await paymentService.pay({ purpose: 'WALLET_RECHARGE', amount });
       // Redirects the whole tab to the gateway — reaching here means it
       // failed before that redirect even happened.
     } catch (e) {
@@ -61,35 +54,19 @@ export default function RechargeWalletModal({ onClose }: { onClose: () => void }
             <button
               key={p}
               type="button"
-              className={effectiveAmount === p && !customValue ? 'btn btn-gold btn-sm' : 'btn btn-outline-light btn-sm'}
-              onClick={() => { setAmount(p); setCustom(''); }}
+              className={amount === p ? 'btn btn-gold btn-sm' : 'btn btn-outline-light btn-sm'}
+              onClick={() => setAmount(p)}
             >
               ₹{p}
             </button>
           ))}
         </div>
 
-        <input
-          type="number"
-          min={STEP}
-          step={STEP}
-          placeholder="Custom amount (multiple of ₹50)"
-          value={custom}
-          onChange={e => setCustom(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md, 6px)',
-            border: '1px solid var(--border-subtle, #ccc)', marginBottom: 14, fontFamily: 'var(--font-sans)', fontSize: '0.9rem',
-          }}
-        />
-
-        {customValue !== null && !isValid && (
-          <p style={{ color: '#c0392b', fontSize: '0.8rem', marginBottom: 14 }}>Amount must be a multiple of ₹50.</p>
-        )}
         {error && <p style={{ color: '#c0392b', fontSize: '0.8rem', marginBottom: 14 }}>{error}</p>}
 
         <div className={modalStyles.actions}>
-          <button type="button" className="btn btn-gold" disabled={!isValid || paying} onClick={recharge}>
-            {paying ? 'Redirecting…' : `Recharge ₹${isValid ? effectiveAmount : ''}`}
+          <button type="button" className="btn btn-gold" disabled={paying} onClick={recharge}>
+            {paying ? 'Redirecting…' : `Recharge ₹${amount}`}
           </button>
           <button type="button" className="btn btn-outline-light" onClick={onClose} disabled={paying}>Cancel</button>
         </div>

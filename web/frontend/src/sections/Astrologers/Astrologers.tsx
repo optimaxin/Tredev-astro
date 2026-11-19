@@ -11,6 +11,11 @@ const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vast
 
 export default function Astrologers({ featured = false }: { featured?: boolean }) {
   const { setPage, t, astrologerFilter, setAstrologerFilter } = useAppContext();
+  // Bumps whenever staff suspends/restores/removes/deletes an astrologer —
+  // see RealtimeContext's own comment. Depending on it below re-fetches the
+  // roster live instead of making a user refresh the page to stop seeing a
+  // suspended/deleted astrologer (or to see a restored one again).
+  const { catalogVersion } = useRealtime();
   // Seeded from SeekGuidance's category cards (e.g. "Career & Business" ->
   // 'Career') via the shared `astrologerFilter` context field — consumed
   // once here as the initial tab, then reset so a later, unrelated visit to
@@ -51,7 +56,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
       })
       .catch(() => { if (!cancelled) setLoadError(true); });
     return () => { cancelled = true; };
-  }, [featured, activeFilter]);
+  }, [featured, activeFilter, catalogVersion]);
 
   useEffect(() => {
     if (featured) return;
@@ -60,7 +65,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
       .then(({ data }) => { if (!cancelled) setRecommended(data); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [featured]);
+  }, [featured, catalogVersion]);
 
   return (
     <section className={styles.section} id="astrologers">
@@ -85,13 +90,13 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
               className="section-explore-link"
               onClick={() => { setPage('astrologers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              Explore All Acharyas →
+              {t('cta_explore_acharyas')} →
             </button>
           )}
         </motion.div>
 
         {loadError ? (
-          <p className={styles.demoNote}>Could not load astrologers right now. Please try again shortly.</p>
+          <p className={styles.demoNote}>{t('astrologers_load_error')}</p>
         ) : featured ? (
           /* Featured mode: show 3 Acharyas in grid */
           <div className={styles.grid}>

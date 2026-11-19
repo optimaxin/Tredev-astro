@@ -575,4 +575,10 @@ export const calculatorService = {
   mySky: (birth: BirthDetailsInput) => request<MySkyResult>('/api/calculators/my-sky', { method: 'POST', body: JSON.stringify(birth) }),
   aiAsk: (birth: BirthDetailsInput, question: string) =>
     request<{ answer: string }>('/api/calculators/ai-ask', { method: 'POST', body: JSON.stringify({ ...birth, question }) }),
+  // Consumes this account's real, server-tracked free-chat balance (see
+  // backend/app/repositories/userRepository.ts's consumeFreeAiChatSeconds)
+  // and hands back how many seconds this session actually gets — replaces
+  // the old hardcoded 5-minute client-side-only countdown.
+  startFreeAiChatSession: (accessToken: string) =>
+    request<{ grantedSeconds: number }>('/api/calculators/ai-chat/start', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }),
 };

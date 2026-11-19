@@ -27,4 +27,5 @@ export type AdminSection =
   | 'settings'
   | 'call-recordings'
   | 'banners'
-  | 'pooja';
+  | 'pooja'
+  | 'emails';

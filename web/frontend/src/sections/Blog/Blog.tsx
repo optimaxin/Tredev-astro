@@ -14,8 +14,20 @@ const TAG_COLORS: Record<string, string> = {
   'Daily Astrology': 'cyan',
 };
 
+// Blog post tags are free-text admin content (see contentService.listBlogPosts),
+// but these five recur often enough that translating them is worth a small
+// lookup — anything outside this known set just shows as written, same as
+// the post title/excerpt.
+const TAG_KEYS: Record<string, string> = {
+  Nakshatra: 'blog_tag_nakshatra',
+  Saturn: 'blog_tag_saturn',
+  Marriage: 'blog_tag_marriage',
+  Career: 'blog_tag_career',
+  'Daily Astrology': 'blog_tag_daily_astrology',
+};
+
 export default function Blog() {
-  const { setPage, setSelectedId } = useAppContext();
+  const { setPage, setSelectedId, t } = useAppContext();
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
@@ -42,8 +54,8 @@ export default function Blog() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <span className="section-eyebrow">The Journal</span>
-          <h2 className={styles.title}>From the TredevaAstro Journal</h2>
+          <span className="section-eyebrow">{t('section_blog_eyebrow')}</span>
+          <h2 className={styles.title}>{t('section_blog_title')}</h2>
         </motion.div>
 
         <div className={styles.layout}>
@@ -65,7 +77,7 @@ export default function Blog() {
             <div className={styles.featuredContent}>
               <div className={styles.postMeta}>
                 <span className={`${styles.tag} ${styles[`tag_${TAG_COLORS[featured.tag] || 'gold'}`]}`}>
-                  {featured.tag}
+                  {TAG_KEYS[featured.tag] ? t(TAG_KEYS[featured.tag]) : featured.tag}
                 </span>
                 <span className={styles.readTime}>{featured.readTime}</span>
                 <span className={styles.postDate}>{featured.date}</span>
@@ -73,7 +85,7 @@ export default function Blog() {
               <h3 className={styles.featuredTitle}>{featured.title}</h3>
               <p className={styles.featuredExcerpt}>{featured.excerpt}</p>
               <button className="btn btn-outline-gold btn-sm" id="blog-read-featured" onClick={(e) => { e.stopPropagation(); handleBlogClick(featured.id); }}>
-                Read Article →
+                {t('btn_read_article')}
               </button>
             </div>
           </motion.div>
@@ -93,14 +105,14 @@ export default function Blog() {
               >
                 <div className={styles.smallMeta}>
                   <span className={`${styles.tag} ${styles[`tag_${TAG_COLORS[post.tag] || 'gold'}`]}`}>
-                    {post.tag}
+                    {TAG_KEYS[post.tag] ? t(TAG_KEYS[post.tag]) : post.tag}
                   </span>
                   <span className={styles.readTime}>{post.readTime}</span>
                 </div>
                 <h4 className={styles.smallTitle}>{post.title}</h4>
                 <p className={styles.smallExcerpt}>{post.excerpt.slice(0, 100)}...</p>
                 <button className={styles.readLink} id={`blog-read-${post.id}`} onClick={(e) => { e.stopPropagation(); handleBlogClick(post.id); }}>
-                  Read →
+                  {t('btn_read_more')}
                 </button>
               </motion.div>
             ))}

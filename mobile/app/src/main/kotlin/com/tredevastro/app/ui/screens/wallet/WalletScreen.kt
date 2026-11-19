@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,11 +43,10 @@ import com.tredevastro.app.ui.components.GoldButton
 import com.tredevastro.app.ui.components.HeroBanner
 import com.tredevastro.app.ui.components.LoadingBlock
 import com.tredevastro.app.ui.components.OutlineGoldButton
-import com.tredevastro.app.ui.components.birthFieldColors
 import com.tredevastro.app.ui.theme.LocalAppColors
 import kotlinx.coroutines.launch
 
-private val QUICK_AMOUNTS = listOf(100, 500, 1000, 2000)
+private val QUICK_AMOUNTS = listOf(50, 100, 200, 500, 1000)
 
 // Must match the deployed backend's CASHFREE_ENV (backend/app/core/config.ts) —
 // the website's own checkout has this exact same gap (see paymentService.ts's
@@ -66,7 +63,6 @@ fun WalletScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
     var balance by remember { mutableStateOf<Int?>(WalletStore.balance) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    var customAmount by remember { mutableStateOf("") }
     var checkoutOrder by remember { mutableStateOf<PaymentOrderDto?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableStateOf(0) }
@@ -84,10 +80,6 @@ fun WalletScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
     }
 
     fun startRecharge(amount: Int) {
-        if (amount < 100) {
-            errorMessage = "Minimum top-up is ₹100"
-            return
-        }
         errorMessage = null
         statusMessage = null
         isLoading = true
@@ -193,27 +185,12 @@ fun WalletScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
                 }
             }
 
-            OutlinedTextField(
-                value = customAmount,
-                onValueChange = { customAmount = it.filter { c -> c.isDigit() } },
-                label = { Text(tr("Custom amount (₹)")) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                colors = birthFieldColors(),
-            )
-
             if (errorMessage != null) {
                 ErrorBlock(message = errorMessage ?: "", onRetry = { reloadKey++ }, modifier = Modifier.padding(top = 12.dp))
             }
 
             if (isLoading) {
                 LoadingBlock(modifier = Modifier.padding(top = 16.dp))
-            } else {
-                GoldButton(
-                    text = "Add Money",
-                    onClick = { startRecharge(customAmount.toIntOrNull() ?: 0) },
-                    modifier = Modifier.padding(top = 16.dp),
-                )
             }
         }
     }

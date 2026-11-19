@@ -1,17 +1,19 @@
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
-import { findUserById, listAllUsers, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
+import { createUser, findUserByEmail, findUserById, listAllUsers, setFreeAiChatSeconds, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, findAstrologerById, listAllAstrologersRaw, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { bus } from '../websocket/bus.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { countCompletedByAstrologerAndType, countForUser, countInProgress, findAllForAstrologer, findAllForUser, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { register, AuthError } from '../services/authService.ts';
+import { listPageViewsForUser, listRecentRegisteredPageViews, listRecentAnonymousPageViews } from '../repositories/pageViewRepository.ts';
+import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
@@ -43,7 +45,12 @@ import {
 } from '../repositories/aiEvaluationRepository.ts';
 import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
-import { getBoostPayoutSharePercent, setBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
+import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent, setNotifyEmails } from '../repositories/platformSettingsRepository.ts';
+import { createEmailTemplate, deleteEmailTemplate, findEmailTemplateById, listEmailTemplates, updateEmailTemplate } from '../repositories/emailTemplateRepository.ts';
+import { listEmailLog } from '../repositories/emailLogRepository.ts';
+import { notifyEvent, notifyEventByTemplateId, sendAndLog } from '../services/notificationService.ts';
+import { EMAIL_IDENTITY_KEYS } from '../services/emailService.ts';
+import { config } from '../core/config.ts';
 import { decideApplication, findApplicationById, listApplicationsWithUsers } from '../repositories/astrologerApplicationRepository.ts';
 import { insertAstrologerForUser } from '../repositories/astrologerRepository.ts';
 import { createPricingRegion, deletePricingRegion, findPricingRegionById, listPricingRegions, updatePricingRegion } from '../repositories/pricingRegionRepository.ts';
@@ -145,6 +152,23 @@ adminRouter.patch('/users/:id/status', requireSection('users'), async (req, res)
     return fail(res, 403, 'FORBIDDEN', 'Only an admin can change a Staff or Admin account');
   }
   await updateUserStatus(target.id, parsed.data.status);
+  // Suspending/reactivating an astrologer's account should also pull them
+  // out of / back into the public bookable catalog — otherwise a suspended
+  // astrologer (blocked from logging in) still shows up to users as if
+  // nothing happened, same gap PATCH /users/:id/role already closes for a
+  // role change (see deactivateAstrologerByUserId above).
+  if (target.role === 'ASTROLOGIST') {
+    const astrologer = await findAstrologerByUserId(target.id);
+    if (astrologer) {
+      await setAstrologerActive(astrologer.id, parsed.data.status === 'ACTIVE');
+      // Live-updates anyone currently browsing the public site (and the
+      // staff panel) without a refresh — see DELETE /astrologers/:id's own
+      // comment on why this matters. Fired either direction; the listener
+      // just re-fetches the authoritative list rather than trying to patch
+      // it by hand client-side.
+      bus.emitTyped('astrologer:catalog_changed', { astrologerId: astrologer.id });
+    }
+  }
   await audit(req, `user.status.${parsed.data.status.toLowerCase()}`, target.email);
   res.json({ success: true, data: { ok: true } });
 });
@@ -175,6 +199,32 @@ adminRouter.patch('/users/:id/role', requireSection('users'), async (req, res) =
   res.json({ success: true, data: { ok: true } });
 });
 
+const freeAiChatSchema = z.object({ seconds: z.number().int().min(0).max(24 * 60 * 60) });
+
+// Dispute resolution for the "Ask TredevaAstro" free AI chat session — the
+// Users page already finds the account by email/phone (client-side search
+// over the already-loaded list), this just sets its real balance (see
+// userRepository.ts's setFreeAiChatSeconds). 0 revokes it; any other value
+// (typically another 300 for "one more 5-minute session") re-grants it.
+adminRouter.patch('/users/:id/free-ai-chat', requireSection('users'), async (req, res) => {
+  const parsed = freeAiChatSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const target = await findUserById(req.params.id as string);
+  if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
+  await setFreeAiChatSeconds(target.id, parsed.data.seconds);
+  await audit(req, 'user.free_ai_chat.set', `${target.email}: ${parsed.data.seconds}s`);
+  // Only the "good news" case emails the customer — staff setting this to 0
+  // (revoking it) has nothing positive to announce.
+  if (parsed.data.seconds > 0) {
+    await notifyEventByTemplateId({
+      templateId: 'tpl-free-ai-chat-granted', eventKey: 'user.free_ai_chat.granted',
+      vars: { minutes: String(Math.round(parsed.data.seconds / 60)) },
+      user: { email: target.email, name: target.name },
+    }).catch(() => {});
+  }
+  res.json({ success: true, data: { seconds: parsed.data.seconds } });
+});
+
 // One combined summary instead of 3 separate count endpoints — the Users
 // drawer only ever needs all three at once (see UsersPage.tsx), and this
 // keeps it to a single fetch when the drawer opens. Also carries the chat
@@ -185,12 +235,13 @@ adminRouter.patch('/users/:id/role', requireSection('users'), async (req, res) =
 adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res) => {
   const target = await findUserById(req.params.id as string);
   if (!target) return fail(res, 404, 'NOT_FOUND', 'User not found');
-  const [reports, consultations, orders, allConsultations, lastAction] = await Promise.all([
+  const [reports, consultations, orders, allConsultations, lastAction, pageViews] = await Promise.all([
     countPurchasesForUser(target.id),
     countForUser(target.email),
     countOrdersForUser(target.id),
     findAllForUser(target.email),
     listAuditLogForTarget(target.email, 1),
+    listPageViewsForUser(target.id),
   ]);
   const recentChats = await buildChatAudit(allConsultations, async c => (await findAstrologerById(c.astrologerId))?.name ?? 'Unknown astrologer');
   res.json({
@@ -198,6 +249,7 @@ adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res)
     data: {
       reports, consultations, orders, recentChats,
       lastAction: lastAction[0] ? { action: lastAction[0].action, at: lastAction[0].created_at } : null,
+      recentPageViews: pageViews.map(v => ({ path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country })),
     },
   });
 });
@@ -222,7 +274,25 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const application = await findApplicationById(req.params.id as string);
   if (!application) return fail(res, 404, 'NOT_FOUND', 'Application not found');
-  const applicant = await findUserById(application.user_id);
+
+  // Anonymous applications (user_id null) have no account yet — match one by
+  // the applied email if it already exists, otherwise create one on approval
+  // so there's something to attach the ASTROLOGIST role / catalog row to.
+  let applicant = application.user_id
+    ? await findUserById(application.user_id)
+    : (application.email ? await findUserByEmail(application.email) : undefined);
+  let createdAccount = false;
+  if (!applicant && parsed.data.decision === 'APPROVED') {
+    if (!application.email) return fail(res, 422, 'VALIDATION_ERROR', 'Application has no email to create an account from');
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    applicant = await createUser({
+      name: application.full_name || application.email,
+      email: application.email,
+      passwordHash,
+      phoneNumber: application.phone_number || undefined,
+    });
+    createdAccount = true;
+  }
   if (!applicant) return fail(res, 404, 'NOT_FOUND', 'Applicant account not found');
 
   // Atomic PENDING->decision transition is the real guard (decideApplication
@@ -257,8 +327,27 @@ adminRouter.post('/applications/:id/decide', requireSection('applications'), asy
     // Without this, the new astrologer can't go online / accept anything
     // until the process restarts — see registerNewAstrologer's own comment.
     await registerNewAstrologer(updated ?? catalogRow);
+    // Freshly created account has an unusable random password — send them a
+    // reset link (same flow as "forgot password") so they can actually log in.
+    if (createdAccount) await requestPasswordReset(applicant.email);
   }
   await audit(req, `application.${parsed.data.decision.toLowerCase()}`, applicant.email);
+  // Best-effort: a missing/deleted template (or ZeptoMail being down) should
+  // never fail the decision itself — sendAndLog already turns a send
+  // failure into a FAILED log row instead of throwing.
+  const templateId = parsed.data.decision === 'APPROVED' ? 'tpl-application-approved' : 'tpl-application-rejected';
+  const template = await findEmailTemplateById(templateId);
+  if (template) {
+    await notifyEvent({
+      eventKey: `application.${parsed.data.decision.toLowerCase()}`,
+      template,
+      vars: { extra: '' },
+      user: { email: applicant.email, name: applicant.name },
+      alsoHeadAstrologer: parsed.data.decision === 'APPROVED',
+      alsoAdmin: true,
+      from: 'hiring',
+    }).catch(() => {});
+  }
   res.json({ success: true, data: { ok: true } });
 });
 
@@ -287,20 +376,52 @@ adminRouter.get('/astrologers/status', requireSection('astrologers'), async (_re
     listPublicAstrologers(), listAllAstrologersRaw(), getBoostPayoutSharePercent(),
   ]);
   const overrideById = new Map(astrologers.map(a => [a.id, a.boost_payout_override_percent]));
+  // Raw rows only (not the public-listing filter), so a removed
+  // (is_active = 0) astrologer still shows up here for staff to restore —
+  // listPublicAstrologers() above already drops them, which is correct for
+  // the public site but wrong for the staff management table.
+  const rawById = new Map(astrologers.map(a => [a.id, a]));
   // Also folds in whether each astrologer currently has an active Boost
   // (Extra/Boost Feature PDF) and their payout-share override, if staff set
   // one — there was previously no admin/staff-facing surface for any of
   // this, only the astrologer's own /me/boost view.
   const data = await Promise.all(rows.map(async r => {
     const boostPayoutOverridePercent = overrideById.get(r.id) ?? null;
+    const raw = rawById.get(r.id);
+    // An "orphan" catalog row (no linked user account — seed data, or an
+    // account later deleted/role-changed) is_active = 1 still passes
+    // listPublicAstrologers()'s filter, so it's bookable and in `rows`
+    // already — but `r` itself only ever carries {id, status, activeCount,
+    // maxConcurrent, queueLength}, no name. With no account to match it to,
+    // the staff admin page (which iterates accounts, not catalog rows) can
+    // never display or manage it without this — same reasoning as the
+    // `removed` block below, just for the is_active = 1 case.
+    const isOrphan = raw && raw.user_id == null;
     return {
       ...r,
+      ...(isOrphan ? toPublicAstrologerProfile(raw) : {}),
       activeBoost: !!(await getActiveBoost(r.id)),
       boostPayoutOverridePercent,
       effectiveBoostPayoutSharePercent: boostPayoutOverridePercent ?? defaultPayoutShare,
+      commissionPercent: raw?.commission_percent ?? 100,
+      isActive: (raw?.is_active ?? 1) === 1,
     };
   }));
-  res.json({ success: true, data });
+  // Removed astrologers are filtered out of listPublicAstrologers() entirely,
+  // so they'd otherwise vanish from the staff table with no way to restore
+  // them — append them here (no live/Boost state for these, they're not
+  // bookable) using the same shape as the map above.
+  const listedIds = new Set(rows.map(r => r.id));
+  const removed = astrologers.filter(a => a.is_active !== 1 && !listedIds.has(a.id)).map(a => ({
+    ...toPublicAstrologerProfile(a),
+    status: 'OFFLINE' as const, activeCount: 0, maxConcurrent: 0, queueLength: 0,
+    activeBoost: false,
+    boostPayoutOverridePercent: a.boost_payout_override_percent,
+    effectiveBoostPayoutSharePercent: a.boost_payout_override_percent ?? defaultPayoutShare,
+    commissionPercent: a.commission_percent,
+    isActive: false,
+  }));
+  res.json({ success: true, data: [...data, ...removed] });
 });
 
 const boostPayoutOverrideSchema = z.object({ percent: z.number().int().min(0).max(100).nullable() });
@@ -372,7 +493,11 @@ adminRouter.get('/astrologers/revenue', adminOnly, async (_req, res) => {
 const editAstrologerSchema = z.object({
   title: z.string().trim().min(1).max(100),
   bio: z.string().trim().max(2000),
-  avatar: z.string().trim().max(500),
+  // Plain URL paste OR a base64 data: URL from the staff panel's drag-drop
+  // file picker — same "no object storage, the data URL IS the hosted
+  // value" convention as admin banners/pandit-application resumes (see
+  // main.ts's 8mb body-limit comment, which already covers /api/admin).
+  avatar: z.string().trim().max(2_000_000),
   languages: z.array(z.string().trim().min(1).max(40)).max(20),
   categories: z.array(z.string().trim().min(1).max(40)).max(20),
   expertise: z.array(z.string().trim().min(1).max(40)).max(20),
@@ -381,6 +506,10 @@ const editAstrologerSchema = z.object({
   callPrice: z.number().int().min(0).max(100000),
   videoPrice: z.number().int().min(0).max(100000),
   experienceYears: z.number().int().min(0).max(80),
+  // What % of the per-minute price this astrologer actually earns — staff
+  // sets the rate (chat/call/videoPrice) AND this cut together, so e.g. a
+  // ₹25/min astrologer at 10% shows ₹2.5/min earned, not the full ₹25.
+  commissionPercent: z.number().int().min(1).max(100).optional(),
 });
 
 adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req, res) => {
@@ -391,7 +520,52 @@ adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req,
   const row = await updateAstrologerProfile(id, parsed.data);
   if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
   await audit(req, 'astrologer.profile.update', row.name);
-  res.json({ success: true, data: toPublicAstrologerProfile(row) });
+  res.json({ success: true, data: { ...toPublicAstrologerProfile(row), commissionPercent: row.commission_percent } });
+});
+
+const activeSchema = z.object({ active: z.boolean() });
+
+// "Remove"/"Restore" — see setAstrologerActive's own comment for why this
+// is a flag flip, not a DELETE: it reuses the exact same is_active column
+// the public catalog query already filters on, so nothing here ever
+// destroys a consultation/review/revenue row.
+adminRouter.patch('/astrologers/:id/active', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = activeSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await setAstrologerActive(id, parsed.data.active);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  bus.emitTyped('astrologer:catalog_changed', { astrologerId: id });
+  await audit(req, parsed.data.active ? 'astrologer.restore' : 'astrologer.remove', row.name);
+  res.json({ success: true, data: { id: row.id, isActive: row.is_active === 1 } });
+});
+
+// Real, permanent delete — distinct from Remove above (is_active flip).
+// See deleteAstrologerCascade's own comment: this also wipes their
+// consultation/review/booking history, deliberately, since that's the whole
+// point of this button existing separately from Remove.
+adminRouter.delete('/astrologers/:id', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  // Unfiltered lookup — a removed (is_active = 0) astrologer must still be
+  // deletable, unlike findAstrologerById's public-facing is_active = 1 gate.
+  const existing = await findAstrologerByIdRaw(id);
+  if (!existing) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  const deleted = await deleteAstrologerCascade(id);
+  if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  // A linked real account loses the Astrologer role (reverts to plain USER)
+  // rather than being deleted itself — the person's login/history stays
+  // intact, they just stop showing up anywhere in the staff Astrologers
+  // page, which filters strictly by role === ASTROLOGIST.
+  if (existing.user_id) await updateUserRole(existing.user_id, 'USER');
+  // Tells every connected client — including anonymous public-site
+  // visitors, who are all joined to PUBLIC_ROOM (see sockets.ts) — to drop
+  // this astrologer from whatever roster they're looking at right now,
+  // without needing a page refresh.
+  bus.emitTyped('astrologer:catalog_changed', { astrologerId: id });
+  await audit(req, 'astrologer.delete', existing.name);
+  res.json({ success: true, data: { id, deleted: true } });
 });
 
 // Direct admin-onboarding, re-added per explicit request (see the removal
@@ -427,7 +601,7 @@ adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res)
   // the process restarts — see registerNewAstrologer's own comment.
   await registerNewAstrologer(finalRow);
   await audit(req, 'astrologer.create', email);
-  res.json({ success: true, data: toPublicAstrologerProfile(finalRow) });
+  res.json({ success: true, data: { ...toPublicAstrologerProfile(finalRow), commissionPercent: finalRow.commission_percent } });
 });
 
 // ── 1:1 scheduled slots (consultation_slots) ─────────────────────────────
@@ -511,6 +685,34 @@ adminRouter.get('/dashboard-stats', requireSection('overview'), async (req, res)
       recentConsultations: recentConsultations.map(c => ({ id: c.id, userName: c.userName, astrologerName: c.astrologerName, createdAt: c.createdAt })),
       recentPurchases: recentPurchases.map(r => ({ id: r.id, userName: r.user_name, reportTitle: r.report_title, purchasedAt: Number(r.purchased_at) })),
       recentDeliveredOrders: recentDeliveredOrders.map(o => ({ id: orderDisplayId(o.id), createdAt: Number(o.created_at) })),
+    },
+  });
+});
+
+// Traffic feed for the Overview page's "Recent Traffic" panel — answers
+// "where is traffic actually going" with each visit's path plus its
+// fingerprint (IP/device/country). Registered and anonymous come back as
+// two separate lists (see listRecentRegisteredPageViews's own comment on
+// why — anonymous volume was crowding registered visits out of a single
+// combined "most recent N" list). Same 'overview' section as
+// dashboard-stats above — no separate permission needed.
+function toTrafficEntry(v: { path: string; created_at: number; ip_address: string | null; user_agent: string | null; country: string | null; user_name: string | null; user_email: string | null }) {
+  return {
+    path: v.path, at: v.created_at, ip: v.ip_address, userAgent: v.user_agent, country: v.country,
+    userName: v.user_name, userEmail: v.user_email,
+  };
+}
+
+adminRouter.get('/traffic', requireSection('overview'), async (_req, res) => {
+  const [registered, anonymous] = await Promise.all([
+    listRecentRegisteredPageViews(50),
+    listRecentAnonymousPageViews(50),
+  ]);
+  res.json({
+    success: true,
+    data: {
+      registered: registered.map(toTrafficEntry),
+      anonymous: anonymous.map(toTrafficEntry),
     },
   });
 });
@@ -851,6 +1053,104 @@ adminRouter.patch('/settings/boost-payout', requireSection('settings'), async (r
   res.json({ success: true, data: { percent: parsed.data.percent } });
 });
 
+adminRouter.get('/settings/notify-emails', requireSection('settings'), async (_req, res) => {
+  res.json({ success: true, data: await getNotifyEmails() });
+});
+
+const notifyEmailsSchema = z.object({
+  adminEmail: z.string().trim().email().nullable(),
+  headAstrologerEmail: z.string().trim().email().nullable(),
+});
+
+adminRouter.patch('/settings/notify-emails', requireSection('settings'), async (req, res) => {
+  const parsed = notifyEmailsSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  await setNotifyEmails(parsed.data);
+  await audit(req, 'settings.notify_emails.update', parsed.data.adminEmail || parsed.data.headAstrologerEmail || '—');
+  res.json({ success: true, data: parsed.data });
+});
+
+// ── Email: templates, compose, and the send log ─────────────────────────
+// "Hirring/compose" — staff can mail any user directly, reusing a saved
+// template (editable before send) or writing one from scratch, and manage
+// the saved templates themselves. Every send — from here or from
+// notificationService.ts's automatic event notifications — lands in
+// email_log, so this doubles as the audit trail the user asked for.
+
+adminRouter.get('/emails/templates', requireSection('emails'), async (_req, res) => {
+  res.json({ success: true, data: await listEmailTemplates() });
+});
+
+// The "Send As" choices for Compose — each key maps to a configured address
+// in config.zeptomail.identities (see its own comment for the fallback
+// behaviour when a dedicated mailbox hasn't been set up yet).
+adminRouter.get('/emails/identities', requireSection('emails'), async (_req, res) => {
+  const data = EMAIL_IDENTITY_KEYS.map(key => ({ key, name: config.zeptomail.identities[key].name }));
+  res.json({ success: true, data });
+});
+
+const templateSchema = z.object({
+  name: z.string().trim().min(2).max(150),
+  subject: z.string().trim().min(1).max(300),
+  body: z.string().trim().min(1).max(20_000),
+});
+
+adminRouter.post('/emails/templates', requireSection('emails'), async (req, res) => {
+  const parsed = templateSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await createEmailTemplate(parsed.data);
+  await audit(req, 'email.template.create', row.name);
+  res.status(201).json({ success: true, data: row });
+});
+
+adminRouter.put('/emails/templates/:id', requireSection('emails'), async (req, res) => {
+  const parsed = templateSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const row = await updateEmailTemplate(req.params.id as string, parsed.data);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Template not found');
+  await audit(req, 'email.template.update', row.name);
+  res.json({ success: true, data: row });
+});
+
+adminRouter.delete('/emails/templates/:id', requireSection('emails'), async (req, res) => {
+  const existing = await findEmailTemplateById(req.params.id as string);
+  const deleted = await deleteEmailTemplate(req.params.id as string);
+  if (!deleted) return fail(res, 404, 'NOT_FOUND', 'Template not found');
+  await audit(req, 'email.template.delete', existing?.name || req.params.id as string);
+  res.json({ success: true, data: { id: req.params.id, deleted: true } });
+});
+
+const composeSchema = z.object({
+  toEmail: z.string().trim().email(),
+  toName: z.string().trim().max(150).optional(),
+  subject: z.string().trim().min(1).max(300),
+  body: z.string().trim().min(1).max(20_000),
+  templateId: z.string().trim().optional(),
+  vars: z.record(z.string(), z.string()).optional(),
+  fromIdentity: z.enum(EMAIL_IDENTITY_KEYS as [string, ...string[]]).optional(),
+});
+
+// Subject/body arrive already rendered from the compose screen (it lets
+// staff edit the filled-in template before sending) — `vars`/`templateId`
+// are only carried through for the log, not re-rendered here.
+adminRouter.post('/emails/compose', requireSection('emails'), async (req, res) => {
+  const parsed = composeSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const actor = await findUserById(req.user!.id);
+  await sendAndLog({
+    toEmail: parsed.data.toEmail, toName: parsed.data.toName,
+    subject: parsed.data.subject, body: parsed.data.body,
+    templateId: parsed.data.templateId, sentBy: actor?.name || req.user!.id,
+    from: parsed.data.fromIdentity as import('../services/emailService.ts').EmailIdentityKey | undefined,
+  });
+  await audit(req, 'email.compose.send', parsed.data.toEmail);
+  res.json({ success: true, data: { ok: true } });
+});
+
+adminRouter.get('/emails/log', requireSection('emails'), async (_req, res) => {
+  res.json({ success: true, data: await listEmailLog() });
+});
+
 // ── Pricing regions (region-wise consultation pricing) ──────────────────
 // A visitor's IP-detected country (geoLocation.ts) is matched against a
 // region's country codes, and that region's multiplier is applied on top of
@@ -1017,6 +1317,82 @@ adminRouter.post('/astrologer-region-prices/csv-import', requireSection('pricing
   res.json({ success: true, data: { updated, errors } });
 });
 
+// Full astrologer-catalog CSV — every editable field, one row per
+// astrologer, so staff can review/bulk-edit the whole roster in a
+// spreadsheet. Same download/re-upload convention as the region-pricing CSV
+// above: astrologer_id is what import matches on, name/email are read-only
+// reference columns (creating a NEW astrologer still goes through the Add
+// form, since that also creates a login account/password — a CSV row alone
+// can't).
+adminRouter.get('/astrologers/csv-export', requireSection('astrologers'), async (_req, res) => {
+  const astrologers = await listAllAstrologersRaw();
+  const header = [
+    'astrologer_id', 'name', 'title', 'bio', 'avatar', 'languages', 'categories', 'expertise',
+    'consultation_types', 'chat_price', 'call_price', 'video_price', 'experience_years', 'commission_percent', 'is_active',
+  ];
+  const lines = [toCsvRow(header)];
+  for (const a of astrologers) {
+    lines.push(toCsvRow([
+      a.id, a.name, a.title, a.bio, a.avatar,
+      JSON.parse(a.languages || '[]').join('|'), JSON.parse(a.categories || '[]').join('|'), JSON.parse(a.expertise || '[]').join('|'),
+      JSON.parse(a.consultation_types || '[]').join('|'),
+      a.chat_price, a.call_price, a.video_price, a.experience_years, a.commission_percent, a.is_active === 1 ? 'yes' : 'no',
+    ]));
+  }
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="astrologers.csv"');
+  res.send(lines.join('\n'));
+});
+
+// CSV import: re-upload the export above (list-type columns are
+// `|`-separated, matching the export's own join) — astrologer_id matches an
+// existing row, every editable field on it gets overwritten. is_active is
+// imported too so a bulk edit can remove/restore astrologers the same way
+// the per-row Remove/Restore button does (same underlying column).
+adminRouter.post('/astrologers/csv-import', requireSection('astrologers'), async (req, res) => {
+  const csv = String(req.body?.csv || '');
+  if (!csv.trim()) return fail(res, 422, 'VALIDATION_ERROR', 'csv is required');
+  const rows = parseCsv(csv);
+  if (rows.length < 2) return fail(res, 422, 'VALIDATION_ERROR', 'CSV has no data rows');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const col = (name: string) => header.indexOf(name);
+  const idIdx = col('astrologer_id');
+  if (idIdx === -1) return fail(res, 422, 'VALIDATION_ERROR', 'CSV must have an astrologer_id column');
+  const splitList = (v: string | undefined) => (v || '').split('|').map(s => s.trim()).filter(Boolean);
+
+  let updated = 0;
+  const errors: string[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
+    if (cols.length <= 1 && !cols[0]) continue;
+    const id = Number(cols[idIdx]);
+    if (!Number.isInteger(id)) { errors.push(`Row ${i + 1}: invalid astrologer_id`); continue; }
+    const get = (name: string) => cols[col(name)];
+    const chatPrice = Number(get('chat_price'));
+    const callPrice = Number(get('call_price'));
+    const videoPrice = Number(get('video_price'));
+    const experienceYears = Number(get('experience_years') ?? 0);
+    const commissionPercent = Number(get('commission_percent') ?? 100);
+    if (![chatPrice, callPrice, videoPrice, experienceYears, commissionPercent].every(Number.isFinite)) {
+      errors.push(`Row ${i + 1}: invalid numbers`);
+      continue;
+    }
+    const consultationTypes = splitList(get('consultation_types')).filter((t): t is 'chat' | 'voice' | 'video' => t === 'chat' || t === 'voice' || t === 'video');
+    const row = await updateAstrologerProfile(id, {
+      title: get('title') || '', bio: get('bio') || '', avatar: get('avatar') || '',
+      languages: splitList(get('languages')), categories: splitList(get('categories')), expertise: splitList(get('expertise')),
+      consultationTypes: consultationTypes.length ? consultationTypes : ['chat'],
+      chatPrice, callPrice, videoPrice, experienceYears, commissionPercent,
+    });
+    if (!row) { errors.push(`Row ${i + 1}: astrologer ${id} not found`); continue; }
+    const activeCol = get('is_active');
+    if (activeCol !== undefined) await setAstrologerActive(id, activeCol.trim().toLowerCase() !== 'no');
+    updated++;
+  }
+  await audit(req, 'astrologer.import', `${updated} row(s) via CSV`);
+  res.json({ success: true, data: { updated, errors } });
+});
+
 // ── Staff & Admin accounts ───────────────────────────────────────────────
 // Always adminOnly, regardless of any Staff permission toggle — who has
 // admin-console access at all is not itself a delegable section.
@@ -1123,7 +1499,7 @@ const usageFilterSchema = z.object({
   provider: z.string().max(100).optional(),
   status: z.enum(['success', 'failed']).optional(),
   conversationId: z.string().max(200).optional(),
-  traffic: z.enum(['user', 'internal', 'all']).optional(),
+  traffic: z.enum(['user', 'internal', 'unknown', 'all']).optional(),
 });
 
 /** Parses the shared filters, defaulting to the last 30 days. */
@@ -1231,7 +1607,7 @@ const evaluationFilterSchema = z.object({
   userId: z.string().max(200).optional(),
   model: z.string().max(200).optional(),
   feedbackType: z.enum(['helpful', 'not_helpful']).optional(),
-  traffic: z.enum(['user', 'internal', 'all']).optional(),
+  traffic: z.enum(['user', 'internal', 'unknown', 'all']).optional(),
   minReward: z.coerce.number().min(0).max(1).optional(),
   maxReward: z.coerce.number().min(0).max(1).optional(),
 });

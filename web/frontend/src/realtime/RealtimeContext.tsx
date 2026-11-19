@@ -33,6 +33,12 @@ export interface Toast {
 interface RealtimeContextValue {
   connected: boolean;
   publicStates: Record<number, PublicAstrologerState>;
+  // Bumps whenever staff suspends/restores/removes/deletes an astrologer
+  // (see admin.routes.ts's bus.emitTyped('astrologer:catalog_changed', ...))
+  // — not the data itself, just a trigger. Depend on this in any effect that
+  // fetches the astrologer roster (e.g. Astrologers.tsx's public listing) to
+  // refetch the always-correct server list instead of patching it by hand.
+  catalogVersion: number;
 
   // Astrologer side
   astrologerSync: AstrologerSyncSnapshot | null;
@@ -98,6 +104,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   const [connected, setConnected] = useState(false);
   const [publicStates, setPublicStates] = useState<Record<number, PublicAstrologerState>>({});
+  const [catalogVersion, setCatalogVersion] = useState(0);
   const [astrologerSync, setAstrologerSync] = useState<AstrologerSyncSnapshot | null>(null);
   const [userSync, setUserSync] = useState<UserSyncSnapshot | null>(null);
   const userSyncRef = useRef(userSync);
@@ -154,6 +161,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on('astrologer:status', (state: PublicAstrologerState) => {
       setPublicStates(prev => ({ ...prev, [state.id]: state }));
     });
+    socket.on('astrologer:catalog_changed', () => setCatalogVersion(v => v + 1));
 
     // Reconnect recovery: the server resends a full snapshot on every
     // connection (including reconnects) — no manual refresh required.
@@ -393,7 +401,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <RealtimeContext.Provider value={{
-      connected, publicStates,
+      connected, publicStates, catalogVersion,
       astrologerSync, goOnline, goOffline, acceptAssignment, declineAssignment, endActiveConsultation,
       markNotifRead, markAllNotifsRead, idleWarning, stayOnline, notifPrefs, completeOnboarding,
       userSync, requestConsultation, cancelMyQueueEntry, recommendations, queueExpired, clearQueueExpired,

@@ -101,7 +101,7 @@ export default function FreeTools({ featured = false }: FreeToolsProps) {
               className="section-explore-link"
               onClick={() => { setPage('astrology-tools'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             >
-              {t('cta_explore')} Tools →
+              {t('cta_explore_tools')} →
             </button>
           </motion.div>
 

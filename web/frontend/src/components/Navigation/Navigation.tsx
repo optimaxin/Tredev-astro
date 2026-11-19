@@ -150,13 +150,12 @@ export default function Navigation() {
           aria-label="TredevaAstro home"
         >
           <img src="/logo.png" alt="" className={styles.logoStar} />
-          <span className={styles.logoText}>TredevaAstro</span>
+          <span className={styles.logoText} translate="no">TredevaAstro</span>
         </button>
 
         {/* Desktop Navigation */}
         <nav className={styles.links} aria-label="Main navigation">
           {NAV_LINKS.map(link => {
-            const label = t(link.translationKey);
             const isLinkActive = page === link.page;
             return (
               <button
@@ -164,7 +163,7 @@ export default function Navigation() {
                 className={`${styles.link} ${isLinkActive ? styles.active : ''}`}
                 onClick={() => handleNavClick(link.page)}
               >
-                {label}
+                {t(link.translationKey)}
                 {isLinkActive && <span className={styles.activeIndicator} />}
               </button>
             );
@@ -249,9 +248,10 @@ export default function Navigation() {
               <span className={styles.langText} translate="no">{currentLangLabel}</span>
             </button>
             {langDropdownOpen && (
-              /* Each language is named in its own script — Google Translate
-                 would otherwise translate those names into the language
-                 currently selected, leaving the picker unreadable. */
+              /* Each language is named in its own script — a browser
+                 translate feature would otherwise translate those names
+                 into whatever is currently selected, leaving the picker
+                 itself unreadable. */
               <div className={styles.langDropdown} translate="no">
                 {LANGUAGES.map(lang => (
                   <button
@@ -279,7 +279,6 @@ export default function Navigation() {
                 <div className={styles.avatarCircle}>
                   {(currentUser?.name || 'Yajamana').substring(0, 1).toUpperCase()}
                 </div>
-                <span className={styles.profileNameText}>{(currentUser?.name || 'Yajamana').split(' ')[0]}</span>
                 <span className={styles.profileArrow}>▼</span>
               </button>
               {profileDropdownOpen && (
@@ -336,14 +335,13 @@ export default function Navigation() {
       <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ''}`} aria-hidden={!menuOpen}>
         <div className={styles.mobileLinks}>
           {NAV_LINKS.map(link => {
-            const label = t(link.translationKey);
             return (
               <button
                 key={link.page + link.translationKey}
                 className={styles.mobileLink}
                 onClick={() => handleNavClick(link.page)}
               >
-                {label}
+                {t(link.translationKey)}
               </button>
             );
           })}

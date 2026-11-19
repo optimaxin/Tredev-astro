@@ -13,9 +13,8 @@ import { RealtimeProvider } from './realtime/RealtimeContext';
 import ToastStack from './realtime/ToastStack';
 import BroadcastBanner from './components/BroadcastBanner/BroadcastBanner';
 import ActiveSessionBanner from './components/ActiveSessionBanner/ActiveSessionBanner';
-import GoogleTranslate from './components/GoogleTranslate/GoogleTranslate';
-import { applyGoogleTranslateLanguage } from './utils/googleTranslate';
 import KundliChatWidget from './sections/KundliSection/KundliChatWidget';
+import { trackingService } from './services/trackingService';
 
 // The Kundli page's own chat widget already knows the freshly-generated
 // chart's exact birth details; it renders itself there. Elsewhere on the
@@ -40,20 +39,20 @@ function AppContent() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Feeds the admin/staff Users drawer's "recent activity" trail — only
+  // attributed when logged in (see trackingService.ts), so this is a no-op
+  // ping for anonymous visitors.
+  useEffect(() => {
+    trackingService.pageView(page);
+  }, [page]);
+
+  // Reflects the selected language again — t() (AppContext.tsx) now really
+  // translates the ~680 strings its dictionary covers. Any hardcoded text
+  // past that has no key at all and stays English regardless, so this is an
+  // approximation for a mixed-language page, not a strict guarantee — same
+  // trade-off any partially-translated site has.
   useEffect(() => {
     document.documentElement.lang = language;
-  }, [language]);
-
-  // The language dropdown (Navigation.tsx) picks a code; the actual
-  // translation for anything this app's own TRANSLATIONS dictionary doesn't
-  // cover is real Google Translate, applied here. Skipped on the very first
-  // render (GoogleTranslate's widget script is still loading, nothing to
-  // switch yet) — the cookie it reads on load already reflects whatever was
-  // last picked, from a previous call to this same effect.
-  const isFirstLanguageEffect = React.useRef(true);
-  useEffect(() => {
-    if (isFirstLanguageEffect.current) { isFirstLanguageEffect.current = false; return; }
-    applyGoogleTranslateLanguage(language);
   }, [language]);
 
   // The Admin Console and Astrologer Workspace are separate internal tools
@@ -115,11 +114,6 @@ function App() {
   return (
     <AppProvider>
       <RealtimeProvider>
-        {/* Rendered once here, outside AppContent's workspace/public branch
-            switch, so it's never unmounted/remounted by that conditional —
-            Google's script attaches to this exact div instance for the
-            whole page lifetime. */}
-        <GoogleTranslate />
         <AppContent />
       </RealtimeProvider>
     </AppProvider>

@@ -54,6 +54,9 @@ const STATUS_VARIANT: Record<string, keyof typeof VARIANT_CLASS> = {
   // pricingEngine.ts.
   boost_active: 'success',
   offer_active: 'gold',
+  // Staff "Remove" (AstrologersPage) — distinct from `suspended` (login-
+  // blocking, reversible via Restore same as this).
+  removed: 'danger',
 };
 
 const VARIANT_CLASS = {

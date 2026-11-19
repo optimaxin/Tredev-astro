@@ -9,6 +9,8 @@ import {
 } from '../repositories/userRepository.ts';
 import { toPublicUser, type PublicUser, type Role } from '../models/user.ts';
 import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
+import { sendEmail } from './emailService.ts';
+import { notifyEventByTemplateId } from './notificationService.ts';
 
 export class AuthError extends Error {
   status: number;
@@ -59,6 +61,11 @@ export async function register(params: {
   // Phone number is stored but not verified here — that only happens if/when
   // this account signs in via Firebase Phone Auth (see loginWithFirebase),
   // which replaced the old custom OTP-over-SMS verification step.
+  // Best-effort, never blocks registration itself (see notifyEventByTemplateId).
+  void notifyEventByTemplateId({
+    templateId: 'tpl-welcome', eventKey: 'user.welcome',
+    vars: {}, user: { email: row.email, name: row.name },
+  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -71,6 +78,10 @@ export async function login(email: string, password: string): Promise<{ user: Pu
   }
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
+  void notifyEventByTemplateId({
+    templateId: 'tpl-welcome-back', eventKey: 'user.login',
+    vars: {}, user: { email: row.email, name: row.name },
+  });
   return { user: toPublicUser(row), ...tokens };
 }
 
@@ -124,15 +135,21 @@ export async function getPublicUser(userId: string): Promise<PublicUser | undefi
   return row ? toPublicUser(row) : undefined;
 }
 
-// Returns the raw reset token only in non-production so the flow is testable
-// end-to-end without an email provider wired up yet. A real deployment must
-// plug EMAIL_PROVIDER_KEYS in and send this token by email instead of
-// returning it — never expose it over the API in production.
+// Returns the raw reset token only in non-production (devShortcuts) so the
+// flow is testable without a real inbox. In every environment it's also
+// emailed via ZeptoMail (see emailService.ts) — never expose it over the API
+// in production.
 export async function requestPasswordReset(email: string): Promise<{ devResetToken?: string }> {
   const row = await findUserByEmail(email);
   if (!row) return {}; // don't reveal whether the email exists
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
+  const resetLink = `${config.clientOrigins[0]}/reset-password?token=${raw}`;
+  await sendEmail(row.email, 'Reset your TredevaAstro password', `
+    <p>We received a request to reset your password.</p>
+    <p><a href="${resetLink}">Click here to reset your password</a> (expires in 30 minutes).</p>
+    <p>If you didn't request this, you can ignore this email.</p>
+  `);
   return config.devShortcuts ? { devResetToken: raw } : {};
 }
 
@@ -189,12 +206,29 @@ export async function loginWithFirebase(idToken: string): Promise<{ user: Public
       firebaseUid: uid,
     });
     if (phoneNumber) await markPhoneVerified(row.id);
+    // Phone-only signups get a synthetic @firebase.local placeholder (see
+    // above) — nothing to send there, so only email real addresses.
+    if (email) {
+      void notifyEventByTemplateId({
+        templateId: 'tpl-welcome', eventKey: 'user.welcome',
+        vars: {}, user: { email: row.email, name: row.name },
+      });
+    }
   } else if (!row.firebase_uid) {
     await linkFirebaseUid(row.id, uid);
   }
 
   if (row.status === 'SUSPENDED') throw new AuthError('This account has been suspended', 403);
   const tokens = await issueTokenPair(row.id, row.role);
+  // Phone-only accounts still carry the synthetic @firebase.local
+  // placeholder (see above) if they've never since added a real email —
+  // nothing deliverable to send there.
+  if (!isNewUser && !row.email.endsWith('@firebase.local')) {
+    void notifyEventByTemplateId({
+      templateId: 'tpl-welcome-back', eventKey: 'user.login',
+      vars: {}, user: { email: row.email, name: row.name },
+    });
+  }
   return { user: toPublicUser(row), isNewUser, ...tokens };
 }
 

@@ -59,8 +59,11 @@ chatRouter.get('/mine-as-astrologer', requireAuth, async (req, res) => {
   // Each consultation already carries its own locked-at-creation price
   // (offer/loyalty/Boost-adjusted) — use that instead of the astrologer's
   // current catalog price, so a past session's estimate doesn't drift when
-  // pricing changes later.
-  const data = rows.map(c => ({ ...c, estimatedAmount: c.pricePerMin || 0 }));
+  // pricing changes later. Then apply the staff-set commission split, so
+  // this astrologer only ever sees THEIR cut, not the full per-minute price
+  // (commission_percent defaults to 100, so nothing changes for anyone
+  // staff hasn't set a cut for).
+  const data = rows.map(c => ({ ...c, estimatedAmount: Math.round((c.pricePerMin || 0) * astro.commission_percent / 100) }));
   res.json({ success: true, data });
 });
 

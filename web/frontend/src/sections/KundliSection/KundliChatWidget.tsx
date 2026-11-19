@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { aiCoreService, AiCoreApiError } from '../../services/aiCoreService';
 import { NEGATIVE_REASONS } from '../../services/aiCoreService';
 import type { AiCoreBirthDetails, AiCoreStreamStage, FeedbackType } from '../../services/aiCoreService';
-import { useAppContext } from '../../context/AppContext';
 import { BUBBLE_DELIVERY, deliverBubbles, prefersReducedMotion } from './bubbleDelivery';
 import type { DeliveryHandle } from './bubbleDelivery';
 import styles from './KundliChatWidget.module.css';
@@ -46,16 +45,30 @@ interface Bubble {
   streaming?: boolean;
 }
 
-// The opening message, in the visitor's site language. Replaces the old fixed
-// English "Namaste <name>! Your kundli is ready." + "Ask me anything…" pair.
-const GREETINGS = {
-  en: "Your Kundli is ready! Tell me what you'd like to know about your chart. I can help explain your career, marriage, relationships, finances, planetary placements and current Dasha.",
-  hinglish: 'Aapki Kundli taiyaar hai! Bataiye, aap apni Kundli ke baare mein kya jaanna chahenge? Main aapko career, marriage, relationships, finances aur current Dasha ke baare mein samjha sakta hoon.',
-  hi: 'आपकी कुंडली तैयार है! बताइए, आप अपनी कुंडली के बारे में क्या जानना चाहेंगे? मैं आपको करियर, विवाह, रिश्तों, आर्थिक स्थिति और वर्तमान दशा के बारे में समझा सकता हूँ।',
-} as const;
+// The opening message — always casual Hinglish (like the teaser bubbles
+// above), not the site's selected language, and randomized per chart so it
+// doesn't read like a canned bot line every time — two separate bubbles,
+// the name greeting first and a varied helper line after.
+const GREETING_OPENERS = (name: string) => [
+  `Radhe Radhe, ${name}!`,
+  `Namaste, ${name}!`,
+  `Jai Shree Krishna, ${name}!`,
+  `Pranaam, ${name}!`,
+  `Hello ${name} ji!`,
+];
+const GREETING_HELPERS = [
+  'Aapki Kundli taiyaar hai — mein aapki kaise madad kar sakta hoon?',
+  'Batayein, apni Kundli ko leke kya jaanna chahenge aap?',
+  'Career, shaadi, ya current dasha — kuch bhi poochiye apni Kundli se juda.',
+  'Main aapki Kundli padh chuka hoon, poochiye jo bhi jaanna hai.',
+];
 
-const greetingFor = (siteLanguage: string): string =>
-  siteLanguage === 'hi' ? GREETINGS.hi : GREETINGS.en;
+const greetingFor = (name: string): [string, string] => {
+  const openers = GREETING_OPENERS(name || 'aap');
+  const opener = openers[Math.floor(Math.random() * openers.length)];
+  const helper = GREETING_HELPERS[Math.floor(Math.random() * GREETING_HELPERS.length)];
+  return [opener, helper];
+};
 
 // Shown inside the (empty) reply bubble while the server works.
 const STAGE_LABEL: Record<AiCoreStreamStage, string> = {
@@ -75,9 +88,7 @@ const SUGGESTIONS = [
 let bubbleSeq = 0;
 const nextId = () => `b${++bubbleSeq}`;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function KundliChatWidget({ birth, chartKey, displayName: _displayName, autoOpen = true }: Props) {
-  const { language: siteLanguage } = useAppContext();
+export default function KundliChatWidget({ birth, chartKey, displayName, autoOpen = true }: Props) {
   const [open, setOpen] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [stage, setStage] = useState<AiCoreStreamStage | null>(null);
@@ -120,13 +131,16 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
     autoOpenedFor.current = chartKey;
     setBubbles([]);
     setError('');
-    const greeting = greetingFor(siteLanguage);
+    const [opener, helper] = greetingFor(displayName || '');
     // A short delay lets the chart finish rendering first, so the panel
     // sliding in does not compete with the page settling.
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (autoOpen) setOpen(true);
-      setBubbles([{ id: nextId(), role: 'assistant', text: greeting }]);
+      setBubbles([
+        { id: nextId(), role: 'assistant', text: opener },
+        { id: nextId(), role: 'assistant', text: helper },
+      ]);
       // Restore this chart's earlier conversation (after a reload) with the
       // SAME bubbles it was shown in — the server re-segments the stored
       // reply with the same function the live path uses.
@@ -425,17 +439,17 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
             )}
 
             {error && <p className={styles.error}>{error}</p>}
-
-            {showSuggestions && (
-              <div className={styles.suggestions}>
-                {SUGGESTIONS.map(s => (
-                  <button key={s} className={styles.suggestion} onClick={() => ask(s)}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+
+          {showSuggestions && (
+            <div className={styles.suggestions}>
+              {SUGGESTIONS.map(s => (
+                <button key={s} className={styles.suggestion} onClick={() => ask(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className={styles.inputRow}>
             <input

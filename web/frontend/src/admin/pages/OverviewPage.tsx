@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { StatCard, ActivityTimeline } from '../components/SharedControls';
+import { StatCard, ActivityTimeline, FilterBar } from '../components/SharedControls';
 import type { TimelineItem } from '../components/SharedControls';
 import type { AdminSection } from '../adminTypes';
 import { adminService } from '../../services/adminService';
-import type { ApiDashboardStats } from '../../services/adminService';
-import { formatMsg, formatDateTime } from '../adminUtils';
+import type { ApiDashboardStats, ApiTraffic, ApiTrafficEntry } from '../../services/adminService';
+import { formatMsg, formatDateTime, visitFingerprint } from '../adminUtils';
 import styles from './AdminPages.module.css';
 
 interface Props {
@@ -21,10 +21,19 @@ interface Props {
 export default function OverviewPage({ onNavigate, allowedSections }: Props) {
   const { t, currentUser, accounts } = useAppContext();
   const [stats, setStats] = useState<ApiDashboardStats | null>(null);
+  const [traffic, setTraffic] = useState<ApiTraffic | null>(null);
+  // Registered-user traffic defaults to the front tab — it's the one that
+  // was silently missing before this had its own option (anonymous
+  // visits, far more frequent, were crowding it out of a single combined
+  // "most recent" list).
+  const [trafficTab, setTrafficTab] = useState<'registered' | 'anonymous'>('registered');
 
   useEffect(() => {
     adminService.getDashboardStats().then(setStats).catch(() => setStats(null));
+    adminService.getTraffic().then(setTraffic).catch(() => setTraffic(null));
   }, []);
+
+  const trafficRows: ApiTrafficEntry[] | null = traffic ? traffic[trafficTab] : null;
 
   const totalUsers = accounts.filter(a => a.role === 'USER').length;
   const activeUsers = accounts.filter(a => a.role === 'USER' && (a.status ?? 'ACTIVE') === 'ACTIVE').length;
@@ -59,13 +68,13 @@ export default function OverviewPage({ onNavigate, allowedSections }: Props) {
   // and truncated.
   const dated: (TimelineItem & { ts: number })[] = [];
   stats?.recentConsultations.forEach(c =>
-    dated.push({ id: `consult-${c.id}`, icon: '◐', text: formatMsg(t('admin_activity_consultation_booked'), { user: c.userName, astrologer: c.astrologerName }), at: formatDateTime(new Date(c.createdAt).toISOString()), ts: c.createdAt })
+    dated.push({ id: `consult-${c.id}`, icon: '◐', text: formatMsg(t('admin_activity_consultation_booked'), { user: c.userName, astrologer: c.astrologerName }), at: formatDateTime(c.createdAt), ts: Number(c.createdAt) })
   );
   stats?.recentPurchases.forEach(r =>
-    dated.push({ id: `report-${r.id}`, icon: '▤', text: formatMsg(t('admin_activity_report_purchased'), { user: r.userName, report: r.reportTitle }), at: formatDateTime(new Date(r.purchasedAt).toISOString()), ts: r.purchasedAt })
+    dated.push({ id: `report-${r.id}`, icon: '▤', text: formatMsg(t('admin_activity_report_purchased'), { user: r.userName, report: r.reportTitle }), at: formatDateTime(r.purchasedAt), ts: Number(r.purchasedAt) })
   );
   stats?.recentDeliveredOrders.forEach(o =>
-    dated.push({ id: `order-${o.id}`, icon: '▢', text: formatMsg(t('admin_activity_order_completed'), { id: o.id }), at: formatDateTime(new Date(o.createdAt).toISOString()), ts: o.createdAt })
+    dated.push({ id: `order-${o.id}`, icon: '▢', text: formatMsg(t('admin_activity_order_completed'), { id: o.id }), at: formatDateTime(o.createdAt), ts: Number(o.createdAt) })
   );
   const activity: TimelineItem[] = dated.sort((a, b) => b.ts - a.ts);
 
@@ -97,6 +106,46 @@ export default function OverviewPage({ onNavigate, allowedSections }: Props) {
       <div className={styles.section}>
         <div className={styles.sectionTitle}>{t('admin_recent_activity')}</div>
         <ActivityTimeline items={activity.slice(0, 10)} />
+      </div>
+
+      {/* Every visit — logged-in AND anonymous (see GET /admin/traffic) —
+          with its fingerprint, so staff/admin can see where traffic is
+          actually coming from, not just what registered accounts do.
+          Registered and anonymous are separate tabs, not one merged list —
+          anonymous volume otherwise buries registered-user traffic. */}
+      <div className={styles.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 0 }}>Recent Traffic</div>
+          <FilterBar
+            filters={[
+              { key: 'registered', label: 'Registered Users' },
+              { key: 'anonymous', label: 'Guests' },
+            ]}
+            active={trafficTab}
+            onChange={k => setTrafficTab(k as 'registered' | 'anonymous')}
+          />
+        </div>
+        {trafficRows === null && <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)' }}>Loading…</p>}
+        {trafficRows && trafficRows.length === 0 && (
+          <p style={{ fontSize: '0.82rem', color: 'var(--adm-charcoal-soft)' }}>
+            {trafficTab === 'registered' ? 'No logged-in visits recorded yet.' : 'No guest visits recorded yet.'}
+          </p>
+        )}
+        {trafficRows && trafficRows.length > 0 && (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {trafficRows.map((v, i) => (
+              <li key={i} style={{ fontSize: '0.82rem', paddingBottom: 8, borderBottom: '1px solid var(--adm-border, #e5e0d8)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontWeight: 600 }}>{v.path}</span>
+                  <span style={{ color: 'var(--adm-charcoal-soft)', whiteSpace: 'nowrap' }}>{formatDateTime(v.at)}</span>
+                </div>
+                <div style={{ color: 'var(--adm-charcoal-soft)', fontSize: '0.74rem', marginTop: 2 }}>
+                  {v.userName ? `${v.userName} (${v.userEmail})` : 'Anonymous visitor'} · {visitFingerprint(v)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

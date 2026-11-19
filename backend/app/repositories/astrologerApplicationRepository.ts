@@ -3,7 +3,7 @@ import { query, queryOne } from '../core/db.ts';
 import type { ApplicationStatus, AstrologerApplicationRow, PublicAstrologerApplication } from '../models/astrologerApplication.ts';
 
 export interface NewApplicationInput {
-  userId: string;
+  userId?: string;
   expertise: string;
   experience: string;
   fullName: string;
@@ -18,7 +18,7 @@ export interface NewApplicationInput {
 export async function createApplication(input: NewApplicationInput): Promise<AstrologerApplicationRow> {
   const row: AstrologerApplicationRow = {
     id: randomUUID(),
-    user_id: input.userId,
+    user_id: input.userId ?? null,
     expertise: input.expertise,
     experience: input.experience,
     status: 'PENDING',
@@ -66,9 +66,11 @@ export function findLatestApplicationForUser(userId: string): Promise<Astrologer
   );
 }
 
-function toPublic(r: AstrologerApplicationRow & { user_name: string; user_email: string }): PublicAstrologerApplication {
+function toPublic(r: AstrologerApplicationRow & { user_name: string | null; user_email: string | null }): PublicAstrologerApplication {
   return {
-    id: r.id, userId: r.user_id, userName: r.user_name, userEmail: r.user_email,
+    // No account yet (anonymous application) — fall back to what the
+    // applicant typed on the form instead of the joined (absent) user row.
+    id: r.id, userId: r.user_id, userName: r.user_name ?? r.full_name, userEmail: r.user_email ?? r.email,
     expertise: r.expertise, experience: r.experience, status: r.status,
     submittedAt: r.submitted_at, decidedAt: r.decided_at,
     fullName: r.full_name, phoneNumber: r.phone_number, email: r.email,
@@ -77,10 +79,10 @@ function toPublic(r: AstrologerApplicationRow & { user_name: string; user_email:
 }
 
 export async function listApplicationsWithUsers(): Promise<PublicAstrologerApplication[]> {
-  const rows = await query<AstrologerApplicationRow & { user_name: string; user_email: string }>(
+  const rows = await query<AstrologerApplicationRow & { user_name: string | null; user_email: string | null }>(
     `SELECT aa.*, u.name AS user_name, u.email AS user_email
      FROM astrologer_applications aa
-     JOIN users u ON u.id = aa.user_id
+     LEFT JOIN users u ON u.id = aa.user_id
      ORDER BY aa.submitted_at DESC`
   );
   return rows.map(toPublic);

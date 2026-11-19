@@ -6,7 +6,11 @@
 // it hasn't been reviewed by a lawyer, so treat it as a starting point to
 // have checked before this is the version real users sign up under.
 
-export type LegalDocId = 'terms' | 'privacy' | 'safety';
+// 'our-approach'/'careers'/'press'/'help-centre'/'contact-us' aren't legal
+// docs, but the footer used to route all 5 to the About page as a
+// placeholder — this same {title, intro, sections[]} renderer (LegalPage.tsx)
+// fits them exactly, so they reuse it rather than getting 5 bespoke pages.
+export type LegalDocId = 'terms' | 'privacy' | 'safety' | 'our-approach' | 'careers' | 'press' | 'help-centre' | 'contact-us';
 
 export interface LegalSection {
   heading: string;
@@ -144,6 +148,110 @@ export const LEGAL_CONTENT: Record<LegalDocId, LegalDoc> = {
       {
         heading: 'Not a substitute for professional help',
         body: 'Astrology and pooja guidance on this platform are for entertainment and spiritual guidance. For medical, mental health, legal, or financial decisions, please consult a licensed professional — an astrologer\'s reading is not a diagnosis or professional advice.',
+      },
+    ],
+  },
+
+  'our-approach': {
+    title: 'Our Approach',
+    updated: '14 November 2026',
+    intro: 'We built TredevaAstro on one idea: classical Jyotish Shastra, delivered without the guesswork of generic horoscope apps or the inconsistency of an unvetted astrologer.',
+    sections: [
+      {
+        heading: 'Real charts, not templates',
+        body: 'Every Kundli, Panchang, dosha check, and dasha reading on this platform is computed from actual planetary positions (ephemeris data) for your exact birth time and place — not a lookup table keyed to your zodiac sign.',
+      },
+      {
+        heading: 'Vetted astrologers and pandits',
+        body: 'Anyone offering consultations or poojas here applies first (see "Join as an Astrologer/Pandit"). Our team reviews each application — expertise, experience, languages — before approving an account, and ratings from real completed consultations stay visible so you can judge fit for yourself.',
+      },
+      {
+        heading: 'AI as a guide, not a replacement',
+        body: 'Ask TredevaAstro (our free AI chat) reads your real computed chart to answer questions instantly, but it\'s deliberately positioned as a starting point — for a deeper, personalized reading, we point you to a live astrologer rather than pretending an AI replaces one.',
+      },
+      {
+        heading: 'Payment protection',
+        body: 'Every consultation, report, and pooja booking runs through TredevaAstro\'s own wallet and payment system — never a personal UPI ID or off-platform transfer — so a dispute is something we can actually investigate.',
+      },
+    ],
+  },
+
+  careers: {
+    title: 'Careers',
+    updated: '14 November 2026',
+    intro: 'TredevaAstro is a small, growing team building at the intersection of classical Vedic astrology and modern software.',
+    sections: [
+      {
+        heading: 'Astrologers & Pandits',
+        body: 'This is our main open door — if you practice Vedic astrology, Vastu, Tarot, or conduct poojas and want to take consultations or bookings through TredevaAstro, apply directly from "Join as an Astrologer/Pandit." Our team reviews every application.',
+      },
+      {
+        heading: 'Everything else',
+        body: 'We don\'t run a public job board yet. If you\'d like to work with us in another capacity, reach out through Contact Us and tell us what you have in mind — we read every message.',
+      },
+    ],
+  },
+
+  press: {
+    title: 'Press',
+    updated: '14 November 2026',
+    intro: 'Resources and contact details for press and media inquiries about TredevaAstro.',
+    sections: [
+      {
+        heading: 'What we are',
+        body: 'TredevaAstro is a Vedic astrology platform: free Kundli and Panchang tools computed from real ephemeris data, paid chat/voice/video consultations with vetted astrologers and pandits, astrology reports, and pooja bookings.',
+      },
+      {
+        heading: 'Media inquiries',
+        body: 'For interviews, data requests, or anything else press-related, reach out through Contact Us with "Press" in your message so it reaches the right person.',
+      },
+    ],
+  },
+
+  'help-centre': {
+    title: 'Help Centre',
+    updated: '14 November 2026',
+    intro: 'Quick answers to the questions we hear most. For anything not covered here, reach out through Contact Us.',
+    sections: [
+      {
+        heading: 'How do I book a consultation?',
+        body: 'Go to Consult an Astrologer, pick someone whose expertise and price fit what you need, and start a chat, voice, or video session. Your wallet is billed per minute at that astrologer\'s rate — recharge it first from the wallet icon in the navigation bar if it\'s empty.',
+      },
+      {
+        heading: 'What happened to my free AI chat?',
+        body: 'Ask TredevaAstro gives every new account one free timed session. Once it runs out, you can continue with a live astrologer consultation instead — if you believe your free session ended unfairly (a dropped connection, a dispute), contact support and we can look into it.',
+      },
+      {
+        heading: 'Can I get a refund?',
+        body: 'Wallet recharges are meant to be spent on consultations; if a specific session went wrong (disconnected early, an astrologer who never responded), report it through that consultation or Contact Us and we\'ll review it individually.',
+      },
+      {
+        heading: 'How do I delete my account or data?',
+        body: 'Request this from your Profile / Account Settings, or by reaching out through Contact Us — see our Privacy Policy for what we keep and for how long.',
+      },
+      {
+        heading: 'Something feels off during a session',
+        body: 'End it immediately and report it — see our Safety page for exactly how and what we do with a report.',
+      },
+    ],
+  },
+
+  'contact-us': {
+    title: 'Contact Us',
+    updated: '14 November 2026',
+    intro: 'Reach our team directly — we read and respond to every message.',
+    sections: [
+      {
+        heading: 'Support',
+        body: 'For account issues, booking problems, refunds, or anything about an active or past consultation, email support@tredevaastro.com.',
+      },
+      {
+        heading: 'Astrologer & Pandit applications',
+        body: 'Already applied and have a question about your application\'s status, or want to follow up after approval/rejection? Email hiring@tredevaastro.com.',
+      },
+      {
+        heading: 'Everything else',
+        body: 'Press, partnerships, or anything that doesn\'t fit the above — email support@tredevaastro.com and we\'ll route it to the right person.',
       },
     ],
   },

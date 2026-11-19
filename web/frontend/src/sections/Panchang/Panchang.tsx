@@ -140,17 +140,16 @@ function SunArc({ sunriseHour, sunsetHour, moonPhase, isHindi }: { sunriseHour: 
 }
 
 export default function Panchang() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme } = useAppContext();
-  // Deliberately NOT synced to the site-wide language picker. This card
-  // renders real Devanagari Panchang terms of its own, and the site-wide
-  // picker is Google Translate (utils/googleTranslate.ts), which translates
-  // the rendered page assuming it is English — handing it this card's actual
-  // Hindi would get that Hindi re-translated into nonsense. Left in English,
-  // the card is translated along with the rest of the page like any other
-  // content. The dedicated English/हिंदी button below still switches just
-  // this card to its authentic Devanagari labels, and `translate="no"` on the
-  // card (see the render below) is what keeps Google off it when it does.
-  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>('en');
+  const { isLoggedIn, setShowLoginModal, setPendingAction, pendingAction, t, currentUser, theme, language: siteLanguage } = useAppContext();
+  // Starts in sync with the site-wide language picker (Hindi selected there
+  // -> this card opens in Hindi too), but stays a separate bit of local
+  // state so the dedicated English/हिंदी button below can still flip just
+  // this card on its own. `translate="no"` on the card (see the render
+  // below) still matters regardless — a visitor's own browser translate
+  // feature would otherwise re-translate this card's real Hindi as if it
+  // were garbled English.
+  const [panchangLang, setPanchangLang] = useState<'en' | 'hi'>(siteLanguage === 'hi' ? 'hi' : 'en');
+  useEffect(() => { setPanchangLang(siteLanguage === 'hi' ? 'hi' : 'en'); }, [siteLanguage]);
   const isHindi = panchangLang === 'hi';
   const language = panchangLang; // hindiOr()'s existing signature just wants a plain language string
   const [location, setLocation] = useState('New Delhi, India');
@@ -428,13 +427,13 @@ export default function Panchang() {
               />
             </div>
 
-            <p className={styles.date}>{data ? `${data.vara}, ${new Date(data.date + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}` : 'Loading...'}</p>
+            <p className={styles.date}>{data ? `${hindiOr(language, HINDI_WEEKDAY, data.vara)}, ${new Date(data.date + 'T00:00:00Z').toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}` : (isHindi ? 'लोड हो रहा है...' : 'Loading...')}</p>
 
             {/* Date picker — check any day's Panchang, not just today */}
             <div className={styles.locationWrap} style={{ marginTop: '4px' }}>
-              <AncientDatePicker className={styles.cityInput} value={selectedDate} onChange={handleDateChange} placeholder="Select Date" />
+              <AncientDatePicker className={styles.cityInput} value={selectedDate} onChange={handleDateChange} placeholder={isHindi ? 'तिथि चुनें' : 'Select Date'} />
               {selectedDate !== todayDateString() && (
-                <button className={styles.cancelBtn} onClick={() => handleDateChange(todayDateString())} title="Back to today">Today</button>
+                <button className={styles.cancelBtn} onClick={() => handleDateChange(todayDateString())} title={isHindi ? 'आज पर वापस जाएँ' : 'Back to today'}>{isHindi ? 'आज' : 'Today'}</button>
               )}
             </div>
 
@@ -457,7 +456,7 @@ export default function Panchang() {
                   <input
                     type="text"
                     className={styles.cityInput}
-                    placeholder="Enter city name..."
+                    placeholder={isHindi ? 'शहर का नाम दर्ज करें...' : 'Enter city name...'}
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && inputValue && applyLocation()}
@@ -468,7 +467,7 @@ export default function Panchang() {
                     onClick={applyLocation}
                     disabled={!inputValue}
                   >
-                    Apply
+                    {isHindi ? 'लागू करें' : 'Apply'}
                   </button>
                   <button
                     className={styles.cancelBtn}
@@ -477,7 +476,7 @@ export default function Panchang() {
                     ✕
                   </button>
                   <div className={styles.cityHints}>
-                    Any city works now — e.g. Mumbai, Bangalore, Chennai, Kolkata, Varanasi
+                    {isHindi ? 'कोई भी शहर अब काम करता है — जैसे मुंबई, बैंगलोर, चेन्नई, कोलकाता, वाराणसी' : 'Any city works now — e.g. Mumbai, Bangalore, Chennai, Kolkata, Varanasi'}
                   </div>
                 </motion.div>
               ) : (
@@ -488,7 +487,7 @@ export default function Panchang() {
                   exit={{ opacity: 0 }}
                   onClick={handleChangeLocation}
                 >
-                  Change Location
+                  {isHindi ? 'स्थान बदलें' : 'Change Location'}
                 </motion.button>
               )}
             </AnimatePresence>
