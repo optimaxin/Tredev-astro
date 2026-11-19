@@ -616,6 +616,9 @@ export default function KundliSection({ skipPdfLoginGate = false, litePdf = fals
   const handleHistorySelect = (entry: KundliHistoryEntry) => {
     handleSubmit({
       name: entry.name,
+      // History entries store no email; re-opening a saved chart does not go
+      // through the form that requires one, and handleSubmit does not use it.
+      email: '',
       date: entry.date,
       time: entry.time,
       timezoneOffsetMinutes: entry.timezoneOffsetMinutes,
