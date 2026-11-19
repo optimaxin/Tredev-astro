@@ -3,6 +3,8 @@ import { aiCoreService, AiCoreApiError } from '../../services/aiCoreService';
 import { NEGATIVE_REASONS } from '../../services/aiCoreService';
 import type { AiCoreBirthDetails, AiCoreStreamStage, FeedbackType } from '../../services/aiCoreService';
 import { useAppContext } from '../../context/AppContext';
+import { BUBBLE_DELIVERY, deliverBubbles, prefersReducedMotion } from './bubbleDelivery';
+import type { DeliveryHandle } from './bubbleDelivery';
 import styles from './KundliChatWidget.module.css';
 
 interface Props {
@@ -91,8 +93,25 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoOpenedFor = useRef<string | null>(null);
+  // The reply currently being revealed bubble by bubble (bubbleDelivery.ts),
+  // and the typing dots shown in the pauses between its bubbles.
+  const deliveryRef = useRef<DeliveryHandle | null>(null);
+  const [pacing, setPacing] = useState(false);
+  // Bumped on every conversation switch, so a reply that arrives for the
+  // previous chart is dropped instead of landing in the new conversation.
+  const conversationRef = useRef(0);
 
   const sessionId = `kundli-${chartKey}`;
+
+  // A conversation switch or unmount stops any pending delivery silently.
+  useEffect(() => {
+    conversationRef.current += 1;
+    return () => {
+      deliveryRef.current?.cancel();
+      deliveryRef.current = null;
+      setPacing(false);
+    };
+  }, [chartKey]);
 
   // Auto-open once per generated chart. Tracked in a ref rather than state so
   // that closing the panel does not immediately re-trigger the effect.
@@ -152,7 +171,7 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [bubbles, thinking, stage]);
+  }, [bubbles, thinking, stage, pacing]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -163,15 +182,21 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
       const text = question.trim();
       if (!text || thinking) return;
 
+      // A new message while the previous reply is still being revealed: show
+      // the rest of that reply at once (nothing is lost), then carry on.
+      deliveryRef.current?.flush();
+      deliveryRef.current = null;
+      setPacing(false);
+
       setDraft('');
       setError('');
       setStage(null);
-      // ONE assistant bubble per reply, created now and filled in place as
-      // the stream arrives — never a new bubble per chunk or sentence.
-      // One placeholder bubble (typing dots) until the first segment arrives.
-      // Each semantic segment then gets its OWN bubble, filled in place —
-      // never one bubble per chunk or sentence, never one oversized bubble.
+      // One placeholder bubble (typing dots + progress label) while the server
+      // works. Generation is not slowed down: the server streams its segments
+      // only after validation, at the very end, so the reply is revealed from
+      // the authoritative `done.messages` the moment it arrives.
       const turnId = nextId();
+      const conversation = conversationRef.current;
       setBubbles(prev => [
         ...prev,
         { id: nextId(), role: 'user', text },
@@ -180,45 +205,52 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
       setThinking(true);
 
       aiCoreService
-        .askStream({ question: text, birth, sessionId }, {
-          onStatus: s => setStage(s),
-          onSegmentStart: (segmentId) =>
-            setBubbles(prev => {
-              const pending = prev.findIndex(b => b.id === `${turnId}-pending`);
-              const bubble: Bubble = { id: `${turnId}-${segmentId}`, role: 'assistant', text: '', turnId,
-                                       segmentId, streaming: true };
-              if (pending >= 0) return prev.map((b, i) => (i === pending ? bubble : b));
-              return [...prev, bubble];
-            }),
-          onDelta: (segmentId, chunk) =>
-            setBubbles(prev => prev.map(b => (b.turnId === turnId && b.segmentId === segmentId
-              ? { ...b, text: b.text + chunk } : b))),
-          onSegmentEnd: (segmentId, _index, full) =>
-            setBubbles(prev => prev.map(b => (b.turnId === turnId && b.segmentId === segmentId
-              ? { ...b, text: full } : b))),
-        })
+        .askStream({ question: text, birth, sessionId }, { onStatus: s => setStage(s) })
         .then(res => {
-          // `done.messages` is authoritative: the turn's bubbles are rebuilt
-          // from it, in order, so they always match what the server saved.
+          if (conversation !== conversationRef.current) return;     // the user switched charts meanwhile
           const parts = res.messages?.length ? res.messages : [res.answer].filter(Boolean);
-          const finalBubbles: Bubble[] = parts.map((part, index) => ({
+          const toBubble = (part: string, index: number, isLast: boolean): Bubble => ({
             id: `${turnId}-final-${index}`,
             role: 'assistant',
             text: part,
             turnId,
             degraded: res.degraded,
             requestId: res.request_id,
-            isLastOfReply: index === parts.length - 1,
+            // Thumbs live on the last bubble, so they appear only once the
+            // whole reply has been revealed.
+            isLastOfReply: isLast,
             streaming: false,
-          }));
-          setBubbles(prev => {
-            const first = prev.findIndex(b => b.turnId === turnId);
-            const rest = prev.filter(b => b.turnId !== turnId);
-            const at = first >= 0 ? first : rest.length;
-            return [...rest.slice(0, at), ...finalBubbles, ...rest.slice(at)];
           });
+          if (!parts.length) {
+            setBubbles(prev => prev.filter(b => b.turnId !== turnId));
+            return;
+          }
+          // Bubble 1 replaces the placeholder at once; the rest follow one by
+          // one with a natural pause and typing dots (bubbleDelivery.ts).
+          deliveryRef.current?.flush();
+          // `let`, not `const`: a one-bubble reply calls onDone synchronously,
+          // before deliverBubbles has returned.
+          let handle: DeliveryHandle | null = null;
+          handle = deliverBubbles(parts, {
+            onShow: (part, index, isLast) => setBubbles(prev => {
+              const bubble = toBubble(part, index, isLast);
+              if (prev.some(b => b.id === bubble.id)) return prev;          // never twice
+              const pending = prev.findIndex(b => b.id === `${turnId}-pending`);
+              if (pending >= 0) return prev.map((b, i) => (i === pending ? bubble : b));
+              const lastOfTurn = prev.map(b => b.turnId).lastIndexOf(turnId);
+              const at = lastOfTurn >= 0 ? lastOfTurn + 1 : prev.length;
+              return [...prev.slice(0, at), bubble, ...prev.slice(at)];
+            }),
+            onTyping: visible => setPacing(visible),
+            onDone: () => {
+              if (handle && deliveryRef.current === handle) deliveryRef.current = null;
+              setPacing(false);
+            },
+          }, { reducedMotion: prefersReducedMotion() });
+          if (!handle.finished) deliveryRef.current = handle;
         })
         .catch(err => {
+          if (conversation !== conversationRef.current) return;
           // Drop empty bubbles of this turn; the error line below explains.
           setBubbles(prev => prev
             .filter(b => !(b.turnId === turnId && !b.text))
@@ -297,7 +329,12 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
             </button>
           </header>
 
-          <div className={styles.messages} ref={listRef}>
+          <div
+            className={styles.messages}
+            ref={listRef}
+            // One source of truth for the entrance animation (bubbleDelivery.ts).
+            style={{ '--bubble-in-ms': `${BUBBLE_DELIVERY.animationMs}ms` } as React.CSSProperties}
+          >
             {bubbles.map(b => (
               <div key={b.id} className={styles.bubbleGroup}>
               {b.role === 'assistant' && b.streaming && !b.text ? (
@@ -374,6 +411,18 @@ export default function KundliChatWidget({ birth, chartKey, displayName: _displa
               )}
               </div>
             ))}
+
+            {/* The pause before the reply's next bubble (bubbleDelivery.ts). */}
+            {pacing && (
+              <div className={styles.bubbleGroup}>
+                <div className={`${styles.bubble} ${styles.bubbleAssistant} ${styles.typing}`}
+                     role="status" aria-label="Typing">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
 
             {error && <p className={styles.error}>{error}</p>}
 
