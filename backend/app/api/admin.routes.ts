@@ -12,7 +12,7 @@ import { countCompletedByAstrologerAndType, countForUser, countInProgress, findA
 import type { Consultation } from '../models/types.ts';
 import { listMessagesForConsultation } from '../repositories/chatMessageRepository.ts';
 import { listAuditLog, listAuditLogForTarget, logAdminAction } from '../repositories/auditLogRepository.ts';
-import { listPageViewsForUser, listRecentRegisteredPageViews, listRecentAnonymousPageViews } from '../repositories/pageViewRepository.ts';
+import { listPageViewsForUser, listRecentRegisteredPageViews, listRecentAnonymousPageViews, listLeads } from '../repositories/pageViewRepository.ts';
 import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
@@ -714,6 +714,31 @@ adminRouter.get('/traffic', requireSection('overview'), async (_req, res) => {
       registered: registered.map(toTrafficEntry),
       anonymous: anonymous.map(toTrafficEntry),
     },
+  });
+});
+
+// Leads — one row per distinct visitor (registered or anonymous), not one
+// row per page view. An anonymous visitor is recognized across repeat
+// visits by their sticky device id (visitor_id, set by trackingService.ts),
+// so "this device used the Flames calculator, then came back and used
+// Nakshatra" shows up as one growing lead instead of two unrelated strangers.
+adminRouter.get('/leads', requireSection('leads'), async (_req, res) => {
+  const leads = await listLeads(100);
+  res.json({
+    success: true,
+    data: leads.map(l => ({
+      id: l.lead_id,
+      userId: l.user_id,
+      userName: l.user_name,
+      userEmail: l.user_email,
+      visitCount: l.visit_count,
+      firstSeen: l.first_seen,
+      lastSeen: l.last_seen,
+      lastPath: l.last_path,
+      ip: l.ip_address,
+      userAgent: l.user_agent,
+      country: l.country,
+    })),
   });
 });
 

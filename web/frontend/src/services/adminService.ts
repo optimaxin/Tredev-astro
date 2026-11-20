@@ -112,7 +112,7 @@ export interface ApiUserRecord {
 // and 'evaluation' entirely; a STAFF account could never be granted those
 // sections even though the backend has always supported it.
 export const ADMIN_SECTIONS = [
-  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails',
+  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails', 'leads',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -246,6 +246,24 @@ export interface ApiTrafficEntry extends ApiPageView {
 export interface ApiTraffic {
   registered: ApiTrafficEntry[];
   anonymous: ApiTrafficEntry[];
+}
+
+// One row per distinct visitor (registered or anonymous), not one row per
+// page view — the "footprint" id staff/admin can recognize across repeat
+// visits. userId is null for an anonymous lead; `id` is then the sticky
+// device id instead, so the row stays the same lead on a later visit.
+export interface ApiLead {
+  id: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  visitCount: number;
+  firstSeen: number;
+  lastSeen: number;
+  lastPath: string;
+  ip: string | null;
+  userAgent: string | null;
+  country: string | null;
 }
 
 export interface ApiAstrologerActivity {
@@ -650,6 +668,7 @@ export const adminService = {
 
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
   getTraffic: () => request<ApiTraffic>('/traffic'),
+  getLeads: () => request<ApiLead[]>('/leads'),
 
   listStaff: () => request<ApiStaffMember[]>('/staff'),
   addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>

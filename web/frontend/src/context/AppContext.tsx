@@ -885,6 +885,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     'admin_sidebar_call-recordings': 'Call Recordings',
     'admin_sidebar_banners': 'Banners',
     'admin_sidebar_pooja': 'Pooja',
+    'admin_sidebar_leads': 'Leads',
     admin_call_recordings_desc: 'Recorded voice consultations. Staff-only, and each recording is automatically deleted 10 days after the call.',
     admin_call_recordings_col_user: 'User',
     admin_call_recordings_col_recorded: 'Recorded',

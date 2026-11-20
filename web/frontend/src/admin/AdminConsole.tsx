@@ -28,6 +28,7 @@ const CallRecordingsPage = lazy(() => import('./pages/CallRecordingsPage'));
 const BannersPage = lazy(() => import('./pages/BannersPage'));
 const PoojaPage = lazy(() => import('./pages/PoojaPage'));
 const EmailsPage = lazy(() => import('./pages/EmailsPage'));
+const LeadsPage = lazy(() => import('./pages/LeadsPage'));
 
 export default function AdminConsole() {
   const { currentUser } = useAppContext();
@@ -86,6 +87,7 @@ export default function AdminConsole() {
       case 'banners': return <BannersPage />;
       case 'pooja': return <PoojaPage />;
       case 'emails': return <EmailsPage />;
+      case 'leads': return <LeadsPage />;
       default: return null;
     }
   };

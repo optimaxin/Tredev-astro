@@ -55,8 +55,9 @@ const pageViewLimiter = rateLimit({ windowMs: 60_000, max: 120 });
 // is coming from before/without a signup, not just from existing accounts.
 router.post('/track/pageview', pageViewLimiter, optionalAuth, async (req, res) => {
   const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '';
+  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.slice(0, 100) : null;
   if (path) {
-    await recordPageView(req.user?.id ?? null, path, clientIp(req), req.headers['user-agent'] || '', countryFromRequest(req)).catch(() => {});
+    await recordPageView(req.user?.id ?? null, visitorId, path, clientIp(req), req.headers['user-agent'] || '', countryFromRequest(req)).catch(() => {});
   }
   res.json({ success: true });
 });
