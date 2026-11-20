@@ -118,7 +118,7 @@ private fun GocharGrid(natal: Map<String, Pair<String, Int>>, transits: List<com
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(name, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    Text(tr(name), color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                     Text(tr("Natal: $natalRashi (H$natalHouse)"), color = colors.textMuted, fontSize = 11.sp, modifier = Modifier.weight(1.2f))
                     Text(
                         tr("Now: ${t.rashi} (H${t.house})${if (t.retrograde) " ℞" else ""}"),

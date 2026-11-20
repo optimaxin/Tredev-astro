@@ -80,7 +80,7 @@ private fun MahadashaCard(period: MahadashaPeriodDto, predictionText: String?) {
                     modifier = Modifier.background(colors.goldPrimary.copy(alpha = 0.15f), RoundedCornerShape(999.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
-            Text("${formatIsoDate(period.startsAt)} – ${formatIsoDate(period.endsAt)}", color = colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(tr("${formatIsoDate(period.startsAt)} – ${formatIsoDate(period.endsAt)}"), color = colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
             if (predictionText != null) {
                 Text(tr(predictionText), color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 10.dp))
             }
@@ -98,7 +98,7 @@ private fun AntardashaRow(ad: AntardashaPeriodDto) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(tr("${lordName(ad.lord)} Antardasha"), color = colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-        Text("${formatIsoDate(ad.startsAt)} – ${formatIsoDate(ad.endsAt)}", color = colors.textMuted, fontSize = 11.sp)
+        Text(tr("${formatIsoDate(ad.startsAt)} – ${formatIsoDate(ad.endsAt)}"), color = colors.textMuted, fontSize = 11.sp)
     }
 }
 
@@ -108,7 +108,7 @@ private fun YoginiCard(period: YoginiPeriodDto) {
     GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(tr("${period.yogini} (Lord: ${lordName(period.lord)})"), color = colors.goldPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text("${formatIsoDate(period.startsAt)} – ${formatIsoDate(period.endsAt)}", color = colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(tr("${formatIsoDate(period.startsAt)} – ${formatIsoDate(period.endsAt)}"), color = colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

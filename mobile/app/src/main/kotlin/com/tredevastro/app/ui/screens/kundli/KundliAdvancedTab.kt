@@ -86,7 +86,7 @@ private fun ShadbalaRow(p: PlanetShadbalaDto) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(name, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Text(tr(name), color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         Text(tr("${"%.2f".format(p.rupas)} / ${"%.2f".format(p.minRequiredRupas)} rupas"), color = colors.textMuted, fontSize = 11.sp, modifier = Modifier.weight(1.2f))
         Text(
             tr(if (p.isStrong) "STRONG" else "WEAK"),
@@ -103,7 +103,7 @@ private fun KpRow(id: String, rashi: String, signLord: String, starLord: String,
     val colors = LocalAppColors.current
     val label = PLANET_META[id.lowercase()]?.name ?: id.replaceFirstChar { it.uppercase() }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(label, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(tr(label), color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         Text(
             tr("$rashi · Sign: $signLord · Star: $starLord · Sub: $subLord"),
             color = colors.textMuted,

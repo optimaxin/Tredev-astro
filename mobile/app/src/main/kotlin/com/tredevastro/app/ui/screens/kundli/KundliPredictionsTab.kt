@@ -84,7 +84,7 @@ private fun YogaCard(yoga: YogaResultDto, modifier: Modifier = Modifier) {
     GlassCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(yoga.name, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(tr(yoga.name), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text(
                     tr(if (yoga.present) "FORMED" else "NOT FORMED"),
                     color = tint,

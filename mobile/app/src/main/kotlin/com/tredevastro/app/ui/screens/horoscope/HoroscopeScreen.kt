@@ -355,7 +355,7 @@ private fun SignChip(sign: ZodiacSign, selected: Boolean, onClick: () -> Unit) {
             )
         }
         Text(
-            sign.eng,
+            tr(sign.eng),
             color = if (selected) colors.goldPrimary else colors.textMuted,
             fontSize = 11.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,

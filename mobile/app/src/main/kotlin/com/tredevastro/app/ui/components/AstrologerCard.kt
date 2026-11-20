@@ -68,7 +68,7 @@ fun AstrologerCard(
                 Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            astrologer.name,
+                            tr(astrologer.name),
                             color = colors.textPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,

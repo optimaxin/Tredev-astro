@@ -249,7 +249,7 @@ private fun DateRow(panchang: PanchangDto?, modifier: Modifier = Modifier) {
         )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 10.dp)) {
             Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(16.dp))
-            Text(dateText, color = colors.textMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
+            Text(tr(dateText), color = colors.textMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
         }
     }
 }
