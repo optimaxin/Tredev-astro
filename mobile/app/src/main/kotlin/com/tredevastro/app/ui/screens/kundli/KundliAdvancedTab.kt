@@ -119,7 +119,7 @@ private fun KpTile(label: String, value: String, modifier: Modifier = Modifier) 
     Column(
         modifier = modifier.background(colors.bgSecondary, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text(label, color = colors.textMuted, fontSize = 10.sp)
-        Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(tr(label), color = colors.textMuted, fontSize = 10.sp)
+        Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }

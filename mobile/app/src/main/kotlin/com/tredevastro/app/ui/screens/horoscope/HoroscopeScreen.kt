@@ -369,7 +369,7 @@ private fun SignDetailCard(sign: ZodiacSign, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     GlassCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
-            Text(sign.sanskrit, color = colors.textPrimary, fontFamily = NotoSerif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
+            Text(tr(sign.sanskrit), color = colors.textPrimary, fontFamily = NotoSerif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
             Text(tr("${sign.eng} Moon Sign"), color = colors.textSecondary, fontSize = 12.sp)
 
             Row(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -401,7 +401,7 @@ private fun SpecBox(label: String, value: String, modifier: Modifier = Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(tr(label), color = colors.textMuted, fontSize = 10.sp)
-        Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

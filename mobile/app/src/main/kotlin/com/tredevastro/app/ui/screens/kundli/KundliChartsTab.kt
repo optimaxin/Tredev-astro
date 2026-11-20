@@ -109,7 +109,7 @@ private fun ChartTile(label: String, ascendantRashiIndex: Int, housePlanets: Map
 private fun SectionLabel(text: String) {
     val colors = LocalAppColors.current
     androidx.compose.material3.Text(
-        text,
+        tr(text),
         color = colors.textPrimary,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
@@ -121,7 +121,7 @@ private fun SectionLabel(text: String) {
 private fun Text2(text: String, top: Int = 0, small: Boolean = false, center: Boolean = false) {
     val colors = LocalAppColors.current
     androidx.compose.material3.Text(
-        text,
+        tr(text),
         color = if (small) colors.textPrimary else colors.textSecondary,
         fontSize = if (small) 11.sp else 12.sp,
         fontWeight = if (small) FontWeight.Medium else FontWeight.Normal,

@@ -40,6 +40,8 @@ import com.tredevastro.app.network.ApiClient
 import com.tredevastro.app.network.ApiResult
 import com.tredevastro.app.network.PanchangBody
 import com.tredevastro.app.network.dto.PanchangDto
+import com.tredevastro.app.network.dto.BlogPostDto
+import com.tredevastro.app.ui.components.FALLBACK_BLOG_POSTS
 import com.tredevastro.app.network.safeApiCall
 import com.tredevastro.app.network.TokenStore
 import com.tredevastro.app.ui.components.CosmicBackground
@@ -66,11 +68,19 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     val toast: (String) -> Unit = { toastMessage = it }
     var featuredAstrologers by remember { mutableStateOf<List<Astrologer>?>(null) }
     var todayPanchang by remember { mutableStateOf<PanchangDto?>(null) }
+    var blogPosts by remember { mutableStateOf(FALLBACK_BLOG_POSTS) }
 
     LaunchedEffect(Unit) {
         featuredAstrologers = when (val result = fetchAstrologers()) {
             is ApiResult.Success -> result.data.filter { it.presence == PresenceStatus.AVAILABLE }.take(2)
             is ApiResult.Failure -> FALLBACK_ASTROLOGERS.take(2)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        when (val result = safeApiCall { ApiClient.service.getBlogPosts() }) {
+            is ApiResult.Success -> if (result.data.isNotEmpty()) blogPosts = result.data
+            is ApiResult.Failure -> Unit
         }
     }
 
@@ -195,7 +205,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             item {
                 SectionIntro(title = tr("Blogs"), subtitle = tr("Learn Vedic astrology at your own pace"), modifier = Modifier.padding(bottom = 14.dp))
             }
-            item { HomeBlogsRow(onClick = { toast("Blogs are coming soon") }, modifier = Modifier.padding(bottom = 28.dp)) }
+            item { HomeBlogsRow(posts = blogPosts, modifier = Modifier.padding(bottom = 28.dp)) }
 
             item {
                 SectionIntro(title = tr("Frequently Asked Questions"), subtitle = "", modifier = Modifier.padding(bottom = 14.dp))

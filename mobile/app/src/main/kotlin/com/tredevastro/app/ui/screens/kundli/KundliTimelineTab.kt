@@ -82,7 +82,7 @@ private fun MahadashaCard(period: MahadashaPeriodDto, predictionText: String?) {
             }
             Text("${formatIsoDate(period.startsAt)} – ${formatIsoDate(period.endsAt)}", color = colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
             if (predictionText != null) {
-                Text(predictionText, color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 10.dp))
+                Text(tr(predictionText), color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 10.dp))
             }
             val activeAntardasha = period.antardashas.filter { it.active }
             activeAntardasha.forEach { ad -> AntardashaRow(ad) }

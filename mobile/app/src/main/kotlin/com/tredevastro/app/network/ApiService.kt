@@ -4,6 +4,7 @@ import com.tredevastro.app.network.dto.ApiEnvelope
 import com.tredevastro.app.network.dto.AstrologerDto
 import com.tredevastro.app.network.dto.BabyNameResultDto
 import com.tredevastro.app.network.dto.BannerDto
+import com.tredevastro.app.network.dto.BlogPostDto
 import com.tredevastro.app.network.dto.ChineseZodiacResultDto
 import com.tredevastro.app.network.dto.DailyHoroscopeDto
 import com.tredevastro.app.network.dto.FlamesOutcomeDto
@@ -103,6 +104,9 @@ interface ApiService {
     // routes.ts returns for this one public feed.
     @GET("api/banners/active")
     suspend fun getActiveBanners(): List<BannerDto>
+
+    @GET("api/blog")
+    suspend fun getBlogPosts(): ApiEnvelope<List<BlogPostDto>>
 
     // Live presence — same public, no-auth feed the website polls/sockets
     // for astrologer online/busy/offline status (see realtimeStore.ts).

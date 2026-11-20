@@ -488,6 +488,20 @@ data class BannerDto(
     val linkUrl: String?,
 )
 
+/** Mirrors backend/app/models/blogPost.ts's PublicBlogPost — same journal
+ * posts the website's Blog section reads from GET /api/blog. */
+data class BlogPostDto(
+    val id: Int,
+    val title: String,
+    val category: String,
+    val readTime: String,
+    val excerpt: String,
+    val content: String,
+    val tag: String,
+    val featured: Boolean,
+    val date: String,
+)
+
 /** Mirrors backend/app/models/user.ts's PublicUser (never sends password_hash).
  * The birth_* fields are null until the account's own PATCH /me/birth-details
  * has been called at least once (e.g. by the onboarding wizard). */

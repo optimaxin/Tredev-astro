@@ -514,7 +514,7 @@ private fun InfoTile(label: String, value: String, modifier: Modifier = Modifier
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(tr(label), color = colors.textMuted, fontSize = 10.sp)
-        Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -549,7 +549,7 @@ private fun PreviewChip(label: String, value: String, modifier: Modifier = Modif
     GlassCard(modifier = modifier) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(tr(label).uppercase(), color = colors.textMuted, fontSize = 9.sp)
-            Text(value, color = colors.goldPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(tr(value), color = colors.goldPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         }
     }
 }

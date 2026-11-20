@@ -90,7 +90,7 @@ fun AstrologerCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                InfoChip(text = tr("${astrologer.experienceYears} Years Experience"))
+                InfoChip(text = "${astrologer.experienceYears} Years Experience")
                 InfoChip(text = astrologer.languages.joinToString(", ") { it.replaceFirstChar(Char::uppercase) })
             }
 
@@ -155,7 +155,7 @@ private fun RatingPill(rating: Double, modifier: Modifier = Modifier) {
 private fun Chip(text: String) {
     val colors = LocalAppColors.current
     Text(
-        text = text,
+        text = tr(text),
         color = colors.textSecondary,
         fontSize = 11.sp,
         modifier = Modifier
@@ -168,7 +168,7 @@ private fun Chip(text: String) {
 private fun InfoChip(text: String, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     Text(
-        text = text,
+        text = tr(text),
         color = colors.textSecondary,
         fontSize = 11.sp,
         modifier = modifier

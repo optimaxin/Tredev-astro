@@ -314,7 +314,7 @@ private fun FeaturedVideoCard(video: PoojaVideoDto, onOpen: () -> Unit, modifier
         }
         Column(modifier = Modifier.padding(14.dp)) {
             Text(video.title, color = colors.textPrimary, fontFamily = NotoSerif, fontSize = 17.sp)
-            Text(video.category, color = colors.textMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(tr(video.category), color = colors.textMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
@@ -332,7 +332,7 @@ private fun VideoCard(video: PoojaVideoDto, onOpen: () -> Unit, modifier: Modifi
         }
         Column(modifier = Modifier.padding(10.dp)) {
             Text(video.title, color = colors.textPrimary, fontFamily = NotoSerif, fontSize = 13.sp, maxLines = 2)
-            Text(video.category, color = colors.textMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(tr(video.category), color = colors.textMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
@@ -871,9 +871,9 @@ private fun BookCard(book: PoojaBookDto, onOpen: () -> Unit, modifier: Modifier 
             )
         }
         Column(modifier = Modifier.padding(10.dp)) {
-            Text(book.title, color = colors.textPrimary, fontFamily = NotoSerif, fontSize = 13.sp, maxLines = 2)
+            Text(tr(book.title), color = colors.textPrimary, fontFamily = NotoSerif, fontSize = 13.sp, maxLines = 2)
             book.author?.let { Text(it, color = colors.textMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp)) }
-            Text(book.category, color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(tr(book.category), color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

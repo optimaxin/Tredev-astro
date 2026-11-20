@@ -8,21 +8,27 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tredevastro.app.i18n.tr
+import com.tredevastro.app.network.dto.BlogPostDto
 import com.tredevastro.app.ui.theme.LocalAppColors
 
 private data class StoreProduct(val slug: String, val name: String, val price: Int, val mrp: Int, val imageUrl: String)
@@ -98,40 +105,88 @@ fun HomeStoreRow(modifier: Modifier = Modifier) {
     }
 }
 
-private data class BlogTeaser(val title: String, val category: String)
-
-private val BLOG_TEASERS = listOf(
-    BlogTeaser("Understanding Your Moon Sign", "Basics"),
-    BlogTeaser("What Sade Sati Really Means", "Saturn"),
-    BlogTeaser("Choosing Gemstones by Rashi", "Remedies"),
+// Shown only if GET /api/blog fails — same fallback pattern as
+// FALLBACK_ASTROLOGERS in data/Astrologer.kt.
+val FALLBACK_BLOG_POSTS = listOf(
+    BlogPostDto(1, "Understanding Your Moon Sign", "Basics", "4 min", "", "", "Basics", false, ""),
+    BlogPostDto(2, "What Sade Sati Really Means", "Saturn", "6 min", "", "", "Saturn", false, ""),
+    BlogPostDto(3, "Choosing Gemstones by Rashi", "Remedies", "5 min", "", "", "Remedies", false, ""),
 )
 
-/** Static teaser cards — there's no blog/CMS API wired up yet, so these are
- * fixed titles that toast "coming soon" on tap, same as the store card. */
+/** The real journal posts from the website's Blog section (GET /api/blog) —
+ * tapping one reads it in a dialog (the website has no stable per-post URL
+ * to link out to, so this is an in-app reader, same journal content either
+ * way). */
 @Composable
-fun HomeBlogsRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeBlogsRow(posts: List<BlogPostDto>, modifier: Modifier = Modifier) {
+    var selected by remember { mutableStateOf<BlogPostDto?>(null) }
     LazyRow(modifier = modifier, contentPadding = PaddingValues(end = 8.dp)) {
-        items(BLOG_TEASERS) { blog ->
+        items(posts) { post ->
             val colors = LocalAppColors.current
             GlassCard(
                 modifier = Modifier.padding(end = 12.dp).size(width = 200.dp, height = 110.dp),
-                onClick = onClick,
+                onClick = { selected = post },
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
                     Text(
-                        tr(blog.category.uppercase()),
+                        tr(post.tag.uppercase()),
                         color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.5.sp,
                     )
                     Text(
-                        tr(blog.title),
+                        tr(post.title),
                         color = colors.textPrimary,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp,
                         lineHeight = 19.sp,
                         modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+    selected?.let { post -> BlogPostDialog(post = post, onDismiss = { selected = null }) }
+}
+
+@Composable
+private fun BlogPostDialog(post: BlogPostDto, onDismiss: () -> Unit) {
+    val colors = LocalAppColors.current
+    Dialog(onDismissRequest = onDismiss) {
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            tr(post.tag.uppercase()),
+                            color = colors.goldPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.5.sp,
+                        )
+                        Text(
+                            tr(post.title),
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = tr("Close"), tint = colors.textMuted)
+                    }
+                }
+                if (post.content.isNotBlank()) {
+                    Text(
+                        tr(post.content),
+                        color = colors.textSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier
+                            .padding(top = 14.dp)
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
                     )
                 }
             }

@@ -109,7 +109,7 @@ private fun HeroMiniTile(label: String, value: String, modifier: Modifier = Modi
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = colors.textMuted, fontSize = 10.sp)
-        Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

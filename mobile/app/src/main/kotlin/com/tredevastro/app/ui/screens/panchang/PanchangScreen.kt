@@ -526,7 +526,7 @@ fun PanchangScreen(onBack: (() -> Unit)? = null) {
                                             fontWeight = FontWeight.Medium,
                                             modifier = Modifier.weight(1f),
                                         )
-                                        Text(g.rashi, color = colors.goldPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(tr(g.rashi), color = colors.goldPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
@@ -558,7 +558,7 @@ private fun HeroTile(label: String, value: String, sub: String?, modifier: Modif
         ) {
             Text(tr(label), color = colors.textMuted, fontSize = 10.sp)
             Text(
-                value,
+                tr(value),
                 color = colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
@@ -577,7 +577,7 @@ private fun DetailTile(label: String, value: String, modifier: Modifier = Modifi
     GlassCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
             Text(tr(label), color = colors.textMuted, fontSize = 10.sp)
-            Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

@@ -45,7 +45,7 @@ private fun RemedyGemstoneCard(gemstone: GemstoneResultDto, modifier: Modifier =
     GlassCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                gemstone.purpose,
+                tr(gemstone.purpose),
                 color = colors.goldPrimary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -59,7 +59,7 @@ private fun RemedyGemstoneCard(gemstone: GemstoneResultDto, modifier: Modifier =
                 modifier = Modifier.padding(top = 4.dp),
             )
             Text(tr("Mantra: ${gemstone.mantra}"), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-            Text(gemstone.reason, color = colors.textMuted, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(tr(gemstone.reason), color = colors.textMuted, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -76,8 +76,8 @@ private fun RemedyRudrakshaCard(rudraksha: RudrakshaResultDto, modifier: Modifie
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(rudraksha.benefits.joinToString(" · "), color = colors.goldPrimary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
-            Text(rudraksha.howToWear, color = colors.textMuted, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(tr(rudraksha.benefits.joinToString(" · ")), color = colors.goldPrimary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(tr(rudraksha.howToWear), color = colors.textMuted, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
             if (rudraksha.precautions.isNotEmpty()) {
                 Text(
                     tr("Precautions: ${rudraksha.precautions.joinToString(", ")}"),

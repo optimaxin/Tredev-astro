@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tredevastro.app.R
-import com.tredevastro.app.audio.TempleBellPlayer
 import com.tredevastro.app.i18n.tr
 import com.tredevastro.app.ui.components.CosmicBackground
 import com.tredevastro.app.ui.theme.LocalAppColors
@@ -32,14 +31,13 @@ import kotlinx.coroutines.delay
 
 /** First screen shown — an animated take on the sun/lotus emblem from the
  * website's logo, over the same cosmic-cloud backdrop, then hands off to
- * login. Opens with a synthesized temple-bell chime (TempleBellPlayer). */
+ * login. */
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
     val colors = LocalAppColors.current
     val entrance = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        TempleBellPlayer.play()
         entrance.animateTo(1f, animationSpec = tween(700))
         delay(1400)
         onFinished()

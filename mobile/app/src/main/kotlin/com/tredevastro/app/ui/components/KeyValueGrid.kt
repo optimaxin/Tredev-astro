@@ -44,6 +44,6 @@ private fun KeyValueTile(label: String, value: String, modifier: Modifier = Modi
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(tr(label), color = colors.textMuted, fontSize = 11.sp)
-        Text(value, color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(tr(value), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }

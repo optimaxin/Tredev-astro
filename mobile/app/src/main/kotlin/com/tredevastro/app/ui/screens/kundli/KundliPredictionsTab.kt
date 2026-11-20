@@ -31,7 +31,7 @@ internal fun KundliPredictionsTab(result: KundliFullDto, modifier: Modifier = Mo
         Text(tr("Ascendant Predictions"), color = colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
-                Text(p.description, color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+                Text(tr(p.description), color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
             }
         }
 
@@ -59,7 +59,7 @@ private fun PredictionParagraph(title: String, text: String, modifier: Modifier 
     GlassCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(tr(title), color = colors.goldPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-            Text(text, color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(tr(text), color = colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -71,7 +71,7 @@ private fun DosDontsList(title: String, items: List<String>, tint: androidx.comp
         Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             Text(tr(title), color = tint, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             items.forEach { item ->
-                Text("• $item", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(tr("• $item"), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }
@@ -93,7 +93,7 @@ private fun YogaCard(yoga: YogaResultDto, modifier: Modifier = Modifier) {
                     modifier = Modifier.background(tint.copy(alpha = 0.12f), RoundedCornerShape(999.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
-            Text(yoga.description, color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(tr(yoga.description), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

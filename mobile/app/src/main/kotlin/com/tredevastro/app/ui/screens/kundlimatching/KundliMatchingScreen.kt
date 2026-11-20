@@ -241,7 +241,7 @@ private fun DoshaCard(label: String, verdict: DoshaVerdictDto, modifier: Modifie
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
-            Text(verdict.reason, color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(tr(verdict.reason), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
             if (verdict.cancellation != "Not applicable" && verdict.cancellation != "None") {
                 Text(tr("Cancellation: ${verdict.cancellation}"), color = colors.goldPrimary, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }

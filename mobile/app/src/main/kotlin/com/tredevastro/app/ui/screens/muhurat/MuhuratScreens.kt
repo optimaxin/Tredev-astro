@@ -269,7 +269,7 @@ private fun ChoghadiyaRow(seg: ChoghadiyaSegmentDto, modifier: Modifier = Modifi
         modifier = modifier.fillMaxWidth().background(tint.copy(alpha = 0.08f), RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(seg.name, color = LocalAppColors.current.textPrimary, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+        Text(tr(seg.name), color = LocalAppColors.current.textPrimary, fontWeight = FontWeight.Medium, fontSize = 12.sp)
         Text("${formatIsoTime24h(seg.start)} – ${formatIsoTime24h(seg.end)}", color = tint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
