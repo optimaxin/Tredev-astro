@@ -5,7 +5,7 @@ import type { ApiConsultation } from '../../services/adminService';
 import { astrologerService } from '../../services/astrologerService';
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
-import { StatusBadge, FilterBar, EmptyState, AdminButton } from '../components/SharedControls';
+import { StatusBadge, FilterBar, EmptyState, AdminButton, SearchInput } from '../components/SharedControls';
 import styles from './AdminPages.module.css';
 
 // Real consultation, with the astrologer name resolved from the catalog (the
@@ -16,12 +16,18 @@ interface RealConsultation extends ApiConsultation {
 }
 
 type FilterKey = 'ALL' | ApiConsultation['status'];
+type TypeFilterKey = 'ALL' | ApiConsultation['type'];
 
 const TYPE_LABEL: Record<ApiConsultation['type'], 'Chat' | 'Voice' | 'Video'> = { chat: 'Chat', voice: 'Voice', video: 'Video' };
 
 export default function ConsultationsPage() {
   const { t } = useAppContext();
   const [filter, setFilter] = useState<FilterKey>('ALL');
+  // Chat/Voice/Video filter, alongside the existing status filter — the
+  // type already showed as a column, but there was no way to narrow the
+  // list down to just one consultation type.
+  const [typeFilter, setTypeFilter] = useState<TypeFilterKey>('ALL');
+  const [search, setSearch] = useState('');
   const [view, setView] = useState<'table' | 'agenda'>('table');
   const [selected, setSelected] = useState<RealConsultation | null>(null);
   const [consultations, setConsultations] = useState<RealConsultation[]>([]);
@@ -36,8 +42,13 @@ export default function ConsultationsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    return consultations.filter(c => filter === 'ALL' || c.status === filter);
-  }, [consultations, filter]);
+    const q = search.trim().toLowerCase();
+    return consultations.filter(c =>
+      (filter === 'ALL' || c.status === filter) &&
+      (typeFilter === 'ALL' || c.type === typeFilter) &&
+      (!q || c.userName.toLowerCase().includes(q) || c.astrologerName.toLowerCase().includes(q))
+    );
+  }, [consultations, filter, typeFilter, search]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, RealConsultation[]>();
@@ -74,6 +85,20 @@ export default function ConsultationsPage() {
           <AdminButton variant={view === 'table' ? 'gold' : 'outline'} onClick={() => setView('table')}>{t('admin_astro_view_table')}</AdminButton>
           <AdminButton variant={view === 'agenda' ? 'gold' : 'outline'} onClick={() => setView('agenda')}>📅</AdminButton>
         </div>
+      </div>
+
+      <div className={styles.toolbar}>
+        <FilterBar
+          filters={[
+            { key: 'ALL', label: 'All Types' },
+            { key: 'chat', label: 'Chat' },
+            { key: 'voice', label: 'Voice' },
+            { key: 'video', label: 'Video' },
+          ]}
+          active={typeFilter}
+          onChange={k => setTypeFilter(k as TypeFilterKey)}
+        />
+        <SearchInput value={search} onChange={setSearch} placeholder={t('admin_search_name_email')} />
       </div>
 
       {view === 'table' && (

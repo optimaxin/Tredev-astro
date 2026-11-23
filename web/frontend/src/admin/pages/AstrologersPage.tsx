@@ -305,16 +305,25 @@ export default function AstrologersPage() {
   // means "take this astrologer off the public site". For a real account,
   // that's suspendAccount/restoreAccount (which the backend now also
   // cascades into astrologers.is_active — see PATCH /users/:id/status's own
-  // comment). For an orphan pseudo-account (no real account to suspend —
-  // see isOrphanAccount above) it goes straight to setAstrologerActive.
+  // comment), and goes purely by email: it does NOT need a matched catalog
+  // `id` at all (the backend looks the astrologer up by user_id). Only the
+  // orphan path (no real account — see isOrphanAccount above) needs an id,
+  // since setAstrologerActive operates directly on the catalog row. Keying
+  // "busy" by email rather than catalog id also means a real account whose
+  // name doesn't match any catalog row (so `id` is undefined — see
+  // joinedProfile's name-matching comment) can still be suspended; the old
+  // id-keyed version left Suspend permanently disabled for exactly those
+  // accounts, which looked like "suspend doesn't work" even though the
+  // backend call never needed the id in the first place.
   // Re-fetches catalog + live status afterward either way, since both paths
   // change whether this astrologer shows up in the "removed" half of GET
   // /astrologers/status.
-  const [activeBusyId, setActiveBusyId] = useState<number | null>(null);
-  const handleSuspendToggle = async (a: AuthUser, id: number, suspend: boolean) => {
-    setActiveBusyId(id);
+  const [busyEmail, setBusyEmail] = useState<string | null>(null);
+  const handleSuspendToggle = async (a: AuthUser, id: number | undefined, suspend: boolean) => {
+    setBusyEmail(a.email);
     try {
       if (isOrphanAccount(a)) {
+        if (id === undefined) return;
         await adminService.setAstrologerActive(id, !suspend);
       } else if (suspend) {
         await suspendAccount(a.email);
@@ -328,13 +337,13 @@ export default function AstrologersPage() {
       setCatalog(catalogRes.data);
       setLiveStatus(Object.fromEntries(statusRows.map(r => [r.id, r])));
     } finally {
-      setActiveBusyId(null);
+      setBusyEmail(null);
     }
   };
 
-  const handleDeleteAstrologer = async (id: number, name: string) => {
+  const handleDeleteAstrologer = async (id: number, name: string, email: string) => {
     if (!window.confirm(`Permanently delete ${name}? This also permanently deletes ALL their consultations, reviews, and booking history. This cannot be undone. Use Suspend instead if you just want to hide them.`)) return;
-    setActiveBusyId(id);
+    setBusyEmail(email);
     try {
       await adminService.deleteAstrologer(id);
       const [catalogRes, statusRows] = await Promise.all([
@@ -350,7 +359,7 @@ export default function AstrologersPage() {
       // admin-page delete's confirm (see BannersPage/PoojaPage's own).
       window.alert(err instanceof AdminApiError ? err.message : `Could not delete ${name}.`);
     } finally {
-      setActiveBusyId(null);
+      setBusyEmail(null);
     }
   };
 
@@ -433,6 +442,12 @@ export default function AstrologersPage() {
   }, [accounts, search, liveStatus]);
 
   const isOrphanAccount = (a: AuthUser) => a.id.startsWith('orphan-');
+
+  // Suspend/Activate only needs a catalog id for an orphan account (see
+  // handleSuspendToggle's own comment) — a real account suspends by email
+  // regardless of whether its name happens to match a catalog row.
+  const suspendDisabled = (a: AuthUser, id: number | undefined) =>
+    busyEmail === a.email || (isOrphanAccount(a) && id === undefined);
 
   // Whole-roster CSV — download every astrologer's editable fields, bulk-edit
   // in a spreadsheet, re-upload. Same download/re-upload convention as
@@ -594,9 +609,9 @@ export default function AstrologersPage() {
                   <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                   <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
                   {active
-                    ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
-                    : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                  <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
+                    ? <AdminButton variant="danger" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
+                    : <AdminButton variant="gold" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
+                  <AdminButton variant="danger" disabled={p.id === undefined || busyEmail === a.email} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name, a.email)}>Delete</AdminButton>
                 </div>
               </div>
             );
@@ -635,9 +650,9 @@ export default function AstrologersPage() {
                     <AdminButton onClick={() => { setSelected(a); setProfileTab('overview'); }}>{t('admin_action_view')}</AdminButton>
                     <AdminButton onClick={() => openEdit(a)}>{t('admin_action_edit')}</AdminButton>
                     {active
-                      ? <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
-                      : <AdminButton variant="gold" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                    <AdminButton variant="danger" disabled={p.id === undefined || activeBusyId === p.id} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name)}>Delete</AdminButton>
+                      ? <AdminButton variant="danger" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
+                      : <AdminButton variant="gold" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
+                    <AdminButton variant="danger" disabled={p.id === undefined || busyEmail === a.email} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name, a.email)}>Delete</AdminButton>
                   </div>
                 );
               }

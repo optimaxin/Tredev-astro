@@ -873,7 +873,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     admin_sidebar_staff: 'Staff',
     admin_sidebar_consultations: 'Consultations',
     admin_sidebar_reports: 'Reports',
-    admin_sidebar_orders: 'Orders',
+    admin_sidebar_orders: 'Report Order',
     admin_sidebar_pricing: 'Pricing',
     admin_sidebar_blog: 'Blog',
     admin_sidebar_shlok: 'Daily Shlok',

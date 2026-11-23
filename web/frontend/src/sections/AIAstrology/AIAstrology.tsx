@@ -67,6 +67,7 @@ export default function AIAstrology() {
   const [secondsLeft, setSecondsLeft] = useState(FREE_SECONDS);
   const [sessionTotalSeconds, setSessionTotalSeconds] = useState(FREE_SECONDS);
   const [locked, setLocked] = useState(false);
+  const [continueChecking, setContinueChecking] = useState(false);
   const [kundliResult, setKundliResult] = useState<KundliResult | null>(null);
   const timerRef = useRef<number | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -152,6 +153,35 @@ export default function AIAstrology() {
       }]);
     }
     setPhase('active');
+  };
+
+  // "Continue Chat" on the locked banner used to render with no onClick at
+  // all — dead button. Staff re-granting free chat time (UsersPage's "Set
+  // Free Chat Time") took effect on the server immediately, but a user
+  // already locked out had no way to actually pick that grant back up short
+  // of a full page reload, so it looked like the grant "didn't work" even
+  // though it had. Re-checks the server balance the same way the initial
+  // birth-details submit does (consumeFreeAiChatSeconds reads-then-zeros
+  // whatever is currently on the account).
+  const handleContinueChat = async () => {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) return;
+    setContinueChecking(true);
+    try {
+      const { grantedSeconds } = await calculatorService.startFreeAiChatSession(accessToken);
+      if (grantedSeconds > 0) {
+        setLocked(false);
+        setSessionTotalSeconds(grantedSeconds);
+        setSecondsLeft(grantedSeconds);
+        setMessages(prev => [...prev, { role: 'assistant', text: 'You\'ve been granted more free chat time — continuing where you left off.' }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', text: 'No free chat time is available on your account yet. Please check back after support grants more.' }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: 'Could not check your free chat balance right now. Please try again.' }]);
+    } finally {
+      setContinueChecking(false);
+    }
   };
 
   const sendMessage = useCallback(async (text: string) => {
@@ -408,7 +438,9 @@ export default function AIAstrology() {
                   {locked && (
                     <div className={styles.lockedBanner}>
                       <p className={styles.expiredDesc}>{t('ai_session_over')}</p>
-                      <button className={styles.expiredCta}>{t('ai_continue_chat')}</button>
+                      <button className={styles.expiredCta} onClick={handleContinueChat} disabled={continueChecking}>
+                        {continueChecking ? '…' : t('ai_continue_chat')}
+                      </button>
                     </div>
                   )}
 
