@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
 import { createUser, findUserByEmail, findUserById, listAllUsers, setFreeAiChatSeconds, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { countCompletedByAstrologerAndType, countForUser, countInProgress, findAllForAstrologer, findAllForUser, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
@@ -241,7 +241,7 @@ adminRouter.get('/users/:id/activity', requireSection('users'), async (req, res)
     findAllForUser(target.email),
     listAuditLogForTarget(target.email, 1),
   ]);
-  const recentChats = await buildChatAudit(allConsultations, async c => (await findAstrologerById(c.astrologerId))?.name ?? 'Unknown astrologer');
+  const recentChats = await buildChatAudit(allConsultations, async c => (await findAstrologerByIdRaw(c.astrologerId))?.name ?? 'Unknown astrologer');
   res.json({
     success: true,
     data: {
@@ -641,7 +641,7 @@ adminRouter.delete('/astrologers/:astroId/slots/:id', requireSection('astrologer
 adminRouter.get('/astrologers/:id/activity', requireSection('astrologers'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
-  const astro = await findAstrologerById(id);
+  const astro = await findAstrologerByIdRaw(id);
   if (!astro) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
   const [allConsultations, lastAction] = await Promise.all([
     findAllForAstrologer(id),
@@ -1204,7 +1204,7 @@ adminRouter.post('/astrologer-region-prices', requireSection('pricing'), async (
   const parsed = overrideSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   const { astrologerId, regionId, chatPrice, callPrice, videoPrice } = parsed.data;
-  const astro = await findAstrologerById(astrologerId);
+  const astro = await findAstrologerByIdRaw(astrologerId);
   if (!astro) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
   const region = await findPricingRegionById(regionId);
   if (!region) return fail(res, 404, 'NOT_FOUND', 'Region not found');
