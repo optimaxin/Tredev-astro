@@ -162,7 +162,7 @@ const ZERO_REVENUE: ApiAstrologerRevenue = {
 };
 
 export default function AstrologersPage() {
-  const { t, accounts, suspendAccount, restoreAccount, currentUser, refreshAdminData } = useAppContext();
+  const { t, accounts, suspendAccount, restoreAccount, updateAccountRole, currentUser, refreshAdminData } = useAppContext();
   // So a second staff member's suspend/restore/delete from another tab/
   // session shows up here too without a manual refresh — same event the
   // public listing reacts to (see RealtimeContext's own comment).
@@ -363,6 +363,28 @@ export default function AstrologersPage() {
     }
   };
 
+  // A real account whose name matches no catalog row at all (no astrologer
+  // profile was ever created for it — e.g. a test/demo account whose role
+  // was switched to ASTROLOGIST directly, never run through "Add
+  // Astrologer") has nothing for adminService.deleteAstrologer to delete:
+  // there's no catalog id. Delete used to just stay disabled forever for
+  // these, with no way to clean them up. This takes the account out of the
+  // Astrologer roster the same way leaving the role is undone elsewhere —
+  // by changing its role back to USER — rather than adding a new
+  // destructive "delete the user account" endpoint for what's really just a
+  // bad role assignment.
+  const handleRemoveOrphanRole = async (a: AuthUser) => {
+    if (!window.confirm(`${a.name} has no astrologer profile set up, so there's nothing in the catalog to delete. Remove their Astrologer role instead (they'll become a normal user)?`)) return;
+    setBusyEmail(a.email);
+    try {
+      await updateAccountRole(a.email, 'USER');
+    } catch (err) {
+      window.alert(err instanceof AdminApiError ? err.message : `Could not update ${a.name}'s role.`);
+    } finally {
+      setBusyEmail(null);
+    }
+  };
+
   useEffect(() => {
     astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data)).catch(() => {});
     if (isAdmin) adminService.getAstrologerRevenue().then(setRevenue).catch(() => {});
@@ -448,6 +470,16 @@ export default function AstrologersPage() {
   // regardless of whether its name happens to match a catalog row.
   const suspendDisabled = (a: AuthUser, id: number | undefined) =>
     busyEmail === a.email || (isOrphanAccount(a) && id === undefined);
+
+  // Delete either removes the catalog row (id present) or, for a real
+  // account with no catalog row at all, falls back to clearing its
+  // Astrologer role (see handleRemoveOrphanRole) — only truly disabled for
+  // an orphan pseudo-account somehow missing even its id (nothing at all to
+  // act on: no catalog row, no real user account either).
+  const deleteDisabled = (a: AuthUser, id: number | undefined) =>
+    busyEmail === a.email || (isOrphanAccount(a) && id === undefined);
+  const handleDeleteClick = (a: AuthUser, id: number | undefined) =>
+    id !== undefined ? handleDeleteAstrologer(id, a.name, a.email) : handleRemoveOrphanRole(a);
 
   // Whole-roster CSV — download every astrologer's editable fields, bulk-edit
   // in a spreadsheet, re-upload. Same download/re-upload convention as
@@ -611,7 +643,7 @@ export default function AstrologersPage() {
                   {active
                     ? <AdminButton variant="danger" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
                     : <AdminButton variant="gold" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                  <AdminButton variant="danger" disabled={p.id === undefined || busyEmail === a.email} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name, a.email)}>Delete</AdminButton>
+                  <AdminButton variant="danger" disabled={deleteDisabled(a, p.id)} onClick={() => handleDeleteClick(a, p.id)}>Delete</AdminButton>
                 </div>
               </div>
             );
@@ -652,7 +684,7 @@ export default function AstrologersPage() {
                     {active
                       ? <AdminButton variant="danger" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, true)}>{t('admin_action_suspend')}</AdminButton>
                       : <AdminButton variant="gold" disabled={suspendDisabled(a, p.id)} onClick={() => handleSuspendToggle(a, p.id, false)}>{t('admin_action_activate')}</AdminButton>}
-                    <AdminButton variant="danger" disabled={p.id === undefined || busyEmail === a.email} onClick={() => p.id !== undefined && handleDeleteAstrologer(p.id, a.name, a.email)}>Delete</AdminButton>
+                    <AdminButton variant="danger" disabled={deleteDisabled(a, p.id)} onClick={() => handleDeleteClick(a, p.id)}>Delete</AdminButton>
                   </div>
                 );
               }

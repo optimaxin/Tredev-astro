@@ -742,7 +742,9 @@
   width: 100%;
   max-width: 320px;
   aspect-ratio: 3/4;
-  background: var(--surface-elevated);
+  background: var(--cover-bg, var(--surface-elevated));
+  background-size: cover;
+  background-position: center;
   border: 8px solid var(--border-strong);
   border-radius: 4px 12px 12px 4px;
   box-shadow: -15px 15px 40px rgba(0,0,0,0.5);
@@ -754,6 +756,7 @@
   transform: perspective(800px) rotateY(-18deg) rotateX(4deg);
   transition: transform 0.4s ease;
   transform-style: preserve-3d;
+  cursor: pointer;
 }
 
 .manuscriptLogoImg {
@@ -766,6 +769,17 @@
 
 .manuscriptViewer:hover {
   transform: perspective(800px) rotateY(-8deg) rotateX(1deg) translateY(-8px);
+}
+
+/* One-shot "page flip" on click — toggled briefly via a class, not :active,
+   so it's visible on touch devices too (no persistent hover/active state). */
+.manuscriptFlip {
+  animation: manuscriptFlip 0.5s ease;
+}
+@keyframes manuscriptFlip {
+  0% { transform: perspective(800px) rotateY(-18deg) rotateX(4deg); }
+  40% { transform: perspective(800px) rotateY(10deg) rotateX(2deg) scale(0.95); }
+  100% { transform: perspective(800px) rotateY(-18deg) rotateX(4deg); }
 }
 
 .manuscriptBorder {
@@ -782,7 +796,7 @@
   top: -8px;
   bottom: -8px;
   width: 12px;
-  background: var(--subtle-maroon);
+  background: var(--cover-color, var(--subtle-maroon));
   border-radius: 4px 0 0 4px;
   box-shadow: 2px 0 5px rgba(0,0,0,0.5);
 }

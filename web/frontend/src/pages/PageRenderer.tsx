@@ -1391,11 +1391,24 @@ function ConsultationWaitingPage() {
 }
 
 // 5. Report Detail Page
+// Same preset keys as the public Reports section's COVER_PATTERNS/admin
+// ReportsPage's dropdown — kept local here too rather than imported, so this
+// route's chunk doesn't pull in the Reports section bundle just for this.
+const COVER_PATTERNS: Record<string, string> = {
+  dots: 'radial-gradient(rgba(199,161,90,0.35) 1.5px, transparent 1.5px)',
+  stripes: 'repeating-linear-gradient(45deg, rgba(199,161,90,0.18) 0 10px, transparent 10px 20px)',
+  grid: 'linear-gradient(rgba(199,161,90,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(199,161,90,0.2) 1px, transparent 1px)',
+  waves: 'repeating-radial-gradient(circle at 0 0, transparent 0, rgba(199,161,90,0.15) 18px)',
+};
+
 function ReportDetailPage({ id }: { id: any }) {
   const { isLoggedIn, setShowLoginModal } = useAppContext();
   const [report, setReport] = useState<AstrologyReport | null>(null);
   const [buying, setBuying] = useState<ReportBundle | null>(null);
   const [buyError, setBuyError] = useState('');
+  // One-shot flip animation on clicking the cover (see .manuscriptFlip) —
+  // toggled via class rather than :active so it's visible on touch too.
+  const [flipped, setFlipped] = useState(false);
 
   useEffect(() => {
     contentService.getReport(Number(id)).then(setReport).catch(() => setReport(null));
@@ -1436,7 +1449,18 @@ function ReportDetailPage({ id }: { id: any }) {
         <div className={styles.reportDetailLayout}>
           {/* Cover Display */}
           <div className={styles.bookDisplayColumn}>
-            <div className={styles.manuscriptViewer}>
+            <div
+              className={`${styles.manuscriptViewer} ${flipped ? styles.manuscriptFlip : ''}`}
+              onClick={() => { setFlipped(true); setTimeout(() => setFlipped(false), 500); }}
+              style={{
+                '--cover-color': report.coverColor || undefined,
+                ...(report.coverImage ? {
+                  '--cover-bg': `linear-gradient(rgba(245,240,231,0.35), rgba(245,240,231,0.35)), url(${report.coverImage})`,
+                } : report.coverPattern && COVER_PATTERNS[report.coverPattern] ? {
+                  '--cover-bg': COVER_PATTERNS[report.coverPattern],
+                } : {}),
+              } as React.CSSProperties}
+            >
               <div className={styles.manuscriptSpine} />
               <div className={styles.manuscriptBorder} />
               <h2 className={styles.manuscriptTitle}>{report.title}</h2>
