@@ -65,6 +65,9 @@ export interface AstrologyReport {
   color: string;
   icon: string;
   category: string;
+  coverColor: string | null;
+  coverPattern: string | null;
+  coverImage: string | null;
 }
 
 export interface Broadcast {

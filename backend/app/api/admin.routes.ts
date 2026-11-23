@@ -65,6 +65,9 @@ import {
   listAllPoojaSessions, listPoojaBooks, listPoojaVideos,
 } from '../repositories/poojaRepository.ts';
 import { deleteUnbookedSlot, insertSlot, listAllSlotsForAstrologer } from '../repositories/consultationSlotRepository.ts';
+import { listAstrologyReports, findAstrologyReportById, createAstrologyReport, updateAstrologyReport, deleteAstrologyReport } from '../repositories/astrologyReportRepository.ts';
+import type { AstrologyReportInput } from '../repositories/astrologyReportRepository.ts';
+import { createReportChangeRequest, listPendingReportChangeRequests, findReportChangeRequestById, decideReportChangeRequest } from '../repositories/reportChangeRequestRepository.ts';
 
 export const adminRouter = Router();
 
@@ -929,6 +932,140 @@ adminRouter.get('/report-purchases', requireSection('reports'), async (req, res)
     bundle: r.bundle, amount: r.amount, purchasedAt: Number(r.purchased_at),
   }));
   res.json({ success: true, data, pagination: { ...parsed.data, total } });
+});
+
+// ── Report catalog (astrology_reports) — CRUD + Staff-change approval ──
+//
+// A STAFF account (even with the 'reports' section granted) can never apply
+// a catalog change directly — every create/update/delete from a STAFF
+// caller becomes a pending report_change_requests row instead, and the
+// configured admin address gets emailed to come review it (see
+// notificationService.ts's notifyEvent). Only an ADMIN calling these
+// routes, or an ADMIN approving a pending request below, actually touches
+// astrology_reports. This mirrors the astrologer-applications approval
+// flow already in this file, just for the report catalog instead of new
+// astrologer accounts.
+function toApiReport(r: Awaited<ReturnType<typeof findAstrologyReportById>>) {
+  if (!r) return undefined;
+  return {
+    id: r.id, title: r.title, subtitle: r.subtitle, description: r.description,
+    pages: r.pages, sections: r.sections, price: r.price, originalPrice: r.original_price,
+    popular: !!r.popular, color: r.color, icon: r.icon, category: r.category, displayOrder: r.display_order,
+    coverColor: r.cover_color, coverPattern: r.cover_pattern, coverImage: r.cover_image,
+  };
+}
+
+const reportInputSchema = z.object({
+  title: z.string().trim().min(1).max(150),
+  subtitle: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(5000),
+  pages: z.coerce.number().int().min(1),
+  sections: z.coerce.number().int().min(1),
+  price: z.coerce.number().int().min(0),
+  originalPrice: z.coerce.number().int().min(0).nullable().default(null),
+  popular: z.boolean().default(false),
+  color: z.string().trim().min(1).max(20),
+  icon: z.string().trim().min(1).max(60),
+  category: z.string().trim().min(1).max(60),
+  displayOrder: z.coerce.number().int().default(0),
+  coverColor: z.string().trim().max(20).nullable().default(null),
+  coverPattern: z.string().trim().max(30).nullable().default(null),
+  // Same base64-data-URL convention as AstrologersPage's avatar upload —
+  // capped well under the body-size limit (see editAstrologerSchema's own
+  // comment on the backend elsewhere).
+  coverImage: z.string().max(3_000_000).nullable().default(null),
+});
+
+adminRouter.get('/reports', requireSection('reports'), async (_req, res) => {
+  const rows = await listAstrologyReports();
+  res.json({ success: true, data: rows.map(toApiReport) });
+});
+
+adminRouter.get('/reports/change-requests', adminOnly, async (_req, res) => {
+  const rows = await listPendingReportChangeRequests();
+  const withReport = await Promise.all(rows.map(async r => ({
+    id: r.id, action: r.action, reportId: r.report_id,
+    payload: r.payload ? JSON.parse(r.payload) as AstrologyReportInput : null,
+    requestedBy: r.requested_by, createdAt: r.created_at,
+    currentReport: r.report_id ? toApiReport(await findAstrologyReportById(r.report_id)) : undefined,
+  })));
+  res.json({ success: true, data: withReport });
+});
+
+adminRouter.post('/reports/change-requests/:id/decide', adminOnly, async (req, res) => {
+  const approve = req.body?.approve === true;
+  const change = await findReportChangeRequestById(String(req.params.id));
+  if (!change || change.status !== 'PENDING') return fail(res, 404, 'NOT_FOUND', 'No pending change request found');
+  if (approve) {
+    if (change.action === 'DELETE' && change.report_id) {
+      await deleteAstrologyReport(change.report_id);
+    } else if (change.payload) {
+      const input = JSON.parse(change.payload) as AstrologyReportInput;
+      if (change.action === 'CREATE') await createAstrologyReport(input);
+      else if (change.action === 'UPDATE' && change.report_id) await updateAstrologyReport(change.report_id, input);
+    }
+  }
+  await decideReportChangeRequest(change.id, approve ? 'APPROVED' : 'REJECTED', req.user!.id);
+  await audit(req, `report.change.${approve ? 'approved' : 'rejected'}`, change.id);
+  res.json({ success: true, data: { ok: true } });
+});
+
+// Emails the configured admin address that a change is waiting — best
+// effort, never blocks the actual request/response.
+async function notifyAdminOfPendingReportChange(action: string, reportTitle: string, staffName: string) {
+  const { adminEmail } = await getNotifyEmails();
+  if (!adminEmail) return;
+  await notifyEventByTemplateId({
+    templateId: 'tpl-report-change-pending', eventKey: 'report.change.pending',
+    vars: { action, reportTitle, staffName },
+    user: { email: adminEmail, name: 'Admin' },
+  }).catch(() => {});
+}
+
+adminRouter.post('/reports', requireSection('reports'), async (req, res) => {
+  const parsed = reportInputSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  if (req.user!.role === 'STAFF') {
+    await createReportChangeRequest('CREATE', null, parsed.data, req.user!.id);
+    const requester = await findUserById(req.user!.id);
+    await notifyAdminOfPendingReportChange('add', parsed.data.title, requester?.name ?? req.user!.email);
+    return res.status(202).json({ success: true, data: { pending: true } });
+  }
+  const row = await createAstrologyReport(parsed.data);
+  await audit(req, 'report.created', row.title);
+  res.status(201).json({ success: true, data: toApiReport(row) });
+});
+
+adminRouter.patch('/reports/:id', requireSection('reports'), async (req, res) => {
+  const id = Number(req.params.id);
+  const existing = await findAstrologyReportById(id);
+  if (!existing) return fail(res, 404, 'NOT_FOUND', 'Report not found');
+  const parsed = reportInputSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  if (req.user!.role === 'STAFF') {
+    await createReportChangeRequest('UPDATE', id, parsed.data, req.user!.id);
+    const requester = await findUserById(req.user!.id);
+    await notifyAdminOfPendingReportChange('update', parsed.data.title, requester?.name ?? req.user!.email);
+    return res.status(202).json({ success: true, data: { pending: true } });
+  }
+  const row = await updateAstrologyReport(id, parsed.data);
+  await audit(req, 'report.updated', parsed.data.title);
+  res.json({ success: true, data: toApiReport(row) });
+});
+
+adminRouter.delete('/reports/:id', requireSection('reports'), async (req, res) => {
+  const id = Number(req.params.id);
+  const existing = await findAstrologyReportById(id);
+  if (!existing) return fail(res, 404, 'NOT_FOUND', 'Report not found');
+  if (req.user!.role === 'STAFF') {
+    await createReportChangeRequest('DELETE', id, null, req.user!.id);
+    const requester = await findUserById(req.user!.id);
+    await notifyAdminOfPendingReportChange('delete', existing.title, requester?.name ?? req.user!.email);
+    return res.status(202).json({ success: true, data: { pending: true } });
+  }
+  await deleteAstrologyReport(id);
+  await audit(req, 'report.deleted', existing.title);
+  res.json({ success: true, data: { ok: true } });
 });
 
 // ── Orders (Store product orders) ────────────────────────────────────────

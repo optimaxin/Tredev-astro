@@ -188,6 +188,14 @@
   cursor: pointer;
   border: 1px solid transparent;
   white-space: nowrap;
+  transition: transform 0.12s ease;
+}
+
+/* A quick press-down pop on every admin button, not just one page's —
+   AdminButton is the one shared component basically everything in the
+   console renders through. */
+.btn:active:not(:disabled) {
+  transform: scale(0.93);
 }
 
 .btnGold { background: var(--adm-gold); color: #fff; }

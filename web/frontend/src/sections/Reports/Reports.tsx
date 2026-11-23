@@ -17,6 +17,16 @@ import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnam
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Reports.module.css';
 
+// Preset background patterns a staff/admin can pick for a report's cover
+// without uploading an image — plain CSS gradients, same keys the admin
+// editor's dropdown writes to `coverPattern` (see ReportsPage.tsx).
+export const COVER_PATTERNS: Record<string, string> = {
+  dots: 'radial-gradient(rgba(199,161,90,0.35) 1.5px, transparent 1.5px)',
+  stripes: 'repeating-linear-gradient(45deg, rgba(199,161,90,0.18) 0 10px, transparent 10px 20px)',
+  grid: 'linear-gradient(rgba(199,161,90,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(199,161,90,0.2) 1px, transparent 1px)',
+  waves: 'repeating-radial-gradient(circle at 0 0, transparent 0, rgba(199,161,90,0.15) 18px)',
+};
+
 const BUNDLES = [
   { id: 1, price: 499 },
   { id: 2, price: 799, popular: true },
@@ -111,13 +121,19 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
               }}
               onClick={() => handleReportClick(report.id)}
               style={{
-                '--card-color': report.color,
+                '--card-color': report.coverColor || report.color,
                 cursor: 'pointer',
+                ...(report.coverImage ? {
+                  backgroundImage: `linear-gradient(rgba(17,23,44,0.55), rgba(17,23,44,0.55)), url(${report.coverImage})`,
+                  backgroundSize: 'cover', backgroundPosition: 'center',
+                } : report.coverPattern && report.coverPattern !== 'none' ? {
+                  backgroundImage: COVER_PATTERNS[report.coverPattern],
+                } : {}),
               } as React.CSSProperties}
             >
               {report.popular && <div className={styles.popularBadge}>{t('badge_most_popular')}</div>}
 
-              <div className={styles.reportIcon} style={{ color: report.color, display: 'inline-flex', alignItems: 'center' }}>
+              <div className={styles.reportIcon} style={{ color: report.coverColor || report.color, display: 'inline-flex', alignItems: 'center' }}>
                 {report.id === 1 && <CareerIcon size={42} />}
                 {report.id === 2 && <MarriageIcon size={42} />}
                 {report.id === 3 && <PanchangIcon size={42} />}

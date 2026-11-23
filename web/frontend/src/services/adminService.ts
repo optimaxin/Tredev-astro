@@ -149,6 +149,46 @@ export interface ApiReportPurchase {
   purchasedAt: number;
 }
 
+// The editable report-catalog row (admin.routes.ts's /reports CRUD) — not
+// to be confused with ApiReportPurchase above (that's a purchase receipt,
+// this is the product listing itself).
+export interface ApiAstrologyReport {
+  id: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  pages: number;
+  sections: number;
+  price: number;
+  originalPrice: number | null;
+  popular: boolean;
+  color: string;
+  icon: string;
+  category: string;
+  displayOrder: number;
+  coverColor: string | null;
+  coverPattern: string | null;
+  coverImage: string | null;
+}
+
+export type AstrologyReportInput = Omit<ApiAstrologyReport, 'id'>;
+
+// What a STAFF create/update/delete call gets back instead of the applied
+// row — it's now sitting in report_change_requests waiting for an ADMIN.
+export interface ApiPendingResult {
+  pending: true;
+}
+
+export interface ApiReportChangeRequest {
+  id: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  reportId: number | null;
+  payload: AstrologyReportInput | null;
+  requestedBy: string;
+  createdAt: number;
+  currentReport?: ApiAstrologyReport;
+}
+
 export interface ApiBlogPost {
   id: number;
   title: string;
@@ -652,6 +692,21 @@ export const adminService = {
   deleteDailyShlok: (date: string) => request<{ ok: boolean }>(`/daily-shlok/${date}`, { method: 'DELETE' }),
 
   listReportPurchases: (page = 1, limit = 100) => request<ApiReportPurchase[]>(`/report-purchases?page=${page}&limit=${limit}`),
+
+  listReportsCatalog: () => request<ApiAstrologyReport[]>('/reports'),
+  // A STAFF caller gets { pending: true } back instead of the applied row —
+  // see admin.routes.ts's own comment on why these three go through
+  // report_change_requests for STAFF instead of writing astrology_reports
+  // directly.
+  createReportCatalogEntry: (input: AstrologyReportInput) =>
+    request<ApiAstrologyReport | ApiPendingResult>('/reports', { method: 'POST', body: JSON.stringify(input) }),
+  updateReportCatalogEntry: (id: number, input: AstrologyReportInput) =>
+    request<ApiAstrologyReport | ApiPendingResult>(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteReportCatalogEntry: (id: number) =>
+    request<{ ok: boolean } | ApiPendingResult>(`/reports/${id}`, { method: 'DELETE' }),
+  listReportChangeRequests: () => request<ApiReportChangeRequest[]>('/reports/change-requests'),
+  decideReportChangeRequest: (id: string, approve: boolean) =>
+    request<{ ok: boolean }>(`/reports/change-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
 
   listBroadcasts: () => request<ApiBroadcast[]>('/broadcasts'),
   createBroadcast: (message: string) => request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message }) }),
