@@ -77,7 +77,7 @@ function PillGroup({ label, options, active }: { label: string; options: string[
 
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
-    <div style={card}>
+    <motion.div style={card} whileHover={{ y: -2, borderColor: 'var(--gold-primary)' }}>
       <button
         onClick={onToggle}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
@@ -92,7 +92,21 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
+  );
+}
+
+function PricingButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ scale: 1.05, boxShadow: '0 6px 18px rgba(232,145,44,0.4)' }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      style={pricingButtonStyle}
+    >
+      {children}
+    </motion.button>
   );
 }
 
@@ -162,16 +176,22 @@ export default function RaghavendraPage() {
                   </span>
                 ))}
               </div>
-              <button className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}>
+              <motion.button
+                className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}
+                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+              >
                 {t('raghavendra_cta')} →
-              </button>
+              </motion.button>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.1 }}
               style={{ flex: '0 0 auto', width: '220px', height: '220px', borderRadius: '50%', position: 'relative', margin: '0 auto' }}
             >
-              <div style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }} />
+              <motion.div
+                animate={{ rotate: 360 }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }}
+              />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '3px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {hasPhoto ? (
                   <img src={photo} alt={t('raghavendra_name')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -202,11 +222,14 @@ export default function RaghavendraPage() {
         </div>
 
         {/* Problem categories */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_problems_title')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
             {problems.map((p, i) => (
-              <div key={i} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              <motion.div key={i} whileHover={{ y: -4, boxShadow: '0 10px 24px rgba(0,0,0,0.12)' }} style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <div style={{ height: '110px', background: p.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <p.Icon size={34} style={{ color: '#fff' }} />
                 </div>
@@ -214,16 +237,19 @@ export default function RaghavendraPage() {
                   <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{p.title}</div>
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{p.body}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Pricing — warm cream cards, close to the reference's consultation-package layout */}
-        <div style={{
-          marginBottom: 'var(--space-10)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8) var(--space-6)',
-          background: '#fbf3e3',
-        }}>
+        <motion.div
+          style={{
+            marginBottom: 'var(--space-10)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8) var(--space-6)',
+            background: '#fbf3e3',
+          }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)', margin: 0, color: PRICING_BROWN }}>
               {t('raghavendra_pricing_title')} <span style={{ color: PRICING_ORANGE }}>{t('raghavendra_pricing_title_accent')}</span>
@@ -257,7 +283,7 @@ export default function RaghavendraPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
                 <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[0].price}</strong></span>
-                <button onClick={goBookConsultation} style={pricingButtonStyle}>{t('raghavendra_cta_short')}</button>
+                <PricingButton onClick={goBookConsultation}>{t('raghavendra_cta_short')}</PricingButton>
               </div>
             </div>
 
@@ -292,46 +318,58 @@ export default function RaghavendraPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
                 <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[1].price}</strong></span>
-                <button onClick={goBookConsultation} style={pricingButtonStyle}>{t('raghavendra_cta_short')}</button>
+                <PricingButton onClick={goBookConsultation}>{t('raghavendra_cta_short')}</PricingButton>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* FAQ */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_faq_title')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
             {faq.map((f, i) => (
               <FaqItem key={i} q={f.q} a={f.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Reviews — honest empty state rather than fabricated testimonials,
             same rule as RaghavBookingPage. */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_reviews_title')}</h3>
           <div style={{ ...card, marginTop: 'var(--space-4)', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)' }}>{t('raghavendra_reviews_empty')}</p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Final CTA band */}
-        <div style={{
-          borderRadius: 'var(--radius-xl)', padding: 'var(--space-10) var(--space-6)', textAlign: 'center',
-          background: 'radial-gradient(circle at 50% 0%, rgba(181,138,59,0.16), transparent 60%), linear-gradient(160deg, #1c0f0c, #3a1a12)',
-        }}>
+        <motion.div
+          style={{
+            borderRadius: 'var(--radius-xl)', padding: 'var(--space-10) var(--space-6)', textAlign: 'center',
+            background: 'radial-gradient(circle at 50% 0%, rgba(181,138,59,0.16), transparent 60%), linear-gradient(160deg, #1c0f0c, #3a1a12)',
+          }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 300, fontSize: 'clamp(1.4rem, 3vw, 2rem)', color: '#fff', margin: 0 }}>
             {t('raghavendra_final_cta_title')}
           </h3>
           <p style={{ color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-3)', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
             {t('raghavendra_final_cta_body')}
           </p>
-          <button className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}>
+          <motion.button
+            className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+          >
             {t('raghavendra_cta')} →
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     </div>
   );
