@@ -785,7 +785,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_privacy_short: 'Privacy',
     footer_terms_short: 'Terms',
     footer_cookies_short: 'Cookies',
-    footer_legal_note: 'Astrology is for entertainment and spiritual guidance. Not a substitute for professional advice.',
+    footer_legal_note: 'Astrology is for spiritual guidance.',
 
     // Login Modal
     login_heading_signin_prefix: 'Sign in to continue ',
@@ -1603,7 +1603,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_privacy_short: 'गोपनीयता',
     footer_terms_short: 'शर्तें',
     footer_cookies_short: 'कुकीज़',
-    footer_legal_note: 'ज्योतिष मनोरंजन और आध्यात्मिक मार्गदर्शन हेतु है। यह पेशेवर सलाह का विकल्प नहीं है।',
+    footer_legal_note: 'ज्योतिष आध्यात्मिक मार्गदर्शन हेतु है।',
 
     // Login Modal
     login_heading_signin_prefix: 'अपनी यात्रा जारी रखने के लिए साइन इन करें ',
@@ -2288,7 +2288,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     footer_privacy_short: 'गोपनीयता',
     footer_terms_short: 'अटी',
     footer_cookies_short: 'कुकीज',
-    footer_legal_note: 'ज्योतिष हे मनोरंजन आणि आध्यात्मिक मार्गदर्शनासाठी आहे. ही व्यावसायिक सल्ल्याची जागा घेत नाही.',
+    footer_legal_note: 'ज्योतिष हे आध्यात्मिक मार्गदर्शनासाठी आहे.',
 
     // Login Modal
     login_heading_signin_prefix: 'तुमचा प्रवास सुरू ठेवण्यासाठी साइन इन करा ',
