@@ -19,6 +19,15 @@ import pageStyles from '../PageRenderer.module.css';
 // RaghavBookingPage's "no fabricated testimonials").
 const WHY_CHOOSE_ICONS = [ClockIcon, AcharyaIcon, CheckCircleIcon, LockIcon];
 const PROBLEM_ICONS = [CareerIcon, HeartIcon, WealthIcon, LotusIcon];
+// One gradient tile per problem category, standing in for a photo — same
+// "no stock photos available" constraint the rest of the catalog solves with
+// COVER_PATTERNS (see Reports.tsx), not a missing design decision.
+const PROBLEM_GRADIENTS = [
+  'linear-gradient(135deg, #2b4c6f, #5b8fb9)',
+  'linear-gradient(135deg, #6b2b4f, #b95b8f)',
+  'linear-gradient(135deg, #4c3a1e, #c8a15a)',
+  'linear-gradient(135deg, #1e4c3a, #5ab98a)',
+];
 
 const card: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
@@ -65,6 +74,7 @@ export default function RaghavendraPage() {
 
   const problems = [1, 2, 3, 4].map(i => ({
     Icon: PROBLEM_ICONS[i - 1],
+    gradient: PROBLEM_GRADIENTS[i - 1],
     title: t(`raghavendra_problem_${i}_title`),
     body: t(`raghavendra_problem_${i}_body`),
   }));
@@ -94,12 +104,19 @@ export default function RaghavendraPage() {
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             >
               <span style={{ fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold-primary)' }}>{t('raghavendra_eyebrow')}</span>
-              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 300, color: '#fff', marginTop: 'var(--space-2)' }}>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 300, lineHeight: 1.15, color: '#fff', marginTop: 'var(--space-3)', marginBottom: 0 }}>
                 {t('raghavendra_headline')}
               </h1>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-3)', maxWidth: '480px', lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-4)', maxWidth: '480px', lineHeight: 1.6 }}>
                 {t('raghavendra_subheadline')}
               </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+                {[1, 2, 3].map(n => (
+                  <span key={n} style={{ fontSize: '11px', padding: '5px 14px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.85)' }}>
+                    {t(`raghavendra_badge_${n}`)}
+                  </span>
+                ))}
+              </div>
               <button className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}>
                 {t('raghavendra_cta')} →
               </button>
@@ -107,14 +124,14 @@ export default function RaghavendraPage() {
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.1 }}
-              style={{ flex: '0 0 auto', width: '176px', height: '176px', borderRadius: '50%', position: 'relative' }}
+              style={{ flex: '0 0 auto', width: '220px', height: '220px', borderRadius: '50%', position: 'relative', margin: '0 auto' }}
             >
               <div style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }} />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '3px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {hasPhoto ? (
                   <img src={photo} alt={t('raghavendra_name')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: '4rem', color: 'var(--gold-primary)' }}>{t('raghavendra_name').charAt(0)}</span>
+                  <AcharyaIcon size={88} style={{ color: 'var(--gold-primary)' }} />
                 )}
               </div>
             </motion.div>
@@ -144,10 +161,14 @@ export default function RaghavendraPage() {
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_problems_title')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
             {problems.map((p, i) => (
-              <div key={i} style={card}>
-                <p.Icon size={30} style={{ color: 'var(--gold-primary)' }} />
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', marginTop: 'var(--space-3)' }}>{p.title}</div>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{p.body}</p>
+              <div key={i} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                <div style={{ height: '110px', background: p.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p.Icon size={34} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ padding: 'var(--space-5)' }}>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{p.title}</div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{p.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -156,24 +177,43 @@ export default function RaghavendraPage() {
         {/* Pricing */}
         <div style={{ marginBottom: 'var(--space-10)' }}>
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_pricing_title')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-            {pricing.map((p, i) => (
-              <div key={i} style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{p.title}</div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{p.duration}</div>
-                <div style={{ fontSize: 'var(--text-xl)', color: 'var(--gold-primary)', fontWeight: 600, marginTop: 'var(--space-3)' }}>{p.price}</div>
-                <ul style={{ marginTop: 'var(--space-3)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {p.features.map((f, fi) => (
-                    <li key={fi} style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-2)' }}>
-                      <span style={{ color: 'var(--gold-primary)' }}>✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <button className="btn btn-gold" style={{ marginTop: 'var(--space-5)' }} onClick={goBookConsultation}>
-                  {t('raghavendra_cta')}
-                </button>
-              </div>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)', alignItems: 'start' }}>
+            {pricing.map((p, i) => {
+              const popular = i === 1;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    ...card, display: 'flex', flexDirection: 'column', position: 'relative',
+                    borderColor: popular ? 'var(--gold-primary)' : 'var(--border-subtle)',
+                    borderWidth: popular ? '2px' : '1px',
+                    boxShadow: popular ? '0 8px 28px rgba(181,138,59,0.18)' : 'none',
+                  }}
+                >
+                  {popular && (
+                    <span style={{
+                      position: 'absolute', top: '-11px', left: 'var(--space-5)', background: 'var(--gold-primary)', color: '#1c0f0c',
+                      fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 12px', borderRadius: '999px',
+                    }}>
+                      {t('label_recommended')}
+                    </span>
+                  )}
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{p.title}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{p.duration}</div>
+                  <div style={{ fontSize: 'var(--text-xl)', color: 'var(--gold-primary)', fontWeight: 600, marginTop: 'var(--space-3)' }}>{p.price}</div>
+                  <ul style={{ marginTop: 'var(--space-3)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                    {p.features.map((f, fi) => (
+                      <li key={fi} style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-2)' }}>
+                        <span style={{ color: 'var(--gold-primary)' }}>✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button className={`btn ${popular ? 'btn-gold' : 'btn-outline-gold'}`} style={{ marginTop: 'var(--space-5)' }} onClick={goBookConsultation}>
+                    {t('raghavendra_cta')}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -189,11 +229,27 @@ export default function RaghavendraPage() {
 
         {/* Reviews — honest empty state rather than fabricated testimonials,
             same rule as RaghavBookingPage. */}
-        <div>
+        <div style={{ marginBottom: 'var(--space-10)' }}>
           <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_reviews_title')}</h3>
           <div style={{ ...card, marginTop: 'var(--space-4)', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)' }}>{t('raghavendra_reviews_empty')}</p>
           </div>
+        </div>
+
+        {/* Final CTA band */}
+        <div style={{
+          borderRadius: 'var(--radius-xl)', padding: 'var(--space-10) var(--space-6)', textAlign: 'center',
+          background: 'radial-gradient(circle at 50% 0%, rgba(181,138,59,0.16), transparent 60%), linear-gradient(160deg, #1c0f0c, #3a1a12)',
+        }}>
+          <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 300, fontSize: 'clamp(1.4rem, 3vw, 2rem)', color: '#fff', margin: 0 }}>
+            {t('raghavendra_final_cta_title')}
+          </h3>
+          <p style={{ color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-3)', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
+            {t('raghavendra_final_cta_body')}
+          </p>
+          <button className="btn btn-gold" style={{ marginTop: 'var(--space-6)' }} onClick={goBookConsultation}>
+            {t('raghavendra_cta')} →
+          </button>
         </div>
       </div>
     </div>

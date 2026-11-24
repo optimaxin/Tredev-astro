@@ -696,6 +696,9 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     raghavendra_headline: 'One Honest Conversation Can Help You See Clearly',
     raghavendra_subheadline: 'Speak directly with Acharya Raghavendra — grounded, practical Vedic guidance for the decisions that matter most to you.',
     raghavendra_cta: 'Schedule a Call',
+    raghavendra_badge_1: 'Classically Trained Acharya',
+    raghavendra_badge_2: 'Direct, Practical Guidance',
+    raghavendra_badge_3: 'Secure, Confirmed Bookings',
     raghavendra_why_title: 'Why Book This Consultation',
     raghavendra_why_1_title: 'A Real Scheduled Time',
     raghavendra_why_1_body: "Pick a slot and it's yours — no waiting in a live queue for whoever's online.",
@@ -738,6 +741,8 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     raghavendra_faq_4_a: "Only what's needed for your session is used. See our Privacy Policy for exactly what's collected and why.",
     raghavendra_reviews_title: 'Reviews',
     raghavendra_reviews_empty: 'No reviews yet — book a session and be the first to share how it went.',
+    raghavendra_final_cta_title: 'Ready to See Things Clearly?',
+    raghavendra_final_cta_body: 'Book your one-on-one consultation with Acharya Raghavendra and get grounded, chart-based answers to the questions on your mind.',
 
     // Astrologers.tsx's "All" filter pill deliberately does NOT reuse cat_all
     // above — that key means "All Remedies" (Store's own "All" category) and
