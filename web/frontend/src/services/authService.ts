@@ -87,6 +87,12 @@ export const authService = {
   updateName: (accessToken: string, name: string) =>
     request<ApiUser>('/me/name', { method: 'PATCH', body: JSON.stringify({ name }), headers: { Authorization: `Bearer ${accessToken}` } }),
 
+  // Fills in a real email for a phone-only signup (placeholder
+  // `@firebase.local` email) — the report-purchase "where should we send
+  // this" checkpoint hits this when the account has no real email yet.
+  updateEmail: (accessToken: string, email: string) =>
+    request<ApiUser>('/me/email', { method: 'PATCH', body: JSON.stringify({ email }), headers: { Authorization: `Bearer ${accessToken}` } }),
+
   forgotPassword: (email: string) =>
     request<{ message: string; devResetToken?: string }>('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 

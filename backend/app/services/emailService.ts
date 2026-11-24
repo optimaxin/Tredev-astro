@@ -101,6 +101,54 @@ export function renderCreativeEmailHtml(opts: { title: string; bodyText: string;
   `;
 }
 
+// A plain, professional invoice email — sent for every paid transaction
+// (report purchase, consultation, wallet recharge, store order) straight
+// from fulfillPayment, not staff-edited like the templates above. Shows a
+// line-item table, the total, and (when relevant, e.g. a wallet recharge)
+// the wallet balance before/after so the user has a receipt-style record.
+export function renderInvoiceEmailHtml(opts: {
+  toName: string;
+  title: string;
+  invoiceId: string;
+  dateStr: string;
+  lines: { label: string; amount: number }[];
+  total: number;
+  walletBalance: number;
+  previousWalletBalance?: number;
+  siteOrigin: string;
+}): string {
+  const { toName, title, invoiceId, dateStr, lines, total, walletBalance, previousWalletBalance } = opts;
+  const rows = lines.map(l => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e0d8;">${escapeHtml(l.label)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e0d8;text-align:right;">₹${l.amount.toLocaleString('en-IN')}</td>
+    </tr>`).join('');
+  const balanceRows = previousWalletBalance !== undefined ? `
+      <tr><td style="padding:4px 0;color:#68717A;">Previous Wallet Balance</td><td style="padding:4px 0;text-align:right;color:#68717A;">₹${previousWalletBalance.toLocaleString('en-IN')}</td></tr>
+      <tr><td style="padding:4px 0;font-weight:700;">New Wallet Balance</td><td style="padding:4px 0;text-align:right;font-weight:700;">₹${walletBalance.toLocaleString('en-IN')}</td></tr>`
+    : `<tr><td style="padding:4px 0;color:#68717A;">Current Wallet Balance</td><td style="padding:4px 0;text-align:right;color:#68717A;">₹${walletBalance.toLocaleString('en-IN')}</td></tr>`;
+  return `
+    <div style="font-family:Georgia,'Times New Roman',serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#2b2420;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <span style="font-size:1.1rem;font-weight:700;color:#8c6d32;letter-spacing:0.02em;">TredevaAstro</span>
+      </div>
+      <h2 style="font-size:1.1rem;margin:0 0 4px;">Invoice — ${escapeHtml(title)}</h2>
+      <div style="font-size:0.8rem;color:#68717A;margin-bottom:20px;">Invoice #${escapeHtml(invoiceId)} &middot; ${escapeHtml(dateStr)}</div>
+      <p style="margin:0 0 16px;font-size:0.95rem;">Dear ${escapeHtml(toName)}, thank you for your payment. Here is your invoice:</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:0.9rem;margin-bottom:8px;">
+        ${rows}
+        <tr><td style="padding:12px 0 4px;font-weight:700;font-size:1rem;">Total Paid</td><td style="padding:12px 0 4px;text-align:right;font-weight:700;font-size:1rem;">₹${total.toLocaleString('en-IN')}</td></tr>
+      </table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:0.88rem;margin:12px 0 0;border-top:1px dashed #d8d1c4;padding-top:10px;">
+        ${balanceRows}
+      </table>
+      <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e0d8;font-size:0.78rem;color:#8a8373;">
+        This is an automated invoice from TredevaAstro. Questions? Reply to this email or contact us at <a href="mailto:${config.zeptomail.identities.support.address}" style="color:#8F6A22;">${config.zeptomail.identities.support.address}</a>.
+      </div>
+    </div>
+  `;
+}
+
 export type EmailIdentityKey = keyof typeof config.zeptomail.identities;
 export const EMAIL_IDENTITY_KEYS = Object.keys(config.zeptomail.identities) as EmailIdentityKey[];
 

@@ -149,7 +149,10 @@ export default function Navigation() {
           onClick={() => { setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           aria-label="TredevaAstro home"
         >
-          <img src="/logo.png" alt="" className={styles.logoStar} />
+          {/* site_logo_image is admin/staff-editable (Content page) — same
+              override mechanism as every text key, just holding an image URL
+              instead. Falls back to the built-in asset when unset. */}
+          <img src={t('site_logo_image') !== 'site_logo_image' ? t('site_logo_image') : '/logo.png'} alt="" className={styles.logoStar} />
           <span className={styles.logoText} translate="no">TredevaAstro</span>
         </button>
 

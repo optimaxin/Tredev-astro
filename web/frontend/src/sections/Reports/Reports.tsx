@@ -7,12 +7,6 @@ import { useAppContext } from '../../context/AppContext';
 // three.js is a heavy dependency (500KB+) needed only for this decorative
 // sphere — split it into its own chunk instead of shipping it in the main bundle.
 const Lightweight3DViewer = lazy(() => import('../../components/Lightweight3DViewer/Lightweight3DViewer'));
-import { 
-  CareerIcon, 
-  MarriageIcon, 
-  PanchangIcon, 
-  VastuIcon 
-} from '../../components/Icons/Icons';
 import CelestialOrnament from '../../components/CelestialOrnament/CelestialOrnament';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import styles from './Reports.module.css';
@@ -133,11 +127,11 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
             >
               {report.popular && <div className={styles.popularBadge}>{t('badge_most_popular')}</div>}
 
-              <div className={styles.reportIcon} style={{ color: report.coverColor || report.color, display: 'inline-flex', alignItems: 'center' }}>
-                {report.id === 1 && <CareerIcon size={42} />}
-                {report.id === 2 && <MarriageIcon size={42} />}
-                {report.id === 3 && <PanchangIcon size={42} />}
-                {report.id === 4 && <VastuIcon size={42} />}
+              {/* report.icon is a plain emoji, admin-editable per report in
+                  the Reports catalog editor — not a fixed SVG set, so
+                  staff/admin can change it without a code change. */}
+              <div className={styles.reportIcon} style={{ color: report.coverColor || report.color, display: 'inline-flex', alignItems: 'center', fontSize: '42px', lineHeight: 1 }}>
+                {report.icon}
               </div>
 
               <div className={styles.reportMeta}>

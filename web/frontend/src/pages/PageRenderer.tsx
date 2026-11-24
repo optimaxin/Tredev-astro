@@ -1402,10 +1402,20 @@ const COVER_PATTERNS: Record<string, string> = {
 };
 
 function ReportDetailPage({ id }: { id: any }) {
-  const { isLoggedIn, setShowLoginModal } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, currentUser, saveMyEmail } = useAppContext();
   const [report, setReport] = useState<AstrologyReport | null>(null);
   const [buying, setBuying] = useState<ReportBundle | null>(null);
   const [buyError, setBuyError] = useState('');
+  // The "where should we send this" checkpoint before paying — set to the
+  // bundle the user picked once they click Select, cleared once they either
+  // confirm (payment starts) or cancel. Lives here rather than firing
+  // straight from the bundle button so a phone-only signup (placeholder
+  // @firebase.local email — see authService.ts) can supply a real one first.
+  const [pendingBundle, setPendingBundle] = useState<{ key: ReportBundle; title: string; price: number; desc: string } | null>(null);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
   // One-shot flip animation on clicking the cover (see .manuscriptFlip) —
   // toggled via class rather than :active so it's visible on touch too.
   const [flipped, setFlipped] = useState(false);
@@ -1428,11 +1438,22 @@ function ReportDetailPage({ id }: { id: any }) {
     { key: 'report-consult', title: 'Manuscript + 15-min Consult', price: report.price + 900, desc: 'Includes direct video consultation regarding transits' },
   ];
 
-  const handleBuy = async (bundle: typeof BUNDLES[0]) => {
+  const hasRealEmail = !!currentUser && !currentUser.email.endsWith('@firebase.local');
+
+  const handleSelectBundle = (bundle: typeof BUNDLES[0]) => {
     if (!isLoggedIn) {
       setShowLoginModal(true);
       return;
     }
+    setBuyError('');
+    setEmailError('');
+    setEmailInput(hasRealEmail ? currentUser!.email : '');
+    setEditingEmail(false);
+    setPendingBundle(bundle);
+  };
+
+  const startPayment = async (bundle: typeof BUNDLES[0]) => {
+    setPendingBundle(null);
     setBuying(bundle.key);
     setBuyError('');
     try {
@@ -1441,6 +1462,25 @@ function ReportDetailPage({ id }: { id: any }) {
       setBuyError(err instanceof PaymentApiError ? err.message : 'Could not start payment. Please try again.');
       setBuying(null);
     }
+  };
+
+  const handleConfirmAndPay = async () => {
+    if (!pendingBundle) return;
+    if (!hasRealEmail || editingEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.trim())) {
+        setEmailError('Please enter a valid email address.');
+        return;
+      }
+      setSavingEmail(true);
+      setEmailError('');
+      const result = await saveMyEmail(emailInput.trim());
+      setSavingEmail(false);
+      if (!result.ok) {
+        setEmailError(result.message);
+        return;
+      }
+    }
+    await startPayment(pendingBundle);
   };
 
   return (
@@ -1511,7 +1551,7 @@ function ReportDetailPage({ id }: { id: any }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 600, color: 'var(--color-gold-dark)', marginBottom: '8px' }}>₹{b.price}</div>
-                    <button className="btn btn-gold btn-sm" disabled={!!buying} onClick={() => handleBuy(b)}>
+                    <button className="btn btn-gold btn-sm" disabled={!!buying} onClick={() => handleSelectBundle(b)}>
                       {buying === b.key ? 'Redirecting…' : 'Select'}
                     </button>
                   </div>
@@ -1519,6 +1559,43 @@ function ReportDetailPage({ id }: { id: any }) {
               ))}
             </div>
             {buyError && <p style={{ color: '#d64545', fontSize: '13px', marginTop: '8px' }}>{buyError}</p>}
+
+            {pendingBundle && (
+              <div style={{ border: '1px solid rgba(154,107,47,0.25)', background: '#FBF8F2', borderRadius: '6px', padding: '16px', marginTop: '12px' }}>
+                {hasRealEmail && !editingEmail ? (
+                  <>
+                    <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--color-text-dark)' }}>
+                      Your <strong>{pendingBundle.title}</strong> will be sent to <strong>{emailInput}</strong>. Kindly check it once before proceeding.
+                    </p>
+                    <button type="button" onClick={() => setEditingEmail(true)} style={{ background: 'none', border: 'none', padding: 0, marginBottom: '10px', fontSize: '12px', color: 'var(--color-gold-dark)', textDecoration: 'underline', cursor: 'pointer', display: 'block' }}>
+                      Use a different email
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--color-text-dark)' }}>
+                      We don't have an email on file for your account yet — where should we send your <strong>{pendingBundle.title}</strong>?
+                    </p>
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={e => setEmailInput(e.target.value)}
+                      placeholder="you@example.com"
+                      style={{ width: '100%', padding: '9px 10px', marginBottom: '8px', border: '1px solid rgba(154,107,47,0.3)', borderRadius: '4px', fontSize: '13px' }}
+                    />
+                  </>
+                )}
+                {emailError && <p style={{ color: '#d64545', fontSize: '12px', margin: '0 0 8px' }}>{emailError}</p>}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-gold btn-sm" disabled={savingEmail} onClick={handleConfirmAndPay}>
+                    {savingEmail ? 'Saving…' : 'Confirm & Pay'}
+                  </button>
+                  <button type="button" className="btn btn-sm" onClick={() => setPendingBundle(null)} style={{ background: 'transparent', border: '1px solid rgba(154,107,47,0.3)', color: 'var(--color-text-dark)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

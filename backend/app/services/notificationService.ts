@@ -1,5 +1,5 @@
 import { config } from '../core/config.ts';
-import { plainTextToEmailHtml, renderCreativeEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
+import { plainTextToEmailHtml, renderCreativeEmailHtml, renderInvoiceEmailHtml, renderTemplate, sendEmail, type EmailIdentityKey } from './emailService.ts';
 import { insertEmailLog } from '../repositories/emailLogRepository.ts';
 import { getNotifyEmails } from '../repositories/platformSettingsRepository.ts';
 import { findEmailTemplateById } from '../repositories/emailTemplateRepository.ts';
@@ -87,5 +87,36 @@ export async function notifyEventByTemplateId(params: {
     await notifyEvent({ ...params, template });
   } catch (e) {
     console.error(`[notificationService] notifyEventByTemplateId(${params.templateId}) failed`, e);
+  }
+}
+
+// Sends a professional invoice for a completed, paid transaction (report
+// purchase, consultation, wallet recharge, store order) — called straight
+// from fulfillPayment, not staff-edited like the DB-backed templates above.
+// Best-effort, same as notifyEventByTemplateId: an invoice email must never
+// break the fulfillment it's documenting.
+export async function sendInvoiceEmail(params: {
+  user: { email: string; name: string };
+  title: string;
+  invoiceId: string;
+  lines: { label: string; amount: number }[];
+  total: number;
+  walletBalance: number;
+  previousWalletBalance?: number;
+}): Promise<void> {
+  try {
+    const siteOrigin = config.clientOrigins[0];
+    const dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+    const html = renderInvoiceEmailHtml({ ...params, toName: params.user.name, dateStr, siteOrigin });
+    const subject = `Invoice: ${params.title}`;
+    const ok = await sendEmail(params.user.email, subject, html, config.zeptomail.identities.support).catch(() => false);
+    await insertEmailLog({
+      toEmail: params.user.email, toName: params.user.name, subject,
+      templateId: 'tpl-invoice', eventKey: 'transaction.invoice', sentBy: null,
+      status: ok ? 'SENT' : 'FAILED',
+      error: ok ? null : 'See server logs for the ZeptoMail response.',
+    });
+  } catch (e) {
+    console.error('[notificationService] sendInvoiceEmail failed', e);
   }
 }

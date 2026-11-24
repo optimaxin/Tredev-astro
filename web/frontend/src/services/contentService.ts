@@ -106,4 +106,7 @@ export const contentService = {
   // Purchasing moved to paymentService.pay({ purpose: 'REPORT_PURCHASE', ... })
   // — a real Cashfree payment now gates it (see payments.routes.ts).
   listMyReportPurchases: () => request<ReportPurchase[]>('/api/reports/mine'),
+  // Staff/admin-edited site text + image overrides — merged over every
+  // hardcoded default in AppContext's t() at bootstrap (see admin's Content page).
+  getContentOverrides: () => request<Record<string, string>>('/api/content/overrides'),
 };

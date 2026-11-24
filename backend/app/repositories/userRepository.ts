@@ -116,6 +116,19 @@ export async function updateUserName(userId: string, name: string) {
   await query('UPDATE users SET name = $1 WHERE id = $2', [name, userId]);
 }
 
+// Used when a phone-only signup (placeholder `@firebase.local` email — see
+// loginWithFirebase) fills in a real email, e.g. at the "where should we
+// send your report" checkpoint on report purchase. Returns false (no write)
+// when another account already has that email, so the caller can surface a
+// normal "already in use" error instead of a constraint-violation 500.
+export async function updateUserEmail(userId: string, email: string): Promise<boolean> {
+  const normalized = normalizeEmail(email);
+  const existing = await findUserByEmail(normalized);
+  if (existing && existing.id !== userId) return false;
+  await query('UPDATE users SET email = $1 WHERE id = $2', [normalized, userId]);
+  return true;
+}
+
 // ── Refresh tokens ───────────────────────────────────────────────────────
 
 export async function insertRefreshToken(params: { userId: string; tokenHash: string; expiresAt: number; familyId: string }) {

@@ -4,6 +4,7 @@ import { authService, ApiRequestError } from '../services/authService';
 import type { ApiUser, RegisterBirthDetails } from '../services/authService';
 import { adminService } from '../services/adminService';
 import { paymentService } from '../services/paymentService';
+import { contentService } from '../services/contentService';
 
 export interface BirthProfile {
   name: string;
@@ -355,6 +356,7 @@ interface AppContextValue {
   verifyPhoneWithFirebase: (idToken: string) => Promise<void>;
   saveBirthDetails: (details: Required<RegisterBirthDetails>) => Promise<boolean>;
   saveMyName: (name: string) => Promise<boolean>;
+  saveMyEmail: (email: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
@@ -886,6 +888,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     'admin_sidebar_banners': 'Banners',
     'admin_sidebar_pooja': 'Pooja',
     'admin_sidebar_leads': 'Leads',
+    'admin_sidebar_content': 'Content',
     admin_call_recordings_desc: 'Recorded voice consultations. Staff-only, and each recording is automatically deleted 10 days after the call.',
     admin_call_recordings_col_user: 'User',
     admin_call_recordings_col_recorded: 'Recorded',
@@ -3810,6 +3813,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Fills in a real email for a phone-only account (placeholder
+  // `@firebase.local` email) — the "where should we send this" checkpoint on
+  // report purchase calls this before letting the payment start. Returns the
+  // server's message on failure (e.g. email already taken) so the caller can
+  // show it inline, same shape as the rest of this flow.
+  const saveMyEmail = async (email: string): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) return { ok: false, message: 'Please log in again.' };
+    try {
+      const user = await authService.updateEmail(accessToken, email);
+      setCurrentUser(toAuthUser(user));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err instanceof ApiRequestError ? err.message : 'Could not update email.' };
+    }
+  };
+
   const logout = () => {
     const refreshToken = localStorage.getItem('auth_refresh_token');
     if (refreshToken) authService.logout(refreshToken).catch(() => { }); // best-effort server-side revoke
@@ -4012,16 +4032,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', l);
   };
 
+  // Staff/admin-edited site text + image overrides (admin's Content page) —
+  // fetched once and merged over every hardcoded default below, regardless
+  // of the selected language. Best-effort: if this fetch fails, the site
+  // just runs on its hardcoded copy, same as before this existed.
+  const [contentOverrides, setContentOverrides] = useState<Record<string, string>>({});
+  React.useEffect(() => {
+    contentService.getContentOverrides().then(setContentOverrides).catch(() => { });
+  }, []);
+
   // Falls back to English per-key (not just when the whole language is
   // missing) since bn/ta/te only cover a subset of keys — a selected
   // language with a gap should show that one string in English, not the
   // bare untranslated key.
   const t = (key: string): string => {
-    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key;
+    return contentOverrides[key] ?? (TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || key);
   };
 
   const tOr = (key: string, fallbackKey: string): string => {
-    return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || t(fallbackKey);
+    return contentOverrides[key] ?? (TRANSLATIONS[language]?.[key] || TRANSLATIONS['en']?.[key] || t(fallbackKey));
   };
 
   const setBirthProfile = (p: BirthProfile) => {
@@ -4165,7 +4194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       paymentResult, setPaymentResult,
       cart, addToCart, removeFromCart, clearCart,
       theme, toggleTheme,
-      isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, logout,
+      isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, saveMyEmail, logout,
       walletBalance, refreshWalletBalance,
       pendingAction, setPendingAction,
       showLoginModal, setShowLoginModal,

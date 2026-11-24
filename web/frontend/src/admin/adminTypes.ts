@@ -29,4 +29,5 @@ export type AdminSection =
   | 'banners'
   | 'pooja'
   | 'emails'
-  | 'leads';
+  | 'leads'
+  | 'content';

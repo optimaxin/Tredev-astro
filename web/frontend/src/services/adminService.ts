@@ -112,7 +112,7 @@ export interface ApiUserRecord {
 // and 'evaluation' entirely; a STAFF account could never be granted those
 // sections even though the backend has always supported it.
 export const ADMIN_SECTIONS = [
-  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails', 'leads',
+  'overview', 'applications', 'astrologers', 'users', 'consultations', 'reports', 'orders', 'pricing', 'blog', 'shlok', 'notifications', 'audit', 'tokens', 'evaluation', 'settings', 'call-recordings', 'banners', 'pooja', 'emails', 'leads', 'content',
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
@@ -304,6 +304,15 @@ export interface ApiLead {
   ip: string | null;
   userAgent: string | null;
   country: string | null;
+}
+
+// A staff/admin-edited override of one site text string or image, keyed by
+// the same translation key the frontend's t() uses (see AppContext.tsx).
+export interface ApiContentOverride {
+  key: string;
+  value: string;
+  updatedBy: string | null;
+  updatedAt: number;
 }
 
 export interface ApiAstrologerActivity {
@@ -724,6 +733,12 @@ export const adminService = {
   getDashboardStats: () => request<ApiDashboardStats>('/dashboard-stats'),
   getTraffic: () => request<ApiTraffic>('/traffic'),
   getLeads: () => request<ApiLead[]>('/leads'),
+
+  listContentOverrides: () => request<ApiContentOverride[]>('/content'),
+  setContentOverride: (key: string, value: string) =>
+    request<{ ok: boolean }>(`/content/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify({ value }) }),
+  resetContentOverride: (key: string) =>
+    request<{ ok: boolean }>(`/content/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 
   listStaff: () => request<ApiStaffMember[]>('/staff'),
   addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>

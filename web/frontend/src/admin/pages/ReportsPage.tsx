@@ -292,6 +292,10 @@ export default function ReportsPage() {
                 <label className={styles.formLabel}>Cover color override (optional)</label>
                 <input type="color" value={form.coverColor || form.color} onChange={e => setForm({ ...form, coverColor: e.target.value })} style={{ width: '100%', height: 36 }} />
               </div>
+              <div className={styles.formGroup} style={{ width: 90 }}>
+                <label className={styles.formLabel}>Icon (emoji)</label>
+                <input className={styles.formInput} value={form.icon} maxLength={8} onChange={e => setForm({ ...form, icon: e.target.value })} style={{ textAlign: 'center', fontSize: '1.2rem' }} />
+              </div>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Background pattern</label>

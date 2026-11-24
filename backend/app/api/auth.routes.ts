@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { AuthError, getPublicUser, linkFirebasePhone, login, loginWithFirebase, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { updateBirthDetails, updateUserName } from '../repositories/userRepository.ts';
-import { MAINSTREAM_EMAIL_DOMAINS } from '../core/mainstreamEmailDomains.ts';
+import { updateBirthDetails, updateUserEmail, updateUserName } from '../repositories/userRepository.ts';
+import { MAINSTREAM_EMAIL_DOMAINS, isMainstreamEmail } from '../core/mainstreamEmailDomains.ts';
 
 export const authRouter = Router();
 
@@ -126,6 +126,21 @@ authRouter.patch('/me/name', requireAuth, async (req, res) => {
   const parsed = nameSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await updateUserName(req.user!.id, parsed.data.name);
+  const user = await getPublicUser(req.user!.id);
+  res.json({ success: true, data: user });
+});
+
+// Fills in a real email for a phone-only signup — the checkpoint a report
+// purchase hits when the account still has the `@firebase.local` placeholder
+// (see loginWithFirebase), since the report/invoice has to go somewhere real.
+const emailSchema = z.object({ email: z.string().trim().email().max(200) });
+
+authRouter.patch('/me/email', requireAuth, async (req, res) => {
+  const parsed = emailSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  if (!isMainstreamEmail(parsed.data.email)) return fail(res, 422, 'VALIDATION_ERROR', 'Please use a real email address (Gmail, Outlook, Yahoo, etc.)');
+  const ok = await updateUserEmail(req.user!.id, parsed.data.email);
+  if (!ok) return fail(res, 409, 'EMAIL_TAKEN', 'An account with this email already exists');
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
 });

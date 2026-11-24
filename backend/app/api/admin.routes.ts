@@ -68,6 +68,7 @@ import { deleteUnbookedSlot, insertSlot, listAllSlotsForAstrologer } from '../re
 import { listAstrologyReports, findAstrologyReportById, createAstrologyReport, updateAstrologyReport, deleteAstrologyReport } from '../repositories/astrologyReportRepository.ts';
 import type { AstrologyReportInput } from '../repositories/astrologyReportRepository.ts';
 import { createReportChangeRequest, listPendingReportChangeRequests, findReportChangeRequestById, decideReportChangeRequest } from '../repositories/reportChangeRequestRepository.ts';
+import { listContentOverrideRows, upsertContentOverride, deleteContentOverride } from '../repositories/contentOverrideRepository.ts';
 
 export const adminRouter = Router();
 
@@ -1065,6 +1066,34 @@ adminRouter.delete('/reports/:id', requireSection('reports'), async (req, res) =
   }
   await deleteAstrologyReport(id);
   await audit(req, 'report.deleted', existing.title);
+  res.json({ success: true, data: { ok: true } });
+});
+
+// ── Content overrides (site text/images shown via the frontend's t()) ──
+// Both STAFF and ADMIN can edit directly, no approval step — unlike the
+// report catalog above, this is simple copy/asset editing, not a pricing or
+// catalog change, so it doesn't need the admin-approval workflow.
+
+adminRouter.get('/content', requireSection('content'), async (_req, res) => {
+  const rows = await listContentOverrideRows();
+  res.json({ success: true, data: rows.map(r => ({ key: r.key, value: r.value, updatedBy: r.updated_by, updatedAt: r.updated_at })) });
+});
+
+const contentOverrideSchema = z.object({ value: z.string().min(1).max(3_000_000) });
+
+adminRouter.put('/content/:key', requireSection('content'), async (req, res) => {
+  const key = String(req.params.key);
+  const parsed = contentOverrideSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  await upsertContentOverride(key, parsed.data.value, req.user!.id);
+  await audit(req, 'content.updated', key);
+  res.json({ success: true, data: { ok: true } });
+});
+
+adminRouter.delete('/content/:key', requireSection('content'), async (req, res) => {
+  const key = String(req.params.key);
+  await deleteContentOverride(key);
+  await audit(req, 'content.reset', key);
   res.json({ success: true, data: { ok: true } });
 });
 

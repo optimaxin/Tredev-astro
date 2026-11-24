@@ -12,6 +12,7 @@ import { listPurchasesForUser } from '../repositories/reportPurchaseRepository.t
 import { toPublicReportPurchase } from '../models/reportPurchase.ts';
 import { findShlokForDate } from '../repositories/dailyShlokRepository.ts';
 import { toPublicDailyShlok } from '../models/dailyShlok.ts';
+import { listContentOverrideValues } from '../repositories/contentOverrideRepository.ts';
 
 // Read-only public content (journal posts, testimonials, the paid-report
 // catalog) — no auth, no writes. Editing this content is an admin/CMS
@@ -56,6 +57,14 @@ contentRouter.get('/reports', async (_req, res) => {
 
 contentRouter.get('/broadcasts/active', async (_req, res) => {
   res.json({ success: true, data: (await listActiveBroadcasts()).map(toPublicBroadcast) });
+});
+
+// Staff/admin-edited site text + image overrides (see admin.routes.ts's
+// 'content' section) — fetched once at app bootstrap and merged over every
+// hardcoded default, regardless of the visitor's selected language. No auth:
+// this is public site content, same trust level as /reports or /testimonials.
+contentRouter.get('/content/overrides', async (_req, res) => {
+  res.json({ success: true, data: await listContentOverrideValues() });
 });
 
 // A user's own purchased reports ("My Reports") — real records, not the

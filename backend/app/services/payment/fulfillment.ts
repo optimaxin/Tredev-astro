@@ -1,9 +1,12 @@
 import type { PaymentRow } from '../../repositories/paymentRepository.ts';
 import { createOrder } from '../../repositories/orderRepository.ts';
 import { createReportPurchase } from '../../repositories/reportPurchaseRepository.ts';
+import { findAstrologyReportById } from '../../repositories/astrologyReportRepository.ts';
+import { findAstrologerById } from '../../repositories/astrologerRepository.ts';
 import { creditWallet, findUserById } from '../../repositories/userRepository.ts';
 import { extendConsultation, requestConsultation, onWalletTopUp } from '../realtimeStore.ts';
 import { claimSlot } from '../../repositories/consultationSlotRepository.ts';
+import { sendInvoiceEmail } from '../notificationService.ts';
 import type { OrderItem } from '../../models/order.ts';
 import type { ReportBundle } from '../../models/reportPurchase.ts';
 import type { ConsultationType } from '../../models/types.ts';
@@ -52,20 +55,53 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
         shippingCity: p.shipping.city,
         shippingZip: p.shipping.zip,
       });
+      const orderUser = await findUserById(payment.user_id);
+      if (orderUser) {
+        await sendInvoiceEmail({
+          user: { email: orderUser.email, name: orderUser.name },
+          title: 'Store Order',
+          invoiceId: payment.id,
+          lines: p.items.map(i => ({ label: `${i.name} x${i.quantity}`, amount: i.price * i.quantity })),
+          total: payment.amount,
+          walletBalance: orderUser.wallet_balance,
+        });
+      }
       return;
     }
     case 'REPORT_PURCHASE': {
       const p = payment.payload as ReportPurchasePayload;
       await createReportPurchase(payment.user_id, p.reportId, p.bundle, payment.amount);
+      const [reportUser, report] = await Promise.all([findUserById(payment.user_id), findAstrologyReportById(p.reportId)]);
+      if (reportUser) {
+        await sendInvoiceEmail({
+          user: { email: reportUser.email, name: reportUser.name },
+          title: `Report Purchase — ${report?.title ?? 'Astrology Report'}`,
+          invoiceId: payment.id,
+          lines: [{ label: `${report?.title ?? 'Astrology Report'} (${p.bundle})`, amount: payment.amount }],
+          total: payment.amount,
+          walletBalance: reportUser.wallet_balance,
+        });
+      }
       return;
     }
     case 'WALLET_RECHARGE': {
-      await creditWallet(payment.user_id, payment.amount);
+      const newBalance = await creditWallet(payment.user_id, payment.amount);
       // Recharging mid-call is now how a consultation gets "extended" (the
       // old CONSULTATION_EXTEND pay-per-block flow is retired) — see
       // onWalletTopUp's own comment.
       const user = await findUserById(payment.user_id);
-      if (user) await onWalletTopUp(user.email);
+      if (user) {
+        await onWalletTopUp(user.email);
+        await sendInvoiceEmail({
+          user: { email: user.email, name: user.name },
+          title: 'Wallet Recharge',
+          invoiceId: payment.id,
+          lines: [{ label: 'Wallet Top-up', amount: payment.amount }],
+          total: payment.amount,
+          walletBalance: newBalance,
+          previousWalletBalance: newBalance - payment.amount,
+        });
+      }
       return;
     }
     case 'CONSULTATION': {
@@ -88,7 +124,19 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
       // Astrologer went offline/unreachable in the gap between payment and
       // fulfillment — nothing was booked, so refund to wallet rather than
       // silently keeping the user's money for a consultation that never happened.
-      if (result.outcome === 'UNAVAILABLE') await creditWallet(payment.user_id, payment.amount);
+      if (result.outcome === 'UNAVAILABLE') {
+        await creditWallet(payment.user_id, payment.amount);
+      } else {
+        const astro = await findAstrologerById(p.astrologerId);
+        await sendInvoiceEmail({
+          user: { email: user.email, name: user.name },
+          title: `Consultation — ${astro?.name ?? 'Astrologer'}`,
+          invoiceId: payment.id,
+          lines: [{ label: `${p.type} consultation with ${astro?.name ?? 'Astrologer'} (${p.durationMinutes} min)`, amount: payment.amount }],
+          total: payment.amount,
+          walletBalance: user.wallet_balance,
+        });
+      }
       return;
     }
     case 'CONSULTATION_EXTEND': {
@@ -97,6 +145,14 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
       if (!user) return;
       try {
         await extendConsultation(p.consultationId, user.email, p.extraMinutes);
+        await sendInvoiceEmail({
+          user: { email: user.email, name: user.name },
+          title: 'Consultation Extension',
+          invoiceId: payment.id,
+          lines: [{ label: `+${p.extraMinutes} min extension`, amount: payment.amount }],
+          total: payment.amount,
+          walletBalance: user.wallet_balance,
+        });
       } catch {
         // Consultation ended (or was ended by the other party) in the gap
         // between paying and this fulfillment running — refund rather than
@@ -113,7 +169,18 @@ export async function fulfillPayment(payment: PaymentRow): Promise<void> {
       // NULL is the atomic guard; losing that race means a refund, not a
       // silently-kept charge for a slot this user doesn't actually have.
       const claimed = await claimSlot(p.slotId, payment.user_id, Date.now());
-      if (!claimed) await creditWallet(payment.user_id, payment.amount);
+      if (!claimed) { await creditWallet(payment.user_id, payment.amount); return; }
+      const slotUser = await findUserById(payment.user_id);
+      if (slotUser) {
+        await sendInvoiceEmail({
+          user: { email: slotUser.email, name: slotUser.name },
+          title: 'Slot Booking',
+          invoiceId: payment.id,
+          lines: [{ label: 'Consultation slot booking', amount: payment.amount }],
+          total: payment.amount,
+          walletBalance: slotUser.wallet_balance,
+        });
+      }
       return;
     }
   }
