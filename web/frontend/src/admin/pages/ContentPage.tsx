@@ -101,7 +101,7 @@ export default function ContentPage() {
 
       <input
         className={styles.formInput}
-        placeholder="Search site text (e.g. \"hero\", \"reports\", or a key like nav_reports)…"
+        placeholder='Search site text (e.g. "hero", "reports", or a key like nav_reports)…'
         value={search}
         onChange={e => setSearch(e.target.value)}
         style={{ marginBottom: 16, maxWidth: 420 }}

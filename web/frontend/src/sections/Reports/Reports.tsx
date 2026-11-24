@@ -123,7 +123,7 @@ export default function Reports({ featured = false }: { featured?: boolean }) {
                 } : report.coverPattern && report.coverPattern !== 'none' ? {
                   backgroundImage: COVER_PATTERNS[report.coverPattern],
                 } : {}),
-              } as React.CSSProperties}
+              } as unknown as React.CSSProperties}
             >
               {report.popular && <div className={styles.popularBadge}>{t('badge_most_popular')}</div>}
 
