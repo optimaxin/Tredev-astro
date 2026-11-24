@@ -45,10 +45,92 @@ const pricingButtonStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-sm)', padding: '10px 20px', cursor: 'pointer', fontSize: 'var(--text-sm)',
 };
 
-function AvatarCircle({ photo, name, size }: { photo: string; name: string; size: number }) {
+function AvatarCircle({ photo, name, size, emoji }: { photo: string; name: string; size: number; emoji?: string }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: PRICING_TAN, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {photo ? <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <AcharyaIcon size={size * 0.6} style={{ color: PRICING_BROWN }} />}
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: PRICING_TAN, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.55 }}>
+      {photo ? (
+        <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : emoji ? (
+        emoji
+      ) : (
+        <AcharyaIcon size={size * 0.6} style={{ color: PRICING_BROWN }} />
+      )}
+    </div>
+  );
+}
+
+type PricingPackage = {
+  title: string; subtitle: string; mode: string; duration: string; type: string; price: string; features: string[];
+};
+
+type PricingLabels = {
+  mode: string; duration: string; type: string; includes: string; whatYouGet: string; details: string; price: string;
+};
+
+function CompactPackageCard({ p, photo, name, emoji, onBook, cta, labels }: {
+  p: PricingPackage; photo: string; name: string; emoji?: string; onBook: () => void; cta: string; labels: PricingLabels;
+}) {
+  return (
+    <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingBottom: 'var(--space-3)', borderBottom: `1px solid ${PRICING_TAN}` }}>
+        <AvatarCircle photo={photo} name={name} size={44} emoji={emoji} />
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: PRICING_BROWN }}>{p.title}</div>
+      </div>
+      <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-3)' }}>{p.subtitle}</p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+        <PillGroup label={labels.mode} options={[p.mode]} active={0} />
+        <PillGroup label={labels.duration} options={[p.duration]} active={0} />
+        <PillGroup label={labels.type} options={[p.type]} active={0} />
+      </div>
+
+      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{labels.includes}</div>
+      <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+        {p.features.map((f, fi) => (
+          <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
+            <span>•</span> {f}
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
+        <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{labels.price}: <strong>{p.price}</strong></span>
+        <PricingButton onClick={onBook}>{cta}</PricingButton>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedPackageCard({ p, photo, onBook, cta, labels }: { p: PricingPackage; photo: string; onBook: () => void; cta: string; labels: PricingLabels }) {
+  return (
+    <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-6)', alignItems: 'start' }}>
+      <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', minHeight: '220px', background: photo ? undefined : 'linear-gradient(135deg, #e9c99a, #c8935a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {photo ? <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <AcharyaIcon size={64} style={{ color: '#fff' }} />}
+      </div>
+      <div>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', color: PRICING_BROWN }}>{p.title}</div>
+        <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-2)' }}>{p.subtitle}</p>
+
+        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{labels.whatYouGet}</div>
+        <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          {p.features.map((f, fi) => (
+            <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
+              <span style={{ color: PRICING_ORANGE }}>✓</span> {f}
+            </li>
+          ))}
+        </ul>
+
+        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{labels.details}</div>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85 }}>
+          <span>⏱ {p.duration}</span>
+          <span>📍 {p.type}</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
+          <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{labels.price}: <strong>{p.price}</strong></span>
+          <PricingButton onClick={onBook}>{cta}</PricingButton>
+        </div>
+      </div>
     </div>
   );
 }
@@ -135,15 +217,29 @@ export default function RaghavendraPage() {
     body: t(`raghavendra_problem_${i}_body`),
   }));
 
-  const pricing = [1, 2].map(i => ({
+  // 4 packages, matching the reference site's full line-up: a quick call,
+  // a couple session, an in-person/featured session, and a baby-muhurat
+  // session — package 3 (Face-to-Face) has an extra 4th feature bullet.
+  const PRICING_FEATURE_COUNTS = [3, 3, 4, 3];
+  const pricing: PricingPackage[] = [1, 2, 3, 4].map(i => ({
     title: t(`raghavendra_price_${i}_title`),
     subtitle: t(`raghavendra_price_${i}_subtitle`),
     mode: t(`raghavendra_price_${i}_mode`),
     duration: t(`raghavendra_price_${i}_duration`),
     type: t(`raghavendra_price_${i}_type`),
     price: t(`raghavendra_price_${i}_price`),
-    features: [1, 2, 3].map(n => t(`raghavendra_price_${i}_feature${n}`)),
+    features: Array.from({ length: PRICING_FEATURE_COUNTS[i - 1] }, (_, n) => t(`raghavendra_price_${i}_feature${n + 1}`)),
   }));
+
+  const pricingLabels = {
+    mode: t('raghavendra_label_mode'),
+    duration: t('raghavendra_label_duration'),
+    type: t('raghavendra_label_type'),
+    includes: t('raghavendra_label_includes'),
+    whatYouGet: t('raghavendra_label_what_you_get'),
+    details: t('raghavendra_label_details'),
+    price: t('raghavendra_label_price'),
+  };
 
   const faq = [1, 2, 3, 4].map(i => ({ q: t(`raghavendra_faq_${i}_q`), a: t(`raghavendra_faq_${i}_a`) }));
 
@@ -257,70 +353,28 @@ export default function RaghavendraPage() {
             <p style={{ color: PRICING_BROWN, opacity: 0.75, marginTop: 'var(--space-2)' }}>{t('raghavendra_pricing_subtitle')}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-5)', marginTop: 'var(--space-6)', alignItems: 'start' }}>
-            {/* Compact package card */}
-            <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingBottom: 'var(--space-3)', borderBottom: `1px solid ${PRICING_TAN}` }}>
-                <AvatarCircle photo={hasPhoto ? photo : ''} name={t('raghavendra_name')} size={44} />
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: PRICING_BROWN }}>{pricing[0].title}</div>
-              </div>
-              <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-3)' }}>{pricing[0].subtitle}</p>
+          {/* Consultation Call, Couple Consultation, Baby Muhurat — compact cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-5)', marginTop: 'var(--space-6)', alignItems: 'start' }}>
+            <CompactPackageCard
+              p={pricing[0]} photo={hasPhoto ? photo : ''} name={t('raghavendra_name')}
+              onBook={goBookConsultation} cta={t('raghavendra_cta_short')} labels={pricingLabels}
+            />
+            <CompactPackageCard
+              p={pricing[1]} photo={hasPhoto ? photo : ''} name={t('raghavendra_name')}
+              onBook={goBookConsultation} cta={t('raghavendra_cta_short')} labels={pricingLabels}
+            />
+            <CompactPackageCard
+              p={pricing[3]} photo="" name={pricing[3].title} emoji="👶"
+              onBook={goBookConsultation} cta={t('raghavendra_cta_short')} labels={pricingLabels}
+            />
+          </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-                <PillGroup label={t('raghavendra_label_mode')} options={[t('raghavendra_label_normal'), t('raghavendra_label_urgent')]} active={0} />
-                <PillGroup label={t('raghavendra_label_duration')} options={[pricing[0].duration]} active={0} />
-                <PillGroup label={t('raghavendra_label_type')} options={[pricing[0].type]} active={0} />
-              </div>
-
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_includes')}</div>
-              <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                {pricing[0].features.map((f, fi) => (
-                  <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
-                    <span>•</span> {f}
-                  </li>
-                ))}
-              </ul>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
-                <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[0].price}</strong></span>
-                <PricingButton onClick={goBookConsultation}>{t('raghavendra_cta_short')}</PricingButton>
-              </div>
-            </div>
-
-            {/* Featured package card, with photo */}
-            <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-              <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', height: '220px', background: hasPhoto ? undefined : 'linear-gradient(135deg, #e9c99a, #c8935a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {hasPhoto ? (
-                  <img src={photo} alt={t('raghavendra_name')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <AcharyaIcon size={64} style={{ color: '#fff' }} />
-                )}
-              </div>
-              <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: PRICING_BROWN }}>{pricing[1].title}</div>
-                <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-1)' }}>{pricing[1].subtitle}</p>
-              </div>
-
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_what_you_get')}</div>
-              <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                {pricing[1].features.map((f, fi) => (
-                  <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
-                    <span style={{ color: PRICING_ORANGE }}>✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_details')}</div>
-              <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85 }}>
-                <span>⏱ {pricing[1].duration}</span>
-                <span>💻 {pricing[1].type}</span>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
-                <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[1].price}</strong></span>
-                <PricingButton onClick={goBookConsultation}>{t('raghavendra_cta_short')}</PricingButton>
-              </div>
-            </div>
+          {/* Face-to-Face Consultation — featured, full-width card */}
+          <div style={{ marginTop: 'var(--space-5)' }}>
+            <FeaturedPackageCard
+              p={pricing[2]} photo={hasPhoto ? photo : ''}
+              onBook={goBookConsultation} cta={t('raghavendra_cta_short')} labels={pricingLabels}
+            />
           </div>
         </motion.div>
 
