@@ -83,12 +83,18 @@ const SORT_COLUMN: Record<string, string> = {
   relevance: 'rating DESC, review_count DESC', // no search term yet, so relevance ~= rating+popularity
 };
 
+// Public visibility also requires the linked account (if any) not be
+// SUSPENDED — checked live rather than relying only on is_active, so a
+// suspended astrologer disappears everywhere even if the is_active flag was
+// never flipped (suspended before that sync existed, or by another path).
+const NOT_SUSPENDED_SQL = `NOT EXISTS (SELECT 1 FROM users u WHERE u.id = astrologers.user_id AND u.status = 'SUSPENDED')`;
+
 // ponytail: category/language/consultationType filters use a LIKE match on
 // the JSON-encoded text column — fine for a handful of rows. A bigger
 // catalog should switch these to real Postgres array columns and filter
 // with the `@>` containment operator instead.
 export async function listAstrologers(filters: AstrologerFilters): Promise<{ rows: AstrologerCatalogRow[]; total: number }> {
-  const where: string[] = ['is_active = 1'];
+  const where: string[] = ['is_active = 1', NOT_SUSPENDED_SQL];
   const params: (string | number)[] = [];
   const addParam = (value: string | number) => { params.push(value); return `$${params.length}`; };
 
@@ -265,7 +271,7 @@ export async function deleteAstrologerCascade(id: number): Promise<boolean> {
 }
 
 export function findAstrologerById(id: number): Promise<AstrologerCatalogRow | undefined> {
-  return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE id = $1 AND is_active = 1', [id]);
+  return queryOne<AstrologerCatalogRow>(`SELECT * FROM astrologers WHERE id = $1 AND is_active = 1 AND ${NOT_SUSPENDED_SQL}`, [id]);
 }
 
 // Unlike findAstrologerById, doesn't filter on is_active — for resolving a
