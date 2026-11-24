@@ -33,6 +33,48 @@ const card: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
 };
 
+// Pricing section's own warm cream/brown/orange palette — deliberately
+// distinct from the site's gold-on-dark theme, to match the reference
+// consultation-package cards (see the user's screenshot).
+const PRICING_BROWN = '#5c3a21';
+const PRICING_ORANGE = '#e8912c';
+const PRICING_TAN = '#e9c99a';
+
+const pricingButtonStyle: React.CSSProperties = {
+  background: PRICING_ORANGE, color: '#2a1a0e', fontWeight: 700, border: 'none',
+  borderRadius: 'var(--radius-sm)', padding: '10px 20px', cursor: 'pointer', fontSize: 'var(--text-sm)',
+};
+
+function AvatarCircle({ photo, name, size }: { photo: string; name: string; size: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: PRICING_TAN, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {photo ? <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <AcharyaIcon size={size * 0.6} style={{ color: PRICING_BROWN }} />}
+    </div>
+  );
+}
+
+function PillGroup({ label, options, active }: { label: string; options: string[]; active: number }) {
+  return (
+    <div>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: PRICING_BROWN, marginBottom: '4px' }}>{label}:</div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        {options.map((o, i) => (
+          <span
+            key={o}
+            style={{
+              fontSize: '11px', padding: '5px 12px', borderRadius: '6px', border: `1px solid ${PRICING_BROWN}`,
+              background: i === active ? PRICING_BROWN : 'transparent',
+              color: i === active ? '#fff' : PRICING_BROWN,
+            }}
+          >
+            {o}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
     <div style={card}>
@@ -81,7 +123,10 @@ export default function RaghavendraPage() {
 
   const pricing = [1, 2].map(i => ({
     title: t(`raghavendra_price_${i}_title`),
+    subtitle: t(`raghavendra_price_${i}_subtitle`),
+    mode: t(`raghavendra_price_${i}_mode`),
     duration: t(`raghavendra_price_${i}_duration`),
+    type: t(`raghavendra_price_${i}_type`),
     price: t(`raghavendra_price_${i}_price`),
     features: [1, 2, 3].map(n => t(`raghavendra_price_${i}_feature${n}`)),
   }));
@@ -174,46 +219,82 @@ export default function RaghavendraPage() {
           </div>
         </div>
 
-        {/* Pricing */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
-          <h3 className={pageStyles.contentSectionTitle}>{t('raghavendra_pricing_title')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)', alignItems: 'start' }}>
-            {pricing.map((p, i) => {
-              const popular = i === 1;
-              return (
-                <div
-                  key={i}
-                  style={{
-                    ...card, display: 'flex', flexDirection: 'column', position: 'relative',
-                    borderColor: popular ? 'var(--gold-primary)' : 'var(--border-subtle)',
-                    borderWidth: popular ? '2px' : '1px',
-                    boxShadow: popular ? '0 8px 28px rgba(181,138,59,0.18)' : 'none',
-                  }}
-                >
-                  {popular && (
-                    <span style={{
-                      position: 'absolute', top: '-11px', left: 'var(--space-5)', background: 'var(--gold-primary)', color: '#1c0f0c',
-                      fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 12px', borderRadius: '999px',
-                    }}>
-                      {t('label_recommended')}
-                    </span>
-                  )}
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{p.title}</div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{p.duration}</div>
-                  <div style={{ fontSize: 'var(--text-xl)', color: 'var(--gold-primary)', fontWeight: 600, marginTop: 'var(--space-3)' }}>{p.price}</div>
-                  <ul style={{ marginTop: 'var(--space-3)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    {p.features.map((f, fi) => (
-                      <li key={fi} style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-2)' }}>
-                        <span style={{ color: 'var(--gold-primary)' }}>✓</span> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button className={`btn ${popular ? 'btn-gold' : 'btn-outline-gold'}`} style={{ marginTop: 'var(--space-5)' }} onClick={goBookConsultation}>
-                    {t('raghavendra_cta')}
-                  </button>
-                </div>
-              );
-            })}
+        {/* Pricing — warm cream cards, close to the reference's consultation-package layout */}
+        <div style={{
+          marginBottom: 'var(--space-10)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8) var(--space-6)',
+          background: '#fbf3e3',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)', margin: 0, color: PRICING_BROWN }}>
+              {t('raghavendra_pricing_title')} <span style={{ color: PRICING_ORANGE }}>{t('raghavendra_pricing_title_accent')}</span>
+            </h3>
+            <p style={{ color: PRICING_BROWN, opacity: 0.75, marginTop: 'var(--space-2)' }}>{t('raghavendra_pricing_subtitle')}</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-5)', marginTop: 'var(--space-6)', alignItems: 'start' }}>
+            {/* Compact package card */}
+            <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingBottom: 'var(--space-3)', borderBottom: `1px solid ${PRICING_TAN}` }}>
+                <AvatarCircle photo={hasPhoto ? photo : ''} name={t('raghavendra_name')} size={44} />
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: PRICING_BROWN }}>{pricing[0].title}</div>
+              </div>
+              <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-3)' }}>{pricing[0].subtitle}</p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+                <PillGroup label={t('raghavendra_label_mode')} options={[t('raghavendra_label_normal'), t('raghavendra_label_urgent')]} active={0} />
+                <PillGroup label={t('raghavendra_label_duration')} options={[pricing[0].duration]} active={0} />
+                <PillGroup label={t('raghavendra_label_type')} options={[pricing[0].type]} active={0} />
+              </div>
+
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_includes')}</div>
+              <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                {pricing[0].features.map((f, fi) => (
+                  <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
+                    <span>•</span> {f}
+                  </li>
+                ))}
+              </ul>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
+                <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[0].price}</strong></span>
+                <button onClick={goBookConsultation} style={pricingButtonStyle}>{t('raghavendra_cta_short')}</button>
+              </div>
+            </div>
+
+            {/* Featured package card, with photo */}
+            <div style={{ background: '#fdf6ec', border: `1px solid ${PRICING_TAN}`, borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+              <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', height: '220px', background: hasPhoto ? undefined : 'linear-gradient(135deg, #e9c99a, #c8935a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {hasPhoto ? (
+                  <img src={photo} alt={t('raghavendra_name')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <AcharyaIcon size={64} style={{ color: '#fff' }} />
+                )}
+              </div>
+              <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)', color: PRICING_BROWN }}>{pricing[1].title}</div>
+                <p style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.8, marginTop: 'var(--space-1)' }}>{pricing[1].subtitle}</p>
+              </div>
+
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_what_you_get')}</div>
+              <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                {pricing[1].features.map((f, fi) => (
+                  <li key={fi} style={{ fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85, display: 'flex', gap: 'var(--space-2)' }}>
+                    <span style={{ color: PRICING_ORANGE }}>✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: PRICING_BROWN, marginTop: 'var(--space-4)' }}>{t('raghavendra_label_details')}</div>
+              <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: PRICING_BROWN, opacity: 0.85 }}>
+                <span>⏱ {pricing[1].duration}</span>
+                <span>💻 {pricing[1].type}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-5)' }}>
+                <span style={{ fontSize: 'var(--text-base)', color: PRICING_BROWN }}>{t('raghavendra_label_price')}: <strong>{pricing[1].price}</strong></span>
+                <button onClick={goBookConsultation} style={pricingButtonStyle}>{t('raghavendra_cta_short')}</button>
+              </div>
+            </div>
           </div>
         </div>
 
