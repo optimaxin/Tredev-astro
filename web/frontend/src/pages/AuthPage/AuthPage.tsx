@@ -181,7 +181,9 @@ export default function AuthPage() {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/code-expired') setOtpError('This code has expired — tap "Resend code" below for a new one.');
       else if (code === 'auth/invalid-verification-code') setOtpError('That code is incorrect — double-check it and try again.');
-      else setOtpError(err instanceof Error ? err.message : 'Incorrect or expired code. Please try again.');
+      else if (code === 'auth/too-many-requests') setOtpError('Too many attempts — please wait a bit before trying again.');
+      else if (code === 'auth/network-request-failed') setOtpError('Network error — check your connection and try again.');
+      else setOtpError('Incorrect or expired code. Please try again.');
     } finally {
       setOtpLoading(false);
     }
@@ -296,7 +298,9 @@ export default function AuthPage() {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/code-expired') setRegisterOtpError('This code has expired — tap "Resend code" below for a new one.');
       else if (code === 'auth/invalid-verification-code') setRegisterOtpError('That code is incorrect — double-check it and try again.');
-      else setRegisterOtpError(err instanceof ApiRequestError ? err.message : (err instanceof Error ? err.message : 'Could not verify your phone number. Please try again.'));
+      else if (code === 'auth/too-many-requests') setRegisterOtpError('Too many attempts — please wait a bit before trying again.');
+      else if (code === 'auth/network-request-failed') setRegisterOtpError('Network error — check your connection and try again.');
+      else setRegisterOtpError(err instanceof ApiRequestError ? err.message : 'Could not verify your phone number. Please try again.');
     } finally {
       setRegisterOtpLoading(false);
     }

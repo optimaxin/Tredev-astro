@@ -38,6 +38,14 @@ export async function createCashfreeOrder(orderId: string, amount: number, custo
     : returnUrl;
 
   const cleanPhone = (customer.phone || '').replace(/\D/g, '').slice(-10);
+  // Cashfree rejects all-repeating-digit numbers ("Recurring digits in
+  // customer contact are disallowed") — a silent fallback like '9999999999'
+  // would guarantee that same rejection for every user with a missing/
+  // malformed phone, instead of a clear actionable error (see QA notes: the
+  // reusable test account's placeholder phone hits exactly this).
+  if (cleanPhone.length !== 10) {
+    throw new Error('Please add a valid 10-digit phone number to your account before continuing with payment.');
+  }
 
   const res = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
@@ -50,7 +58,7 @@ export async function createCashfreeOrder(orderId: string, amount: number, custo
         customer_id: customer.id || `cust_${Date.now()}`,
         customer_name: (customer.name || 'Valued Customer').trim() || 'Valued Customer',
         customer_email: customer.email && customer.email.includes('@') ? customer.email : 'support@tredevaastro.com',
-        customer_phone: cleanPhone.length === 10 ? cleanPhone : '9999999999',
+        customer_phone: cleanPhone,
       },
       order_meta: { return_url: safeReturnUrl },
     }),
