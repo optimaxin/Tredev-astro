@@ -183,10 +183,10 @@ export default function Navigation() {
           </button>
 
           <button
-            className={`${styles.ctaBtn} ${page === 'pooja' ? styles.active : ''}`}
-            onClick={() => handleNavClick('pooja')}
+            className={`${styles.ctaBtn} ${page === 'raghavendra' ? styles.active : ''}`}
+            onClick={() => handleNavClick('raghavendra')}
           >
-            {t('nav_pooja')}
+            {t('nav_raghavendra')}
           </button>
 
           <div style={{ position: 'relative' }} ref={consultRef}>
@@ -376,9 +376,9 @@ export default function Navigation() {
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}
-            onClick={() => handleNavClick('pooja')}
+            onClick={() => handleNavClick('raghavendra')}
           >
-            {t('nav_pooja')}
+            {t('nav_raghavendra')}
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}

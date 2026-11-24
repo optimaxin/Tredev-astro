@@ -42,6 +42,7 @@ const AstrologistDashboard = lazy(() => import('./AstrologistDashboard/Astrologi
 const GuidanceInfoPage = lazy(() => import('./GuidanceInfoPage/GuidanceInfoPage'));
 const LegalPage = lazy(() => import('./LegalPage/LegalPage'));
 const RaghavBookingPage = lazy(() => import('./RaghavBookingPage/RaghavBookingPage'));
+const RaghavendraPage = lazy(() => import('./RaghavendraPage/RaghavendraPage'));
 const ApplyAstrologerPage = lazy(() => import('./ApplyAstrologerPage/ApplyAstrologerPage'));
 const AdminConsole = lazy(() => import('../admin/AdminConsole'));
 import { useRealtime } from '../realtime/RealtimeContext';
@@ -261,6 +262,9 @@ function PageContent() {
 
     case 'pooja':
       return <PoojaSection />;
+
+    case 'raghavendra':
+      return <RaghavendraPage />;
 
     case 'guidance-info':
       return <GuidanceInfoPage id={selectedId} />;
