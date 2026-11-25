@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
 import { useAstrologer, useFeaturedAstrologerId } from '../../hooks/useAstrologer';
 import { astrologerService } from '../../services/astrologerService';
-import type { ConsultationSlot, MyConsultationSlot } from '../../services/astrologerService';
+import type { ConsultationSlot, MyConsultationSlot, UiAstrologer } from '../../services/astrologerService';
 import { paymentService, PaymentApiError } from '../../services/paymentService';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import {
@@ -63,6 +63,28 @@ function buildFaq(name: string): { q: string; a: string }[] {
   ];
 }
 
+// Shown when no real astrologer is set as Featured yet (see
+// FeaturedAstrologerPage.tsx) — a placeholder presentation of the page so
+// the site isn't just a blank "not available" message while a real account
+// is being set up. Swap these details for the real ones once that account
+// exists (Admin → Astrologers → Featured Astrologer picks it up automatically).
+const PLACEHOLDER_ASTROLOGER: UiAstrologer = {
+  id: -1,
+  name: 'Acharya Raghavendra',
+  title: 'Vedic Astrology Specialist',
+  rating: 0,
+  reviews: 0,
+  experience: 15,
+  consultations: 0,
+  languages: ['Hindi', 'English'],
+  price: 25,
+  avatar: '',
+  about: 'Grounded, practical Vedic guidance for the decisions that matter most to you — career, relationships, money, and health — read through your chart, not generic predictions.',
+  category: ['Vedic Astrology'],
+  specialization: ['Career', 'Marriage', 'Finance'],
+  activeOfferPercent: 0,
+};
+
 function formatSlotTime(ms: number): { day: string; time: string } {
   const d = new Date(ms);
   return {
@@ -103,7 +125,7 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
 }
 
 export default function RaghavBookingPage() {
-  const { isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
+  const { isLoggedIn, setShowLoginModal, setPendingAction, setPage } = useAppContext();
   // The site's current Featured/Celebrity Astrologer — admin-configurable
   // (see FeaturedAstrologerPage.tsx), not a hardcoded id. undefined = still
   // loading which astrologer that is; null = none is currently set.
@@ -157,13 +179,21 @@ export default function RaghavBookingPage() {
   if (featuredId === undefined || profileLoading) {
     return <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`} style={{ textAlign: 'center', padding: '140px 20px' }}>Loading…</div>;
   }
-  if (notFound || !astrologer) {
-    return <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`} style={{ textAlign: 'center', padding: '140px 20px' }}>This astrologer isn't available right now.</div>;
-  }
+
+  // No real astrologer is set as Featured yet (or the one set is currently
+  // suspended/unavailable) — show a placeholder presentation instead of a
+  // dead-end "not available" page. Real booking (slots/payment) only works
+  // once a real account exists and is picked in Admin → Featured Astrologer.
+  const isPlaceholder = notFound || !astrologer;
+  const astro = astrologer ?? PLACEHOLDER_ASTROLOGER;
 
   const dayGroups = groupByDay((slots ?? []).filter(s => !s.isBooked));
-  const faq = buildFaq(astrologer.name);
-  const tags = Array.from(new Set([...astrologer.specialization, ...astrologer.category]));
+  const faq = buildFaq(astro.name);
+  const tags = Array.from(new Set([...astro.specialization, ...astro.category]));
+  const goToAstrologersDirectory = () => {
+    setPage('astrologers');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
@@ -182,16 +212,16 @@ export default function RaghavBookingPage() {
             >
               <span style={{ fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold-primary)' }}>1:1 Vedic Consultation</span>
               <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 300, color: '#fff', marginTop: 'var(--space-2)' }}>
-                Talk Directly with {astrologer.name}
+                Talk Directly with {astro.name}
               </h1>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'rgba(255,255,255,0.7)', marginTop: 'var(--space-3)', maxWidth: '480px', lineHeight: 1.6 }}>
-                {astrologer.about}
+                {astro.about}
               </p>
               <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap', marginTop: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.65)' }}>
-                <span>★ {astrologer.rating.toFixed(1)} ({astrologer.reviews} reviews)</span>
-                <span>{astrologer.experience}+ yrs experience</span>
-                <span>{astrologer.languages.join(', ')}</span>
-                <span style={{ color: 'var(--gold-primary)' }}>₹{astrologer.price}/min</span>
+                <span>★ {astro.rating.toFixed(1)} ({astro.reviews} reviews)</span>
+                <span>{astro.experience}+ yrs experience</span>
+                <span>{astro.languages.join(', ')}</span>
+                <span style={{ color: 'var(--gold-primary)' }}>₹{astro.price}/min</span>
               </div>
               {tags.length > 0 && (
                 <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-4)' }}>
@@ -204,7 +234,7 @@ export default function RaghavBookingPage() {
                 className="btn btn-gold"
                 style={{ marginTop: 'var(--space-6)' }}
                 whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-                onClick={() => document.getElementById('raghav-slots')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onClick={() => isPlaceholder ? goToAstrologersDirectory() : document.getElementById('raghav-slots')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 Schedule a Session →
               </motion.button>
@@ -219,10 +249,10 @@ export default function RaghavBookingPage() {
                 style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }}
               />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '3px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {astrologer.avatar ? (
-                  <img src={astrologer.avatar} alt={astrologer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {astro.avatar ? (
+                  <img src={astro.avatar} alt={astro.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: '4rem', color: 'var(--gold-primary)' }}>{astrologer.name.charAt(0)}</span>
+                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: '4rem', color: 'var(--gold-primary)' }}>{astro.name.charAt(0)}</span>
                 )}
               </div>
             </motion.div>
@@ -269,7 +299,7 @@ export default function RaghavBookingPage() {
         </motion.div>
 
         {/* My upcoming bookings with Raghav */}
-        {myUpcomingWithRaghav.length > 0 && (
+        {!isPlaceholder && myUpcomingWithRaghav.length > 0 && (
           <motion.div
             style={{ marginBottom: 'var(--space-10)' }}
             initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
@@ -296,11 +326,24 @@ export default function RaghavBookingPage() {
           </motion.div>
         )}
 
-        {/* Available slots */}
+        {/* Available slots — real booking only applies once a real account
+            is Featured; placeholder mode shows a plain CTA instead. */}
         <motion.div
           id="raghav-slots" style={{ scrollMarginTop: 'calc(var(--nav-height) + var(--space-6))', marginBottom: 'var(--space-10)' }}
           initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
         >
+          {isPlaceholder ? (
+            <div style={{ ...card, textAlign: 'center' }}>
+              <h3 className={pageStyles.contentSectionTitle} style={{ marginBottom: 'var(--space-3)' }}>Book a Consultation</h3>
+              <p className={pageStyles.contentText} style={{ marginBottom: 'var(--space-4)' }}>
+                Scheduled slot booking for {astro.name} opens here once their account is set up — for now, browse our verified astrologers below.
+              </p>
+              <motion.button className="btn btn-gold" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={goToAstrologersDirectory}>
+                Browse Astrologers →
+              </motion.button>
+            </div>
+          ) : (
+          <>
           <h3 className={pageStyles.contentSectionTitle}>Available Slots</h3>
           {slots === null ? (
             <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-4)' }}>Loading available slots…</p>
@@ -337,6 +380,8 @@ export default function RaghavBookingPage() {
                 </div>
               ))}
             </div>
+          )}
+          </>
           )}
         </motion.div>
 
@@ -380,8 +425,8 @@ export default function RaghavBookingPage() {
         >
           <h3 className={pageStyles.contentSectionTitle}>Reviews</h3>
           <div style={{ ...card, marginTop: 'var(--space-4)', textAlign: 'center' }}>
-            {astrologer.reviews > 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>★ {astrologer.rating.toFixed(1)} average from {astrologer.reviews} sessions.</p>
+            {astro.reviews > 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>★ {astro.rating.toFixed(1)} average from {astro.reviews} sessions.</p>
             ) : (
               <p style={{ color: 'var(--text-muted)' }}>No reviews yet — book a session and be the first to share how it went.</p>
             )}
@@ -404,7 +449,7 @@ export default function RaghavBookingPage() {
             >
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', color: 'var(--text-primary)', marginBottom: 'var(--space-4)' }}>Confirm Your Booking</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                <div>With <strong style={{ color: 'var(--text-primary)' }}>{astrologer.name}</strong></div>
+                <div>With <strong style={{ color: 'var(--text-primary)' }}>{astro.name}</strong></div>
                 <div>{formatSlotTime(selected.scheduledAt).day} at {formatSlotTime(selected.scheduledAt).time}</div>
                 <div>{TYPE_META[selected.type].label} · {selected.durationMinutes} minutes</div>
                 <div style={{ fontSize: 'var(--text-lg)', color: 'var(--gold-primary)', marginTop: 'var(--space-2)' }}>₹{selected.price}</div>
