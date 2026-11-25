@@ -40,6 +40,13 @@ export default function ConsultDropdown({ onClose, onViewAll }: { onClose: () =>
     onClose();
   };
 
+  // Shown even when no real astrologer is Featured yet (see
+  // FeaturedAstrologerPage.tsx) — same placeholder used by RaghavBookingPage
+  // so this panel and the page it links to stay consistent. Replaced the
+  // moment an ADMIN picks a real astrologer there.
+  const displayName = featured?.name || 'Acharya Raghavendra';
+  const displayExperience = featured ? `${featured.experience}+ Years Experience` : 'Vedic Astrology Specialist';
+
   return (
     <div
       style={{
@@ -76,30 +83,29 @@ export default function ConsultDropdown({ onClose, onViewAll }: { onClose: () =>
         </button>
       </div>
 
-      {/* Featured/Celebrity Astrologer — singled out, only when one is set */}
-      {featuredId && (
-        <button
-          onClick={goToFeatured}
-          style={{
-            flex: '1 1 45%', position: 'relative', overflow: 'hidden', textAlign: 'left', cursor: 'pointer', border: 'none',
-            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-            background: 'linear-gradient(135deg, #7a3a1a, #b5893b)', color: '#fff',
-          }}
-        >
-          <span style={{ position: 'absolute', top: '10px', right: '-28px', transform: 'rotate(45deg)', background: '#1c0f0c', color: 'var(--gold-primary)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '3px 32px' }}>FEATURED</span>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-3)', overflow: 'hidden' }}>
-            {featured?.avatar ? <img src={featured.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)' }}>{(featured?.name || '').charAt(0)}</span>}
-          </div>
-          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)' }}>{featured?.name}</div>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', marginTop: '2px' }}>{featured ? `${featured.experience}+ Years Experience` : ''}</div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.75)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>
-            Book a real, scheduled 1:1 session — pick your slot, pay, and it's confirmed.
-          </p>
-          <span style={{ display: 'inline-block', marginTop: 'var(--space-4)', background: '#fff', color: '#7a3a1a', fontSize: 'var(--text-xs)', fontWeight: 600, padding: '8px 16px', borderRadius: 'var(--radius-md)' }}>
-            Start Consultation →
-          </span>
-        </button>
-      )}
+      {/* Featured/Celebrity Astrologer — always shown; placeholder details
+          until an ADMIN picks a real one (see displayName/displayExperience above) */}
+      <button
+        onClick={goToFeatured}
+        style={{
+          flex: '1 1 45%', position: 'relative', overflow: 'hidden', textAlign: 'left', cursor: 'pointer', border: 'none',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+          background: 'linear-gradient(135deg, #7a3a1a, #b5893b)', color: '#fff',
+        }}
+      >
+        <span style={{ position: 'absolute', top: '10px', right: '-28px', transform: 'rotate(45deg)', background: '#1c0f0c', color: 'var(--gold-primary)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '3px 32px' }}>FEATURED</span>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-3)', overflow: 'hidden' }}>
+          {featured?.avatar ? <img src={featured.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)' }}>{displayName.charAt(0)}</span>}
+        </div>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-lg)' }}>{displayName}</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', marginTop: '2px' }}>{displayExperience}</div>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.75)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>
+          Book a real, scheduled 1:1 session — pick your slot, pay, and it's confirmed.
+        </p>
+        <span style={{ display: 'inline-block', marginTop: 'var(--space-4)', background: '#fff', color: '#7a3a1a', fontSize: 'var(--text-xs)', fontWeight: 600, padding: '8px 16px', borderRadius: 'var(--radius-md)' }}>
+          Start Consultation →
+        </span>
+      </button>
     </div>
   );
 }
