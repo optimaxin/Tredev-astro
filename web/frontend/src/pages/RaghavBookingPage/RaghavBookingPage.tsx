@@ -9,6 +9,7 @@ import { RAGHAV_ASTROLOGER_ID as RAGHAV_ID } from '../../data/raghav';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import {
   ClockIcon, AcharyaIcon, CheckCircleIcon, LockIcon, ChatBubbleIcon, PhoneCallIcon, VideoCameraIcon,
+  CareerIcon, HeartIcon, WealthIcon, LotusIcon,
 } from '../../components/Icons/Icons';
 import type { IconProps } from '../../components/Icons/Icons';
 import pageStyles from '../PageRenderer.module.css';
@@ -43,6 +44,16 @@ const HOW_IT_WORKS = [
   { title: 'Join at Your Time', body: 'Be ready for your chat/voice/video session at the scheduled time.' },
 ];
 
+// Generic "what are you looking for guidance on" prompts — same honest,
+// not-fabricated-claims rule as WHY_CHOOSE above; just a professional
+// framing section, not specific promises tied to any one session.
+const PROBLEM_CATEGORIES = [
+  { Icon: CareerIcon, gradient: 'linear-gradient(135deg, #2b4c6f, #5b8fb9)', title: 'Career', body: 'Should I change jobs now? Is this the right time to start my own venture? Will this promotion come through?' },
+  { Icon: HeartIcon, gradient: 'linear-gradient(135deg, #6b2b4f, #b95b8f)', title: 'Love & Relationships', body: 'Is this relationship right for me? Why does marriage keep getting delayed? How do I fix a strained relationship?' },
+  { Icon: WealthIcon, gradient: 'linear-gradient(135deg, #4c3a1e, #c8a15a)', title: 'Money & Growth', body: 'When will my finances stabilize? Is this investment the right move? How do I plan for long-term wealth?' },
+  { Icon: LotusIcon, gradient: 'linear-gradient(135deg, #1e4c3a, #5ab98a)', title: 'Health & Inner Peace', body: 'Why do I feel stuck or anxious lately? What remedies can bring more balance? How do I plan around a health concern?' },
+];
+
 const FAQ: { q: string; a: string }[] = [
   { q: 'Will Raghav personally take my session?', a: 'Yes — every slot on this page is his own calendar, not a generic queue.' },
   { q: 'What if I need to reschedule?', a: "There's no self-serve reschedule yet — reach out through Consult / Contact and we'll help sort it out." },
@@ -71,7 +82,7 @@ function groupByDay(slots: ConsultationSlot[]): { day: string; slots: Consultati
 
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
-    <div style={card}>
+    <motion.div style={card} whileHover={{ y: -2, borderColor: 'var(--gold-primary)' }}>
       <button
         onClick={onToggle}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
@@ -86,7 +97,7 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
@@ -182,20 +193,24 @@ export default function RaghavBookingPage() {
                   ))}
                 </div>
               )}
-              <button
+              <motion.button
                 className="btn btn-gold"
                 style={{ marginTop: 'var(--space-6)' }}
+                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                 onClick={() => document.getElementById('raghav-slots')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 Schedule a Session →
-              </button>
+              </motion.button>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.1 }}
-              style={{ flex: '0 0 auto', width: '176px', height: '176px', borderRadius: '50%', position: 'relative' }}
+              style={{ flex: '0 0 auto', width: '200px', height: '200px', borderRadius: '50%', position: 'relative', margin: '0 auto' }}
             >
-              <div style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }} />
+              <motion.div
+                animate={{ rotate: 360 }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                style={{ position: 'absolute', inset: '-14px', borderRadius: '50%', background: 'conic-gradient(from 0deg, var(--gold-primary), transparent 30%, transparent 70%, var(--gold-primary))', opacity: 0.5 }}
+              />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '3px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {astrologer.avatar ? (
                   <img src={astrologer.avatar} alt={astrologer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -225,9 +240,33 @@ export default function RaghavBookingPage() {
           </div>
         </div>
 
+        {/* Problem categories — generic "what are you seeking clarity on" framing */}
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
+          <h3 className={pageStyles.contentSectionTitle}>What Would You Like Clarity On?</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+            {PROBLEM_CATEGORIES.map(p => (
+              <motion.div key={p.title} whileHover={{ y: -4, boxShadow: '0 10px 24px rgba(0,0,0,0.12)' }} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                <div style={{ height: '110px', background: p.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p.Icon size={34} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ padding: 'var(--space-5)' }}>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{p.title}</div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-2)', lineHeight: 1.5 }}>{p.body}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* My upcoming bookings with Raghav */}
         {myUpcomingWithRaghav.length > 0 && (
-          <div style={{ marginBottom: 'var(--space-10)' }}>
+          <motion.div
+            style={{ marginBottom: 'var(--space-10)' }}
+            initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+          >
             <h3 className={pageStyles.contentSectionTitle}>Your Upcoming Sessions</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
               {myUpcomingWithRaghav.map(s => {
@@ -247,11 +286,14 @@ export default function RaghavBookingPage() {
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Available slots */}
-        <div id="raghav-slots" style={{ scrollMarginTop: 'calc(var(--nav-height) + var(--space-6))', marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          id="raghav-slots" style={{ scrollMarginTop: 'calc(var(--nav-height) + var(--space-6))', marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>Available Slots</h3>
           {slots === null ? (
             <p className={pageStyles.contentText} style={{ marginTop: 'var(--space-4)' }}>Loading available slots…</p>
@@ -289,10 +331,13 @@ export default function RaghavBookingPage() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* How it works */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>How Booking Works</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
             {HOW_IT_WORKS.map((s, i) => (
@@ -307,20 +352,25 @@ export default function RaghavBookingPage() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* FAQ */}
-        <div style={{ marginBottom: 'var(--space-10)' }}>
+        <motion.div
+          style={{ marginBottom: 'var(--space-10)' }}
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>Frequently Asked Questions</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
             {FAQ.map((f, i) => (
               <FaqItem key={f.q} q={f.q} a={f.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Reviews — honest empty state rather than fabricated testimonials */}
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}
+        >
           <h3 className={pageStyles.contentSectionTitle}>Reviews</h3>
           <div style={{ ...card, marginTop: 'var(--space-4)', textAlign: 'center' }}>
             {astrologer.reviews > 0 ? (
@@ -329,7 +379,7 @@ export default function RaghavBookingPage() {
               <p style={{ color: 'var(--text-muted)' }}>No reviews yet — book a session and be the first to share how it went.</p>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Booking confirmation panel */}

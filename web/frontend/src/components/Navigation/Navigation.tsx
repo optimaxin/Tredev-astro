@@ -14,7 +14,6 @@ const NAV_LINKS = [
   { translationKey: 'nav_astrology', page: 'horoscope' },
   { translationKey: 'nav_calculators', page: 'astrology-tools' },
   { translationKey: 'nav_reports', page: 'reports' },
-  { translationKey: 'nav_premium_report', page: 'premium-report' },
   { translationKey: 'nav_panchang', page: 'panchang' },
   { translationKey: 'nav_store', page: 'store' },
 ];
@@ -180,13 +179,6 @@ export default function Navigation() {
             onClick={handleFreeKundliClick}
           >
             {t('nav_free_kundli')}
-          </button>
-
-          <button
-            className={`${styles.ctaBtn} ${page === 'raghavendra' ? styles.active : ''}`}
-            onClick={() => handleNavClick('raghavendra')}
-          >
-            {t('nav_raghavendra')}
           </button>
 
           <div style={{ position: 'relative' }} ref={consultRef}>
@@ -373,12 +365,6 @@ export default function Navigation() {
             onClick={() => handleNavClick('free-kundli')}
           >
             {t('nav_free_kundli')}
-          </button>
-          <button
-            className={`${styles.mobileLink} ${styles.mobileCta}`}
-            onClick={() => handleNavClick('raghavendra')}
-          >
-            {t('nav_raghavendra')}
           </button>
           <button
             className={`${styles.mobileLink} ${styles.mobileCta}`}

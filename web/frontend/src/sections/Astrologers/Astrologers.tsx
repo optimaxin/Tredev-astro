@@ -203,7 +203,17 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
   };
 
   return (
-    <div className={`${styles.card} ${compact ? styles.cardCompact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
+    <div className={`${styles.card} ${compact ? styles.cardCompact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer', position: 'relative' }}>
+      {isRaghav && (
+        <span style={{
+          position: 'absolute', top: '12px', right: '12px', zIndex: 1,
+          background: 'linear-gradient(135deg, var(--gold-primary, #c7a15a), #8a6a22)', color: '#1c0f0c',
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+          padding: '4px 10px', borderRadius: '999px',
+        }}>
+          Our Celebrity Astrologer
+        </span>
+      )}
       {/* Avatar */}
       <div className={styles.avatarWrap}>
         <div className={styles.avatar}>
