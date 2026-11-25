@@ -17,7 +17,7 @@ import { addFavorite, isFavorite, removeFavorite } from '../repositories/favorit
 import { createApplication, findLatestApplicationForUser, findPendingApplicationForUser } from '../repositories/astrologerApplicationRepository.ts';
 import { canActivateOffer } from '../services/pricingEngine.ts';
 import { activateBoost, boostDisplayId, getActiveBoost, listBoostHistory } from '../repositories/boostRepository.ts';
-import { getBoostPayoutSharePercent } from '../repositories/platformSettingsRepository.ts';
+import { getBoostPayoutSharePercent, getFeaturedAstrologerId } from '../repositories/platformSettingsRepository.ts';
 import { listMySlots, listUpcomingSlots } from '../repositories/consultationSlotRepository.ts';
 import { getFirebaseAuth } from '../core/firebaseAdmin.ts';
 import { notifyEventByTemplateId } from '../services/notificationService.ts';
@@ -56,6 +56,14 @@ function withRegionPricing(profile: PublicAstrologerProfile, multiplier: number,
     videoPrice: applyRegionMultiplier(profile.videoPrice, multiplier),
   };
 }
+
+// Public — the site's current "Featured/Celebrity Astrologer" id, set via
+// Admin's own ADMIN-only panel (see admin.routes.ts's '/featured-astrologer').
+// null means none is set right now; callers (ConsultDropdown, Astrologers.tsx,
+// RaghavBookingPage) should degrade gracefully rather than assume one exists.
+astrologersCatalogRouter.get('/featured', async (_req, res) => {
+  res.json({ success: true, data: { astrologerId: await getFeaturedAstrologerId() } });
+});
 
 astrologersCatalogRouter.get('/catalog', async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);

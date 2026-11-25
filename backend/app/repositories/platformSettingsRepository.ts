@@ -29,3 +29,17 @@ export async function setNotifyEmails(input: { adminEmail: string | null; headAs
     [input.adminEmail, input.headAstrologerEmail]
   );
 }
+
+// The one "Featured/Celebrity Astrologer" the public site highlights (nav's
+// Consult dropdown + pinned-to-top directory card) — ADMIN-only to change
+// (see admin.routes.ts's '/featured-astrologer', gated by adminOnly, never
+// requireSection — a STAFF account can never touch this regardless of what
+// sections they're granted). NULL means no featured astrologer is set.
+export async function getFeaturedAstrologerId(): Promise<number | null> {
+  const row = await queryOne<{ featured_astrologer_id: number | null }>('SELECT featured_astrologer_id FROM platform_settings WHERE id = 1');
+  return row?.featured_astrologer_id ?? null;
+}
+
+export async function setFeaturedAstrologerId(astrologerId: number | null): Promise<void> {
+  await query('UPDATE platform_settings SET featured_astrologer_id = $1 WHERE id = 1', [astrologerId]);
+}

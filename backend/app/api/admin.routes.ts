@@ -45,7 +45,7 @@ import {
 } from '../repositories/aiEvaluationRepository.ts';
 import { listPublicAstrologers, registerNewAstrologer } from '../services/realtimeStore.ts';
 import { getActiveBoost } from '../repositories/boostRepository.ts';
-import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent, setNotifyEmails } from '../repositories/platformSettingsRepository.ts';
+import { getBoostPayoutSharePercent, getNotifyEmails, setBoostPayoutSharePercent, setNotifyEmails, getFeaturedAstrologerId, setFeaturedAstrologerId } from '../repositories/platformSettingsRepository.ts';
 import { createEmailTemplate, deleteEmailTemplate, findEmailTemplateById, listEmailTemplates, updateEmailTemplate } from '../repositories/emailTemplateRepository.ts';
 import { listEmailLog } from '../repositories/emailLogRepository.ts';
 import { notifyEvent, notifyEventByTemplateId, sendAndLog } from '../services/notificationService.ts';
@@ -1259,6 +1259,30 @@ adminRouter.patch('/settings/notify-emails', requireSection('settings'), async (
   await setNotifyEmails(parsed.data);
   await audit(req, 'settings.notify_emails.update', parsed.data.adminEmail || parsed.data.headAstrologerEmail || '—');
   res.json({ success: true, data: parsed.data });
+});
+
+// ── Featured/Celebrity Astrologer ───────────────────────────────────────
+// ADMIN-only — deliberately gated with adminOnly, not requireSection, so no
+// STAFF grant can ever reach it (same precedent as the Staff section itself;
+// see staffPermissionRepository.ts's ADMIN_SECTIONS comment).
+
+adminRouter.get('/featured-astrologer', adminOnly, async (_req, res) => {
+  const astrologerId = await getFeaturedAstrologerId();
+  const astrologer = astrologerId ? await findAstrologerByIdRaw(astrologerId) : undefined;
+  res.json({ success: true, data: { astrologerId, astrologerName: astrologer?.name ?? null } });
+});
+
+const featuredAstrologerSchema = z.object({ astrologerId: z.number().int().positive().nullable() });
+
+adminRouter.patch('/featured-astrologer', adminOnly, async (req, res) => {
+  const parsed = featuredAstrologerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  if (parsed.data.astrologerId !== null && !(await findAstrologerById(parsed.data.astrologerId))) {
+    return fail(res, 404, 'NOT_FOUND', 'Astrologer not found or inactive');
+  }
+  await setFeaturedAstrologerId(parsed.data.astrologerId);
+  await audit(req, 'settings.featured_astrologer.update', String(parsed.data.astrologerId ?? '—'));
+  res.json({ success: true, data: { astrologerId: parsed.data.astrologerId } });
 });
 
 // ── Email: templates, compose, and the send log ─────────────────────────

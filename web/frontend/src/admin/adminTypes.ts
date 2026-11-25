@@ -14,6 +14,7 @@ export type AdminSection =
   | 'astrologers'
   | 'users'
   | 'staff'
+  | 'featured-astrologer'
   | 'consultations'
   | 'reports'
   | 'orders'

@@ -8,6 +8,7 @@ const NAV_ITEMS: { key: AdminSection; icon: string; labelKey: string }[] = [
   { key: 'astrologers', icon: '☉', labelKey: 'admin_sidebar_astrologers' },
   { key: 'users', icon: '☰', labelKey: 'admin_sidebar_users' },
   { key: 'staff', icon: '◆', labelKey: 'admin_sidebar_staff' },
+  { key: 'featured-astrologer', icon: '★', labelKey: 'admin_sidebar_featured_astrologer' },
   { key: 'consultations', icon: '◐', labelKey: 'admin_sidebar_consultations' },
   { key: 'reports', icon: '▤', labelKey: 'admin_sidebar_reports' },
   { key: 'orders', icon: '▢', labelKey: 'admin_sidebar_orders' },

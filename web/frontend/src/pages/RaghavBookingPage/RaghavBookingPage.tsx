@@ -1,11 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
-import { useAstrologer } from '../../hooks/useAstrologer';
+import { useAstrologer, useFeaturedAstrologerId } from '../../hooks/useAstrologer';
 import { astrologerService } from '../../services/astrologerService';
 import type { ConsultationSlot, MyConsultationSlot } from '../../services/astrologerService';
 import { paymentService, PaymentApiError } from '../../services/paymentService';
-import { RAGHAV_ASTROLOGER_ID as RAGHAV_ID } from '../../data/raghav';
 import CelestialBackdrop from '../../components/CelestialBackdrop/CelestialBackdrop';
 import {
   ClockIcon, AcharyaIcon, CheckCircleIcon, LockIcon, ChatBubbleIcon, PhoneCallIcon, VideoCameraIcon,
@@ -54,13 +53,15 @@ const PROBLEM_CATEGORIES = [
   { Icon: LotusIcon, gradient: 'linear-gradient(135deg, #1e4c3a, #5ab98a)', title: 'Health & Inner Peace', body: 'Why do I feel stuck or anxious lately? What remedies can bring more balance? How do I plan around a health concern?' },
 ];
 
-const FAQ: { q: string; a: string }[] = [
-  { q: 'Will Raghav personally take my session?', a: 'Yes — every slot on this page is his own calendar, not a generic queue.' },
-  { q: 'What if I need to reschedule?', a: "There's no self-serve reschedule yet — reach out through Consult / Contact and we'll help sort it out." },
-  { q: 'Is payment secure?', a: 'Yes — bookings go through the same Cashfree/Razorpay checkout used for every purchase on this site; we never see your card details.' },
-  { q: 'Is my birth/chart data private?', a: 'Only Raghav sees what he needs for your session. See our Privacy Policy for exactly what\'s collected and why.' },
-  { q: 'Can I book a slot for someone else?', a: "Yes, as long as you're the one paying and can be reached to coordinate the session." },
-];
+function buildFaq(name: string): { q: string; a: string }[] {
+  return [
+    { q: `Will ${name} personally take my session?`, a: 'Yes — every slot on this page is their own calendar, not a generic queue.' },
+    { q: 'What if I need to reschedule?', a: "There's no self-serve reschedule yet — reach out through Consult / Contact and we'll help sort it out." },
+    { q: 'Is payment secure?', a: 'Yes — bookings go through the same Cashfree/Razorpay checkout used for every purchase on this site; we never see your card details.' },
+    { q: 'Is my birth/chart data private?', a: `Only ${name} sees what they need for your session. See our Privacy Policy for exactly what's collected and why.` },
+    { q: 'Can I book a slot for someone else?', a: "Yes, as long as you're the one paying and can be reached to coordinate the session." },
+  ];
+}
 
 function formatSlotTime(ms: number): { day: string; time: string } {
   const d = new Date(ms);
@@ -103,7 +104,11 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
 
 export default function RaghavBookingPage() {
   const { isLoggedIn, setShowLoginModal, setPendingAction } = useAppContext();
-  const { astrologer, loading: profileLoading, notFound } = useAstrologer(RAGHAV_ID);
+  // The site's current Featured/Celebrity Astrologer — admin-configurable
+  // (see FeaturedAstrologerPage.tsx), not a hardcoded id. undefined = still
+  // loading which astrologer that is; null = none is currently set.
+  const featuredId = useFeaturedAstrologerId();
+  const { astrologer, loading: profileLoading, notFound } = useAstrologer(featuredId);
   const [slots, setSlots] = React.useState<ConsultationSlot[] | null>(null);
   const [mySlots, setMySlots] = React.useState<MyConsultationSlot[] | null>(null);
   const [selected, setSelected] = React.useState<ConsultationSlot | null>(null);
@@ -112,8 +117,9 @@ export default function RaghavBookingPage() {
   const [openFaq, setOpenFaq] = React.useState<number | null>(0);
 
   const loadSlots = React.useCallback(() => {
-    astrologerService.listSlots(RAGHAV_ID).then(setSlots).catch(() => setSlots([]));
-  }, []);
+    if (!featuredId) return;
+    astrologerService.listSlots(featuredId).then(setSlots).catch(() => setSlots([]));
+  }, [featuredId]);
 
   React.useEffect(() => { loadSlots(); }, [loadSlots]);
 
@@ -122,7 +128,7 @@ export default function RaghavBookingPage() {
     astrologerService.listMySlots().then(setMySlots).catch(() => setMySlots([]));
   }, [isLoggedIn]);
 
-  const myUpcomingWithRaghav = (mySlots ?? []).filter(s => s.astrologerId === RAGHAV_ID);
+  const myUpcomingWithRaghav = (mySlots ?? []).filter(s => s.astrologerId === featuredId);
 
   const openBooking = (slot: ConsultationSlot) => {
     if (!isLoggedIn) {
@@ -148,7 +154,7 @@ export default function RaghavBookingPage() {
     }
   };
 
-  if (profileLoading) {
+  if (featuredId === undefined || profileLoading) {
     return <div className={`${pageStyles.pageWrapper} ${pageStyles.darkPage}`} style={{ textAlign: 'center', padding: '140px 20px' }}>Loading…</div>;
   }
   if (notFound || !astrologer) {
@@ -156,6 +162,7 @@ export default function RaghavBookingPage() {
   }
 
   const dayGroups = groupByDay((slots ?? []).filter(s => !s.isBooked));
+  const faq = buildFaq(astrologer.name);
   const tags = Array.from(new Set([...astrologer.specialization, ...astrologer.category]));
 
   return (
@@ -361,7 +368,7 @@ export default function RaghavBookingPage() {
         >
           <h3 className={pageStyles.contentSectionTitle}>Frequently Asked Questions</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
-            {FAQ.map((f, i) => (
+            {faq.map((f, i) => (
               <FaqItem key={f.q} q={f.q} a={f.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
             ))}
           </div>

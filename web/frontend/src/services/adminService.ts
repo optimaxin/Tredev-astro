@@ -116,6 +116,11 @@ export const ADMIN_SECTIONS = [
 ] as const;
 export type AdminSectionKey = typeof ADMIN_SECTIONS[number];
 
+export interface ApiFeaturedAstrologer {
+  astrologerId: number | null;
+  astrologerName: string | null;
+}
+
 export interface ApiAuditEntry {
   id: string;
   actor_user_id: string | null;
@@ -739,6 +744,12 @@ export const adminService = {
     request<{ ok: boolean }>(`/content/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify({ value }) }),
   resetContentOverride: (key: string) =>
     request<{ ok: boolean }>(`/content/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
+  // ADMIN-only (see admin.routes.ts's adminOnly gate, not requireSection) —
+  // never toggleable for STAFF, same precedent as the Staff section itself.
+  getFeaturedAstrologer: () => request<ApiFeaturedAstrologer>('/featured-astrologer'),
+  setFeaturedAstrologer: (astrologerId: number | null) =>
+    request<ApiFeaturedAstrologer>('/featured-astrologer', { method: 'PATCH', body: JSON.stringify({ astrologerId }) }),
 
   listStaff: () => request<ApiStaffMember[]>('/staff'),
   addStaffMember: (name: string, email: string, password: string, role: 'STAFF' | 'ADMIN') =>

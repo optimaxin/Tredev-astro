@@ -13,6 +13,7 @@ const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'));
 const AstrologersPage = lazy(() => import('./pages/AstrologersPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const StaffPage = lazy(() => import('./pages/StaffPage'));
+const FeaturedAstrologerPage = lazy(() => import('./pages/FeaturedAstrologerPage'));
 const ConsultationsPage = lazy(() => import('./pages/ConsultationsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
@@ -73,6 +74,7 @@ export default function AdminConsole() {
       case 'astrologers': return <AstrologersPage />;
       case 'users': return <UsersPage />;
       case 'staff': return <StaffPage />;
+      case 'featured-astrologer': return <FeaturedAstrologerPage />;
       case 'consultations': return <ConsultationsPage />;
       case 'reports': return <ReportsPage />;
       case 'orders': return <OrdersPage />;

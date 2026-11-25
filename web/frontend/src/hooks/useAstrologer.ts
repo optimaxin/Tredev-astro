@@ -29,3 +29,18 @@ export function useAstrologer(id: number | string | null | undefined) {
 
   return { astrologer, loading, notFound };
 }
+
+// The site's current Featured/Celebrity Astrologer id — admin-configurable
+// (see Admin's Featured Astrologer panel), not the old hardcoded
+// RAGHAV_ASTROLOGER_ID constant. null means none is set right now; callers
+// should degrade gracefully (no featured panel/badge/page) rather than
+// assume one exists.
+export function useFeaturedAstrologerId() {
+  const [id, setId] = useState<number | null | undefined>(undefined); // undefined = still loading
+  useEffect(() => {
+    let cancelled = false;
+    astrologerService.getFeaturedId().then(result => { if (!cancelled) setId(result); });
+    return () => { cancelled = true; };
+  }, []);
+  return id;
+}

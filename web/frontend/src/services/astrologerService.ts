@@ -154,6 +154,16 @@ export const astrologerService = {
     return { data: (body.data as ApiAstrologerProfile[]).map(adapt), total: body.pagination.total };
   },
 
+  // The site's current Featured/Celebrity Astrologer — admin-configurable
+  // (see Admin's own Featured Astrologer panel), not a hardcoded id. null
+  // means none is set; callers should degrade gracefully, not assume one.
+  async getFeaturedId(): Promise<number | null> {
+    const res = await fetch(`${API_URL}/api/astrologers/featured`);
+    const body = await res.json();
+    if (!body.success) return null;
+    return body.data.astrologerId as number | null;
+  },
+
   async get(id: number): Promise<UiAstrologer | null> {
     const res = await fetch(`${API_URL}/api/astrologers/catalog/${id}`);
     if (res.status === 404) return null;

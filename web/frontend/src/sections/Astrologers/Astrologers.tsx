@@ -4,7 +4,7 @@ import { astrologerService } from '../../services/astrologerService';
 import type { UiAstrologer } from '../../services/astrologerService';
 import { useAppContext } from '../../context/AppContext';
 import { useRealtime } from '../../realtime/RealtimeContext';
-import { RAGHAV_ASTROLOGER_ID } from '../../data/raghav';
+import { useFeaturedAstrologerId } from '../../hooks/useAstrologer';
 import styles from './Astrologers.module.css';
 
 const FILTERS = ['All', 'Love', 'Marriage', 'Career', 'Finance', 'Family', 'Vastu', 'Spirituality', 'Pooja'];
@@ -16,6 +16,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
   // roster live instead of making a user refresh the page to stop seeing a
   // suspended/deleted astrologer (or to see a restored one again).
   const { catalogVersion } = useRealtime();
+  const featuredAstrologerId = useFeaturedAstrologerId();
   // Seeded from SeekGuidance's category cards (e.g. "Career & Business" ->
   // 'Career') via the shared `astrologerFilter` context field — consumed
   // once here as the initial tab, then reset so a later, unrelated visit to
@@ -33,30 +34,35 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
   // Featured (homepage) mode shows the top-rated Acharyas; the full listing
   // is filtered/sorted server-side by the selected category tab.
   useEffect(() => {
+    if (!featured && featuredAstrologerId === undefined) return; // wait for the id before deciding pin order
     let cancelled = false;
     const params = featured ? { sort: 'rating' as const, limit: 3 } : { category: activeFilter, limit: 50 };
     astrologerService.list(params)
       .then(async ({ data }) => {
         if (cancelled || featured) { if (!cancelled) setFiltered(data); return; }
-        // Raghav is pinned to the top of the full directory — he has his own
-        // dedicated booking page (real scheduled slots, see RAGHAV_ASTROLOGER_ID),
-        // not just another row sorted by rating, where a brand-new profile
-        // (0 reviews yet) would otherwise sink to the bottom. Only forced
-        // into an unrelated category filter's results on 'All'; a specific
-        // filter (e.g. Vastu) still only shows him if he genuinely matches it.
-        const already = data.find(a => a.id === RAGHAV_ASTROLOGER_ID);
+        // The site's current Featured/Celebrity Astrologer (admin-set, see
+        // FeaturedAstrologerPage.tsx) is pinned to the top of the full
+        // directory — he has his own dedicated booking page (real scheduled
+        // slots), not just another row sorted by rating, where a brand-new
+        // profile (0 reviews yet) would otherwise sink to the bottom. Only
+        // forced into an unrelated category filter's results on 'All'; a
+        // specific filter (e.g. Vastu) still only shows him if he genuinely
+        // matches it.
+        const fid = featuredAstrologerId;
+        if (fid === null || fid === undefined) { setFiltered(data); return; }
+        const already = data.find(a => a.id === fid);
         if (already) {
-          setFiltered([already, ...data.filter(a => a.id !== RAGHAV_ASTROLOGER_ID)]);
+          setFiltered([already, ...data.filter(a => a.id !== fid)]);
         } else if (activeFilter === 'All') {
-          const raghav = await astrologerService.get(RAGHAV_ASTROLOGER_ID).catch(() => null);
-          if (!cancelled) setFiltered(raghav ? [raghav, ...data] : data);
+          const featuredAstro = await astrologerService.get(fid).catch(() => null);
+          if (!cancelled) setFiltered(featuredAstro ? [featuredAstro, ...data] : data);
         } else {
           setFiltered(data);
         }
       })
       .catch(() => { if (!cancelled) setLoadError(true); });
     return () => { cancelled = true; };
-  }, [featured, activeFilter, catalogVersion]);
+  }, [featured, activeFilter, catalogVersion, featuredAstrologerId]);
 
   useEffect(() => {
     if (featured) return;
@@ -108,7 +114,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.5 }}
               >
-                <AstrologerCard astrologer={a} />
+                <AstrologerCard astrologer={a} featuredAstrologerId={featuredAstrologerId} />
               </motion.div>
             ))}
           </div>
@@ -122,7 +128,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
               </div>
               <div className={styles.recommendedCards}>
                 {recommended.map(a => (
-                  <AstrologerCard key={a.id} astrologer={a} compact />
+                  <AstrologerCard key={a.id} astrologer={a} compact featuredAstrologerId={featuredAstrologerId} />
                 ))}
               </div>
             </div>
@@ -158,7 +164,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.08, duration: 0.5 }}
                   >
-                    <AstrologerCard astrologer={a} />
+                    <AstrologerCard astrologer={a} featuredAstrologerId={featuredAstrologerId} />
                   </motion.div>
                 ))}
               </motion.div>
@@ -173,7 +179,7 @@ export default function Astrologers({ featured = false }: { featured?: boolean }
   );
 }
 
-function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstrologer; compact?: boolean }) {
+function AstrologerCard({ astrologer: a, compact = false, featuredAstrologerId }: { astrologer: UiAstrologer; compact?: boolean; featuredAstrologerId?: number | null }) {
   const { setPage, setSelectedId, t } = useAppContext();
   const { publicStates } = useRealtime();
   const live = publicStates[a.id];
@@ -182,13 +188,16 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
   const isOnline = live ? live.status === 'ONLINE_AVAILABLE' || live.status === 'ONLINE_BUSY' : false;
   const isBusy = live?.status === 'ONLINE_BUSY';
 
-  // Raghav has his own dedicated page (real scheduled 1:1 slots, paid
-  // up front) instead of the generic profile/instant-queue flow every
-  // other astrologer here still uses — see pages/RaghavBookingPage.
-  const isRaghav = a.id === RAGHAV_ASTROLOGER_ID;
+  // The site's current Featured/Celebrity Astrologer (admin-set, see
+  // FeaturedAstrologerPage.tsx) has his own dedicated page (real scheduled
+  // 1:1 slots, paid up front) instead of the generic profile/instant-queue
+  // flow every other astrologer here still uses — see pages/RaghavBookingPage.
+  // Passed down from the parent's single fetch rather than each card
+  // fetching it independently.
+  const isFeatured = featuredAstrologerId != null && a.id === featuredAstrologerId;
 
   const handleCardClick = () => {
-    if (isRaghav) { setPage('raghav-booking'); return; }
+    if (isFeatured) { setPage('raghav-booking'); return; }
     setSelectedId(a.id);
     setPage('astrologer-profile');
   };
@@ -197,14 +206,14 @@ function AstrologerCard({ astrologer: a, compact = false }: { astrologer: UiAstr
   // stopPropagation so the click doesn't also bubble to handleCardClick above.
   const handleBookNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isRaghav) { setPage('raghav-booking'); return; }
+    if (isFeatured) { setPage('raghav-booking'); return; }
     setSelectedId(a.id);
     setPage('consultation-booking');
   };
 
   return (
     <div className={`${styles.card} ${compact ? styles.cardCompact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer', position: 'relative' }}>
-      {isRaghav && (
+      {isFeatured && (
         <span style={{
           position: 'absolute', top: '12px', right: '12px', zIndex: 1,
           background: 'linear-gradient(135deg, var(--gold-primary, #c7a15a), #8a6a22)', color: '#1c0f0c',
