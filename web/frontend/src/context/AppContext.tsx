@@ -360,6 +360,11 @@ interface AppContextValue {
   logout: () => void;
   pendingAction: string | null;
   setPendingAction: (a: string | null) => void;
+  // Set only right after landing on a password-reset email link (see the
+  // `resetPasswordToken` state above) — AuthPage reads this once to jump
+  // straight to its "set a new password" step, then clears it.
+  resetPasswordToken: string | null;
+  clearResetPasswordToken: () => void;
   showLoginModal: boolean;
   setShowLoginModal: (v: boolean) => void;
   // Admin account data — real backend (backend/app/api/admin.routes.ts)
@@ -3521,8 +3526,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [page, setPageState] = useState(() => {
     if (window.history.state && window.history.state.page) return window.history.state.page;
     if (window.location.pathname === APPLY_ASTROLOGER_PATH) return 'apply-astrologer';
+    if (new URLSearchParams(window.location.search).get('reset_token')) return 'auth';
     return 'home';
   });
+  // A password-reset email link lands on `/?reset_token=...` (same
+  // query-param-on-root pattern as the payment-return flow below — this app
+  // has no server-side SPA rewrite, so '/' is the only path guaranteed to
+  // resolve on a fresh load). Read once at mount, before AuthPage's own
+  // effect scrubs the query string; null once consumed/cleared.
+  const [resetPasswordToken, setResetPasswordTokenState] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('reset_token')
+  );
+  const clearResetPasswordToken = () => {
+    setResetPasswordTokenState(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('reset_token');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  };
   const [selectedId, setSelectedIdState] = useState<number | string | null>(() => {
     return (window.history.state && window.history.state.selectedId) || null;
   });
@@ -4193,6 +4213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoggedIn, currentUser, authLoading, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveBirthDetails, saveMyName, saveMyEmail, logout,
       walletBalance, refreshWalletBalance,
       pendingAction, setPendingAction,
+      resetPasswordToken, clearResetPasswordToken,
       showLoginModal, setShowLoginModal,
       accounts, refreshAdminData,
       auditLog, notifications,

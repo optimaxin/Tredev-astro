@@ -5,6 +5,7 @@ import type { ApiStaffMember, AdminSectionKey } from '../../services/adminServic
 import DataTable from '../components/DataTable';
 import Drawer from '../components/Drawer';
 import { AdminButton, ConfirmDialog, EmptyState, ToggleSwitch } from '../components/SharedControls';
+import PasswordInput from '../../components/PasswordInput/PasswordInput';
 import styles from './AdminPages.module.css';
 
 // Add/remove Staff and Admin accounts, and toggle exactly which admin
@@ -131,7 +132,7 @@ export default function StaffPage() {
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_staff_add_password')}</label>
-            <input type="password" className={styles.formInput} required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+            <PasswordInput className={styles.formInput} required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>{t('admin_staff_add_role')}</label>

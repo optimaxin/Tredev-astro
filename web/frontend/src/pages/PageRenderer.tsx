@@ -8,6 +8,8 @@ import { contentService, ContentApiError } from '../services/contentService';
 import type { AstrologyReport, BlogPost, ReportBundle, ReportPurchase } from '../services/contentService';
 import { NorthIndianChart, toChartPlanets, cap } from '../sections/KundliSection/KundliCharts';
 import { useAstrologer } from '../hooks/useAstrologer';
+import { authService, ApiRequestError } from '../services/authService';
+import PasswordInput from '../components/PasswordInput/PasswordInput';
 import styles from './PageRenderer.module.css';
 
 // Import landing sections
@@ -1995,6 +1997,31 @@ function CourseLearningPage({ id }: { id: any }) {
 function ProfilePage() {
   const { setPage, currentUser, saveBirthDetails } = useAppContext();
   const [saveMsg, setSaveMsg] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  const handlePasswordSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSaved(false);
+    if (newPassword.length < 8) { setPasswordError('New password must be at least 8 characters.'); return; }
+    const accessToken = localStorage.getItem('auth_access_token');
+    if (!accessToken) { setPasswordError('Please log in again.'); return; }
+    setPasswordSaving(true);
+    try {
+      await authService.changePassword(accessToken, currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordSaved(true);
+    } catch (err) {
+      setPasswordError(err instanceof ApiRequestError ? err.message : 'Could not change your password. Please check your current password and try again.');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
   // The real logged-in account's name — this used to read from
   // `birthProfile`, a browser-local, account-independent "whichever Kundli
   // was last generated on this browser" value (plain localStorage, not tied
@@ -2045,16 +2072,37 @@ function ProfilePage() {
           {/* Profile Form — the account's own saved birth details (backend
               `users.birth_*` columns), not the shared local `birthProfile`
               mock other tools use for a quick one-off Kundli lookup. */}
-          <div className={styles.partnerFormCard}>
-            <h3 className={styles.partnerTitle}>✦ Edit Birth Coordinates</h3>
-            <BirthDetailsForm
-              onSubmit={handleSave}
-              submitLabel="Save Birth Coordinates"
-              idPrefix="account-birth"
-              showNameField={false}
-              initialValues={toSavedBirthDetails(currentUser)}
-            />
-            {saveMsg && <p className={styles.reviewCount} style={{ marginTop: '12px' }}>{saveMsg}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+            <div className={styles.partnerFormCard}>
+              <h3 className={styles.partnerTitle}>✦ Edit Birth Coordinates</h3>
+              <BirthDetailsForm
+                onSubmit={handleSave}
+                submitLabel="Save Birth Coordinates"
+                idPrefix="account-birth"
+                showNameField={false}
+                initialValues={toSavedBirthDetails(currentUser)}
+              />
+              {saveMsg && <p className={styles.reviewCount} style={{ marginTop: '12px' }}>{saveMsg}</p>}
+            </div>
+
+            <div className={styles.partnerFormCard}>
+              <h3 className={styles.partnerTitle}>✦ Change Password</h3>
+              <form onSubmit={handlePasswordSave}>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label">Current Password</label>
+                  <PasswordInput className="input-field input-cosmos" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label">New Password</label>
+                  <PasswordInput className="input-field input-cosmos" required minLength={8} placeholder="Min 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                </div>
+                {passwordError && <p style={{ color: '#d64545', fontSize: '0.85rem', marginBottom: '12px' }}>{passwordError}</p>}
+                {passwordSaved && <p className={styles.reviewCount} style={{ marginBottom: '12px' }}>Password changed successfully.</p>}
+                <button type="submit" className="btn btn-gold btn-sm" disabled={passwordSaving}>
+                  {passwordSaving ? 'Saving...' : 'Change Password'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

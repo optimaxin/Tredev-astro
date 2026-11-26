@@ -144,7 +144,12 @@ export async function requestPasswordReset(email: string): Promise<{ devResetTok
   if (!row) return {}; // don't reveal whether the email exists
   const raw = randomBytes(32).toString('hex');
   await insertPasswordResetToken({ userId: row.id, tokenHash: hashToken(raw), expiresAt: Date.now() + 30 * 60_000 });
-  const resetLink = `${config.clientOrigins[0]}/reset-password?token=${raw}`;
+  // Query param on the root, not a path segment — same reasoning as
+  // payments.routes.ts's return_url: this app is a pure client-routed SPA
+  // with no server-side rewrite for arbitrary paths, so a dedicated
+  // '/reset-password' path 404s on a fresh load. '/' always resolves;
+  // AppContext's bootstrap effect picks the token back up from here.
+  const resetLink = `${config.clientOrigins[0]}/?reset_token=${raw}`;
   await sendEmail(row.email, 'Reset your TredevaAstro password', `
     <p>We received a request to reset your password.</p>
     <p><a href="${resetLink}">Click here to reset your password</a> (expires in 30 minutes).</p>

@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { AuthError, getPublicUser, linkFirebasePhone, login, loginWithFirebase, logout, refresh, register, requestPasswordReset, resetPassword } from '../services/authService.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
-import { updateBirthDetails, updateUserEmail, updateUserName } from '../repositories/userRepository.ts';
+import { findUserById, updateBirthDetails, updatePasswordHash, updateUserEmail, updateUserName } from '../repositories/userRepository.ts';
 import { MAINSTREAM_EMAIL_DOMAINS, isMainstreamEmail } from '../core/mainstreamEmailDomains.ts';
 
 export const authRouter = Router();
@@ -143,6 +144,25 @@ authRouter.patch('/me/email', requireAuth, async (req, res) => {
   if (!ok) return fail(res, 409, 'EMAIL_TAKEN', 'An account with this email already exists');
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
+});
+
+// Regular USER self-service password change — the Staff/Admin side already
+// has its own near-identical route (admin.routes.ts's PATCH /me, behind
+// staffOrAdmin), but that whole router is blocked for a plain USER account,
+// so this is the sibling for everyone else, right next to /me/name and
+// /me/email above.
+const changePasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8).max(200) });
+
+authRouter.patch('/me/password', requireAuth, async (req, res) => {
+  const parsed = changePasswordSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const me = await findUserById(req.user!.id);
+  if (!me) return fail(res, 404, 'NOT_FOUND', 'Account not found');
+  if (!await bcrypt.compare(parsed.data.currentPassword, me.password_hash)) {
+    return fail(res, 401, 'INVALID_PASSWORD', 'Current password is incorrect');
+  }
+  await updatePasswordHash(me.id, await bcrypt.hash(parsed.data.newPassword, 12));
+  res.json({ success: true, data: { ok: true } });
 });
 
 // ── Firebase sign-in (Google, Phone Auth) ────────────────────────────────

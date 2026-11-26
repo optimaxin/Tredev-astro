@@ -6,16 +6,17 @@ import { sendFirebasePhoneOtp, signInWithGooglePopup, toE164 } from '../../servi
 import { API_URL } from '../../services/apiUrl';
 import { authService, ApiRequestError } from '../../services/authService';
 import { COUNTRY_CODES, DEFAULT_COUNTRY, findByIso2, flagEmoji, type CountryCode } from '../../data/countryCodes';
+import PasswordInput from '../../components/PasswordInput/PasswordInput';
 import type { ConfirmationResult } from 'firebase/auth';
 import styles from './AuthPage.module.css';
 
 // Unified sign-in/sign-up: phone number (OTP), "Continue with Google", or
 // email/password login and registration. Both Phone and Google use Firebase,
 // while email auth runs through our direct API.
-type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login' | 'register-otp';
+type Step = 'entry' | 'otp' | 'name' | 'done' | 'email-login' | 'register-otp' | 'forgot-password' | 'reset-password';
 
 export default function AuthPage() {
-  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveMyName, t, pendingAction, setPendingAction } = useAppContext();
+  const { setPage, login, register, loginWithFirebase, verifyPhoneWithFirebase, saveMyName, t, pendingAction, setPendingAction, resetPasswordToken, clearResetPasswordToken } = useAppContext();
   const [step, setStep] = useState<Step>('entry');
 
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -79,6 +80,56 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  // Forgot/reset password
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetDone, setResetDone] = useState(false);
+
+  // A password-reset email link landed here — jump straight past the usual
+  // phone/Google entry screen into "set a new password" (see AppContext's
+  // resetPasswordToken, read once from `/?reset_token=...` at mount).
+  useEffect(() => {
+    if (resetPasswordToken) setStep('reset-password');
+  }, [resetPasswordToken]);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+    try {
+      await authService.forgotPassword(forgotEmail.trim());
+      setForgotSent(true);
+    } catch (err) {
+      setForgotError(err instanceof ApiRequestError ? err.message : 'Could not send a reset link. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    if (newPassword.length < 8) { setResetError('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setResetError('Passwords do not match.'); return; }
+    if (!resetPasswordToken) { setResetError('This reset link is missing its token — please request a new one.'); return; }
+    setResetLoading(true);
+    try {
+      await authService.resetPassword(resetPasswordToken, newPassword);
+      clearResetPasswordToken();
+      setResetDone(true);
+    } catch (err) {
+      setResetError(err instanceof ApiRequestError ? err.message : 'This reset link is invalid or has expired. Please request a new one.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Mirrors the resume behaviour the old LoginModal popup used to do —
   // some gated actions (ai-chat, panchang-location) don't map to a page of
@@ -836,8 +887,7 @@ export default function AuthPage() {
                   <label className={styles.inkLabel}>
                     <span className={styles.devanagariTag}>गुप्त कुंजी</span> {t('auth_label_login_password')}
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className={styles.inkInput}
                     placeholder="•••••••• (min 8 characters)"
                     value={loginPassword}
@@ -846,6 +896,16 @@ export default function AuthPage() {
                     minLength={emailMode === 'register' ? 8 : 1}
                   />
                 </div>
+
+                {emailMode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(loginEmail); setForgotError(''); setForgotSent(false); setStep('forgot-password'); }}
+                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem', padding: 0, margin: '-8px 0 12px', fontFamily: 'var(--font-sans)', color: 'inherit', alignSelf: 'flex-start' }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
 
                 {emailMode === 'register' && (
                   <ConsentCheckbox agreed={agreedToTerms} onChange={setAgreedToTerms} goToPage={setPage} />
@@ -876,6 +936,119 @@ export default function AuthPage() {
                 >
                   ← Back to phone / Google sign-in
                 </button>
+              </motion.form>
+            )}
+
+            {step === 'forgot-password' && (
+              <motion.form
+                key="forgot-password"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleForgotPassword}
+                className={styles.scriptForm}
+              >
+                {forgotSent ? (
+                  <>
+                    <p style={{ fontSize: '0.9rem' }}>If that email has an account, a reset link has been sent — check your inbox.</p>
+                    <button
+                      type="button"
+                      onClick={() => { setStep('email-login'); setEmailMode('signin'); }}
+                      className={styles.waxSealBtn}
+                    >
+                      <div className={styles.sealEmblemInside}>🗝️</div>
+                      <span>Back to sign in</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: '0.85rem', marginBottom: 12 }}>Enter the email on your account and we'll send you a link to reset your password.</p>
+                    <div className={styles.inkField}>
+                      <label className={styles.inkLabel}>
+                        <span className={styles.devanagariTag}>ई-मेल</span> {t('auth_label_login_email')}
+                      </label>
+                      <input
+                        type="email"
+                        className={styles.inkInput}
+                        placeholder={t('auth_placeholder_email')}
+                        value={forgotEmail}
+                        onChange={e => setForgotEmail(e.target.value)}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    {forgotError && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{forgotError}</p>}
+                    <button type="submit" className={styles.waxSealBtn} disabled={forgotLoading}>
+                      <div className={styles.sealEmblemInside}>🗝️</div>
+                      <span>{forgotLoading ? 'Sending…' : 'Send reset link'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setStep('email-login'); setEmailMode('signin'); }}
+                      style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem', marginTop: 'var(--space-2)', fontFamily: 'var(--font-sans)', color: 'inherit' }}
+                    >
+                      ← Back to sign in
+                    </button>
+                  </>
+                )}
+              </motion.form>
+            )}
+
+            {step === 'reset-password' && (
+              <motion.form
+                key="reset-password"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                onSubmit={handleResetPassword}
+                className={styles.scriptForm}
+              >
+                {resetDone ? (
+                  <>
+                    <p style={{ fontSize: '0.9rem' }}>Your password has been reset. Please sign in with your new password.</p>
+                    <button
+                      type="button"
+                      onClick={() => { setStep('email-login'); setEmailMode('signin'); }}
+                      className={styles.waxSealBtn}
+                    >
+                      <div className={styles.sealEmblemInside}>🗝️</div>
+                      <span>Go to sign in</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: '0.85rem', marginBottom: 12 }}>Choose a new password for your account.</p>
+                    <div className={styles.inkField}>
+                      <label className={styles.inkLabel}>New Password</label>
+                      <PasswordInput
+                        className={styles.inkInput}
+                        placeholder="•••••••• (min 8 characters)"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        autoFocus
+                      />
+                    </div>
+                    <div className={styles.inkField}>
+                      <label className={styles.inkLabel}>Confirm New Password</label>
+                      <PasswordInput
+                        className={styles.inkInput}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {resetError && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: '4px 0' }}>{resetError}</p>}
+                    <button type="submit" className={styles.waxSealBtn} disabled={resetLoading}>
+                      <div className={styles.sealEmblemInside}>🗝️</div>
+                      <span>{resetLoading ? 'Saving…' : 'Reset password'}</span>
+                    </button>
+                  </>
+                )}
               </motion.form>
             )}
           </AnimatePresence>

@@ -93,6 +93,9 @@ export const authService = {
   updateEmail: (accessToken: string, email: string) =>
     request<ApiUser>('/me/email', { method: 'PATCH', body: JSON.stringify({ email }), headers: { Authorization: `Bearer ${accessToken}` } }),
 
+  changePassword: (accessToken: string, currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>('/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }), headers: { Authorization: `Bearer ${accessToken}` } }),
+
   forgotPassword: (email: string) =>
     request<{ message: string; devResetToken?: string }>('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 

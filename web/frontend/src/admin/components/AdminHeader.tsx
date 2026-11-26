@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { AdminApiError } from '../../services/adminService';
 import { SearchInput, AdminButton } from './SharedControls';
 import Drawer from './Drawer';
+import PasswordInput from '../../components/PasswordInput/PasswordInput';
 import styles from './AdminHeader.module.css';
 import pageStyles from '../pages/AdminPages.module.css';
 
@@ -161,12 +162,12 @@ export default function AdminHeader({ onMenuClick }: Props) {
           </div>
           <div className={pageStyles.formGroup}>
             <label className={pageStyles.formLabel}>{t('admin_profile_field_new_password')}</label>
-            <input type="password" className={pageStyles.formInput} value={editNewPassword} onChange={e => setEditNewPassword(e.target.value)} />
+            <PasswordInput className={pageStyles.formInput} value={editNewPassword} onChange={e => setEditNewPassword(e.target.value)} />
           </div>
           {editNewPassword && (
             <div className={pageStyles.formGroup}>
               <label className={pageStyles.formLabel}>{t('admin_profile_field_current_password')}</label>
-              <input type="password" className={pageStyles.formInput} required value={editCurrentPassword} onChange={e => setEditCurrentPassword(e.target.value)} />
+              <PasswordInput className={pageStyles.formInput} required value={editCurrentPassword} onChange={e => setEditCurrentPassword(e.target.value)} />
             </div>
           )}
           {editError && <p style={{ color: 'var(--adm-danger, #c0392b)', fontSize: '0.8rem' }}>{editError}</p>}
