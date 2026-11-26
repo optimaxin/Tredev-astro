@@ -6,6 +6,13 @@ export function findReviewByConsultation(consultationId: string): Promise<Review
   return queryOne<ReviewRow>('SELECT * FROM reviews WHERE consultation_id = $1', [consultationId]);
 }
 
+// Used only to validate a staff-picked featured-review id actually belongs
+// to the astrologer it's being set on (see admin.routes.ts's PATCH
+// /astrologers/:id/featured-review) — not a general-purpose lookup.
+export function findReviewById(id: string): Promise<ReviewRow | undefined> {
+  return queryOne<ReviewRow>('SELECT * FROM reviews WHERE id = $1', [id]);
+}
+
 export async function listReviewsForAstrologer(astrologerId: number, page: number, limit: number): Promise<{ rows: ReviewRow[]; total: number }> {
   const totalRow = await queryOne<{ n: string }>('SELECT COUNT(*) AS n FROM reviews WHERE astrologer_id = $1', [astrologerId]);
   const rows = await query<ReviewRow>(

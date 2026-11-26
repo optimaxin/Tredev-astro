@@ -33,6 +33,27 @@ export interface AstrologerCatalogRow {
   // never exposed on PublicAstrologerProfile — a client never needs to know
   // another astrologer's commission rate.
   commission_percent: number;
+  // Staff-selectable alternative to commission_percent — a flat monthly
+  // amount instead of a per-consultation %. Both columns always exist;
+  // which one actually applies is decided by payout_model, not by zeroing
+  // out the other (switching back to COMMISSION later keeps whatever %
+  // was last set instead of forgetting it). Internal/staff-only, same as
+  // commission_percent — never exposed on PublicAstrologerProfile.
+  payout_model: 'COMMISSION' | 'SALARY';
+  monthly_salary: number;
+  // Staff-curated review shown on this astrologer's public card (see
+  // admin.routes.ts's GET/PATCH /astrologers/:id/featured-review) — null
+  // means no card review. Which review this points at is public (it IS the
+  // review text, already visible on the full reviews list); only the id
+  // itself lives on the row.
+  featured_review_id: string | null;
+  // Joined in only by the two public-read paths that actually render a card
+  // (listAstrologers, findAstrologerById) — present there, undefined on every
+  // other fetch (admin edits, realtime self-heal, etc.) that has no reason to
+  // pay for the join. Never trust these as "always populated".
+  featured_review_text?: string | null;
+  featured_review_rating?: number | null;
+  featured_review_author_name?: string | null;
   // Persisted online/offline toggle — survives a server restart so an
   // astrologer doesn't silently get flipped back OFFLINE by a deploy or an
   // idle-dyno respawn (see realtimeStore.ts buildAstrologerRecord).
@@ -59,6 +80,10 @@ export interface PublicAstrologerProfile {
   experienceYears: number;
   consultationCount: number;
   activeOfferPercent: number;
+  // Only present when the row was fetched via a path that joins it in (see
+  // featured_review_* on the row type above) — null either way means
+  // "nothing to show", so callers don't need to distinguish the two cases.
+  featuredReview: { text: string; rating: number; authorName: string } | null;
 }
 
 export function toPublicAstrologerProfile(row: AstrologerCatalogRow): PublicAstrologerProfile {
@@ -80,5 +105,8 @@ export function toPublicAstrologerProfile(row: AstrologerCatalogRow): PublicAstr
     experienceYears: row.experience_years,
     consultationCount: row.consultation_count,
     activeOfferPercent: row.active_offer_percent,
+    featuredReview: row.featured_review_text
+      ? { text: row.featured_review_text, rating: row.featured_review_rating ?? row.rating, authorName: row.featured_review_author_name || 'A user' }
+      : null,
   };
 }

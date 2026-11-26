@@ -297,15 +297,37 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     return () => callHandlersRef.current.delete(handler);
   }, []);
 
+  // Browser notifications are mandatory to go online — an astrologer with
+  // them off would never see an incoming assignment land (no sound, no OS
+  // alert, nothing outside the dashboard tab itself), which is exactly the
+  // "client got assigned, astrologer never noticed" failure this guards
+  // against. Checked live against Notification.permission, not just the
+  // stored notifPrefs.browser flag, since that can go stale (granted once
+  // at onboarding, then revoked later in the browser's own site settings).
   const goOnline = useCallback(async () => {
     if (!currentUser) return;
-    await realtimeApi.setAvailability(currentUser.email, 'ONLINE');
-  }, [currentUser]);
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      const message = 'Please enable browser notifications before going online — turn them on from Settings → Notifications.';
+      pushToast(message, 'warning');
+      throw new Error(message);
+    }
+    try {
+      await realtimeApi.setAvailability(currentUser.email, 'ONLINE');
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : 'Could not go online. Please try again.', 'warning');
+      throw err;
+    }
+  }, [currentUser, pushToast]);
 
   const goOffline = useCallback(async () => {
     if (!currentUser) return;
-    await realtimeApi.setAvailability(currentUser.email, 'OFFLINE');
-  }, [currentUser]);
+    try {
+      await realtimeApi.setAvailability(currentUser.email, 'OFFLINE');
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : 'Could not go offline. Please try again.', 'warning');
+      throw err;
+    }
+  }, [currentUser, pushToast]);
 
   const acceptAssignment = useCallback(async (id: string) => {
     if (!currentUser) return;

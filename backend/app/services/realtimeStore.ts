@@ -162,8 +162,19 @@ export function getAstrologerByEmail(email: string) {
 // ── Availability ─────────────────────────────────────────────────────────
 
 export async function setIntent(astrologerId: number, intent: 'ONLINE' | 'OFFLINE') {
-  const astro = astrologers.get(astrologerId);
-  if (!astro) throw new Error('Unknown astrologer');
+  let astro = astrologers.get(astrologerId);
+  if (!astro) {
+    // Self-heal instead of hard-failing "Unknown astrologer" — this map is
+    // only ever populated at boot (seedRealtimeStore) or right after a
+    // catalog row is created/edited (registerNewAstrologer); a gap between
+    // those (a missed call site, or this process started mid-migration)
+    // would otherwise strand a real astrologer unable to ever go online
+    // until the next deploy restarts the process.
+    const row = await findAstrologerByIdRaw(astrologerId);
+    if (!row) throw new Error('Unknown astrologer');
+    astro = await buildAstrologerRecord(row);
+    astrologers.set(astrologerId, astro);
+  }
   astro.intent = intent;
   astro.lastActivityAt = Date.now();
   if (intent === 'ONLINE') awayFlags.set(astrologerId, false);

@@ -172,6 +172,10 @@ export default function AstrologistDashboard() {
                 <div className={styles.identityMenuDivider} />
                 <button
                   className={isOnline ? styles.identityMenuActive : ''}
+                  // goOnline/goOffline already surface any failure as a toast
+                  // themselves (see RealtimeContext.tsx) — this just has to
+                  // not crash on the rejection they still throw for callers
+                  // that want to react to it directly.
                   onClick={() => { (isOnline ? goOffline() : goOnline()).catch(() => {}); setIdentityMenuOpen(false); }}
                 >
                   {isOnline ? `● ${LIVE_STATUS_LABEL[liveStatus]} — go offline` : '○ Go online'}

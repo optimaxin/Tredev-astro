@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
+import { useRealtime } from '../../../realtime/RealtimeContext';
 import { useDashboardNav, SectionHeader, Panel } from './shared';
 import styles from './sections.module.css';
 
@@ -18,14 +19,28 @@ function loadPrefs(email: string): NotifPrefs {
 
 export default function SettingsSection() {
   const { currentUser, availability, language, setLanguage } = useAppContext();
+  const { notifPrefs, completeOnboarding } = useRealtime();
   const { navigate } = useDashboardNav();
   const [tab, setTab] = useState<Tab>('account');
   const [prefs, setPrefs] = useState<NotifPrefs>(() => loadPrefs(currentUser?.email || ''));
+  const [browserPermDenied, setBrowserPermDenied] = useState(false);
 
   const updatePrefs = (partial: Partial<NotifPrefs>) => {
     const next = { ...prefs, ...partial };
     setPrefs(next);
     localStorage.setItem(`astro_notif_prefs::${currentUser?.email}`, JSON.stringify(next));
+  };
+
+  // The one-time onboarding banner (NotificationPermissionOnboarding.tsx)
+  // hides itself forever once answered — this is the only other place to
+  // turn browser notifications on (required to go online, see
+  // RealtimeContext.tsx's goOnline) if it was skipped, or if the browser's
+  // own site permission was revoked since.
+  const browserNotifsOn = 'Notification' in window && Notification.permission === 'granted' && notifPrefs.browser;
+  const enableBrowserNotifs = async () => {
+    setBrowserPermDenied(false);
+    await completeOnboarding(notifPrefs.sound, true);
+    if (!('Notification' in window) || Notification.permission !== 'granted') setBrowserPermDenied(true);
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -54,6 +69,23 @@ export default function SettingsSection() {
 
       {tab === 'notifications' && (
         <Panel title="Notification Preferences">
+          <div className={styles.toggleRow}>
+            <span className={styles.tablePrimary}>
+              Browser notifications
+              <br />
+              <small className={styles.tableMuted}>Required to go online — otherwise you won't notice a new assignment land.</small>
+            </span>
+            {browserNotifsOn ? (
+              <span className={styles.statRowValue}>On ✓</span>
+            ) : (
+              <button className={styles.btnSm} onClick={enableBrowserNotifs}>Enable</button>
+            )}
+          </div>
+          {browserPermDenied && (
+            <p className={styles.tableMuted} style={{ color: 'var(--color-danger, #c0392b)' }}>
+              Your browser is blocking notifications for this site. Enable them from your browser's site settings (usually the padlock icon next to the address bar), then come back and tap Enable again.
+            </p>
+          )}
           {([
             ['email', 'Email notifications'],
             ['push', 'Push notifications'],

@@ -23,6 +23,7 @@ export interface ApiAstrologerProfile {
   experienceYears: number;
   consultationCount: number;
   activeOfferPercent: number;
+  featuredReview: { text: string; rating: number; authorName: string } | null;
 }
 
 export interface UiAstrologer {
@@ -40,6 +41,9 @@ export interface UiAstrologer {
   category: string[];
   specialization: string[];
   activeOfferPercent: number;
+  // Staff-curated (see admin's Astrologers page) — null means nothing to
+  // show, not "not loaded yet".
+  featuredReview: { text: string; rating: number; authorName: string } | null;
 }
 
 function adapt(p: ApiAstrologerProfile): UiAstrologer {
@@ -58,6 +62,7 @@ function adapt(p: ApiAstrologerProfile): UiAstrologer {
     category: p.categories,
     specialization: p.expertise,
     activeOfferPercent: p.activeOfferPercent,
+    featuredReview: p.featuredReview,
   };
 }
 

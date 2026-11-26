@@ -53,9 +53,14 @@ export interface ApiAstrologerProfile {
   experienceYears: number;
   consultationCount: number;
   commissionPercent: number;
+  // Staff-selectable payout model — see AstrologerProfilePatch's own comment.
+  payoutModel: 'COMMISSION' | 'SALARY';
+  monthlySalary: number;
   // Percentage discount currently active for this astrologer (0 = none).
   // The backend's astrologer model returns it; AstrologersPage reads it.
   activeOfferPercent: number;
+  // Staff-curated card review — see ApiAstrologerStatus's own comment.
+  featuredReview: { text: string; rating: number; authorName: string } | null;
 }
 
 export interface ApiAstrologerRevenue {
@@ -91,6 +96,9 @@ export interface AstrologerProfilePatch {
   // is the platform's cut. Optional so an older caller that doesn't set it
   // leaves the astrologer's existing commission untouched.
   commissionPercent?: number;
+  // Staff-selectable payout model — see ApiAstrologerStatus's own comment.
+  payoutModel?: 'COMMISSION' | 'SALARY';
+  monthlySalary?: number;
 }
 
 export interface NewAstrologer extends AstrologerProfilePatch {
@@ -418,6 +426,14 @@ export interface ApiAstrologerStatus extends Partial<Omit<ApiAstrologerProfile, 
   effectiveBoostPayoutSharePercent: number;
   // What % of the per-minute price this astrologer actually earns.
   commissionPercent: number;
+  // Staff-selectable: 'COMMISSION' (the per-consultation % above applies) or
+  // 'SALARY' (monthlySalary is a flat amount instead, informational only —
+  // there's no automated payroll run anywhere in this app).
+  payoutModel: 'COMMISSION' | 'SALARY';
+  monthlySalary: number;
+  // Which of this astrologer's real reviews (if any) is currently featured
+  // on their public card — see the Edit drawer's own Featured Review picker.
+  featuredReviewId: string | null;
   // Whether this astrologer is live in the bookable catalog — false means
   // staff has "Removed" them (see the Remove/Restore button); their past
   // consultation/review history is untouched either way.
@@ -681,6 +697,9 @@ export const adminService = {
   createAstrologer: (body: NewAstrologer) =>
     request<ApiAstrologerProfile>('/astrologers', { method: 'POST', body: JSON.stringify(body) }),
   getAstrologerRevenue: () => request<ApiAstrologerRevenue[]>('/astrologers/revenue'),
+  // Staff-curated card review — null clears it (back to "no card review").
+  setFeaturedReview: (id: number, reviewId: string | null) =>
+    request<{ id: number; featuredReviewId: string | null }>(`/astrologers/${id}/featured-review`, { method: 'PATCH', body: JSON.stringify({ reviewId }) }),
   // "Remove" (active: false) / "Restore" (active: true) — a flag flip, not a
   // delete; see backend's setAstrologerActive for why.
   setAstrologerActive: (id: number, active: boolean) =>

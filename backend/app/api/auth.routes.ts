@@ -6,6 +6,21 @@ import { requireAuth } from '../middleware/auth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 import { findUserById, updateBirthDetails, updatePasswordHash, updateUserEmail, updateUserName } from '../repositories/userRepository.ts';
 import { MAINSTREAM_EMAIL_DOMAINS, isMainstreamEmail } from '../core/mainstreamEmailDomains.ts';
+import { findAstrologerByUserId } from '../repositories/astrologerRepository.ts';
+import { registerNewAstrologer } from '../services/realtimeStore.ts';
+
+// The realtime layer's in-memory astrologer record caches name/email off
+// the linked `users` row at the moment it was (re-)registered (see
+// realtimeStore.ts's buildAstrologerRecord) — never refreshed on its own, so
+// a name/email change here would otherwise go stale until the next deploy
+// restarts the process. getAstrologerByEmail (what every astrologer route
+// identifies the caller by) would then silently stop matching, which looks
+// like "can't go online" / "not an astrologer account" for exactly this
+// account and no one else, until a restart papers over it.
+async function resyncAstrologerRecord(userId: string) {
+  const row = await findAstrologerByUserId(userId);
+  if (row) await registerNewAstrologer(row);
+}
 
 export const authRouter = Router();
 
@@ -127,6 +142,7 @@ authRouter.patch('/me/name', requireAuth, async (req, res) => {
   const parsed = nameSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
   await updateUserName(req.user!.id, parsed.data.name);
+  await resyncAstrologerRecord(req.user!.id);
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
 });
@@ -142,6 +158,7 @@ authRouter.patch('/me/email', requireAuth, async (req, res) => {
   if (!isMainstreamEmail(parsed.data.email)) return fail(res, 422, 'VALIDATION_ERROR', 'Please use a real email address (Gmail, Outlook, Yahoo, etc.)');
   const ok = await updateUserEmail(req.user!.id, parsed.data.email);
   if (!ok) return fail(res, 409, 'EMAIL_TAKEN', 'An account with this email already exists');
+  await resyncAstrologerRecord(req.user!.id);
   const user = await getPublicUser(req.user!.id);
   res.json({ success: true, data: user });
 });

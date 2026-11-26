@@ -5,7 +5,8 @@ import { requireAuth, requireRole } from '../middleware/auth.ts';
 import bcrypt from 'bcryptjs';
 import { createUser, findUserByEmail, findUserById, listAllUsers, setFreeAiChatSeconds, updatePasswordHash, updateUserName, updateUserRole, updateUserStatus } from '../repositories/userRepository.ts';
 import { toPublicUser } from '../models/user.ts';
-import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { deactivateAstrologerByUserId, deleteAstrologerCascade, findAstrologerById, findAstrologerByIdRaw, findAstrologerByUserId, listAllAstrologersRaw, setAstrologerActive, setFeaturedReview, updateAstrologerProfile, updateBoostPayoutOverride } from '../repositories/astrologerRepository.ts';
+import { findReviewById } from '../repositories/reviewRepository.ts';
 import { bus } from '../websocket/bus.ts';
 import { toPublicAstrologerProfile } from '../models/astrologer.ts';
 import { countCompletedByAstrologerAndType, countForUser, countInProgress, findAllForAstrologer, findAllForUser, listAllConsultations, listRecentWithAstrologerName } from '../repositories/consultationRepository.ts';
@@ -408,6 +409,9 @@ adminRouter.get('/astrologers/status', requireSection('astrologers'), async (_re
       boostPayoutOverridePercent,
       effectiveBoostPayoutSharePercent: boostPayoutOverridePercent ?? defaultPayoutShare,
       commissionPercent: raw?.commission_percent ?? 100,
+      payoutModel: raw?.payout_model ?? 'COMMISSION',
+      monthlySalary: raw?.monthly_salary ?? 0,
+      featuredReviewId: raw?.featured_review_id ?? null,
       isActive: (raw?.is_active ?? 1) === 1,
     };
   }));
@@ -423,6 +427,9 @@ adminRouter.get('/astrologers/status', requireSection('astrologers'), async (_re
     boostPayoutOverridePercent: a.boost_payout_override_percent,
     effectiveBoostPayoutSharePercent: a.boost_payout_override_percent ?? defaultPayoutShare,
     commissionPercent: a.commission_percent,
+    payoutModel: a.payout_model,
+    monthlySalary: a.monthly_salary,
+    featuredReviewId: a.featured_review_id,
     isActive: false,
   }));
   res.json({ success: true, data: [...data, ...removed] });
@@ -514,6 +521,11 @@ const editAstrologerSchema = z.object({
   // sets the rate (chat/call/videoPrice) AND this cut together, so e.g. a
   // ₹25/min astrologer at 10% shows ₹2.5/min earned, not the full ₹25.
   commissionPercent: z.number().int().min(1).max(100).optional(),
+  // Staff picks one payout model per astrologer — commission_percent above
+  // (per-consultation %) or a flat monthlySalary instead. Both optional, same
+  // "older caller leaves it alone" reasoning as commissionPercent.
+  payoutModel: z.enum(['COMMISSION', 'SALARY']).optional(),
+  monthlySalary: z.number().min(0).max(10_000_000).optional(),
 });
 
 adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req, res) => {
@@ -524,7 +536,7 @@ adminRouter.patch('/astrologers/:id', requireSection('astrologers'), async (req,
   const row = await updateAstrologerProfile(id, parsed.data);
   if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
   await audit(req, 'astrologer.profile.update', row.name);
-  res.json({ success: true, data: { ...toPublicAstrologerProfile(row), commissionPercent: row.commission_percent } });
+  res.json({ success: true, data: { ...toPublicAstrologerProfile(row), commissionPercent: row.commission_percent, payoutModel: row.payout_model, monthlySalary: row.monthly_salary } });
 });
 
 const activeSchema = z.object({ active: z.boolean() });
@@ -543,6 +555,27 @@ adminRouter.patch('/astrologers/:id/active', requireSection('astrologers'), asyn
   bus.emitTyped('astrologer:catalog_changed', { astrologerId: id });
   await audit(req, parsed.data.active ? 'astrologer.restore' : 'astrologer.remove', row.name);
   res.json({ success: true, data: { id: row.id, isActive: row.is_active === 1 } });
+});
+
+const featuredReviewSchema = z.object({ reviewId: z.string().min(1).nullable() });
+
+// Staff picks which real review (if any) shows on this astrologer's public
+// card — see the row's own featured_review_id comment. Validates the review
+// actually belongs to this astrologer (not just any review id) before
+// setting it, since nothing else here re-checks that at read time.
+adminRouter.patch('/astrologers/:id/featured-review', requireSection('astrologers'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return fail(res, 422, 'VALIDATION_ERROR', 'id must be an integer');
+  const parsed = featuredReviewSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  if (parsed.data.reviewId !== null) {
+    const review = await findReviewById(parsed.data.reviewId);
+    if (!review || review.astrologer_id !== id) return fail(res, 422, 'VALIDATION_ERROR', 'That review does not belong to this astrologer');
+  }
+  const row = await setFeaturedReview(id, parsed.data.reviewId);
+  if (!row) return fail(res, 404, 'NOT_FOUND', 'Astrologer not found');
+  await audit(req, 'astrologer.featured_review.update', row.name);
+  res.json({ success: true, data: { id: row.id, featuredReviewId: row.featured_review_id } });
 });
 
 // Real, permanent delete — distinct from Remove above (is_active flip).
@@ -605,7 +638,7 @@ adminRouter.post('/astrologers', requireSection('astrologers'), async (req, res)
   // the process restarts — see registerNewAstrologer's own comment.
   await registerNewAstrologer(finalRow);
   await audit(req, 'astrologer.create', email);
-  res.json({ success: true, data: { ...toPublicAstrologerProfile(finalRow), commissionPercent: finalRow.commission_percent } });
+  res.json({ success: true, data: { ...toPublicAstrologerProfile(finalRow), commissionPercent: finalRow.commission_percent, payoutModel: finalRow.payout_model, monthlySalary: finalRow.monthly_salary } });
 });
 
 // ── 1:1 scheduled slots (consultation_slots) ─────────────────────────────

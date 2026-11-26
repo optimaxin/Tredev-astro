@@ -83,6 +83,7 @@ const PLACEHOLDER_ASTROLOGER: UiAstrologer = {
   category: ['Vedic Astrology'],
   specialization: ['Career', 'Marriage', 'Finance'],
   activeOfferPercent: 0,
+  featuredReview: null,
 };
 
 function formatSlotTime(ms: number): { day: string; time: string } {

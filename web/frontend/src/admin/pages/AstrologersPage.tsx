@@ -3,7 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useRealtime } from '../../realtime/RealtimeContext';
 import type { AuthUser } from '../../context/AppContext';
 import { astrologerService } from '../../services/astrologerService';
-import type { UiAstrologer, ApiAstrologerProfile } from '../../services/astrologerService';
+import type { UiAstrologer, ApiAstrologerProfile, Review } from '../../services/astrologerService';
 import { adminService, AdminApiError } from '../../services/adminService';
 import type { ApiAstrologerRevenue, ApiAstrologerActivity, ApiAstrologerStatus } from '../../services/adminService';
 import DataTable from '../components/DataTable';
@@ -26,6 +26,7 @@ function statusAsUiAstrologer(s: ApiAstrologerStatus): UiAstrologer {
     experience: s.experienceYears!, consultations: s.consultationCount!, languages: s.languages!,
     price: s.chatPrice!, avatar: s.avatar!, about: s.bio!, category: s.categories!, specialization: s.expertise!,
     activeOfferPercent: s.activeOfferPercent!,
+    featuredReview: s.featuredReview ?? null,
   };
 }
 
@@ -70,8 +71,13 @@ interface EditForm {
   videoPrice: string;
   // What % of the per-minute price this astrologer actually earns — e.g.
   // ₹25/min at 10% means ₹2.50/min shows up in their own Earnings tab, not
-  // the full ₹25.
+  // the full ₹25. Only applies when payoutModel is 'COMMISSION'.
   commissionPercent: string;
+  // Staff picks one or the other — a flat monthly amount instead of the
+  // per-consultation % above. Purely informational; no payroll automation
+  // exists in this app to act on it.
+  payoutModel: 'COMMISSION' | 'SALARY';
+  monthlySalary: string;
 }
 
 const EMPTY_EDIT_FORM: EditForm = {
@@ -80,6 +86,7 @@ const EMPTY_EDIT_FORM: EditForm = {
   consultationTypes: ['chat', 'voice', 'video'],
   chatPrice: '0', callPrice: '0', videoPrice: '0',
   commissionPercent: '100',
+  payoutModel: 'COMMISSION', monthlySalary: '0',
 };
 
 interface CreateForm extends EditForm {
@@ -90,16 +97,19 @@ interface CreateForm extends EditForm {
 
 const EMPTY_CREATE_FORM: CreateForm = { ...EMPTY_EDIT_FORM, name: '', email: '', password: '' };
 
-// commissionPercent isn't on astrologerService's ApiAstrologerProfile (that's
-// the PUBLIC catalog shape) — passed in separately from liveStatus, the one
-// place the staff panel already has it (see GET /astrologers/status).
-function profileToForm(p: ApiAstrologerProfile, commissionPercent: number): EditForm {
+// commissionPercent/payoutModel/monthlySalary aren't on astrologerService's
+// ApiAstrologerProfile (that's the PUBLIC catalog shape) — passed in
+// separately from liveStatus, the one place the staff panel already has them
+// (see GET /astrologers/status).
+function profileToForm(p: ApiAstrologerProfile, payout: { commissionPercent: number; payoutModel: 'COMMISSION' | 'SALARY'; monthlySalary: number }): EditForm {
   return {
     title: p.title, bio: p.bio, avatar: p.avatar, experienceYears: String(p.experienceYears),
     languages: p.languages.join(', '), categories: p.categories.join(', '), expertise: p.expertise.join(', '),
     consultationTypes: p.consultationTypes,
     chatPrice: String(p.chatPrice), callPrice: String(p.callPrice), videoPrice: String(p.videoPrice),
-    commissionPercent: String(commissionPercent),
+    commissionPercent: String(payout.commissionPercent),
+    payoutModel: payout.payoutModel,
+    monthlySalary: String(payout.monthlySalary),
   };
 }
 
@@ -195,6 +205,13 @@ export default function AstrologersPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Which of this astrologer's real reviews (if any) shows on their public
+  // card — staff picks one explicitly instead of it being automatic
+  // (latest/highest-rated), which could surface something unflattering.
+  const [editReviews, setEditReviews] = useState<Review[]>([]);
+  const [editFeaturedReviewId, setEditFeaturedReviewId] = useState<string | null>(null);
+  const [featuredReviewSaving, setFeaturedReviewSaving] = useState(false);
+
   // Direct admin-onboarding — creates the account (role ASTROLOGIST) and
   // its catalog profile in one call (backend/app/api/admin.routes.ts's
   // POST /astrologers). The apply/approve flow (Applications page) still
@@ -227,6 +244,8 @@ export default function AstrologersPage() {
         chatPrice: Number(createForm.chatPrice) || 0, callPrice: Number(createForm.callPrice) || 0, videoPrice: Number(createForm.videoPrice) || 0,
         experienceYears: Number(createForm.experienceYears) || 0,
         commissionPercent: Math.min(100, Math.max(1, Number(createForm.commissionPercent) || 100)),
+        payoutModel: createForm.payoutModel,
+        monthlySalary: Math.max(0, Number(createForm.monthlySalary) || 0),
       });
       await Promise.all([refreshAdminData(), astrologerService.list({ limit: 50 }).then(r => setCatalog(r.data))]);
       setCreateOpen(false);
@@ -246,7 +265,13 @@ export default function AstrologersPage() {
     setEditLoading(true);
     try {
       const profile = await astrologerService.getRaw(id);
-      if (profile) setEditForm(profileToForm(profile, liveStatus[id]?.commissionPercent ?? 100));
+      if (profile) setEditForm(profileToForm(profile, {
+        commissionPercent: liveStatus[id]?.commissionPercent ?? 100,
+        payoutModel: liveStatus[id]?.payoutModel ?? 'COMMISSION',
+        monthlySalary: liveStatus[id]?.monthlySalary ?? 0,
+      }));
+      setEditFeaturedReviewId(liveStatus[id]?.featuredReviewId ?? null);
+      setEditReviews(await astrologerService.listReviews(id).catch(() => []));
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Could not load this astrologer\'s profile.');
     } finally {
@@ -261,6 +286,21 @@ export default function AstrologersPage() {
         ? prev.consultationTypes.filter(t => t !== type)
         : [...prev.consultationTypes, type],
     }));
+  };
+
+  const handleSaveFeaturedReview = async () => {
+    if (!editTarget) return;
+    const id = joinedProfile(editTarget, catalog, liveStatus).id;
+    if (id === undefined) return;
+    setFeaturedReviewSaving(true);
+    try {
+      await adminService.setFeaturedReview(id, editFeaturedReviewId);
+      setLiveStatus(prev => prev[id] ? { ...prev, [id]: { ...prev[id], featuredReviewId: editFeaturedReviewId } } : prev);
+    } catch (err) {
+      setEditError(err instanceof AdminApiError ? err.message : 'Could not save the featured review.');
+    } finally {
+      setFeaturedReviewSaving(false);
+    }
   };
 
   const handleEditSave = async (e: React.FormEvent) => {
@@ -284,6 +324,8 @@ export default function AstrologersPage() {
         videoPrice: Number(editForm.videoPrice) || 0,
         experienceYears: Number(editForm.experienceYears) || 0,
         commissionPercent: Math.min(100, Math.max(1, Number(editForm.commissionPercent) || 100)),
+        payoutModel: editForm.payoutModel,
+        monthlySalary: Math.max(0, Number(editForm.monthlySalary) || 0),
       });
       // Reflect the save immediately in the list/cards without a full
       // reload — adapt() lives in astrologerService, so just re-map here.
@@ -292,7 +334,7 @@ export default function AstrologersPage() {
         experience: updated.experienceYears, languages: updated.languages, price: updated.chatPrice,
         avatar: updated.avatar, about: updated.bio, category: updated.categories, specialization: updated.expertise,
       } : c));
-      setLiveStatus(prev => prev[id] ? { ...prev, [id]: { ...prev[id], commissionPercent: updated.commissionPercent } } : prev);
+      setLiveStatus(prev => prev[id] ? { ...prev, [id]: { ...prev[id], commissionPercent: updated.commissionPercent, payoutModel: updated.payoutModel, monthlySalary: updated.monthlySalary } } : prev);
       setEditTarget(null);
     } catch (err) {
       setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes.');
@@ -852,14 +894,61 @@ export default function AstrologersPage() {
               <input type="number" min={0} className={styles.formInput} value={editForm.videoPrice} onChange={e => setEditForm({ ...editForm, videoPrice: e.target.value })} />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Astrologer's Cut (%)</label>
-              <input type="number" min={1} max={100} className={styles.formInput} value={editForm.commissionPercent} onChange={e => setEditForm({ ...editForm, commissionPercent: e.target.value })} />
-              <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
-                What % of the per-minute price this astrologer actually earns — e.g. at ₹{editForm.chatPrice || 0}/min and {editForm.commissionPercent || 100}%, they earn ₹{((Number(editForm.chatPrice) || 0) * (Number(editForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
-              </p>
+              <label className={styles.formLabel}>Payout Model</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <AdminButton variant={editForm.payoutModel === 'COMMISSION' ? 'gold' : undefined} onClick={() => setEditForm({ ...editForm, payoutModel: 'COMMISSION' })}>Commission</AdminButton>
+                <AdminButton variant={editForm.payoutModel === 'SALARY' ? 'gold' : undefined} onClick={() => setEditForm({ ...editForm, payoutModel: 'SALARY' })}>Monthly Salary</AdminButton>
+              </div>
             </div>
+            {editForm.payoutModel === 'COMMISSION' ? (
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Astrologer's Cut (%)</label>
+                <input type="number" min={1} max={100} className={styles.formInput} value={editForm.commissionPercent} onChange={e => setEditForm({ ...editForm, commissionPercent: e.target.value })} />
+                <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
+                  What % of the per-minute price this astrologer actually earns — e.g. at ₹{editForm.chatPrice || 0}/min and {editForm.commissionPercent || 100}%, they earn ₹{((Number(editForm.chatPrice) || 0) * (Number(editForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
+                </p>
+              </div>
+            ) : (
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Monthly Salary (₹)</label>
+                <input type="number" min={0} className={styles.formInput} value={editForm.monthlySalary} onChange={e => setEditForm({ ...editForm, monthlySalary: e.target.value })} />
+                <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
+                  A flat amount instead of per-consultation commission. Paid out by accounting directly — there's no automated payroll run in the app for this.
+                </p>
+              </div>
+            )}
             {editError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{editError}</p>}
           </form>
+        )}
+
+        {editTarget && (
+          <div className={styles.formGroup} style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--adm-border)' }}>
+            <label className={styles.formLabel}>Featured Review (shown on this astrologer's public card)</label>
+            <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginBottom: 8 }}>
+              Pick one of this astrologer's real reviews to feature — it won't pick itself (not auto-latest or auto-highest-rated).
+            </p>
+            {editReviews.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--adm-muted)' }}>No reviews yet for this astrologer.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem' }}>
+                  <input type="radio" checked={editFeaturedReviewId === null} onChange={() => setEditFeaturedReviewId(null)} />
+                  None — no review on the card
+                </label>
+                {editReviews.map(r => (
+                  <label key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.82rem' }}>
+                    <input type="radio" checked={editFeaturedReviewId === r.id} onChange={() => setEditFeaturedReviewId(r.id)} style={{ marginTop: 3 }} />
+                    <span>★ {r.rating} — {r.authorName}: "{r.text || '(no written text)'}"</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: 10 }}>
+              <AdminButton variant="gold" onClick={handleSaveFeaturedReview} disabled={featuredReviewSaving}>
+                {featuredReviewSaving ? 'Saving...' : 'Save Featured Review'}
+              </AdminButton>
+            </div>
+          </div>
         )}
       </Drawer>
 
@@ -933,12 +1022,26 @@ export default function AstrologersPage() {
             <input type="number" min={0} className={styles.formInput} value={createForm.videoPrice} onChange={e => setCreateForm({ ...createForm, videoPrice: e.target.value })} />
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Astrologer's Cut (%)</label>
-            <input type="number" min={1} max={100} className={styles.formInput} value={createForm.commissionPercent} onChange={e => setCreateForm({ ...createForm, commissionPercent: e.target.value })} />
-            <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
-              What % of the per-minute price this astrologer actually earns — e.g. at ₹{createForm.chatPrice || 0}/min and {createForm.commissionPercent || 100}%, they earn ₹{((Number(createForm.chatPrice) || 0) * (Number(createForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
-            </p>
+            <label className={styles.formLabel}>Payout Model</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <AdminButton variant={createForm.payoutModel === 'COMMISSION' ? 'gold' : undefined} onClick={() => setCreateForm({ ...createForm, payoutModel: 'COMMISSION' })}>Commission</AdminButton>
+              <AdminButton variant={createForm.payoutModel === 'SALARY' ? 'gold' : undefined} onClick={() => setCreateForm({ ...createForm, payoutModel: 'SALARY' })}>Monthly Salary</AdminButton>
+            </div>
           </div>
+          {createForm.payoutModel === 'COMMISSION' ? (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Astrologer's Cut (%)</label>
+              <input type="number" min={1} max={100} className={styles.formInput} value={createForm.commissionPercent} onChange={e => setCreateForm({ ...createForm, commissionPercent: e.target.value })} />
+              <p style={{ fontSize: '0.72rem', color: 'var(--adm-muted)', marginTop: 4 }}>
+                What % of the per-minute price this astrologer actually earns — e.g. at ₹{createForm.chatPrice || 0}/min and {createForm.commissionPercent || 100}%, they earn ₹{((Number(createForm.chatPrice) || 0) * (Number(createForm.commissionPercent) || 100) / 100).toFixed(2)}/min on chat.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Monthly Salary (₹)</label>
+              <input type="number" min={0} className={styles.formInput} value={createForm.monthlySalary} onChange={e => setCreateForm({ ...createForm, monthlySalary: e.target.value })} />
+            </div>
+          )}
           {createError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{createError}</p>}
         </form>
       </Drawer>

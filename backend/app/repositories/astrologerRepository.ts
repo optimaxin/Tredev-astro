@@ -37,6 +37,9 @@ export async function insertAstrologerForUser(userId: string, name: string, expe
     price_increase_expires_at: null,
     boost_payout_override_percent: null,
     commission_percent: 100,
+    payout_model: 'COMMISSION',
+    monthly_salary: 0,
+    featured_review_id: null,
     intent: 'OFFLINE',
   };
   await query(
@@ -76,11 +79,14 @@ export interface AstrologerFilters {
   limit: number;
 }
 
+// Qualified with the `astrologers.` prefix — listAstrologers' main query now
+// joins in `reviews` (for the featured-review card quote), whose own
+// `rating` column would otherwise make a bare `rating` ambiguous.
 const SORT_COLUMN: Record<string, string> = {
-  rating: 'rating DESC',
-  experience: 'experience_years DESC',
-  price: 'chat_price ASC',
-  relevance: 'rating DESC, review_count DESC', // no search term yet, so relevance ~= rating+popularity
+  rating: 'astrologers.rating DESC',
+  experience: 'astrologers.experience_years DESC',
+  price: 'astrologers.chat_price ASC',
+  relevance: 'astrologers.rating DESC, astrologers.review_count DESC', // no search term yet, so relevance ~= rating+popularity
 };
 
 // ponytail: category/language/consultationType filters use a LIKE match on
@@ -88,16 +94,16 @@ const SORT_COLUMN: Record<string, string> = {
 // catalog should switch these to real Postgres array columns and filter
 // with the `@>` containment operator instead.
 export async function listAstrologers(filters: AstrologerFilters): Promise<{ rows: AstrologerCatalogRow[]; total: number }> {
-  const where: string[] = ['is_active = 1'];
+  const where: string[] = ['astrologers.is_active = 1'];
   const params: (string | number)[] = [];
   const addParam = (value: string | number) => { params.push(value); return `$${params.length}`; };
 
-  if (filters.category) where.push(`categories LIKE ${addParam(`%"${filters.category}"%`)}`);
-  if (filters.language) where.push(`languages LIKE ${addParam(`%"${filters.language}"%`)}`);
-  if (filters.consultationType) where.push(`consultation_types LIKE ${addParam(`%"${filters.consultationType}"%`)}`);
-  if (filters.minRating !== undefined) where.push(`rating >= ${addParam(filters.minRating)}`);
-  if (filters.minPrice !== undefined) where.push(`chat_price >= ${addParam(filters.minPrice)}`);
-  if (filters.maxPrice !== undefined) where.push(`chat_price <= ${addParam(filters.maxPrice)}`);
+  if (filters.category) where.push(`astrologers.categories LIKE ${addParam(`%"${filters.category}"%`)}`);
+  if (filters.language) where.push(`astrologers.languages LIKE ${addParam(`%"${filters.language}"%`)}`);
+  if (filters.consultationType) where.push(`astrologers.consultation_types LIKE ${addParam(`%"${filters.consultationType}"%`)}`);
+  if (filters.minRating !== undefined) where.push(`astrologers.rating >= ${addParam(filters.minRating)}`);
+  if (filters.minPrice !== undefined) where.push(`astrologers.chat_price >= ${addParam(filters.minPrice)}`);
+  if (filters.maxPrice !== undefined) where.push(`astrologers.chat_price <= ${addParam(filters.maxPrice)}`);
 
   const whereSql = where.join(' AND ');
   const orderBy = SORT_COLUMN[filters.sort || 'relevance'];
@@ -115,7 +121,11 @@ export async function listAstrologers(filters: AstrologerFilters): Promise<{ row
   const limitParam = addParam(filters.limit);
   const offsetParam = addParam(offset);
   const rows = await query<AstrologerCatalogRow>(
-    `SELECT * FROM astrologers WHERE ${whereSql}
+    `SELECT astrologers.*, reviews.text AS featured_review_text, reviews.rating AS featured_review_rating, users.name AS featured_review_author_name
+     FROM astrologers
+     LEFT JOIN reviews ON reviews.id = astrologers.featured_review_id
+     LEFT JOIN users ON users.id = reviews.user_id
+     WHERE ${whereSql}
      ORDER BY (EXISTS (SELECT 1 FROM boosts b WHERE b.astrologer_id = astrologers.id AND b.ends_at > ${nowParam})) DESC, ${orderBy}
      LIMIT ${limitParam} OFFSET ${offsetParam}`,
     params
@@ -148,6 +158,10 @@ export interface AstrologerProfilePatch {
   // astrologer actually earns. Optional on the patch so older callers that
   // don't touch it leave the existing value alone (see the COALESCE below).
   commissionPercent?: number;
+  // Staff-selectable payout model — see the row type's own comment. Both
+  // optional for the same "older caller leaves it alone" reason as above.
+  payoutModel?: 'COMMISSION' | 'SALARY';
+  monthlySalary?: number;
 }
 
 const PRICE_INCREASE_WINDOW_MS = 30 * 24 * 60 * 60_000;
@@ -194,13 +208,14 @@ export async function updateAstrologerProfile(id: number, patch: AstrologerProfi
        title = $1, bio = $2, avatar = $3, languages = $4, categories = $5, expertise = $6,
        consultation_types = $7, chat_price = $8, call_price = $9, video_price = $10, experience_years = $11,
        price_increase_old_chat_price = $12, price_increase_old_call_price = $13, price_increase_old_video_price = $14,
-       price_increase_expires_at = $15, commission_percent = $16
-     WHERE id = $17
+       price_increase_expires_at = $15, commission_percent = $16, payout_model = $17, monthly_salary = $18
+     WHERE id = $19
      RETURNING *`,
     [
       patch.title, patch.bio, patch.avatar, JSON.stringify(patch.languages), JSON.stringify(patch.categories), JSON.stringify(patch.expertise),
       JSON.stringify(patch.consultationTypes), patch.chatPrice, patch.callPrice, patch.videoPrice, patch.experienceYears,
-      oldChat, oldCall, oldVideo, expiresAt, patch.commissionPercent ?? before.commission_percent, id,
+      oldChat, oldCall, oldVideo, expiresAt, patch.commissionPercent ?? before.commission_percent,
+      patch.payoutModel ?? before.payout_model, patch.monthlySalary ?? before.monthly_salary, id,
     ]
   );
   return rows[0];
@@ -213,6 +228,14 @@ export async function updateAstrologerProfile(id: number, patch: AstrologerProfi
 // every bookable listing immediately, but every past consultation/review/
 // revenue row stays intact (nothing here ever deletes a row) — staff can
 // flip it back on to restore them.
+// Staff-curated card review — see the row type's own comment. The route
+// validates the review actually belongs to this astrologer before calling
+// this (not enforced here; this is a plain write).
+export async function setFeaturedReview(id: number, reviewId: string | null): Promise<AstrologerCatalogRow | undefined> {
+  const rows = await query<AstrologerCatalogRow>('UPDATE astrologers SET featured_review_id = $1 WHERE id = $2 RETURNING *', [reviewId, id]);
+  return rows[0];
+}
+
 export async function setAstrologerActive(id: number, active: boolean): Promise<AstrologerCatalogRow | undefined> {
   const rows = await query<AstrologerCatalogRow>('UPDATE astrologers SET is_active = $1 WHERE id = $2 RETURNING *', [active ? 1 : 0, id]);
   return rows[0];
@@ -265,7 +288,14 @@ export async function deleteAstrologerCascade(id: number): Promise<boolean> {
 }
 
 export function findAstrologerById(id: number): Promise<AstrologerCatalogRow | undefined> {
-  return queryOne<AstrologerCatalogRow>('SELECT * FROM astrologers WHERE id = $1 AND is_active = 1', [id]);
+  return queryOne<AstrologerCatalogRow>(
+    `SELECT astrologers.*, reviews.text AS featured_review_text, reviews.rating AS featured_review_rating, users.name AS featured_review_author_name
+     FROM astrologers
+     LEFT JOIN reviews ON reviews.id = astrologers.featured_review_id
+     LEFT JOIN users ON users.id = reviews.user_id
+     WHERE astrologers.id = $1 AND astrologers.is_active = 1`,
+    [id]
+  );
 }
 
 // Unlike findAstrologerById, doesn't filter on is_active — for resolving a

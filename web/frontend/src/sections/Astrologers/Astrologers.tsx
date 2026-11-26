@@ -270,6 +270,14 @@ function AstrologerCard({ astrologer: a, compact = false, featuredAstrologerId }
           ))}
         </div>
 
+        {/* Staff-curated review quote (see Admin → Astrologers' Edit drawer) —
+            absent on most cards, same as before this existed. */}
+        {a.featuredReview && (
+          <p style={{ fontSize: '0.78rem', fontStyle: 'italic', color: 'var(--text-muted, #8a8373)', margin: '2px 0 4px', lineHeight: 1.4 }}>
+            "★ {a.featuredReview.rating} — {a.featuredReview.text}" <span style={{ fontStyle: 'normal', opacity: 0.75 }}>— {a.featuredReview.authorName}</span>
+          </p>
+        )}
+
         {/* Price + CTAs */}
         <div className={styles.bottom}>
           <div className={styles.priceWrap}>
