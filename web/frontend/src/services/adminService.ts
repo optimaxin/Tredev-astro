@@ -3,6 +3,7 @@
 // server-side, this file just attaches whatever token is currently stored.
 
 import { API_URL } from './apiUrl';
+import { getAccessToken } from './tokenRefresh';
 
 export class AdminApiError extends Error {
   code: string;
@@ -12,8 +13,12 @@ export class AdminApiError extends Error {
   }
 }
 
+// Proactively refreshes a token about to expire (see tokenRefresh.ts) —
+// without this, an admin left on one console page past the 15min access-
+// token TTL got a raw "Invalid or expired access token" on every single
+// panel until they manually reloaded the page.
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('auth_access_token');
+  const token = await getAccessToken();
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api/admin${path}`, {

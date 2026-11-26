@@ -4,43 +4,21 @@
 import type {
   AstrologerSyncSnapshot, PublicAstrologerState, RecommendedAstrologer, RequestResult, UserSyncSnapshot, AstrologerNotification, Consultation, ConsultationKundliDetails, QueueEntry,
 } from './types';
-import { authService } from '../services/authService';
+import { API_URL } from '../services/apiUrl';
+import { getAccessToken } from '../services/tokenRefresh';
 
-export const SERVER_URL = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:4000';
+export { getAccessToken };
+
+// Realtime (sockets, admin config) and the plain REST API are the same one
+// Express process (backend/app/main.ts: one httpServer, one PORT serving
+// both) — VITE_SERVER_URL is only for the rare case they're split, so it
+// defaults to the already-required VITE_API_URL rather than a hardcoded
+// localhost that silently breaks in any deploy where only VITE_API_URL got
+// set (the Cloudflare Pages "Realtime service is unreachable" bug this
+// replaced).
+export const SERVER_URL = (import.meta as any).env?.VITE_SERVER_URL || API_URL;
 
 export class RealtimeApiError extends Error {}
-
-// The server identifies the caller ONLY from this bearer token (never an
-// email we send). Access tokens live ~15 min and the realtime layer runs for
-// hours (heartbeats, socket reconnects), so refresh a token that's about to
-// expire first. One shared in-flight refresh: refresh tokens are single-use,
-// so two parallel refreshes would make the second one fail.
-let refreshing: Promise<string | null> | null = null;
-
-function expiresSoon(token: string) {
-  try {
-    const { exp } = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return typeof exp !== 'number' || exp * 1000 - Date.now() < 30_000;
-  } catch {
-    return true;
-  }
-}
-
-export async function getAccessToken(): Promise<string | null> {
-  const token = localStorage.getItem('auth_access_token');
-  if (token && !expiresSoon(token)) return token;
-  const refreshToken = localStorage.getItem('auth_refresh_token');
-  if (!refreshToken) return token;
-  refreshing ??= authService.refresh(refreshToken)
-    .then(t => {
-      localStorage.setItem('auth_access_token', t.accessToken);
-      localStorage.setItem('auth_refresh_token', t.refreshToken);
-      return t.accessToken;
-    })
-    .catch(() => token)
-    .finally(() => { refreshing = null; });
-  return refreshing;
-}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getAccessToken();
