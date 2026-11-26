@@ -67,6 +67,11 @@ export interface LeadRow {
   user_id: string | null;
   user_name: string | null;
   user_email: string | null;
+  // Set only for an anonymous lead (user_id null) that submitted a
+  // calculator form — see anon_leads / recordAnonLead below. Null for a
+  // registered user (use user_name/user_email instead) and for an anonymous
+  // visitor who never submitted a form.
+  lead_phone: string | null;
   visit_count: number;
   first_seen: number;
   last_seen: number;
@@ -82,14 +87,17 @@ export interface LeadRow {
 // same browser shows up as more activity on the SAME lead rather than a new
 // anonymous stranger each time. Rows with neither a user_id nor a visitor_id
 // (pings from before this migration) are excluded — there's nothing to group
-// them by.
+// them by. user_name/user_email fall back to anon_leads (name/email an
+// anonymous visitor typed into a calculator form — see recordAnonLead) when
+// there's no logged-in account to pull them from.
 export function listLeads(limit = 100): Promise<LeadRow[]> {
   return query<LeadRow>(
     `SELECT
        COALESCE(pv.user_id, pv.visitor_id) AS lead_id,
        pv.user_id,
-       u.name AS user_name,
-       u.email AS user_email,
+       COALESCE(u.name, al.name) AS user_name,
+       COALESCE(u.email, al.email) AS user_email,
+       al.phone AS lead_phone,
        COUNT(*)::int AS visit_count,
        MIN(pv.created_at) AS first_seen,
        MAX(pv.created_at) AS last_seen,
@@ -99,10 +107,25 @@ export function listLeads(limit = 100): Promise<LeadRow[]> {
        (ARRAY_AGG(pv.country ORDER BY pv.created_at DESC))[1] AS country
      FROM page_views pv
      LEFT JOIN users u ON u.id = pv.user_id
+     LEFT JOIN anon_leads al ON al.visitor_id = pv.visitor_id AND pv.user_id IS NULL
      WHERE pv.user_id IS NOT NULL OR pv.visitor_id IS NOT NULL
-     GROUP BY COALESCE(pv.user_id, pv.visitor_id), pv.user_id, u.name, u.email
+     GROUP BY COALESCE(pv.user_id, pv.visitor_id), pv.user_id, u.name, u.email, al.name, al.email, al.phone
      ORDER BY MAX(pv.created_at) DESC
      LIMIT $1`,
     [limit]
+  );
+}
+
+// Upserts the name/email/phone an anonymous visitor typed into a calculator
+// form (BirthDetailsForm — see trackingService.ts's `lead()`), keyed by their
+// sticky visitor_id. Called only for visitors with no logged-in account;
+// a registered user's details already come from `users` via listLeads above.
+export async function recordAnonLead(visitorId: string, name: string, email: string, phone: string | null, source: string): Promise<void> {
+  const now = Date.now();
+  await query(
+    `INSERT INTO anon_leads (visitor_id, name, email, phone, source, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $6)
+     ON CONFLICT (visitor_id) DO UPDATE SET name = $2, email = $3, phone = $4, source = $5, updated_at = $6`,
+    [visitorId, name, email, phone, source, now]
   );
 }

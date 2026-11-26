@@ -6,6 +6,7 @@ import { calculatorService, CalculatorApiError } from '../../services/calculator
 import type { BirthDetailsInput, GeocodeResult } from '../../services/calculatorService';
 import { useAppContext } from '../../context/AppContext';
 import { validateRequiredEmail } from '../../utils/emailValidation';
+import { trackingService } from '../../services/trackingService';
 import styles from './BirthDetailsForm.module.css';
 
 // Common timezones only — full IANA-zone coverage isn't worth the added
@@ -133,6 +134,7 @@ export default function BirthDetailsForm({ onSubmit, showNameField = true, showG
         ...(gender ? { gender } : {}),
         ...(timeUnknown ? { timeUnknown: true } : {}),
       });
+      if (!loggedInEmail) trackingService.lead(name.trim(), email.trim(), undefined, idPrefix);
     } catch (err) {
       setError(err instanceof CalculatorApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {

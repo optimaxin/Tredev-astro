@@ -302,6 +302,7 @@ export interface ApiLead {
   userId: string | null;
   userName: string | null;
   userEmail: string | null;
+  leadPhone: string | null;
   visitCount: number;
   firstSeen: number;
   lastSeen: number;

@@ -735,6 +735,7 @@ adminRouter.get('/leads', requireSection('leads'), async (_req, res) => {
       userId: l.user_id,
       userName: l.user_name,
       userEmail: l.user_email,
+      leadPhone: l.lead_phone,
       visitCount: l.visit_count,
       firstSeen: l.first_seen,
       lastSeen: l.last_seen,

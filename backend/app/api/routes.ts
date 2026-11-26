@@ -19,7 +19,7 @@ import { rateLimit } from '../middleware/rateLimit.ts';
 import { findUserByEmail } from '../repositories/userRepository.ts';
 import { findNonTerminalForUser } from '../repositories/consultationRepository.ts';
 import { findQueuedEntryForUserEmail } from '../repositories/queueRepository.ts';
-import { recordPageView } from '../repositories/pageViewRepository.ts';
+import { recordAnonLead, recordPageView } from '../repositories/pageViewRepository.ts';
 
 export const router = Router();
 
@@ -58,6 +58,23 @@ router.post('/track/pageview', pageViewLimiter, optionalAuth, async (req, res) =
   const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.slice(0, 100) : null;
   if (path) {
     await recordPageView(req.user?.id ?? null, visitorId, path, clientIp(req), req.headers['user-agent'] || '', countryFromRequest(req)).catch(() => {});
+  }
+  res.json({ success: true });
+});
+
+// Fire-and-forget lead capture for a visitor who filled a calculator form
+// (name/email/phone — see BirthDetailsForm.tsx) without logging in. Logged
+// in users already have this info on their account (see listLeads's `users`
+// join) — this route is skipped for them, there's nothing to add.
+router.post('/track/lead', pageViewLimiter, optionalAuth, async (req, res) => {
+  if (req.user) return res.json({ success: true });
+  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.slice(0, 100) : '';
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 150) : '';
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().slice(0, 200) : '';
+  const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim().slice(0, 30) : null;
+  const source = typeof req.body?.source === 'string' ? req.body.source.slice(0, 100) : '';
+  if (visitorId && email) {
+    await recordAnonLead(visitorId, name, email, phone, source).catch(() => {});
   }
   res.json({ success: true });
 });

@@ -46,10 +46,11 @@ export default function LeadsPage() {
         <DataTable
           columns={[
             {
-              key: 'who', label: 'Visitor', render: r => r.userName ? `${r.userName} (${r.userEmail})` : (
+              key: 'who', label: 'Visitor', render: r => r.userEmail ? `${r.userName || r.userEmail} (${r.userEmail})` : (
                 <span>Anonymous <span style={{ opacity: 0.6, fontSize: '0.75em' }}>#{r.id.slice(0, 8)}</span></span>
               ),
             },
+            { key: 'phone', label: 'Phone', render: r => r.leadPhone || '—' },
             { key: 'fingerprint', label: 'Fingerprint', render: r => visitFingerprint(r) },
             { key: 'lastPath', label: 'Last Used', render: r => r.lastPath },
             { key: 'visits', label: 'Visits', render: r => r.visitCount },
