@@ -1227,13 +1227,20 @@ adminRouter.get('/broadcasts', requireSection('notifications'), async (_req, res
   res.json({ success: true, data: (await listAllBroadcasts()).map(toPublicBroadcast) });
 });
 
-const broadcastSchema = z.object({ message: z.string().trim().min(1).max(500) });
+const broadcastSchema = z.object({
+  message: z.string().trim().min(1).max(500),
+  // Who this broadcast targets — any combination of the three sendable
+  // audiences. ADMIN is always added server-side (not staff-pickable) so an
+  // admin reviewing Active Broadcasts always sees everything they've sent,
+  // same as before targeting existed.
+  audiences: z.array(z.enum(['USER', 'STAFF', 'ASTROLOGIST'])).min(1, 'Pick at least one audience'),
+});
 
 adminRouter.post('/broadcasts', requireSection('notifications'), async (req, res) => {
   const parsed = broadcastSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
-  const row = await createBroadcast(parsed.data.message, req.user!.id);
-  await audit(req, 'broadcast.create', parsed.data.message.slice(0, 80));
+  const row = await createBroadcast(parsed.data.message, req.user!.id, [...parsed.data.audiences, 'ADMIN']);
+  await audit(req, 'broadcast.create', `${parsed.data.message.slice(0, 80)} -> ${parsed.data.audiences.join(',')}`);
   res.status(201).json({ success: true, data: toPublicBroadcast(row) });
 });
 

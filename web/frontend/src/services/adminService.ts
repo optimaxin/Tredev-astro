@@ -225,11 +225,18 @@ export interface ApiDailyShlok {
   textHi: string;
 }
 
+// The three sendable audiences — ADMIN is never staff-pickable (always
+// added server-side, see admin.routes.ts's POST /broadcasts), same as
+// 'staff' being omitted from ADMIN_SECTIONS: an admin always sees every
+// broadcast they've sent, regardless of who else it targets.
+export type BroadcastAudience = 'USER' | 'STAFF' | 'ASTROLOGIST';
+
 export interface ApiBroadcast {
   id: number;
   message: string;
   createdAt: number;
   active: boolean;
+  audiences: (BroadcastAudience | 'ADMIN')[];
 }
 
 export interface ApiOrder {
@@ -728,7 +735,8 @@ export const adminService = {
     request<{ ok: boolean }>(`/reports/change-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
 
   listBroadcasts: () => request<ApiBroadcast[]>('/broadcasts'),
-  createBroadcast: (message: string) => request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message }) }),
+  createBroadcast: (message: string, audiences: BroadcastAudience[]) =>
+    request<ApiBroadcast>('/broadcasts', { method: 'POST', body: JSON.stringify({ message, audiences }) }),
   deleteBroadcast: (id: number) => request<{ ok: boolean }>(`/broadcasts/${id}`, { method: 'DELETE' }),
 
   listOrders: (page = 1, limit = 100) => request<ApiOrder[]>(`/orders?page=${page}&limit=${limit}`),

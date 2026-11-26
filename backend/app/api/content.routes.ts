@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.ts';
+import { requireAuth, optionalAuth } from '../middleware/auth.ts';
 import { findBlogPostById, listBlogPosts } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
 import { listTestimonials } from '../repositories/testimonialRepository.ts';
@@ -55,8 +55,11 @@ contentRouter.get('/reports', async (_req, res) => {
   res.json({ success: true, data: (await listAstrologyReports()).map(toPublicAstrologyReport) });
 });
 
-contentRouter.get('/broadcasts/active', async (_req, res) => {
-  res.json({ success: true, data: (await listActiveBroadcasts()).map(toPublicBroadcast) });
+// optionalAuth so an anonymous visitor's own (USER-targeted) broadcasts
+// still come back, while a logged-in staff/astrologer/admin only gets the
+// ones actually targeted at their role — see broadcastRepository.ts.
+contentRouter.get('/broadcasts/active', optionalAuth, async (req, res) => {
+  res.json({ success: true, data: (await listActiveBroadcasts(req.user?.role ?? null)).map(toPublicBroadcast) });
 });
 
 // Staff/admin-edited site text + image overrides (see admin.routes.ts's
