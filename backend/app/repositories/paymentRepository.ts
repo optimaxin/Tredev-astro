@@ -40,6 +40,14 @@ export async function setGatewayRef(id: string, gatewayRef: string): Promise<voi
   await query('UPDATE payments SET gateway_ref = $2, updated_at = $3 WHERE id = $1', [id, gatewayRef, Date.now()]);
 }
 
+// Flips which gateway a payment intent is tracked against — used when
+// Cashfree order creation itself fails and the request auto-falls-back to
+// Razorpay (see payments.routes.ts's POST /orders), so the later status-poll
+// route checks the gateway that actually has the order/link.
+export async function setGateway(id: string, gateway: PaymentGateway): Promise<void> {
+  await query('UPDATE payments SET gateway = $2, updated_at = $3 WHERE id = $1', [id, gateway, Date.now()]);
+}
+
 // Only flips CREATED -> PAID and returns the row when it actually did —
 // returns null if the payment was already PAID/FAILED, which is what makes
 // calling fulfillPayment() after this safe to call from both the webhook

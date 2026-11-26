@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth.ts';
 import { config } from '../core/config.ts';
 import { createCashfreeOrder, fetchCashfreeOrder, verifyWebhookSignature } from '../services/payment/cashfreeClient.ts';
 import { createPaymentLink, fetchPaymentLink } from '../services/payment/razorpayClient.ts';
-import { createPaymentIntent, findPaymentById, markPaymentFailed, markPaymentPaid, setGatewayRef } from '../repositories/paymentRepository.ts';
+import { createPaymentIntent, findPaymentById, markPaymentFailed, markPaymentPaid, setGateway, setGatewayRef } from '../repositories/paymentRepository.ts';
 import { fulfillPayment } from '../services/payment/fulfillment.ts';
 import { findAstrologyReportById } from '../repositories/astrologyReportRepository.ts';
 import { findUserById } from '../repositories/userRepository.ts';
@@ -176,29 +176,45 @@ paymentsRouter.post('/orders', async (req, res) => {
   // picks the id back up from the query string.
   const returnUrl = `${config.clientOrigins[0]}/?payment_id=${id}`;
 
+  // Razorpay is configured as a silent fallback: if Cashfree's own order
+  // creation call fails for any reason (outage, bad credentials, etc.), the
+  // request is retried against Razorpay instead of failing the user's
+  // payment outright. Only covers order/link *creation* — once a Cashfree
+  // order exists, its own webhook/status-poll path is authoritative for it.
+  async function createViaRazorpay() {
+    const link = await createPaymentLink(id, amount, { name: user!.name, email: user!.email, contact: user!.phone_number || '' }, returnUrl);
+    // Razorpay assigns its OWN id to the link ("plink_xxx") — not our
+    // reference_id — and that's what GET /payment_links/:id needs later
+    // (see the status route below), so it has to be persisted now.
+    await setGatewayRef(id, link.id);
+    res.status(201).json({ success: true, data: { paymentId: id, gateway: 'razorpay', redirectUrl: link.short_url } });
+  }
+
   try {
     if (gateway === 'cashfree') {
-      const cfOrder = await createCashfreeOrder(
-        id, amount,
-        { id: user.id, name: user.name, email: user.email, phone: user.phone_number || '' },
-        returnUrl
-      );
-      res.status(201).json({
-        success: true,
-        data: {
-          paymentId: id,
-          gateway,
-          paymentSessionId: cfOrder.payment_session_id,
-          cashfreeMode: config.cashfree.env,
-        },
-      });
+      try {
+        const cfOrder = await createCashfreeOrder(
+          id, amount,
+          { id: user.id, name: user.name, email: user.email, phone: user.phone_number || '' },
+          returnUrl
+        );
+        res.status(201).json({
+          success: true,
+          data: {
+            paymentId: id,
+            gateway,
+            paymentSessionId: cfOrder.payment_session_id,
+            cashfreeMode: config.cashfree.env,
+          },
+        });
+      } catch (cashfreeErr) {
+        if (!config.razorpay.keyId || !config.razorpay.keySecret) throw cashfreeErr;
+        console.error(`[payments] Cashfree order creation failed, falling back to Razorpay — payment ${id}:`, cashfreeErr);
+        await setGateway(id, 'razorpay');
+        await createViaRazorpay();
+      }
     } else {
-      const link = await createPaymentLink(id, amount, { name: user.name, email: user.email, contact: user.phone_number || '' }, returnUrl);
-      // Razorpay assigns its OWN id to the link ("plink_xxx") — not our
-      // reference_id — and that's what GET /payment_links/:id needs later
-      // (see the status route below), so it has to be persisted now.
-      await setGatewayRef(id, link.id);
-      res.status(201).json({ success: true, data: { paymentId: id, gateway, redirectUrl: link.short_url } });
+      await createViaRazorpay();
     }
   } catch (err) {
     await markPaymentFailed(id);
