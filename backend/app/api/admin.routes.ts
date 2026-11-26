@@ -16,7 +16,7 @@ import { listPageViewsForUser, listRecentRegisteredPageViews, listRecentAnonymou
 import { register, requestPasswordReset, AuthError } from '../services/authService.ts';
 import { createBlogPost, deleteBlogPost } from '../repositories/blogRepository.ts';
 import { toPublicBlogPost } from '../models/blogPost.ts';
-import { deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
+import { bulkUpsertShloks, deleteShlok, listShloks, upsertShlok } from '../repositories/dailyShlokRepository.ts';
 import { toPublicDailyShlok } from '../models/dailyShlok.ts';
 import { createBroadcast, deactivateBroadcast, listAllBroadcasts } from '../repositories/broadcastRepository.ts';
 import { toPublicBroadcast } from '../models/broadcast.ts';
@@ -1193,6 +1193,24 @@ adminRouter.put('/daily-shlok', requireSection('shlok'), async (req, res) => {
   const row = await upsertShlok(parsed.data);
   await audit(req, 'shlok.save', parsed.data.date);
   res.json({ success: true, data: toPublicDailyShlok(row) });
+});
+
+const bulkDailyShlokSchema = z.object({
+  shloks: z.array(z.object({
+    textEn: z.string().trim().min(3).max(300),
+    textHi: z.string().trim().min(3).max(300),
+  })).min(1).max(31),
+});
+
+// Staff loads a whole batch (up to 31) in one go — shuffled and spread one
+// per day starting today, so the Panchang card shows a different shlok every
+// day without anyone picking a date for each one by hand.
+adminRouter.post('/daily-shlok/bulk', requireSection('shlok'), async (req, res) => {
+  const parsed = bulkDailyShlokSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 422, 'VALIDATION_ERROR', parsed.error.issues.map(i => i.message).join('; '));
+  const rows = await bulkUpsertShloks(parsed.data.shloks);
+  await audit(req, 'shlok.bulk_load', `${rows.length} days`);
+  res.json({ success: true, data: rows.map(toPublicDailyShlok) });
 });
 
 adminRouter.delete('/daily-shlok/:date', requireSection('shlok'), async (req, res) => {

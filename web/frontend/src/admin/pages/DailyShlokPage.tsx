@@ -29,6 +29,19 @@ export default function DailyShlokPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // One line per day, Hindi and English paired by line number — lets staff
+  // paste a whole month's worth at once instead of adding 31 separate days
+  // by hand. The backend shuffles the order and spreads them across the
+  // next N calendar days from today (see adminService.bulkSaveDailyShloks).
+  const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
+  const [bulkHi, setBulkHi] = useState('');
+  const [bulkEn, setBulkEn] = useState('');
+  const [bulkError, setBulkError] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  const bulkHiLines = bulkHi.split('\n').map(l => l.trim()).filter(Boolean);
+  const bulkEnLines = bulkEn.split('\n').map(l => l.trim()).filter(Boolean);
+
   const load = () => {
     setLoading(true);
     adminService.listDailyShloks().then(setShloks).catch(() => setShloks([])).finally(() => setLoading(false));
@@ -72,6 +85,39 @@ export default function DailyShlokPage() {
     }
   };
 
+  const openBulk = () => {
+    setBulkHi('');
+    setBulkEn('');
+    setBulkError('');
+    setBulkDrawerOpen(true);
+  };
+
+  const closeBulk = () => {
+    setBulkDrawerOpen(false);
+  };
+
+  const handleBulkSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBulkError('');
+    if (bulkHiLines.length === 0) return setBulkError('Paste at least one shlok.');
+    if (bulkHiLines.length !== bulkEnLines.length) {
+      return setBulkError(`Line count must match — ${bulkHiLines.length} Hindi line(s) but ${bulkEnLines.length} English line(s).`);
+    }
+    if (bulkHiLines.length > 31) return setBulkError('31 lines max — one month at a time.');
+    setBulkSaving(true);
+    try {
+      const shloks = bulkHiLines.map((textHi, i) => ({ textHi, textEn: bulkEnLines[i] }));
+      await adminService.bulkSaveDailyShloks(shloks);
+      logAdminAction('BULK_LOAD_DAILY_SHLOK', `${shloks.length} days`);
+      closeBulk();
+      load();
+    } catch (err) {
+      setBulkError(err instanceof AdminApiError ? err.message : 'Could not load these shloks. Please try again.');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   const handleDelete = async (shlok: ApiDailyShlok) => {
     if (!window.confirm(`Remove the shlok set for ${shlok.date}? That day will fall back to the default line.`)) return;
     await adminService.deleteDailyShlok(shlok.date);
@@ -88,6 +134,7 @@ export default function DailyShlokPage() {
 
       <div className={styles.toolbar}>
         <AdminButton variant="gold" onClick={openNew}>Add Shlok</AdminButton>
+        <AdminButton onClick={openBulk}>Load 31 Days</AdminButton>
       </div>
 
       {!loading && shloks.length === 0 && (
@@ -156,6 +203,47 @@ export default function DailyShlokPage() {
             </p>
           </div>
           {error && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{error}</p>}
+        </form>
+      </Drawer>
+
+      <Drawer
+        open={bulkDrawerOpen}
+        onClose={closeBulk}
+        title="Load 31 Days"
+        footer={<AdminButton variant="gold" type="submit" form="bulk-shlok-form" disabled={bulkSaving}>{bulkSaving ? 'Loading...' : `Load ${bulkHiLines.length || ''} Day(s)`}</AdminButton>}
+      >
+        <form id="bulk-shlok-form" onSubmit={handleBulkSave}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--adm-charcoal-soft)', marginBottom: 12 }}>
+            One shlok per line, up to 31 lines in each box — line 1 of Hindi pairs with line 1 of English, and so on.
+            They're shuffled and spread one per day starting today, so a different one shows up on the Panchang card
+            every day automatically. Replaces whatever was already queued for those days.
+          </p>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Shloks (Hindi) — one per line</label>
+            <textarea
+              className={styles.formTextarea}
+              style={{ minHeight: 180 }}
+              required
+              placeholder={'ॐ सर्वे भवन्तु सुखिनः\nॐ असतो मा सद्गमय\n...'}
+              value={bulkHi}
+              onChange={e => setBulkHi(e.target.value)}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Shloks (English) — one per line, same order</label>
+            <textarea
+              className={styles.formTextarea}
+              style={{ minHeight: 180 }}
+              required
+              placeholder={'Om Sarve Bhavantu Sukhinah\nOm Asato Ma Sadgamaya\n...'}
+              value={bulkEn}
+              onChange={e => setBulkEn(e.target.value)}
+            />
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--adm-charcoal-soft)', marginTop: -8, marginBottom: 12 }}>
+            {bulkHiLines.length} Hindi line(s) · {bulkEnLines.length} English line(s)
+          </p>
+          {bulkError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{bulkError}</p>}
         </form>
       </Drawer>
     </div>

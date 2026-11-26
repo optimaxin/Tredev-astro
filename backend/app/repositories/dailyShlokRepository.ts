@@ -30,3 +30,24 @@ export async function upsertShlok(params: { date: string; textEn: string; textHi
 export async function deleteShlok(date: string) {
   await query('DELETE FROM daily_shlok WHERE shlok_date = $1', [date]);
 }
+
+// Shuffles the batch staff pastes in one go (see the "Load N Days" drawer in
+// DailyShlokPage.tsx) and assigns one per upcoming calendar day, starting
+// today — reuses the exact same per-date rows and read path as a single
+// manual save (findShlokForDate, called once a day by content.routes.ts's
+// /daily-shlok), so "a different shlok shows up every day" just falls out
+// of each day already having its own (randomly assigned) row, no separate
+// "pick one for today" logic needed.
+export async function bulkUpsertShloks(items: { textEn: string; textHi: string }[]): Promise<DailyShlokRow[]> {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const rows: DailyShlokRow[] = [];
+  for (let i = 0; i < shuffled.length; i++) {
+    const date = new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10);
+    rows.push(await upsertShlok({ date, textEn: shuffled[i].textEn, textHi: shuffled[i].textHi }));
+  }
+  return rows;
+}

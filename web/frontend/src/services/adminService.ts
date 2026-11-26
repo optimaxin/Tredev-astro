@@ -705,6 +705,10 @@ export const adminService = {
   listDailyShloks: () => request<ApiDailyShlok[]>('/daily-shlok'),
   saveDailyShlok: (shlok: ApiDailyShlok) => request<ApiDailyShlok>('/daily-shlok', { method: 'PUT', body: JSON.stringify(shlok) }),
   deleteDailyShlok: (date: string) => request<{ ok: boolean }>(`/daily-shlok/${date}`, { method: 'DELETE' }),
+  // Loads up to 31 at once — shuffled and spread one per day starting today
+  // (see admin.routes.ts's POST /daily-shlok/bulk).
+  bulkSaveDailyShloks: (shloks: { textEn: string; textHi: string }[]) =>
+    request<ApiDailyShlok[]>('/daily-shlok/bulk', { method: 'POST', body: JSON.stringify({ shloks }) }),
 
   listReportPurchases: (page = 1, limit = 100) => request<ApiReportPurchase[]>(`/report-purchases?page=${page}&limit=${limit}`),
 
