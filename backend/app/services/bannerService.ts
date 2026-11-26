@@ -18,7 +18,8 @@ export class BannerError extends Error {
 const MAX_MEDIA_DATA_CHARS = 7_000_000;
 
 export async function createBanner(params: {
-  mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null; expiresAt: number | null;
+  mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null;
+  heading: string | null; ctaText: string | null; expiresAt: number | null;
 }): Promise<Banner> {
   if (params.mediaData.length > MAX_MEDIA_DATA_CHARS) throw new BannerError('Banner file is too large (max ~5MB)', 413);
   if ((await countBanners()) >= MAX_BANNERS) {
@@ -29,12 +30,14 @@ export async function createBanner(params: {
     mediaType: params.mediaType,
     mediaData: params.mediaData,
     linkUrl: params.linkUrl,
+    heading: params.heading,
+    ctaText: params.ctaText,
     createdAt: Date.now(),
     expiresAt: params.expiresAt,
   });
 }
 
-export async function editBanner(id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }): Promise<Banner> {
+export async function editBanner(id: string, patch: { linkUrl?: string | null; heading?: string | null; ctaText?: string | null; expiresAt?: number | null }): Promise<Banner> {
   const row = await updateBannerRow(id, patch);
   if (!row) throw new BannerError('Banner not found', 404);
   return row;

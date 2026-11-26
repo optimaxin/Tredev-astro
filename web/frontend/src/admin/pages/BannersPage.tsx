@@ -19,17 +19,76 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+// Shared by the Add and Edit drawers — heading/CTA text and the link are
+// identical fields either way, only what happens on submit differs.
+function BannerTextFields({
+  heading, setHeading, ctaText, setCtaText, linkUrl, setLinkUrl,
+}: {
+  heading: string; setHeading: (v: string) => void;
+  ctaText: string; setCtaText: (v: string) => void;
+  linkUrl: string; setLinkUrl: (v: string) => void;
+}) {
+  return (
+    <>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>Heading text (optional)</label>
+        <input
+          className={styles.formInput}
+          type="text"
+          maxLength={120}
+          placeholder="e.g. Diwali Special — 20% Off All Reports"
+          value={heading}
+          onChange={e => setHeading(e.target.value)}
+        />
+        <p style={{ fontSize: '0.75rem', color: 'var(--adm-charcoal-soft)', marginTop: 4 }}>
+          Shown as an overlay on the banner. Leave blank for media only, no text.
+        </p>
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>Button text (optional)</label>
+        <input
+          className={styles.formInput}
+          type="text"
+          maxLength={40}
+          placeholder="e.g. Claim Offer"
+          value={ctaText}
+          onChange={e => setCtaText(e.target.value)}
+        />
+        <p style={{ fontSize: '0.75rem', color: 'var(--adm-charcoal-soft)', marginTop: 4 }}>
+          Shown as a button on top of the banner. Only appears if a link below is also set.
+        </p>
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>Click-through Link (optional)</label>
+        <input
+          className={styles.formInput}
+          type="text"
+          placeholder="https://… or a page like astrologers, reports, store"
+          value={linkUrl}
+          onChange={e => setLinkUrl(e.target.value)}
+        />
+      </div>
+    </>
+  );
+}
+
 export default function BannersPage() {
   const { logAdminAction } = useAppContext();
   const [banners, setBanners] = useState<ApiBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [heading, setHeading] = useState('');
+  const [ctaText, setCtaText] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [expiresAt, setExpiresAt] = useState(''); // datetime-local string, or '' when "never"
   const [neverExpires, setNeverExpires] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [editing, setEditing] = useState<ApiBanner | null>(null);
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -40,6 +99,8 @@ export default function BannersPage() {
 
   const resetForm = () => {
     setFile(null);
+    setHeading('');
+    setCtaText('');
     setLinkUrl('');
     setExpiresAt('');
     setNeverExpires(true);
@@ -58,6 +119,8 @@ export default function BannersPage() {
         mediaType,
         mediaData,
         linkUrl: linkUrl.trim() || null,
+        heading: heading.trim() || null,
+        ctaText: ctaText.trim() || null,
         expiresAt: neverExpires ? null : new Date(expiresAt).getTime(),
       });
       logAdminAction('CREATE_BANNER', file.name);
@@ -68,6 +131,42 @@ export default function BannersPage() {
       setError(err instanceof AdminApiError ? err.message : 'Could not upload this banner. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (banner: ApiBanner) => {
+    setEditing(banner);
+    setHeading(banner.heading || '');
+    setCtaText(banner.ctaText || '');
+    setLinkUrl(banner.linkUrl || '');
+    setEditError('');
+  };
+
+  const closeEdit = () => {
+    setEditing(null);
+    setHeading('');
+    setCtaText('');
+    setLinkUrl('');
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const updated = await adminService.updateBanner(editing.id, {
+        linkUrl: linkUrl.trim() || null,
+        heading: heading.trim() || null,
+        ctaText: ctaText.trim() || null,
+      });
+      logAdminAction('UPDATE_BANNER', editing.id);
+      setBanners(prev => prev.map(b => (b.id === updated.id ? updated : b)));
+      closeEdit();
+    } catch (err) {
+      setEditError(err instanceof AdminApiError ? err.message : 'Could not save these changes. Please try again.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -84,7 +183,7 @@ export default function BannersPage() {
     <div>
       <div className={styles.pageHeader}>
         <div className={styles.pageTitle}>Homepage Banners</div>
-        <div className={styles.pageSub}>Manage the promo carousel on the homepage — image or video, an optional click-through link, and an optional expiry. Up to {MAX_BANNERS} at a time.</div>
+        <div className={styles.pageSub}>Manage the promo carousel on the homepage — image or video, optional heading + button text, a click-through link, and an optional expiry. Up to {MAX_BANNERS} at a time.</div>
       </div>
 
       <div className={styles.toolbar}>
@@ -105,12 +204,17 @@ export default function BannersPage() {
                   : <img src={b.mediaData} alt="" style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 4 }} />
               ),
             },
+            { key: 'heading', label: 'Heading', render: b => b.heading || '—' },
+            { key: 'cta', label: 'Button Text', render: b => b.ctaText || '—' },
             { key: 'link', label: 'Link', render: b => b.linkUrl || '—' },
             { key: 'created', label: 'Uploaded', render: b => formatDateTime(b.createdAt) },
             { key: 'expires', label: 'Expires', render: b => (b.expiresAt ? formatDateTime(b.expiresAt) : 'Never') },
             {
               key: 'action', label: 'Action', hideOnCard: true, render: b => (
-                <AdminButton variant="danger" onClick={() => handleDelete(b)}>Delete</AdminButton>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <AdminButton onClick={() => openEdit(b)}>Edit</AdminButton>
+                  <AdminButton variant="danger" onClick={() => handleDelete(b)}>Delete</AdminButton>
+                </div>
               ),
             },
           ]}
@@ -136,16 +240,7 @@ export default function BannersPage() {
               onChange={e => setFile(e.target.files?.[0] || null)}
             />
           </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Click-through Link (optional)</label>
-            <input
-              className={styles.formInput}
-              type="url"
-              placeholder="https://…"
-              value={linkUrl}
-              onChange={e => setLinkUrl(e.target.value)}
-            />
-          </div>
+          <BannerTextFields heading={heading} setHeading={setHeading} ctaText={ctaText} setCtaText={setCtaText} linkUrl={linkUrl} setLinkUrl={setLinkUrl} />
           <div className={styles.formGroup}>
             <label className={styles.radioRow}>
               <input type="checkbox" checked={neverExpires} onChange={e => setNeverExpires(e.target.checked)} /> Never expires
@@ -164,6 +259,22 @@ export default function BannersPage() {
             </div>
           )}
           {error && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{error}</p>}
+        </form>
+      </Drawer>
+
+      <Drawer
+        open={!!editing}
+        onClose={closeEdit}
+        title="Edit Banner"
+        footer={<AdminButton variant="gold" type="submit" form="edit-banner-form" disabled={editSaving}>{editSaving ? 'Saving...' : 'Save'}</AdminButton>}
+      >
+        <form id="edit-banner-form" onSubmit={handleEditSave}>
+          {editing && (editing.mediaType === 'video'
+            ? <video src={editing.mediaData} style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 6, marginBottom: 16 }} muted />
+            : <img src={editing.mediaData} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 6, marginBottom: 16 }} />
+          )}
+          <BannerTextFields heading={heading} setHeading={setHeading} ctaText={ctaText} setCtaText={setCtaText} linkUrl={linkUrl} setLinkUrl={setLinkUrl} />
+          {editError && <p style={{ color: 'var(--adm-danger)', fontSize: '0.8rem' }}>{editError}</p>}
         </form>
       </Drawer>
     </div>

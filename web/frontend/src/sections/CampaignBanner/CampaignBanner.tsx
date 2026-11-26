@@ -9,6 +9,8 @@ interface ApiBanner {
   mediaType: 'image' | 'video';
   mediaData: string;
   linkUrl: string | null;
+  heading: string | null;
+  ctaText: string | null;
 }
 
 // Non-text data only — the actual copy (category/title/description/cta)
@@ -440,6 +442,24 @@ function DynamicBannerCarousel({ banners }: { banners: ApiBanner[] }) {
               <video src={banner.mediaData} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay loop muted playsInline />
             ) : (
               <img src={banner.mediaData} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+            )}
+
+            {(banner.heading || (banner.ctaText && banner.linkUrl)) && (
+              <div className={styles.dynamicOverlay}>
+                {banner.heading && <h2 className={styles.dynamicHeading}>{banner.heading}</h2>}
+                {banner.ctaText && banner.linkUrl && (
+                  <button
+                    className={`${styles.slideCta} ${styles.dynamicCta}`}
+                    style={{ background: 'var(--gold-primary, #C7A15A)' }}
+                    onClick={e => { e.stopPropagation(); handleClick(); }}
+                  >
+                    {banner.ctaText}
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             )}
 
             {total > 1 && (

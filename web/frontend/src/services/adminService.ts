@@ -885,9 +885,9 @@ export const adminService = {
 
   // ── Homepage banners ─────────────────────────────────────────────────
   listBanners: () => request<ApiBanner[]>('/banners'),
-  createBanner: (banner: { mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null; expiresAt: number | null }) =>
+  createBanner: (banner: { mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null; heading: string | null; ctaText: string | null; expiresAt: number | null }) =>
     request<ApiBanner>('/banners', { method: 'POST', body: JSON.stringify(banner) }),
-  updateBanner: (id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }) =>
+  updateBanner: (id: string, patch: { linkUrl?: string | null; heading?: string | null; ctaText?: string | null; expiresAt?: number | null }) =>
     request<ApiBanner>(`/banners/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteBanner: (id: string) => request<{ ok: true }>(`/banners/${id}`, { method: 'DELETE' }),
 
@@ -913,6 +913,8 @@ export interface ApiBanner {
   mediaType: 'image' | 'video';
   mediaData: string;
   linkUrl: string | null;
+  heading: string | null;
+  ctaText: string | null;
   createdAt: number;
   expiresAt: number | null;
 }

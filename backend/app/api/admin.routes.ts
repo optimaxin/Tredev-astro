@@ -793,11 +793,15 @@ const createBannerSchema = z.object({
   mediaType: z.enum(['image', 'video']),
   mediaData: z.string().min(1),
   linkUrl: z.string().url().nullable().default(null),
+  heading: z.string().trim().min(1).max(120).nullable().default(null),
+  ctaText: z.string().trim().min(1).max(40).nullable().default(null),
   expiresAt: z.number().int().positive().nullable().default(null),
 });
 
 const editBannerSchema = z.object({
   linkUrl: z.string().url().nullable().optional(),
+  heading: z.string().trim().min(1).max(120).nullable().optional(),
+  ctaText: z.string().trim().min(1).max(40).nullable().optional(),
   expiresAt: z.number().int().positive().nullable().optional(),
 });
 

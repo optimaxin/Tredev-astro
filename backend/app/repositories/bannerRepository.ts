@@ -7,6 +7,8 @@ export interface Banner {
   mediaType: 'image' | 'video';
   mediaData: string;
   linkUrl: string | null;
+  heading: string | null;
+  ctaText: string | null;
   createdAt: number;
   expiresAt: number | null;
 }
@@ -16,6 +18,8 @@ interface BannerRow {
   media_type: 'image' | 'video';
   media_data: string;
   link_url: string | null;
+  heading: string | null;
+  cta_text: string | null;
   created_at: string;
   expires_at: string | null;
 }
@@ -26,6 +30,8 @@ function fromRow(row: BannerRow): Banner {
     mediaType: row.media_type,
     mediaData: row.media_data,
     linkUrl: row.link_url,
+    heading: row.heading,
+    ctaText: row.cta_text,
     createdAt: Number(row.created_at),
     expiresAt: row.expires_at === null ? null : Number(row.expires_at),
   };
@@ -53,26 +59,29 @@ export async function listActiveBanners(now: number): Promise<Banner[]> {
 }
 
 export async function insertBanner(params: {
-  id: string; mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null; createdAt: number; expiresAt: number | null;
+  id: string; mediaType: 'image' | 'video'; mediaData: string; linkUrl: string | null;
+  heading: string | null; ctaText: string | null; createdAt: number; expiresAt: number | null;
 }): Promise<Banner> {
   const row = await queryOne<BannerRow>(
-    `INSERT INTO banners (id, media_type, media_data, link_url, created_at, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [params.id, params.mediaType, params.mediaData, params.linkUrl, params.createdAt, params.expiresAt]
+    `INSERT INTO banners (id, media_type, media_data, link_url, heading, cta_text, created_at, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [params.id, params.mediaType, params.mediaData, params.linkUrl, params.heading, params.ctaText, params.createdAt, params.expiresAt]
   );
   return fromRow(row!);
 }
 
 // A field only changes when its key is present in `patch` at all — `null`
-// is a deliberate clear (e.g. removing the link, or switching to "never
-// expires"), distinct from omitting the key to leave it untouched.
-export async function updateBanner(id: string, patch: { linkUrl?: string | null; expiresAt?: number | null }): Promise<Banner | undefined> {
+// is a deliberate clear (e.g. removing the link, the heading, or switching
+// to "never expires"), distinct from omitting the key to leave it untouched.
+export async function updateBanner(id: string, patch: { linkUrl?: string | null; heading?: string | null; ctaText?: string | null; expiresAt?: number | null }): Promise<Banner | undefined> {
   const row = await queryOne<BannerRow>(
     `UPDATE banners SET
        link_url = CASE WHEN $2 THEN $3 ELSE link_url END,
-       expires_at = CASE WHEN $4 THEN $5 ELSE expires_at END
+       heading = CASE WHEN $4 THEN $5 ELSE heading END,
+       cta_text = CASE WHEN $6 THEN $7 ELSE cta_text END,
+       expires_at = CASE WHEN $8 THEN $9 ELSE expires_at END
      WHERE id = $1 RETURNING *`,
-    [id, 'linkUrl' in patch, patch.linkUrl ?? null, 'expiresAt' in patch, patch.expiresAt ?? null]
+    [id, 'linkUrl' in patch, patch.linkUrl ?? null, 'heading' in patch, patch.heading ?? null, 'ctaText' in patch, patch.ctaText ?? null, 'expiresAt' in patch, patch.expiresAt ?? null]
   );
   return row ? fromRow(row) : undefined;
 }
